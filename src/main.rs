@@ -1,11 +1,11 @@
 extern crate notify;
 extern crate libc;
 
-use std::io;
-use std::io::Write;
+use std::env;
 use libc::system;
 use notify::{Event, RecommendedWatcher, Watcher};
 use std::ffi::CString;
+use std::path::{Path,PathBuf};
 use std::string::String;
 use std::sync::mpsc::{channel, Receiver, RecvError};
 use std::{thread, time};
@@ -18,6 +18,14 @@ fn clear() {
 
 }
 
+fn ignored(relpath: &Path) -> bool {
+    if relpath.to_str().unwrap().starts_with(".") {
+        return true;
+    }
+
+    false
+}
+
 fn invoke(cmd: &String) {
     let s = CString::new(cmd.clone()).unwrap();
     unsafe {
@@ -25,23 +33,37 @@ fn invoke(cmd: &String) {
     }
 }
 
-fn wait(rx: &Receiver<Event>) -> Result<Event, RecvError> {
-    let e = try!(rx.recv());
-
-    thread::sleep(time::Duration::from_millis(250));
-
+fn wait(rx: &Receiver<Event>, cwd: &PathBuf) -> Result<Event, RecvError> {
     loop {
-        match rx.try_recv() {
-            Ok(_) => continue,
-            Err(_) => break,
-        }
-    }
+        let e = try!(rx.recv());
 
-    Ok(e)
+        let ignored = match e.path {
+            Some(ref path)  => {
+                let stripped = path.strip_prefix(cwd).unwrap();
+                ignored(stripped)
+            },
+            None        => false
+        };
+
+        if ignored {
+            continue;
+        }
+
+        thread::sleep(time::Duration::from_millis(250));
+        loop {
+            match rx.try_recv() {
+                Ok(_) => continue,
+                Err(_) => break,
+            }
+        }
+
+        return Ok(e);
+    }
 }
 
 fn main() {
-    let cmd = std::env::args().nth(1).expect("Argument 1 needs to be a command");
+    let cmd = env::args().nth(1).expect("Argument 1 needs to be a command");
+    let cwd = env::current_dir().unwrap();
 
     let (tx, rx) = channel();
     let mut watcher: RecommendedWatcher = Watcher::new(tx)
@@ -50,8 +72,8 @@ fn main() {
         .expect("unable to start watching directory");
 
     loop {
-        //clear();
-        let e = wait(&rx)
+        clear();
+        let e = wait(&rx, &cwd)
             .expect("error when waiting for filesystem changes");
 
         println!("{:?} {:?}", e.op, e.path);
