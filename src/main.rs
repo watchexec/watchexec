@@ -1,17 +1,43 @@
 extern crate notify;
 extern crate libc;
 
+use std::io;
+use std::io::Write;
 use libc::system;
-use notify::{RecommendedWatcher, Watcher};
+use notify::{Event, RecommendedWatcher, Watcher};
 use std::ffi::CString;
 use std::string::String;
-use std::sync::mpsc::channel;
+use std::sync::mpsc::{channel, Receiver, RecvError};
+use std::{thread, time};
+
+fn clear() {
+    let s = CString::new("clear").unwrap();
+    unsafe {
+        system(s.as_ptr());
+    }
+
+}
 
 fn invoke(cmd: &String) {
     let s = CString::new(cmd.clone()).unwrap();
     unsafe {
       system(s.as_ptr());
     }
+}
+
+fn wait(rx: &Receiver<Event>) -> Result<Event, RecvError> {
+    let e = try!(rx.recv());
+
+    thread::sleep(time::Duration::from_millis(250));
+
+    loop {
+        match rx.try_recv() {
+            Ok(_) => continue,
+            Err(_) => break,
+        }
+    }
+
+    Ok(e)
 }
 
 fn main() {
@@ -24,13 +50,11 @@ fn main() {
         .expect("unable to start watching directory");
 
     loop {
-        match rx.recv() {
-            Ok(notify::Event{ path: Some(path), op:Ok(op) }) => {
-                println!("{:?} {:?}", op, path);
-                invoke(&cmd);
-            },
-            Ok(event) => println!("broken event: {:?}", event),
-            Err(e) => println!("watch error: {}", e),
-        }
+        //clear();
+        let e = wait(&rx)
+            .expect("error when waiting for filesystem changes");
+
+        println!("{:?} {:?}", e.op, e.path);
+        invoke(&cmd);
     }
 }
