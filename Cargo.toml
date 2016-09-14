@@ -4,5 +4,5 @@ version = "0.1.0"
 authors = ["Matt Green <mattgreenrocks@gmail.com>"]
 
 [dependencies]
-notify = { git = "https://github.com/passcod/rsnotify" }
+notify = "2.6.3"
 libc = "0.2.16"
