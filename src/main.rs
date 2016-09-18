@@ -1,80 +1,58 @@
-extern crate notify;
+extern crate clap;
 extern crate libc;
+extern crate notify;
 
-use std::env;
-use libc::system;
-use notify::{Event, RecommendedWatcher, Watcher};
 use std::ffi::CString;
-use std::fs::File;
-use std::io::BufRead;
-use std::io::BufReader;
-use std::path::{Path,PathBuf};
-use std::string::String;
+use std::path::Path;
 use std::sync::mpsc::{channel, Receiver, RecvError};
 use std::{thread, time};
+use std::process::Command;
+
+use libc::system;
+use clap::{App, Arg};
+use notify::{Event, RecommendedWatcher, Watcher};
 
 fn clear() {
-    let s = CString::new("clear").unwrap();
-    unsafe {
-        system(s.as_ptr());
+    // TODO: determine better way to do this
+    let clear_cmd;
+    if cfg!(target_os = "windows") {
+        clear_cmd = "cls";
+    }
+    else {
+        clear_cmd = "clear";
     }
 
+    let _ = Command::new(clear_cmd).status();
 }
 
-fn ignored(relpath: &Path, ignores: &Vec<String>) -> bool {
-    for i in ignores.iter() {
-        if relpath.to_str().unwrap().starts_with(i) {
-            //println!("Ignoring {} because {}", relpath.to_str().unwrap(), i);
-            return true;
-        }
-    }
-
-    false
-}
-
-fn invoke(cmd: &String) {
+fn invoke(cmd: &str) {
+    // TODO: determine a better way to get at system()
     let s = CString::new(cmd.clone()).unwrap();
     unsafe {
       system(s.as_ptr());
     }
 }
 
-fn read_gitignore(path: &str) -> Result<Vec<String>, std::io::Error>   {
-    let f = try!(File::open(path));
-    let reader = BufReader::new(f);
-
-    let mut entries = vec![];
-    for line in reader.lines() {
-        let l = try!(line).trim().to_string();
-
-        if l.starts_with("#") || l.len() == 0 {
-            continue;
-        }
-
-        //println!("Read {}", l);
-        entries.push(l);
-    }
-
-    Ok(entries)
+fn ignored(_: &Path) -> bool {
+    // TODO: ignore *.pyc files
+    // TODO: handle .git directory?
+    false
 }
 
-fn wait(rx: &Receiver<Event>, cwd: &PathBuf, ignore: &Vec<String>) -> Result<Event, RecvError> {
+fn wait(rx: &Receiver<Event>) -> Result<Event, RecvError> {
     loop {
+        // Block on initial notification
         let e = try!(rx.recv());
-
-        let ignored = match e.path {
-            Some(ref path)  => {
-                let stripped = path.strip_prefix(cwd).unwrap();
-                ignored(stripped, &ignore)
-            },
-            None        => false
-        };
-
-        if ignored {
-            continue;
+        if let Some(ref path) = e.path {
+            if ignored(&path) {
+                continue;
+            }
         }
 
+        // Accumulate subsequent events
         thread::sleep(time::Duration::from_millis(250));
+
+        // Drain rx buffer and drop them
         loop {
             match rx.try_recv() {
                 Ok(_) => continue,
@@ -87,28 +65,49 @@ fn wait(rx: &Receiver<Event>, cwd: &PathBuf, ignore: &Vec<String>) -> Result<Eve
 }
 
 fn main() {
-    let cmd = env::args().nth(1).expect("Argument 1 needs to be a command");
-    let cwd = env::current_dir().unwrap();
-
-    let mut ignored = vec![];
-    ignored.push(String::from("."));
-    match read_gitignore(".gitignore") {
-        Ok(gitignores)  => ignored.extend(gitignores),
-        Err(_)          => ()
-    }
+    let args = App::new("watchexec")
+        .version("0.7")
+        .about("Runs a command when any of the specified files/directories are modified")
+        .arg(Arg::with_name("path")
+            .help("Path to watch for changes")
+            .required(true))
+        .arg(Arg::with_name("command")
+            .help("Command to run")
+            .required(true))
+        .arg(Arg::with_name("clear")
+            .help("Clear screen before running command")
+            .short("c")
+            .long("clear"))
+        .arg(Arg::with_name("debug")
+             .help("Enable debug messages")
+             .short("d")
+             .long("debug"))
+        .get_matches();
 
     let (tx, rx) = channel();
-    let mut watcher: RecommendedWatcher = Watcher::new(tx)
-        .expect("unable to create watcher");
-    watcher.watch(".")
-        .expect("unable to start watching directory");
+    let mut watcher: RecommendedWatcher = Watcher::new(tx).expect("unable to create watcher");
+
+    // TODO: handle multiple paths
+    let paths = args.values_of("path").unwrap();
+    for path in paths {
+        watcher.watch(path).expect("unable to watch path");
+    }
+
+    let cmd = args.value_of("command").unwrap();
+    let need_clear = args.is_present("clear");
+    let debug = args.is_present("debug");
 
     loop {
-        //clear();
-        let e = wait(&rx, &cwd, &ignored)
-            .expect("error when waiting for filesystem changes");
+        let e = wait(&rx).expect("error when waiting for filesystem changes");
 
-        //println!("{:?} {:?}", e.op, e.path);
-        invoke(&cmd);
+        if need_clear {
+            clear();
+        }
+
+        if debug {
+            println!("*** {:?}: {:?}", e.op, e.path);
+        }
+
+        invoke(cmd);
     }
 }

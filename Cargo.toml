@@ -1,8 +1,16 @@
 [package]
-name = "dirwatcher"
-version = "0.4.0"
+name = "watchexec"
+version = "0.7.0"
 authors = ["Matt Green <mattgreenrocks@gmail.com>"]
 
+[profile.release]
+lto = true
+
 [dependencies]
-notify = "2.6.3"
 libc = "0.2.16"
+notify = "2.6.3"
+
+[dependencies.clap]
+version = "2.12.1"
+default-features = false
+features = ["wrap_help"]
