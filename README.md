@@ -39,7 +39,9 @@ Note the use of quotes on the command.
 
 ##Installation
 
-For now, clone the repo and `make release`. Copy the built executable from `target/release/watchexec` to somewhere in your path.
+###OS X with Homebrew
+
+    $ brew install mattgreen/watchexec/watchexec
 
 ##Credits
 
