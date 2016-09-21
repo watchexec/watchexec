@@ -1,12 +1,13 @@
 [package]
 name = "watchexec"
-version = "0.7.0"
+version = "0.8.0"
 authors = ["Matt Green <mattgreenrocks@gmail.com>"]
 
 [profile.release]
 lto = true
 
 [dependencies]
+glob = "0.2.11"
 libc = "0.2.16"
 notify = "2.6.3"
 
