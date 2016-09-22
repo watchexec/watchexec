@@ -20,6 +20,7 @@ Beta: CLI arguments subject to change
 * Monitors path specified on command line for changes
 	* Uses most efficient event polling mechanism, based on platform (except for [BSD](https://github.com/passcod/rsnotify#todo))
 * Coalesces multiple filesystem events into one, for editors that use swap/backup files during saving
+* Support for filtering/ignoring events based on glob patterns
 * Optionally clears screen between executions
 * Does not require a language runtime
 * Small (~100 LOC)
@@ -33,9 +34,17 @@ Beta: CLI arguments subject to change
 
 Call `make test` when there are any changes in the `src` directory:
 
-    $ watchexec src "make test"
+    $ watchexec src make test
 
-Note the use of quotes on the command.
+Call `make test` when any Python file changes in this directory, or a subdirectory:
+
+    $ watchexec -f '*.py' . make test
+
+Call `make test` when any file changes in this directory/subdirectory, except for everything below `target`:
+
+    $ watchexec -i target . make test
+
+Always quote glob patterns (*.py)!
 
 ##Installation
 
