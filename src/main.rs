@@ -36,13 +36,13 @@ fn invoke(cmd: &str) {
     }
 }
 
-fn wait(rx: &Receiver<Event>, filter: &Filter, debug: bool) -> Result<Event, RecvError> {
+fn wait(rx: &Receiver<Event>, filter: &Filter, verbose: bool) -> Result<Event, RecvError> {
     loop {
         // Block on initial notification
         let e = try!(rx.recv());
         if let Some(ref path) = e.path {
             if filter.is_excluded(&path) {
-                if debug {
+                if verbose {
                     println!("*** Ignoring {} due to filter", path.to_str().unwrap());
                 }
                 continue;
@@ -69,9 +69,11 @@ fn main() {
         .version("0.9")
         .about("Runs a command when any of the specified files/directories are modified")
         .arg(Arg::with_name("path")
-            .help("Path(s) to watch for changes")
+            .help("Path to watch for changes")
             .short("w")
             .long("watch")
+            .number_of_values(1)
+            .multiple(true)
             .takes_value(true)
             .default_value("."))
         .arg(Arg::with_name("command")
@@ -87,10 +89,10 @@ fn main() {
             .help("Clear screen before running command")
             .short("c")
             .long("clear"))
-        .arg(Arg::with_name("debug")
-             .help("Enable debug messages")
-             .short("d")
-             .long("debug"))
+        .arg(Arg::with_name("verbose")
+             .help("Print diagnostic messages")
+             .short("v")
+             .long("verbose"))
         .arg(Arg::with_name("filter")
              .help("Ignore paths that do not match the pattern")
              .short("f")
@@ -109,7 +111,7 @@ fn main() {
              .value_name("pattern"))
         .get_matches();
 
-    let debug = args.is_present("debug");
+    let verbose = args.is_present("verbose");
 
     let cwd = env::current_dir().unwrap();
     let mut filter = Filter::new(&cwd);
@@ -150,17 +152,16 @@ fn main() {
     let cmd = cmd_parts.join(" ");
 
     loop {
-        let e = wait(&rx, &filter, debug).expect("error when waiting for filesystem changes");
-
+        let e = wait(&rx, &filter, verbose).expect("error when waiting for filesystem changes");
         if args.is_present("clear") {
             clear();
         }
 
-        if debug {
+        if verbose {
             println!("*** {:?}: {:?}", e.op, e.path);
         }
 
-        if debug {
+        if verbose {
             println!("*** Running: {}", cmd);
         }
 
