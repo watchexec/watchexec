@@ -4,15 +4,15 @@ use std::path::{Path,PathBuf};
 
 use self::glob::{Pattern,PatternError};
 
-pub struct Filter {
+pub struct NotificationFilter {
     cwd: PathBuf,
     filters: Vec<Pattern>,
     ignores: Vec<Pattern>
 }
 
-impl Filter {
-    pub fn new(current_dir: &Path) -> Filter {
-        Filter {
+impl NotificationFilter {
+    pub fn new(current_dir: &Path) -> NotificationFilter {
+        NotificationFilter {
             cwd: current_dir.to_path_buf(),
             filters: vec![],
             ignores: vec![]

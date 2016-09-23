@@ -2,7 +2,7 @@ extern crate clap;
 extern crate libc;
 extern crate notify;
 
-mod filter;
+mod notification_filter;
 
 use std::ffi::CString;
 use std::sync::mpsc::{channel, Receiver, RecvError};
@@ -13,7 +13,7 @@ use clap::{App, Arg};
 use libc::system;
 use notify::{Event, RecommendedWatcher, Watcher};
 
-use filter::Filter;
+use notification_filter::NotificationFilter;
 
 fn clear() {
     // TODO: determine better way to do this
@@ -36,7 +36,7 @@ fn invoke(cmd: &str) {
     }
 }
 
-fn wait(rx: &Receiver<Event>, filter: &Filter, verbose: bool) -> Result<Event, RecvError> {
+fn wait(rx: &Receiver<Event>, filter: &NotificationFilter, verbose: bool) -> Result<Event, RecvError> {
     loop {
         // Block on initial notification
         let e = try!(rx.recv());
@@ -114,7 +114,7 @@ fn main() {
     let verbose = args.is_present("verbose");
 
     let cwd = env::current_dir().unwrap();
-    let mut filter = Filter::new(&cwd);
+    let mut filter = NotificationFilter::new(&cwd);
 
     // Ignore python bytecode and dotted directories by default
     let default_filters = vec!["*.pyc", ".*/*"];
