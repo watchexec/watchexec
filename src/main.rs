@@ -105,7 +105,7 @@ fn main() {
     let mut filter = Filter::new(&cwd);
 
     // Ignore python bytecode and dotted directories by default
-    let default_filters = vec!["*.pyc", "*/.*/*"];
+    let default_filters = vec!["*.pyc", ".*/*"];
     for p in default_filters {
         filter.add_ignore(p).expect("bad default filter");
     }
