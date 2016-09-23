@@ -39,14 +39,14 @@ impl NotificationFilter {
 
     pub fn add_filter(&mut self, pattern: &str) -> Result<(), PatternError> {
         let compiled = try!(self.pattern_for(pattern));
-        self.filters.push(compiled.clone());
+        self.filters.push(compiled);
 
         Ok(())
     }
 
     pub fn add_ignore(&mut self, pattern: &str) -> Result<(), PatternError> {
         let compiled = try!(self.pattern_for(pattern));
-        self.ignores.push(compiled.clone());
+        self.ignores.push(compiled);
 
         Ok(())
     }
