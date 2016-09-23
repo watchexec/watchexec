@@ -66,10 +66,10 @@ fn wait(rx: &Receiver<Event>, filter: &Filter, verbose: bool) -> Result<Event, R
 
 fn main() {
     let args = App::new("watchexec")
-        .version("0.9")
-        .about("Runs a command when any of the specified files/directories are modified")
+        .version("0.9.0")
+        .about("Execute commands when watched files change")
         .arg(Arg::with_name("path")
-            .help("Path to watch for changes")
+            .help("Path to watch")
             .short("w")
             .long("watch")
             .number_of_values(1)
@@ -77,7 +77,7 @@ fn main() {
             .takes_value(true)
             .default_value("."))
         .arg(Arg::with_name("command")
-            .help("Command to run")
+            .help("Command to execute")
             .multiple(true)
             .required(true))
         .arg(Arg::with_name("extensions")
@@ -86,15 +86,15 @@ fn main() {
              .long("exts")
              .takes_value(true))
         .arg(Arg::with_name("clear")
-            .help("Clear screen before running command")
+            .help("Clear screen before executing command")
             .short("c")
             .long("clear"))
         .arg(Arg::with_name("verbose")
-             .help("Print diagnostic messages")
+             .help("Prints diagnostic messages")
              .short("v")
              .long("verbose"))
         .arg(Arg::with_name("filter")
-             .help("Ignore paths that do not match the pattern")
+             .help("Ignore all modifications except those matching the pattern")
              .short("f")
              .long("filter")
              .number_of_values(1)
@@ -102,7 +102,7 @@ fn main() {
              .takes_value(true)
              .value_name("pattern"))
         .arg(Arg::with_name("ignore")
-             .help("Ignore events from paths matching a pattern")
+             .help("Ignore modifications to paths matching the pattern")
              .short("i")
              .long("ignore")
              .number_of_values(1)
@@ -162,7 +162,7 @@ fn main() {
         }
 
         if verbose {
-            println!("*** Running: {}", cmd);
+            println!("*** Executing: {}", cmd);
         }
 
         invoke(&cmd);
