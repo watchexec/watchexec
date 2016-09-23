@@ -66,15 +66,23 @@ fn wait(rx: &Receiver<Event>, filter: &Filter, debug: bool) -> Result<Event, Rec
 
 fn main() {
     let args = App::new("watchexec")
-        .version("0.8")
+        .version("0.9")
         .about("Runs a command when any of the specified files/directories are modified")
         .arg(Arg::with_name("path")
-            .help("Path to watch for changes")
-            .required(true))
+            .help("Path(s) to watch for changes")
+            .short("w")
+            .long("watch")
+            .takes_value(true)
+            .default_value("."))
         .arg(Arg::with_name("command")
             .help("Command to run")
             .multiple(true)
             .required(true))
+        .arg(Arg::with_name("extensions")
+             .help("Comma-separated list of file extensions to watch (js,css,html)")
+             .short("e")
+             .long("exts")
+             .takes_value(true))
         .arg(Arg::with_name("clear")
             .help("Clear screen before running command")
             .short("c")
@@ -89,14 +97,16 @@ fn main() {
              .long("filter")
              .number_of_values(1)
              .multiple(true)
-             .takes_value(true))
+             .takes_value(true)
+             .value_name("pattern"))
         .arg(Arg::with_name("ignore")
              .help("Ignore events from paths matching a pattern")
              .short("i")
              .long("ignore")
              .number_of_values(1)
              .multiple(true)
-             .takes_value(true))
+             .takes_value(true)
+             .value_name("pattern"))
         .get_matches();
 
     let debug = args.is_present("debug");
@@ -108,6 +118,12 @@ fn main() {
     let default_filters = vec!["*.pyc", ".*/*"];
     for p in default_filters {
         filter.add_ignore(p).expect("bad default filter");
+    }
+
+    if let Some(extensions) = args.values_of("extensions") {
+        for ext in extensions {
+            filter.add_extension(ext).expect("bad extension");
+        }
     }
 
     if let Some(filters) = args.values_of("filter") {

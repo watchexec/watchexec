@@ -19,6 +19,24 @@ impl Filter {
         }
     }
 
+    pub fn add_extension(&mut self, extension: &str) -> Result<(), PatternError> {
+        let mut pattern = String::new();
+
+        for ext in extension.split(",") {
+            pattern.clear();
+            pattern.push_str("*");
+
+            if !ext.starts_with(".") {
+                pattern.push_str(".");
+            }
+            pattern.push_str(ext);
+
+            try!(self.add_filter(&pattern));
+        }
+
+        Ok(())
+    }
+
     pub fn add_filter(&mut self, pattern: &str) -> Result<Pattern, PatternError> {
         let compiled = try!(self.pattern_for(pattern));
         self.filters.push(compiled.clone());
