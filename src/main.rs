@@ -6,6 +6,7 @@ mod notification_filter;
 
 use std::sync::mpsc::{channel, Receiver, RecvError};
 use std::{env, io, thread, time};
+use std::path::Path;
 use std::process::{Child, Command};
 
 use clap::{App, Arg};
@@ -125,8 +126,9 @@ fn main() {
     let cwd = env::current_dir().unwrap();
     let mut filter = NotificationFilter::new(&cwd);
 
-    // Ignore python bytecode and dotted directories by default
-    let default_filters = vec!["*.pyc", ".*/*"];
+    // Add default ignore list
+    let dotted_dirs = Path::new(".*").join("*");
+    let default_filters = vec!["*.pyc", "*.swp", dotted_dirs.to_str().unwrap()];
     for p in default_filters {
         filter.add_ignore(p).expect("bad default filter");
     }
