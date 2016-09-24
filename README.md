@@ -23,6 +23,7 @@ Beta: CLI arguments stabilizing
 * Support for watching files with a specific extension
 * Support for filtering/ignoring events based on glob patterns
 * Optionally clears screen between executions
+* Optionally restarts the command with every modification (good for servers)
 * Does not require a language runtime
 * Small (~100 LOC)
 
@@ -44,6 +45,10 @@ Watch all files below `src` and subdirectories for changes, running `make test` 
 Call `make test` when any file changes in this directory/subdirectory, except for everything below `target`:
 
     $ watchexec -i target make
+
+Call/restart `python server.py` when any Python file in the current directory (and all subdirectories) changes:
+
+    $ watchexec -e py -r python server.py
 
 ##Installation
 

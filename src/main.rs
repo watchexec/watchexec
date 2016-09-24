@@ -4,13 +4,11 @@ extern crate notify;
 
 mod notification_filter;
 
-use std::ffi::CString;
 use std::sync::mpsc::{channel, Receiver, RecvError};
-use std::{env, thread, time};
-use std::process::Command;
+use std::{env, io, thread, time};
+use std::process::{Child, Command};
 
 use clap::{App, Arg};
-use libc::system;
 use notify::{Event, RecommendedWatcher, Watcher};
 
 use notification_filter::NotificationFilter;
@@ -28,11 +26,18 @@ fn clear() {
     let _ = Command::new(clear_cmd).status();
 }
 
-fn invoke(cmd: &str) {
-    // TODO: determine a better way to get at system()
-    let s = CString::new(cmd.clone()).unwrap();
-    unsafe {
-      system(s.as_ptr());
+fn invoke(cmd: &str) -> io::Result<Child> {
+    if cfg!(target_os = "windows") {
+        Command::new("cmd.exe")
+                .arg("/C")
+                .arg(cmd)
+                .spawn()
+    }
+    else {
+        Command::new("sh")
+                .arg("-c")
+                .arg(cmd)
+                .spawn()
     }
 }
 
@@ -66,7 +71,7 @@ fn wait(rx: &Receiver<Event>, filter: &NotificationFilter, verbose: bool) -> Res
 
 fn main() {
     let args = App::new("watchexec")
-        .version("0.9.0")
+        .version("0.10.0")
         .about("Execute commands when watched files change")
         .arg(Arg::with_name("path")
             .help("Path to watch")
@@ -89,6 +94,10 @@ fn main() {
             .help("Clear screen before executing command")
             .short("c")
             .long("clear"))
+        .arg(Arg::with_name("restart")
+             .help("Restart the process if it's still running")
+             .short("r")
+             .long("restart"))
         .arg(Arg::with_name("verbose")
              .help("Prints diagnostic messages")
              .short("v")
@@ -150,9 +159,20 @@ fn main() {
 
     let cmd_parts: Vec<&str> = args.values_of("command").unwrap().collect();
     let cmd = cmd_parts.join(" ");
+    let restart = args.is_present("restart");
+    let mut child_process: Option<Child> = None;
 
     loop {
         let e = wait(&rx, &filter, verbose).expect("error when waiting for filesystem changes");
+
+        if let Some(mut child) = child_process {
+            if restart {
+                let _ = child.kill();
+            }
+
+            let _ = child.wait();
+        }
+
         if args.is_present("clear") {
             clear();
         }
@@ -165,6 +185,6 @@ fn main() {
             println!("*** Executing: {}", cmd);
         }
 
-        invoke(&cmd);
+        child_process = invoke(&cmd).ok();
     }
 }
