@@ -54,7 +54,7 @@ Call/restart `python server.py` when any Python file in the current directory (a
 
 ###OS X with Homebrew
 
-    $ brew install mattgreen/watchexec/watchexec
+    $ brew install https://raw.githubusercontent.com/mattgreen/watchexec/master/pkg/brew/watchexec.rb
 
 ##Credits
 
