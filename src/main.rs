@@ -72,7 +72,7 @@ fn wait(rx: &Receiver<Event>, filter: &NotificationFilter, verbose: bool) -> Res
 
 fn main() {
     let args = App::new("watchexec")
-        .version("0.10.0")
+        .version("0.10.1")
         .about("Execute commands when watched files change")
         .arg(Arg::with_name("path")
             .help("Path to watch")
@@ -124,7 +124,7 @@ fn main() {
     let verbose = args.is_present("verbose");
 
     let cwd = env::current_dir().unwrap();
-    let mut filter = NotificationFilter::new(&cwd);
+    let mut filter = NotificationFilter::new(&cwd).expect("unable to create notification filter");
 
     // Add default ignore list
     let dotted_dirs = Path::new(".*").join("*");
@@ -156,7 +156,13 @@ fn main() {
 
     let paths = args.values_of("path").unwrap();
     for path in paths {
-        watcher.watch(path).expect("unable to watch path");
+        match Path::new(path).canonicalize() {
+            Ok(canonicalized)   => watcher.watch(canonicalized).expect("unable to watch path"),
+            Err(_)              => {
+                println!("invalid path: {}", path);
+                return;
+            }
+        }
     }
 
     let cmd_parts: Vec<&str> = args.values_of("command").unwrap().collect();

@@ -1,6 +1,6 @@
 [package]
 name = "watchexec"
-version = "0.10.0"
+version = "0.10.1"
 authors = ["Matt Green <mattgreenrocks@gmail.com>"]
 
 [profile.release]

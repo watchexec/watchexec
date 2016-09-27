@@ -1,5 +1,6 @@
 extern crate glob;
 
+use std::io;
 use std::path::{Path,PathBuf};
 
 use self::glob::{Pattern,PatternError};
@@ -10,16 +11,36 @@ pub struct NotificationFilter {
     ignores: Vec<Pattern>
 }
 
+#[derive(Debug)]
+pub enum NotificationError {
+    BadPattern(PatternError),
+    Io(io::Error)
+}
+
+impl From<io::Error> for NotificationError {
+    fn from(err: io::Error) -> NotificationError {
+        NotificationError::Io(err)
+    }
+}
+
+impl From<PatternError> for NotificationError {
+    fn from(err: PatternError) -> NotificationError {
+        NotificationError::BadPattern(err)
+    }
+}
+
 impl NotificationFilter {
-    pub fn new(current_dir: &Path) -> NotificationFilter {
-        NotificationFilter {
-            cwd: current_dir.to_path_buf(),
+    pub fn new(current_dir: &Path) -> Result<NotificationFilter, io::Error> {
+        let canonicalized = try!(current_dir.canonicalize());
+
+        Ok(NotificationFilter {
+            cwd: canonicalized,
             filters: vec![],
             ignores: vec![]
-        }
+        })
     }
 
-    pub fn add_extension(&mut self, extension: &str) -> Result<(), PatternError> {
+    pub fn add_extension(&mut self, extension: &str) -> Result<(), NotificationError> {
         let mut pattern = String::new();
 
         for ext in extension.split(",") {
@@ -37,14 +58,14 @@ impl NotificationFilter {
         Ok(())
     }
 
-    pub fn add_filter(&mut self, pattern: &str) -> Result<(), PatternError> {
+    pub fn add_filter(&mut self, pattern: &str) -> Result<(), NotificationError> {
         let compiled = try!(self.pattern_for(pattern));
         self.filters.push(compiled);
 
         Ok(())
     }
 
-    pub fn add_ignore(&mut self, pattern: &str) -> Result<(), PatternError> {
+    pub fn add_ignore(&mut self, pattern: &str) -> Result<(), NotificationError> {
         let compiled = try!(self.pattern_for(pattern));
         self.ignores.push(compiled);
 
