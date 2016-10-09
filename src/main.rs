@@ -3,44 +3,17 @@ extern crate libc;
 extern crate notify;
 
 mod notification_filter;
+mod runner;
 
 use std::sync::mpsc::{channel, Receiver, RecvError};
-use std::{env, io, thread, time};
+use std::{env, thread, time};
 use std::path::Path;
-use std::process::{Child, Command};
 
 use clap::{App, Arg};
 use notify::{Event, RecommendedWatcher, Watcher};
 
 use notification_filter::NotificationFilter;
-
-fn clear() {
-    // TODO: determine better way to do this
-    let clear_cmd;
-    if cfg!(target_os = "windows") {
-        clear_cmd = "cls";
-    }
-    else {
-        clear_cmd = "clear";
-    }
-
-    let _ = Command::new(clear_cmd).status();
-}
-
-fn invoke(cmd: &str) -> io::Result<Child> {
-    if cfg!(target_os = "windows") {
-        Command::new("cmd.exe")
-                .arg("/C")
-                .arg(cmd)
-                .spawn()
-    }
-    else {
-        Command::new("sh")
-                .arg("-c")
-                .arg(cmd)
-                .spawn()
-    }
-}
+use runner::Runner;
 
 fn wait(rx: &Receiver<Event>, filter: &NotificationFilter, verbose: bool) -> Result<Event, RecvError> {
     loop {
@@ -167,32 +140,15 @@ fn main() {
 
     let cmd_parts: Vec<&str> = args.values_of("command").unwrap().collect();
     let cmd = cmd_parts.join(" ");
-    let restart = args.is_present("restart");
-    let mut child_process: Option<Child> = None;
+    let mut runner = Runner::new(args.is_present("restart"), args.is_present("clear"), verbose);
 
     loop {
         let e = wait(&rx, &filter, verbose).expect("error when waiting for filesystem changes");
-
-        if let Some(mut child) = child_process {
-            if restart {
-                let _ = child.kill();
-            }
-
-            let _ = child.wait();
-        }
-
-        if args.is_present("clear") {
-            clear();
-        }
 
         if verbose {
             println!("*** {:?}: {:?}", e.op, e.path);
         }
 
-        if verbose {
-            println!("*** Executing: {}", cmd);
-        }
-
-        child_process = invoke(&cmd).ok();
+        runner.run_command(&cmd);
     }
 }
