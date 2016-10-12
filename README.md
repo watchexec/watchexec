@@ -11,7 +11,7 @@ Example use cases:
 
 ##Status
 
-Beta: CLI arguments stabilizing
+Beta: Adding final features and polish
 
 ##Features
 
