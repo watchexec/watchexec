@@ -10,7 +10,7 @@ pub struct NotificationFilter {
     cwd: PathBuf,
     filters: Vec<Pattern>,
     ignores: Vec<Pattern>,
-    ignore_file: Option<gitignore::File>
+    ignore_file: Option<gitignore::PatternSet>
 }
 
 #[derive(Debug)]
@@ -32,7 +32,7 @@ impl From<PatternError> for NotificationError {
 }
 
 impl NotificationFilter {
-    pub fn new(current_dir: &Path, ignore_file: Option<gitignore::File>) -> Result<NotificationFilter, io::Error> {
+    pub fn new(current_dir: &Path, ignore_file: Option<gitignore::PatternSet>) -> Result<NotificationFilter, io::Error> {
         let canonicalized = try!(current_dir.canonicalize());
 
         Ok(NotificationFilter {

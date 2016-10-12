@@ -5,15 +5,22 @@ use std::io;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
-pub struct File {
+// Immutable, ordered set of Patterns
+// Used to implement whitelisting
+pub struct PatternSet {
     patterns: Vec<Pattern>
 }
 
+// Represents a single gitignore rule
+//
+// Currently we ignore rules about whether to match
+// only a directory since it's a bit weird for what
+// we want to use a gitignore file for.
 struct Pattern {
     pattern: glob::Pattern,
     str: String,
     root: PathBuf,
-    negated: bool,
+    whitelist: bool,
     #[allow(dead_code)]
     directory: bool,
     anchored: bool
@@ -25,41 +32,52 @@ pub enum Error {
     Io(io::Error),
 }
 
-impl File {
-    pub fn new(path: &Path) -> Result<File, Error> {
-        let mut file = try!(fs::File::open(path));
-        let mut contents = String::new();
-        try!(file.read_to_string(&mut contents));
+pub fn parse(path: &Path) -> Result<PatternSet, Error> {
+    let mut file = try!(fs::File::open(path));
+    let mut contents = String::new();
+    try!(file.read_to_string(&mut contents));
 
-        let root = path.parent().unwrap();
-        let patterns = try!(File::parse(&contents, &root));
+    // If we've opened the file, we'll have at least one other path component
+    let root = path.parent().unwrap();
+    let patterns = try!(contents
+        .lines()
+        .filter(|l| !l.is_empty())
+        .filter(|l| !l.starts_with("#"))
+        .map(|l| Pattern::new(l, root))
+        .collect());
 
-        Ok(File {
+    Ok(PatternSet::new(patterns))
+}
+
+impl PatternSet {
+    fn new(patterns: Vec<Pattern>) -> PatternSet {
+        PatternSet {
             patterns: patterns
-        })
+        }
     }
 
-    fn parse(contents: &str, root: &Path) -> Result<Vec<Pattern>, Error> {
-        contents
-            .lines()
-            .filter(|l| !l.is_empty())
-            .filter(|l| !l.starts_with("#"))
-            .map(|l| Pattern::new(l, root))
-            .collect()
-    }
-
+    // Apply the patterns to the path one-by-one
+    //
+    // If there are whitelisting, we need to run through the whole set.
+    // Otherwise, we can stop at the first exclusion.
     pub fn is_excluded(&self, path: &Path) -> bool {
         let mut excluded = false;
+        let has_whitelistings = self.patterns.iter().any(|p| p.whitelist);
 
         for pattern in self.patterns.iter() {
             let matched = pattern.matches(path);
 
             if matched {
-                if pattern.negated {
+                if pattern.whitelist {
                     excluded = false;
                 }
                 else {
                     excluded = true;
+
+                    // We can stop running rules in this case
+                    if !has_whitelistings {
+                        break;
+                    }
                 }
             }
         }
@@ -71,20 +89,20 @@ impl File {
 impl Pattern {
     fn new(pattern: &str, root: &Path) -> Result<Pattern, Error> {
         let mut normalized = String::from(pattern);
-        let mut negated = false;
-        let mut directory = false;
-        let mut anchored = false;
 
+        let mut whitelisted = false;
         if normalized.starts_with("!") {
             normalized.remove(0);
-            negated = true;
+            whitelisted = true;
         }
 
+        let mut anchored = false;
         if normalized.starts_with("/") {
             normalized.remove(0);
             anchored = true;
         }
 
+        let mut directory = false;
         if normalized.ends_with("/") {
             normalized.pop();
             directory = true;
@@ -100,7 +118,7 @@ impl Pattern {
             pattern: pat,
             str: String::from(normalized),
             root: root.to_path_buf(),
-            negated: negated,
+            whitelist: whitelisted,
             directory: directory,
             anchored: anchored
         })
@@ -251,5 +269,30 @@ mod tests {
         assert!(pattern.matches(&base_dir().join("a").join("x").join("y").join("b")));
     }
 
+    use super::PatternSet;
+
+    #[test]
+    fn test_empty_pattern_set_never_excludes() {
+        let set = PatternSet::new(vec![]);
+
+        assert!(!set.is_excluded(&base_dir().join("target")));
+    }
+
+    #[test]
+    fn test_set_tests_all_patterns() {
+        let patterns = vec![build_pattern("target"), build_pattern("target2")];
+        let set = PatternSet::new(patterns);
+
+        assert!(set.is_excluded(&base_dir().join("target").join("foo.txt")));
+        assert!(set.is_excluded(&base_dir().join("target2").join("bar.txt")));
+    }
+
+    #[test]
+    fn test_set_handles_whitelisting() {
+        let patterns = vec![build_pattern("target"), build_pattern("!target/foo.txt")];
+        let set = PatternSet::new(patterns);
+
+        assert!(!set.is_excluded(&base_dir().join("target").join("foo.txt")));
+    }
 }
 

@@ -105,7 +105,7 @@ fn main() {
             println!("*** Found .gitignore file: {}", gitignore_path.to_str().unwrap());
         }
 
-        gitignore_file = gitignore::File::new(&gitignore_path).ok();
+        gitignore_file = gitignore::parse(&gitignore_path).ok();
     }
 
     let mut filter = NotificationFilter::new(&cwd, gitignore_file).expect("unable to create notification filter");
