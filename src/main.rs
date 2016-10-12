@@ -9,42 +9,14 @@ use std::sync::mpsc::{channel, Receiver, RecvError};
 use std::{env, thread, time};
 use std::path::Path;
 
-use clap::{App, Arg};
+use clap::{App, Arg, ArgMatches};
 use notify::{Event, RecommendedWatcher, Watcher};
 
 use notification_filter::NotificationFilter;
 use runner::Runner;
 
-fn wait(rx: &Receiver<Event>, filter: &NotificationFilter, verbose: bool) -> Result<Event, RecvError> {
-    loop {
-        // Block on initial notification
-        let e = try!(rx.recv());
-        if let Some(ref path) = e.path {
-            if filter.is_excluded(&path) {
-                if verbose {
-                    println!("*** Ignoring {} due to filter", path.to_str().unwrap());
-                }
-                continue;
-            }
-        }
-
-        // Accumulate subsequent events
-        thread::sleep(time::Duration::from_millis(250));
-
-        // Drain rx buffer and drop them
-        loop {
-            match rx.try_recv() {
-                Ok(_) => continue,
-                Err(_) => break,
-            }
-        }
-
-        return Ok(e);
-    }
-}
-
-fn main() {
-    let args = App::new("watchexec")
+fn get_args<'a>() -> ArgMatches<'a> {
+    App::new("watchexec")
         .version("0.11.0")
         .about("Execute commands when watched files change")
         .arg(Arg::with_name("path")
@@ -92,21 +64,31 @@ fn main() {
              .multiple(true)
              .takes_value(true)
              .value_name("pattern"))
-        .get_matches();
+        .arg(Arg::with_name("no-vcs-ignore")
+             .help("Skip auto-loading of .gitignore files for filtering")
+             .long("no-vcs-ignore"))
+        .get_matches()
+}
 
+fn main() {
+    let args = get_args();
     let verbose = args.is_present("verbose");
 
-    let uncanonicalized_cwd = env::current_dir().expect("unable to get cwd");
-    let cwd = uncanonicalized_cwd.canonicalize().expect("unable to canonicalize cwd");
+    let cwd = env::current_dir()
+        .expect("unable to get cwd")
+        .canonicalize()
+        .expect("unable to canonicalize cwd");
 
     let mut gitignore_file = None;
-    let gitignore_path = cwd.join(".gitignore");
-    if gitignore_path.exists() {
-        if verbose {
-            println!("*** Found .gitignore file: {}", gitignore_path.to_str().unwrap());
-        }
+    if !args.is_present("no-vcs-ignore") {
+        let gitignore_path = cwd.join(".gitignore");
+        if gitignore_path.exists() {
+            if verbose {
+                println!("*** Found .gitignore file: {}", gitignore_path.to_str().unwrap());
+            }
 
-        gitignore_file = gitignore::parse(&gitignore_path).ok();
+            gitignore_file = gitignore::parse(&gitignore_path).ok();
+        }
     }
 
     let mut filter = NotificationFilter::new(&cwd, gitignore_file).expect("unable to create notification filter");
@@ -162,5 +144,33 @@ fn main() {
         }
 
         runner.run_command(&cmd);
+    }
+}
+
+fn wait(rx: &Receiver<Event>, filter: &NotificationFilter, verbose: bool) -> Result<Event, RecvError> {
+    loop {
+        // Block on initial notification
+        let e = try!(rx.recv());
+        if let Some(ref path) = e.path {
+            if filter.is_excluded(&path) {
+                if verbose {
+                    println!("*** Ignoring {} due to filter", path.to_str().unwrap());
+                }
+                continue;
+            }
+        }
+
+        // Accumulate subsequent events
+        thread::sleep(time::Duration::from_millis(250));
+
+        // Drain rx buffer and drop them
+        loop {
+            match rx.try_recv() {
+                Ok(_) => continue,
+                Err(_) => break,
+            }
+        }
+
+        return Ok(e);
     }
 }
