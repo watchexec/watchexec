@@ -1,0 +1,255 @@
+extern crate glob;
+
+use std::fs;
+use std::io;
+use std::io::Read;
+use std::path::{Path, PathBuf};
+
+pub struct File {
+    patterns: Vec<Pattern>
+}
+
+struct Pattern {
+    pattern: glob::Pattern,
+    str: String,
+    root: PathBuf,
+    negated: bool,
+    #[allow(dead_code)]
+    directory: bool,
+    anchored: bool
+}
+
+#[derive(Debug)]
+pub enum Error {
+    Glob(glob::PatternError),
+    Io(io::Error),
+}
+
+impl File {
+    pub fn new(path: &Path) -> Result<File, Error> {
+        let mut file = try!(fs::File::open(path));
+        let mut contents = String::new();
+        try!(file.read_to_string(&mut contents));
+
+        let root = path.parent().unwrap();
+        let patterns = try!(File::parse(&contents, &root));
+
+        Ok(File {
+            patterns: patterns
+        })
+    }
+
+    fn parse(contents: &str, root: &Path) -> Result<Vec<Pattern>, Error> {
+        contents
+            .lines()
+            .filter(|l| !l.is_empty())
+            .filter(|l| !l.starts_with("#"))
+            .map(|l| Pattern::new(l, root))
+            .collect()
+    }
+
+    pub fn is_excluded(&self, path: &Path) -> bool {
+        let mut excluded = false;
+
+        for pattern in self.patterns.iter() {
+            let matched = pattern.matches(path);
+
+            if matched {
+                if pattern.negated {
+                    excluded = false;
+                }
+                else {
+                    excluded = true;
+                }
+            }
+        }
+
+        excluded
+    }
+}
+
+impl Pattern {
+    fn new(pattern: &str, root: &Path) -> Result<Pattern, Error> {
+        let mut normalized = String::from(pattern);
+        let mut negated = false;
+        let mut directory = false;
+        let mut anchored = false;
+
+        if normalized.starts_with("!") {
+            normalized.remove(0);
+            negated = true;
+        }
+
+        if normalized.starts_with("/") {
+            normalized.remove(0);
+            anchored = true;
+        }
+
+        if normalized.ends_with("/") {
+            normalized.pop();
+            directory = true;
+        }
+
+        if normalized.starts_with("\\#") || normalized.starts_with("\\!") {
+            normalized.remove(0);
+        }
+
+        let pat = try!(glob::Pattern::new(&normalized));
+
+        Ok(Pattern {
+            pattern: pat,
+            str: String::from(normalized),
+            root: root.to_path_buf(),
+            negated: negated,
+            directory: directory,
+            anchored: anchored
+        })
+    }
+
+    fn matches(&self, path: &Path) -> bool {
+        let options = glob::MatchOptions {
+            case_sensitive: false,
+            require_literal_separator: true,
+            require_literal_leading_dot: false
+        };
+
+        let stripped_path = match path.strip_prefix(&self.root) {
+            Ok(p)   => p,
+            Err(_)  => return false
+        };
+
+        let mut result = false;
+
+        if self.anchored {
+            let first_component = stripped_path.iter().next();
+            result = match first_component {
+                Some(s)     => self.pattern.matches_path_with(Path::new(&s), &options),
+                None        => false
+            }
+        }
+        else if !self.str.contains("/") {
+            result = stripped_path.iter().any(|c| {
+                self.pattern.matches_path_with(Path::new(c), &options)
+            });
+        }
+        else {
+            if self.pattern.matches_path_with(stripped_path, &options) {
+                result = true;
+            }
+        }
+
+        result
+    }
+}
+
+impl From<glob::PatternError> for Error {
+    fn from(error: glob::PatternError) -> Error {
+        Error::Glob(error)
+    }
+}
+
+impl From<io::Error> for Error {
+    fn from(error: io::Error) -> Error {
+        Error::Io(error)
+    }
+}
+
+//fn main() {
+    //let cwd = env::current_dir().unwrap();
+    //let gitignore_file = cwd.join(".gitignore");
+    //let file = File::new(&gitignore_file).unwrap();
+
+    //for arg in env::args().skip(1) {
+        //let path = cwd.join(&arg);
+        //let matches = file.is_excluded(&path);
+        //println!("File: {}, Excluded: {}", arg, matches);
+    //}
+//}
+
+#[cfg(test)]
+mod tests {
+    use super::Pattern;
+    use std::path::PathBuf;
+
+    fn base_dir() -> PathBuf {
+        PathBuf::from("/home/user/dir")
+    }
+
+    fn build_pattern(pattern: &str) -> Pattern {
+        Pattern::new(pattern, &base_dir()).unwrap()
+    }
+
+    #[test]
+    fn test_matches_exact() {
+        let pattern = build_pattern("Cargo.toml");
+
+        assert!(pattern.matches(&base_dir().join("Cargo.toml")));
+    }
+
+    #[test]
+    fn test_matches_simple_wildcard() {
+        let pattern = build_pattern("targ*");
+
+        assert!(pattern.matches(&base_dir().join("target")));
+    }
+
+    #[test]
+    fn test_does_not_match() {
+        let pattern = build_pattern("Cargo.toml");
+
+        assert!(!pattern.matches(&base_dir().join("src").join("main.rs")));
+    }
+
+    #[test]
+    fn test_matches_subdir() {
+        let pattern = build_pattern("target");
+
+        assert!(pattern.matches(&base_dir().join("target").join("file")));
+        assert!(pattern.matches(&base_dir().join("target").join("subdir").join("file")));
+    }
+
+    #[test]
+    fn test_wildcard_with_dir() {
+        let pattern = build_pattern("target/f*");
+
+        assert!(pattern.matches(&base_dir().join("target").join("file")));
+        assert!(!pattern.matches(&base_dir().join("target").join("subdir").join("file")));
+    }
+
+    #[test]
+    fn test_leading_slash() {
+        let pattern = build_pattern("/*.c");
+
+        assert!(pattern.matches(&base_dir().join("cat-file.c")));
+        assert!(!pattern.matches(&base_dir().join("mozilla-sha1").join("sha1.c")));
+    }
+
+    #[test]
+    fn test_leading_double_wildcard() {
+        let pattern = build_pattern("**/foo");
+
+        assert!(pattern.matches(&base_dir().join("foo")));
+        assert!(pattern.matches(&base_dir().join("target").join("foo")));
+        assert!(pattern.matches(&base_dir().join("target").join("subdir").join("foo")));
+    }
+
+    #[test]
+    fn test_trailing_double_wildcard() {
+        let pattern = build_pattern("abc/**");
+
+        assert!(!pattern.matches(&base_dir().join("def").join("foo")));
+        assert!(pattern.matches(&base_dir().join("abc").join("foo")));
+        assert!(pattern.matches(&base_dir().join("abc").join("subdir").join("foo")));
+    }
+
+    #[test]
+    fn test_sandwiched_double_wildcard() {
+        let pattern = build_pattern("a/**/b");
+
+        assert!(pattern.matches(&base_dir().join("a").join("b")));
+        assert!(pattern.matches(&base_dir().join("a").join("x").join("b")));
+        assert!(pattern.matches(&base_dir().join("a").join("x").join("y").join("b")));
+    }
+
+}
+

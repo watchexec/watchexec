@@ -1,7 +1,7 @@
 extern crate clap;
-extern crate libc;
 extern crate notify;
 
+mod gitignore;
 mod notification_filter;
 mod runner;
 
@@ -45,7 +45,7 @@ fn wait(rx: &Receiver<Event>, filter: &NotificationFilter, verbose: bool) -> Res
 
 fn main() {
     let args = App::new("watchexec")
-        .version("0.10.1")
+        .version("0.11.0")
         .about("Execute commands when watched files change")
         .arg(Arg::with_name("path")
             .help("Path to watch")
@@ -97,7 +97,18 @@ fn main() {
     let verbose = args.is_present("verbose");
 
     let cwd = env::current_dir().unwrap();
-    let mut filter = NotificationFilter::new(&cwd).expect("unable to create notification filter");
+
+    let mut gitignore_file = None;
+    let gitignore_path = cwd.join(".gitignore");
+    if gitignore_path.exists() {
+        if verbose {
+            println!("*** Found .gitignore file: {}", gitignore_path.to_str().unwrap());
+        }
+
+        gitignore_file = gitignore::File::new(&gitignore_path).ok();
+    }
+
+    let mut filter = NotificationFilter::new(&cwd, gitignore_file).expect("unable to create notification filter");
 
     // Add default ignore list
     let dotted_dirs = Path::new(".*").join("*");
