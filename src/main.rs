@@ -96,7 +96,8 @@ fn main() {
 
     let verbose = args.is_present("verbose");
 
-    let cwd = env::current_dir().unwrap();
+    let uncanonicalized_cwd = env::current_dir().expect("unable to get cwd");
+    let cwd = uncanonicalized_cwd.canonicalize().expect("unable to canonicalize cwd");
 
     let mut gitignore_file = None;
     let gitignore_path = cwd.join(".gitignore");
