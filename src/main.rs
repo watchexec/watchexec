@@ -100,7 +100,7 @@ fn main() {
     if !args.is_present("no-vcs-ignore") {
         let gitignore_path = cwd.join(".gitignore");
         if gitignore_path.exists() {
-            debug!("Found .gitignore file: {}", gitignore_path.to_str().unwrap());
+            debug!("Found .gitignore file: {:?}", gitignore_path);
 
             gitignore_file = gitignore::parse(&gitignore_path).ok();
         }

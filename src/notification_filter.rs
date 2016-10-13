@@ -19,18 +19,6 @@ pub enum NotificationError {
     Io(io::Error)
 }
 
-impl From<io::Error> for NotificationError {
-    fn from(err: io::Error) -> NotificationError {
-        NotificationError::Io(err)
-    }
-}
-
-impl From<PatternError> for NotificationError {
-    fn from(err: PatternError) -> NotificationError {
-        NotificationError::BadPattern(err)
-    }
-}
-
 impl NotificationFilter {
     pub fn new(current_dir: &Path, ignore_file: Option<gitignore::PatternSet>) -> Result<NotificationFilter, io::Error> {
         let canonicalized = try!(current_dir.canonicalize());
@@ -43,18 +31,14 @@ impl NotificationFilter {
         })
     }
 
-    pub fn add_extension(&mut self, extension: &str) -> Result<(), NotificationError> {
-        let mut pattern = String::new();
+    pub fn add_extension(&mut self, extensions: &str) -> Result<(), NotificationError> {
+        let patterns: Vec<String> = extensions
+            .split(",")
+            .filter(|ext| !ext.is_empty())
+            .map(|ext| format!("*.{}", ext.replace(".", "")))
+            .collect();
 
-        for ext in extension.split(",") {
-            pattern.clear();
-            pattern.push_str("*");
-
-            if !ext.starts_with(".") {
-                pattern.push_str(".");
-            }
-            pattern.push_str(ext);
-
+        for pattern in patterns {
             try!(self.add_filter(&pattern));
         }
 
@@ -65,12 +49,16 @@ impl NotificationFilter {
         let compiled = try!(self.pattern_for(pattern));
         self.filters.push(compiled);
 
+        debug!("Adding filter: {}", pattern);
+
         Ok(())
     }
 
     pub fn add_ignore(&mut self, pattern: &str) -> Result<(), NotificationError> {
         let compiled = try!(self.pattern_for(pattern));
         self.ignores.push(compiled);
+
+        debug!("Adding ignore: {}", pattern);
 
         Ok(())
     }
@@ -112,5 +100,17 @@ impl NotificationFilter {
         }
 
         self.filters.len() > 0
+    }
+}
+
+impl From<io::Error> for NotificationError {
+    fn from(err: io::Error) -> NotificationError {
+        NotificationError::Io(err)
+    }
+}
+
+impl From<PatternError> for NotificationError {
+    fn from(err: PatternError) -> NotificationError {
+        NotificationError::BadPattern(err)
     }
 }
