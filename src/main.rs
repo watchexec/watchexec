@@ -1,4 +1,7 @@
 extern crate clap;
+extern crate env_logger;
+#[macro_use]
+extern crate log;
 extern crate notify;
 
 mod gitignore;
@@ -70,9 +73,23 @@ fn get_args<'a>() -> ArgMatches<'a> {
         .get_matches()
 }
 
+fn init_logger(verbose: bool) {
+    let mut log_builder = env_logger::LogBuilder::new();
+    let mut level = log::LogLevelFilter::Warn;
+    if verbose {
+        level = log::LogLevelFilter::Debug;
+    }
+
+    log_builder
+        .format(|r| format!("*** {}", r.args()))
+        .filter(None, level);
+    log_builder.init().expect("unable to initialize logger");
+}
+
 fn main() {
     let args = get_args();
-    let verbose = args.is_present("verbose");
+
+    init_logger(args.is_present("verbose"));
 
     let cwd = env::current_dir()
         .expect("unable to get cwd")
@@ -83,9 +100,7 @@ fn main() {
     if !args.is_present("no-vcs-ignore") {
         let gitignore_path = cwd.join(".gitignore");
         if gitignore_path.exists() {
-            if verbose {
-                println!("*** Found .gitignore file: {}", gitignore_path.to_str().unwrap());
-            }
+            debug!("Found .gitignore file: {}", gitignore_path.to_str().unwrap());
 
             gitignore_file = gitignore::parse(&gitignore_path).ok();
         }
@@ -134,28 +149,24 @@ fn main() {
 
     let cmd_parts: Vec<&str> = args.values_of("command").unwrap().collect();
     let cmd = cmd_parts.join(" ");
-    let mut runner = Runner::new(args.is_present("restart"), args.is_present("clear"), verbose);
+    let mut runner = Runner::new(args.is_present("restart"), args.is_present("clear"));
 
     loop {
-        let e = wait(&rx, &filter, verbose).expect("error when waiting for filesystem changes");
+        let e = wait(&rx, &filter).expect("error when waiting for filesystem changes");
 
-        if verbose {
-            println!("*** {:?}: {:?}", e.op, e.path);
-        }
+        debug!("{:?}: {:?}", e.op, e.path);
 
         runner.run_command(&cmd);
     }
 }
 
-fn wait(rx: &Receiver<Event>, filter: &NotificationFilter, verbose: bool) -> Result<Event, RecvError> {
+fn wait(rx: &Receiver<Event>, filter: &NotificationFilter) -> Result<Event, RecvError> {
     loop {
         // Block on initial notification
         let e = try!(rx.recv());
         if let Some(ref path) = e.path {
             if filter.is_excluded(&path) {
-                if verbose {
-                    println!("*** Ignoring {} due to filter", path.to_str().unwrap());
-                }
+                debug!("Ignoring {} due to filter", path.to_str().unwrap());
                 continue;
             }
         }

@@ -4,16 +4,14 @@ pub struct Runner {
     process: Option<Child>,
     restart: bool,
     cls: bool,
-    verbose: bool
 }
 
 impl Runner {
-    pub fn new(restart: bool, clear: bool, verbose: bool) -> Runner {
+    pub fn new(restart: bool, clear: bool) -> Runner {
         Runner {
             process: None,
             restart: restart,
             cls: clear,
-            verbose: verbose
         }
     }
 
@@ -65,9 +63,7 @@ impl Runner {
             self.clear();
         }
 
-        if self.verbose {
-            println!("*** Executing: {}", cmd);
-        }
+        debug!("Executing: {}", cmd);
 
         self.process = self.invoke(cmd);
     }
