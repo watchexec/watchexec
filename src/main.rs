@@ -1,3 +1,4 @@
+#[macro_use]
 extern crate clap;
 extern crate env_logger;
 #[macro_use]
@@ -20,7 +21,7 @@ use runner::Runner;
 
 fn get_args<'a>() -> ArgMatches<'a> {
     App::new("watchexec")
-        .version("0.11.0")
+        .version(crate_version!())
         .about("Execute commands when watched files change")
         .arg(Arg::with_name("path")
             .help("Path to watch")
