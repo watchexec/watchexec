@@ -81,8 +81,16 @@ impl NotificationFilter {
     pub fn is_excluded(&self, path: &Path) -> bool {
         let path_as_str = path.to_str().unwrap();
 
+        if let Ok(metadata) = path.metadata() {
+            if metadata.is_dir() {
+                debug!("Ignoring {:?}: is a directory", path);
+                return true;
+            }
+        }
+
         for pattern in &self.ignores {
             if pattern.matches(path_as_str) {
+                debug!("Ignoring {:?}: matched ignore filter", path);
                 return true;
             }
         }
@@ -95,8 +103,13 @@ impl NotificationFilter {
 
         if let Some(ref ignore_file) = self.ignore_file {
             if ignore_file.is_excluded(path) {
+                debug!("Ignoring {:?}: matched gitignore file", path);
                 return true;
             }
+        }
+
+        if self.filters.len() > 0 {
+            debug!("Ignoring {:?}: did not match any given filters", path);
         }
 
         self.filters.len() > 0

@@ -53,9 +53,11 @@ impl Runner {
     pub fn run_command(&mut self, cmd: &str) {
         if let Some(ref mut child) = self.process {
             if self.restart {
+                debug!("Killing child process (pid: {})", child.id());
                 let _ = child.kill();
             }
 
+            debug!("Waiting for child process (pid: {})", child.id());
             let _ = child.wait();
         }
 

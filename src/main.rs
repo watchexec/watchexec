@@ -48,10 +48,10 @@ fn get_args<'a>() -> ArgMatches<'a> {
              .help("Restart the process if it's still running")
              .short("r")
              .long("restart"))
-        .arg(Arg::with_name("verbose")
-             .help("Prints diagnostic messages")
-             .short("v")
-             .long("verbose"))
+        .arg(Arg::with_name("debug")
+             .help("Print debugging messages to stderr")
+             .short("d")
+             .long("debug"))
         .arg(Arg::with_name("filter")
              .help("Ignore all modifications except those matching the pattern")
              .short("f")
@@ -74,10 +74,10 @@ fn get_args<'a>() -> ArgMatches<'a> {
         .get_matches()
 }
 
-fn init_logger(verbose: bool) {
+fn init_logger(debug: bool) {
     let mut log_builder = env_logger::LogBuilder::new();
     let mut level = log::LogLevelFilter::Warn;
-    if verbose {
+    if debug {
         level = log::LogLevelFilter::Debug;
     }
 
@@ -90,7 +90,7 @@ fn init_logger(verbose: bool) {
 fn main() {
     let args = get_args();
 
-    init_logger(args.is_present("verbose"));
+    init_logger(args.is_present("debug"));
 
     let cwd = env::current_dir()
         .expect("unable to get cwd")
@@ -167,7 +167,6 @@ fn wait(rx: &Receiver<Event>, filter: &NotificationFilter) -> Result<Event, Recv
         let e = try!(rx.recv());
         if let Some(ref path) = e.path {
             if filter.is_excluded(&path) {
-                debug!("Ignoring {} due to filter", path.to_str().unwrap());
                 continue;
             }
         }
