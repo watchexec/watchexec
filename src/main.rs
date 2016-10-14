@@ -111,7 +111,7 @@ fn main() {
 
     // Add default ignore list
     let dotted_dirs = Path::new(".*").join("*");
-    let default_filters = vec!["*.pyc", "*.swp", dotted_dirs.to_str().unwrap()];
+    let default_filters = vec!["*/.DS_Store", "*.pyc", "*.swp", dotted_dirs.to_str().unwrap()];
     for p in default_filters {
         filter.add_ignore(p).expect("bad default filter");
     }
