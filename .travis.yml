@@ -3,34 +3,40 @@ cache: cargo
 
 env:
   global:
-    - PROJECT_NAME=watchexec
+  - PROJECT_NAME=watchexec
 
 matrix:
   include:
-    - os: osx
-      rust: stable
-      env: TARGET=x86_64-apple-darwin
+  - os: osx
+    rust: stable
+    env: TARGET=osx
 
 before_install:
-  - export PATH="$PATH:$HOME/.cargo/bin"
+- export PATH="$PATH:$HOME/.cargo/bin"
 
 install:
-  - bash ci/install.sh
+- bash ci/install.sh
 
 script:
-  - bash ci/script.sh
+- bash ci/script.sh
 
 before_deploy:
-  - bash ci/before_deploy.sh
+- bash ci/before_deploy.sh
+
+deploy:
+  provider: releases
+  api_key:
+    secure: GFARzIskXsiKURXYX1Lb091r3SlBDlrGX4d52UWrZtkYUhtX8GAtArzgm74viGoKqy22StoahJ6PpyWmJK9y4gSZGcREd4xyvWcga2nz+IzGvHZqr/A20kf/vabSSvoomdX51swCh5DfeA94jGJBp/gLXUiNk/ughGzqGseUl2qBz0edq4B7Si1vygakOQiE/Fc59U0CKJwJ8tQyVSaJhmRRI99of1IwXQMz1PBJ8gKuz8m1TR76NdYA1Hkaom53EKz3/DZIT93GKhkfDdTH1eisKUUNnzePvBwUCQk+ew+0zVXMQ0EF3Ci41n9nZyY2L0lN+p8z2YgbnSl1Pj9aA4B9rU80fwWuLvJgqzuruzori0WvoHJ+4ZP3V+BcZVlEogujLuLM5k6N05OVq+QteVhsyYz79DbyBf93WIfpYYn2LDW3hyACpLUlc8axK8fHQSB6VGXmJBrJsc5/IidN9Dd7eHJE4poBFSsdeQe5yZbfmIL4agLBiA+nwI0mOOtkYS6XqUTMEADO2L7xqu7/CMjICz2756Ep5l1JJxr4C+FEzUqQhN8PRyGyPV7t8nwHosuoFkSU0tsf2CZaAlxPr5pAnXsqxJMhZTvlXbe2nfPNHYPZnKkcsuSL1tCl8ukeSuf5585tg2/MgNtHtQnXEO+HIE5txpfJ6Znac4WGHug=
+  file_glob: true
+  file: ${PROJECT_NAME}-${TRAVIS_TAG}-${TARGET}.*
+  skip_cleanup: true
+  on:
+    tags: true
 
 branches:
   only:
-    # Pushes and PR to the master branch
-    - master
-
-    # IMPORTANT Ruby regex to match tags. Required, or travis won't trigger deploys when a new tag
-    # is pushed. This regex matches semantic versions like v1.2.3-rc4+2016.02.22
-    - /^\d+\.\d+\.\d+.*$/
+  - master
+  - "/^\\d+\\.\\d+\\.\\d+.*$/"
 
 notifications:
   email:
