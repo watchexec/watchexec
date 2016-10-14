@@ -11,12 +11,6 @@ matrix:
     rust: stable
     env: TARGET=osx
 
-before_install:
-- export PATH="$PATH:$HOME/.cargo/bin"
-
-install:
-- bash ci/install.sh
-
 script:
 - bash ci/script.sh
 
