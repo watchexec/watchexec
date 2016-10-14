@@ -7,7 +7,6 @@ authors = ["Matt Green <mattgreenrocks@gmail.com>"]
 lto = true
 
 [dependencies]
-env_logger = "0.3.5"
 glob = "0.2.11"
 log = "0.3.6"
 notify = "2.6.3"
@@ -16,3 +15,8 @@ notify = "2.6.3"
 version = "2.14"
 default-features = false
 features = ["wrap_help"]
+
+[dependencies.env_logger]
+version = "0.3.5"
+default-features = false
+features = []
