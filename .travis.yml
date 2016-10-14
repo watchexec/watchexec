@@ -7,9 +7,12 @@ env:
 
 matrix:
   include:
-  - os: osx
-    rust: stable
-    env: TARGET=x86_64-apple-darwin
+    - os: linux
+      rust: stable
+      env: TARGET=x86_64-unknown-linux-gnu
+    - os: osx
+      rust: stable
+      env: TARGET=x86_64-apple-darwin
 
 script:
 - bash ci/script.sh
