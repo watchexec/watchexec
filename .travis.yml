@@ -1,0 +1,37 @@
+language: rust
+cache: cargo
+
+env:
+  global:
+    - PROJECT_NAME=watchexec
+
+matrix:
+  include:
+    - os: osx
+      rust: 1.9.0
+      env: TARGET=x86_64-apple-darwin
+
+before_install:
+  - export PATH="$PATH:$HOME/.cargo/bin"
+
+install:
+  - bash ci/install.sh
+
+script:
+  - bash ci/script.sh
+
+before_deploy:
+  - bash ci/before_deploy.sh
+
+branches:
+  only:
+    # Pushes and PR to the master branch
+    - master
+
+    # IMPORTANT Ruby regex to match tags. Required, or travis won't trigger deploys when a new tag
+    # is pushed. This regex matches semantic versions like v1.2.3-rc4+2016.02.22
+    - /^\d+\.\d+\.\d+.*$/
+
+notifications:
+  email:
+    on_success: never
