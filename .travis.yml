@@ -9,7 +9,7 @@ matrix:
   include:
   - os: osx
     rust: stable
-    env: TARGET=osx
+    env: TARGET=x86_64-apple-darwin
 
 script:
 - bash ci/script.sh
