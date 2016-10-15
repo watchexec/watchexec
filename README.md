@@ -9,10 +9,6 @@ Example use cases:
 * Automatically run unit tests
 * Run linters/syntax checkers
 
-##Status
-
-Beta: Adding final features and polish
-
 ##Features
 
 * Simple invocation and use
