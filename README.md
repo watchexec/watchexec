@@ -17,7 +17,7 @@ Beta: Adding final features and polish
 
 * Simple invocation and use
 * Runs on OS X, Linux and Windows
-* Monitors path specified on command line for changes
+* Monitors current directory and all subdirectories for changes (use `--watch` to override)
 	* Uses most efficient event polling mechanism for your platform (except for [BSD](https://github.com/passcod/rsnotify#todo))
 * Coalesces multiple filesystem events into one, for editors that use swap/backup files during saving
 * By default, uses `.gitignore` to filter for changes
