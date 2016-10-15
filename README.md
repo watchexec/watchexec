@@ -11,7 +11,7 @@ Example use cases:
 
 ##Status
 
-Beta: Adding final features and polish
+Beta: Adding final features and polish 
 
 ##Features
 
