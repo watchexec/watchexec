@@ -1,5 +1,8 @@
 #watchexec
 
+[![Build Status](https://travis-ci.org/mattgreen/watchexec.svg?branch=master)](https://travis-ci.org/mattgreen/watchexec)
+[![Build status](https://ci.appveyor.com/api/projects/status/ivxu31g4rcf4740t?svg=true)](https://ci.appveyor.com/project/mattgreen/watchexec)
+
 Software development often involves running the same commands over and over. Boring!
 
 `watchexec` is a **simple**, standalone tool that watches a path and runs a command whenever it detects modifications.
