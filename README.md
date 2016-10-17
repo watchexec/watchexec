@@ -59,6 +59,14 @@ Run `make` when any file changes, using the `.gitignore` file in the current dir
 
     $ brew install https://raw.githubusercontent.com/mattgreen/watchexec/master/pkg/brew/watchexec.rb
 
+###Linux
+
+For now, use the GitHub Releases tab to obtain the binary. PRs for packaging in various distros are welcomed.
+
+###Windows
+
+Use the GitHub Releases tab to obtain the binary. In the future, I'll look at adding it to Chocolatey.
+
 ##Credits
 
 * [notify](https://github.com/passcod/rsnotify) for doing most of the heavy-lifting
