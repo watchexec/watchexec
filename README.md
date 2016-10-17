@@ -43,7 +43,7 @@ Watch all files below `src` and subdirectories for changes, running `make test` 
 
 Call `make test` when any file changes in this directory/subdirectory, except for everything below `target`:
 
-    $ watchexec -i target make
+    $ watchexec -i target make test
 
 Call/restart `python server.py` when any Python file in the current directory (and all subdirectories) changes:
 
