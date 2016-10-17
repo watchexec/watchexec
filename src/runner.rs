@@ -15,40 +15,33 @@ impl Runner {
         }
     }
 
+    #[cfg(target_family = "windows")]
     fn clear(&self) {
-        // TODO: determine better way to do this
-        let clear_cmd;
-        if cfg!(target_os = "windows") {
-            clear_cmd = "cls";
-        }
-        else {
-            clear_cmd = "clear";
-        }
-
-        let _ = Command::new(clear_cmd).status();
+        let _ = Command::new("cls").status();
     }
 
+    #[cfg(target_family = "unix")]
+    fn clear(&self) {
+        let _ = Command::new("clear").status();
+    }
 
+    #[cfg(target_family = "windows")]
     fn invoke(&self, cmd: &str) -> Option<Child> {
-        let shell;
-        let shell_cmd_arg;
-
-        if cfg!(target_os = "windows") {
-            shell = "cmd.exe";
-            shell_cmd_arg = "/C";
-        }
-        else {
-            shell = "sh";
-            shell_cmd_arg = "-c";
-        }
-
-        Command::new(shell)
-            .arg(shell_cmd_arg)
+        Command::new("cmd.exe")
+            .arg("/C")
             .arg(cmd)
             .spawn()
             .ok()
     }
 
+    #[cfg(target_family = "unix")]
+    fn invoke(&self, cmd: &str) -> Option<Child> {
+        Command::new("sh")
+            .arg("-c")
+            .arg(cmd)
+            .spawn()
+            .ok()
+    }
 
     pub fn run_command(&mut self, cmd: &str) {
         if let Some(ref mut child) = self.process {
