@@ -2,6 +2,13 @@
 name = "watchexec"
 version = "1.0.0"
 authors = ["Matt Green <mattgreenrocks@gmail.com>"]
+description = "Executes commands in response to file modifications"
+documentation = "https://github.com/mattgreen/watchexec"
+homepage = "https://github.com/mattgreen/watchexec"
+repository = "https://github.com/mattgreen/watchexec"
+readme = "README.md"
+keywords = ["watcher", "inotify", "fsevents", "kqueue"]
+license = "Apache-2.0"
 
 [profile.release]
 lto = true
