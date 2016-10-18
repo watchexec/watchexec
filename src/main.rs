@@ -71,6 +71,9 @@ fn get_args<'a>() -> ArgMatches<'a> {
         .arg(Arg::with_name("no-vcs-ignore")
              .help("Skip auto-loading of .gitignore files for filtering")
              .long("no-vcs-ignore"))
+        .arg(Arg::with_name("run-initially")
+             .help("Run command initially, before first file change")
+             .long("run-initially"))
         .get_matches()
 }
 
@@ -152,6 +155,10 @@ fn main() {
     let cmd_parts: Vec<&str> = args.values_of("command").unwrap().collect();
     let cmd = cmd_parts.join(" ");
     let mut runner = Runner::new(args.is_present("restart"), args.is_present("clear"));
+
+    if args.is_present("run-initially") {
+        runner.run_command(&cmd);
+    }
 
     loop {
         let e = wait(&rx, &filter).expect("error when waiting for filesystem changes");
