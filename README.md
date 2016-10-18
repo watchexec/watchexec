@@ -55,6 +55,10 @@ Run `make` when any file changes, using the `.gitignore` file in the current dir
 
 ##Installation
 
+###Cargo
+
+    $ cargo install watchexec
+
 ###OS X with Homebrew
 
     $ brew install https://raw.githubusercontent.com/mattgreen/watchexec/master/pkg/brew/watchexec.rb
