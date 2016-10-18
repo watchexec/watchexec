@@ -33,7 +33,7 @@ impl NotificationFilter {
 
     pub fn add_extension(&mut self, extensions: &str) -> Result<(), NotificationError> {
         let patterns: Vec<String> = extensions
-            .split(",")
+            .split(',')
             .filter(|ext| !ext.is_empty())
             .map(|ext| format!("*.{}", ext.replace(".", "")))
             .collect();
@@ -108,11 +108,11 @@ impl NotificationFilter {
             }
         }
 
-        if self.filters.len() > 0 {
+        if !self.filters.is_empty() {
             debug!("Ignoring {:?}: did not match any given filters", path);
         }
 
-        self.filters.len() > 0
+        !self.filters.is_empty()
     }
 }
 

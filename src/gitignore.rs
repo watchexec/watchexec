@@ -64,7 +64,7 @@ impl PatternSet {
         let mut excluded = false;
         let has_whitelistings = self.patterns.iter().any(|p| p.whitelist);
 
-        for pattern in self.patterns.iter() {
+        for pattern in &self.patterns {
             let matched = pattern.matches(path);
 
             if matched {
@@ -90,23 +90,20 @@ impl Pattern {
     fn new(pattern: &str, root: &Path) -> Result<Pattern, Error> {
         let mut normalized = String::from(pattern);
 
-        let mut whitelisted = false;
-        if normalized.starts_with("!") {
+        let whitelisted = if normalized.starts_with('!') {
             normalized.remove(0);
-            whitelisted = true;
-        }
+            true
+        } else { false };
 
-        let mut anchored = false;
-        if normalized.starts_with("/") {
+        let anchored = if normalized.starts_with('/') {
             normalized.remove(0);
-            anchored = true;
-        }
+            true
+        } else { false };
 
-        let mut directory = false;
-        if normalized.ends_with("/") {
+        let directory = if normalized.ends_with('/') {
             normalized.pop();
-            directory = true;
-        }
+            true
+        } else { false };
 
         if normalized.starts_with("\\#") || normalized.starts_with("\\!") {
             normalized.remove(0);
@@ -145,15 +142,13 @@ impl Pattern {
                 None        => false
             }
         }
-        else if !self.str.contains("/") {
+        else if !self.str.contains('/') {
             result = stripped_path.iter().any(|c| {
                 self.pattern.matches_path_with(Path::new(c), &options)
             });
         }
-        else {
-            if self.pattern.matches_path_with(stripped_path, &options) {
-                result = true;
-            }
+        else if self.pattern.matches_path_with(stripped_path, &options) {
+            result = true;
         }
 
         result
