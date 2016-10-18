@@ -76,10 +76,11 @@ fn get_args<'a>() -> ArgMatches<'a> {
 
 fn init_logger(debug: bool) {
     let mut log_builder = env_logger::LogBuilder::new();
-    let mut level = log::LogLevelFilter::Warn;
-    if debug {
-        level = log::LogLevelFilter::Debug;
-    }
+    let level = if debug {
+        log::LogLevelFilter::Debug
+    } else {
+		log::LogLevelFilter::Warn
+    };
 
     log_builder
         .format(|r| format!("*** {}", r.args()))
@@ -166,7 +167,7 @@ fn wait(rx: &Receiver<Event>, filter: &NotificationFilter) -> Result<Event, Recv
         // Block on initial notification
         let e = try!(rx.recv());
         if let Some(ref path) = e.path {
-            if filter.is_excluded(&path) {
+            if filter.is_excluded(path) {
                 continue;
             }
         }
@@ -175,11 +176,8 @@ fn wait(rx: &Receiver<Event>, filter: &NotificationFilter) -> Result<Event, Recv
         thread::sleep(time::Duration::from_millis(250));
 
         // Drain rx buffer and drop them
-        loop {
-            match rx.try_recv() {
-                Ok(_) => continue,
-                Err(_) => break,
-            }
+        while let Ok(_) = rx.try_recv() {
+			// nothing to do here
         }
 
         return Ok(e);
