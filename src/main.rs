@@ -155,10 +155,11 @@ fn main() {
     let cmd = cmd_parts.join(" ");
     let mut runner = Runner::new(args.is_present("restart"), args.is_present("clear"));
 
+    if args.is_present("run-initially") {
+        runner.run_command(&cmd);
+    }
+
     loop {
-        if args.is_present("run-initially") {
-            runner.run_command(&cmd);
-        }
         let e = wait(&rx, &filter).expect("error when waiting for filesystem changes");
 
         debug!("{:?}: {:?}", e.op, e.path);
