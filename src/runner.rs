@@ -26,24 +26,30 @@ impl Runner {
     }
 
     #[cfg(target_family = "windows")]
-    fn invoke(&self, cmd: &str) -> Option<Child> {
-        Command::new("cmd.exe")
-            .arg("/C")
-            .arg(cmd)
-            .spawn()
-            .ok()
+    fn invoke(&self, cmd: &str, updated_paths: Vec<&str>) -> Option<Child> {
+        let mut command = Command::new("cmd.exe");
+        command.arg("/C").arg(cmd);
+
+        if updated_files.len() > 0 {
+            command.env("WATCHEXEC_UPDATED_PATH", updated_paths[0]);
+        }
+
+        command.spawn().ok()
     }
 
     #[cfg(target_family = "unix")]
-    fn invoke(&self, cmd: &str) -> Option<Child> {
-        Command::new("sh")
-            .arg("-c")
-            .arg(cmd)
-            .spawn()
-            .ok()
+    fn invoke(&self, cmd: &str, updated_paths: Vec<&str>) -> Option<Child> {
+        let mut command = Command::new("sh");
+        command.arg("-c").arg(cmd);
+
+        if updated_paths.len() > 0 {
+            command.env("WATCHEXEC_UPDATED_PATH", updated_paths[0]);
+        }
+
+        command.spawn().ok()
     }
 
-    pub fn run_command(&mut self, cmd: &str) {
+    pub fn run_command(&mut self, cmd: &str, updated_paths: Vec<&str>) {
         if let Some(ref mut child) = self.process {
             if self.restart {
                 debug!("Killing child process (pid: {})", child.id());
@@ -60,6 +66,6 @@ impl Runner {
 
         debug!("Executing: {}", cmd);
 
-        self.process = self.invoke(cmd);
+        self.process = self.invoke(cmd, updated_paths);
     }
 }

@@ -176,7 +176,7 @@ fn main() {
     let mut runner = Runner::new(args.is_present("restart"), args.is_present("clear"));
 
     if args.is_present("run-initially") {
-        runner.run_command(&cmd);
+        runner.run_command(&cmd, vec![]);
     }
 
     loop {
@@ -184,7 +184,13 @@ fn main() {
 
         debug!("{:?}: {:?}", e.op, e.path);
 
-        runner.run_command(&cmd);
+        // TODO: update wait to return all paths
+        let updated: Vec<&str> = e.path
+            .iter()
+            .map(|p| p.to_str().unwrap())
+            .collect();
+
+        runner.run_command(&cmd, updated);
     }
 }
 
