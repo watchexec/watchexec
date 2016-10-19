@@ -11,13 +11,33 @@ mod runner;
 
 use std::sync::mpsc::{channel, Receiver, RecvError};
 use std::{env, thread, time};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use clap::{App, Arg, ArgMatches};
 use notify::{Event, RecommendedWatcher, Watcher};
 
 use notification_filter::NotificationFilter;
 use runner::Runner;
+
+// Starting at the specified path, search for gitignore files,
+// stopping at the first one found.
+fn find_gitignore_file(path: &Path) -> Option<PathBuf> {
+    let mut gitignore_path = path.join(".gitignore");
+    if gitignore_path.exists() {
+        return Some(gitignore_path);
+    }
+
+    let p = path.to_owned();
+
+    while let Some(p) = p.parent() {
+        gitignore_path = p.join(".gitignore");
+        if gitignore_path.exists() {
+            return Some(gitignore_path);
+        }
+    }
+
+    None
+}
 
 fn get_args<'a>() -> ArgMatches<'a> {
     App::new("watchexec")
@@ -103,8 +123,7 @@ fn main() {
 
     let mut gitignore_file = None;
     if !args.is_present("no-vcs-ignore") {
-        let gitignore_path = cwd.join(".gitignore");
-        if gitignore_path.exists() {
+        if let Some(gitignore_path) = find_gitignore_file(&cwd) {
             debug!("Found .gitignore file: {:?}", gitignore_path);
 
             gitignore_file = gitignore::parse(&gitignore_path).ok();
