@@ -47,7 +47,7 @@ impl Runner {
         let mut command = Command::new("cmd.exe");
         command.arg("/C").arg(cmd);
 
-        if updated_files.len() > 0 {
+        if updated_paths.len() > 0 {
             command.env("WATCHEXEC_UPDATED_PATH", updated_paths[0]);
         }
 
