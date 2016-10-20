@@ -48,7 +48,7 @@ impl Runner {
         let mut command = Command::new("cmd.exe");
         command.arg("/C").arg(cmd);
 
-        if updated_paths.len() > 0 {
+        if !updated_paths.is_empty() {
             command.env("WATCHEXEC_UPDATED_PATH", updated_paths[0]);
         }
 
@@ -63,7 +63,7 @@ impl Runner {
         let mut command = Command::new("sh");
         command.arg("-c").arg(cmd);
 
-        if updated_paths.is_empty() {
+        if !updated_paths.is_empty() {
             command.env("WATCHEXEC_UPDATED_PATH", updated_paths[0]);
         }
 
