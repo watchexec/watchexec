@@ -8,10 +8,10 @@ env:
 matrix:
   include:
     - os: linux
-      rust: stable
+      rust: nightly
       env: TARGET=x86_64-unknown-linux-gnu
     - os: osx
-      rust: stable
+      rust: nightly
       env: TARGET=x86_64-apple-darwin
 
 script:
