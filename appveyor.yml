@@ -3,7 +3,7 @@ environment:
     PROJECT_NAME: watchexec
   matrix:
     - TARGET: x86_64-pc-windows-gnu
-      CHANNEL: nightly
+      CHANNEL: stable
 
 # Install Rust and Cargo
 # (Based on from https://github.com/rust-lang/libc/blob/master/appveyor.yml)

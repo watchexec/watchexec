@@ -1,5 +1,3 @@
-#![feature(process_exec)]
-
 #[macro_use]
 extern crate clap;
 extern crate env_logger;

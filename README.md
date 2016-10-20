@@ -22,6 +22,8 @@ Example use cases:
 * By default, uses `.gitignore` to determine which files to ignore notifications for
 * Support for watching files with a specific extension
 * Support for filtering/ignoring events based on glob patterns
+* Launches child processes in a new process group
+* Sets `$WATCHEXEC_UPDATED_PATH` in the environment of the child process to the first file that triggered a change
 * Optionally clears screen between executions
 * Optionally restarts the command with every modification (good for servers)
 * Does not require a language runtime

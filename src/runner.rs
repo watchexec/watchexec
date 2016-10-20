@@ -1,4 +1,3 @@
-use libc;
 use std::process::{Child, Command};
 
 pub struct Runner {
@@ -33,6 +32,8 @@ impl Runner {
 
     #[cfg(target_family = "unix")]
     fn kill(child: &mut Child) {
+        use libc;
+
         extern {
             fn killpg(pgrp: libc::pid_t, sig: libc::c_int) -> libc::c_int;
         }
@@ -56,7 +57,7 @@ impl Runner {
 
     #[cfg(target_family = "unix")]
     fn invoke(&self, cmd: &str, updated_paths: Vec<&str>) -> Option<Child> {
-        use std::os::unix::process::CommandExt;
+        use libc;
 
         let mut command = Command::new("sh");
         command.arg("-c").arg(cmd);
@@ -65,10 +66,17 @@ impl Runner {
             command.env("WATCHEXEC_UPDATED_PATH", updated_paths[0]);
         }
 
-        command
-            .before_exec(|| unsafe { libc::setpgid(0, 0); Ok(()) })
+        let child = command
             .spawn()
-            .ok()
+            .ok();
+
+        if let &Some(ref c) = &child {
+            unsafe {
+                libc::setpgid(c.id() as i32, c.id() as i32);
+            }
+        }
+
+        child
     }
 
     pub fn run_command(&mut self, cmd: &str, updated_paths: Vec<&str>) {
@@ -98,6 +106,8 @@ impl Runner {
 
     #[cfg(target_family = "unix")]
     fn wait(child: &mut Child) {
+        use libc;
+
         unsafe {
             let pid = child.id() as i32;
             let status: Box<i32> = Box::new(0);
