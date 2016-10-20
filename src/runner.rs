@@ -58,25 +58,19 @@ impl Runner {
     #[cfg(target_family = "unix")]
     fn invoke(&self, cmd: &str, updated_paths: Vec<&str>) -> Option<Child> {
         use libc;
+        use std::os::unix::process::CommandExt;
 
         let mut command = Command::new("sh");
         command.arg("-c").arg(cmd);
 
-        if updated_paths.len() > 0 {
+        if updated_paths.is_empty() {
             command.env("WATCHEXEC_UPDATED_PATH", updated_paths[0]);
         }
 
-        let child = command
+        command
+            .before_exec(|| unsafe { libc::setpgid(0, 0); Ok(()) })
             .spawn()
-            .ok();
-
-        if let &Some(ref c) = &child {
-            unsafe {
-                libc::setpgid(c.id() as i32, c.id() as i32);
-            }
-        }
-
-        child
+            .ok()
     }
 
     pub fn run_command(&mut self, cmd: &str, updated_paths: Vec<&str>) {

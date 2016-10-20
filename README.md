@@ -57,7 +57,7 @@ Run `make` when any file changes, using the `.gitignore` file in the current dir
 
 ##Installation
 
-###Cargo
+###Cargo (nightly Rust only)
 
     $ cargo install watchexec
 
@@ -72,6 +72,10 @@ For now, use the GitHub Releases tab to obtain the binary. PRs for packaging in 
 ###Windows
 
 Use the GitHub Releases tab to obtain the binary. In the future, I'll look at adding it to Chocolatey.
+
+##Building
+
+Currently, **watchexec requires a recent nightly Rust** to build, due to use of unstable features.
 
 ##Credits
 

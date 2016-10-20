@@ -1,3 +1,5 @@
+#![feature(process_exec)]
+
 #[macro_use]
 extern crate clap;
 extern crate env_logger;
@@ -9,16 +11,17 @@ extern crate notify;
 mod gitignore;
 mod notification_filter;
 mod runner;
+mod watcher;
 
 use std::sync::mpsc::{channel, Receiver, RecvError};
 use std::{env, thread, time};
 use std::path::{Path, PathBuf};
 
 use clap::{App, Arg, ArgMatches};
-use notify::{Event, PollWatcher, Watcher};
 
 use notification_filter::NotificationFilter;
 use runner::Runner;
+use watcher::{Event, Watcher};
 
 // Starting at the specified path, search for gitignore files,
 // stopping at the first one found.
@@ -164,15 +167,15 @@ fn main() {
 
     let (tx, rx) = channel();
 
-    let mut watcher = if !args.is_present("poll") {
-        Watcher::new(tx).expect("unable to create watcher")
-    } else {
-        // TODO: die on invalid input, seems to be a clap issue
-        let interval = value_t!(args.value_of("poll"), u32).unwrap_or(1000);
-        warn!("Polling for changes every {} ms", interval);
+    // TODO: die on invalid input, seems to be a clap issue
+    let interval = value_t!(args.value_of("poll"), u32).unwrap_or(1000);
+    let force_poll = args.is_present("poll");
+    let mut watcher = Watcher::new(tx, force_poll, interval)
+        .expect("unable to create watcher");
 
-        PollWatcher::with_delay(tx, interval).expect("unable to create poll watcher")
-    };
+    if watcher.is_polling() {
+        warn!("Polling for changes every {} ms", interval);
+    }
 
     let paths = args.values_of("path").unwrap();
     for path in paths {
