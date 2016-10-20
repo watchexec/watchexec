@@ -97,7 +97,6 @@ fn get_args<'a>() -> ArgMatches<'a> {
         .arg(Arg::with_name("poll")
              .help("Forces polling mode")
              .long("force-poll")
-             .default_value("1000")
              .value_name("interval"))
         .get_matches()
 }
@@ -163,6 +162,7 @@ fn main() {
     }
 
     let (tx, rx) = channel();
+
     let mut watcher = if !args.is_present("poll") {
         Watcher::new(tx).expect("unable to create watcher")
     } else {
