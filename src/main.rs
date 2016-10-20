@@ -14,7 +14,7 @@ use std::{env, thread, time};
 use std::path::{Path, PathBuf};
 
 use clap::{App, Arg, ArgMatches};
-use notify::{Event, RecommendedWatcher, Watcher};
+use notify::{Event, PollWatcher, Watcher};
 
 use notification_filter::NotificationFilter;
 use runner::Runner;
@@ -94,6 +94,11 @@ fn get_args<'a>() -> ArgMatches<'a> {
         .arg(Arg::with_name("run-initially")
              .help("Run command initially, before first file change")
              .long("run-initially"))
+        .arg(Arg::with_name("poll")
+             .help("Forces polling mode")
+             .long("force-poll")
+             .default_value("1000")
+             .value_name("interval"))
         .get_matches()
 }
 
@@ -158,7 +163,15 @@ fn main() {
     }
 
     let (tx, rx) = channel();
-    let mut watcher: RecommendedWatcher = Watcher::new(tx).expect("unable to create watcher");
+    let mut watcher = if !args.is_present("poll") {
+        Watcher::new(tx).expect("unable to create watcher")
+    } else {
+        // TODO: die on invalid input, seems to be a clap issue
+        let interval = value_t!(args.value_of("poll"), u32).unwrap_or(1000);
+        warn!("Polling for changes every {} ms", interval);
+
+        PollWatcher::with_delay(tx, interval).expect("unable to create poll watcher")
+    };
 
     let paths = args.values_of("path").unwrap();
     for path in paths {
