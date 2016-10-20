@@ -1,6 +1,9 @@
+#![feature(process_exec)]
+
 #[macro_use]
 extern crate clap;
 extern crate env_logger;
+extern crate libc;
 #[macro_use]
 extern crate log;
 extern crate notify;

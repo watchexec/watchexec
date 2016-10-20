@@ -15,6 +15,7 @@ lto = true
 
 [dependencies]
 glob = "0.2.11"
+libc = "0.2.16"
 log = "0.3.6"
 notify = "2.6.3"
 
