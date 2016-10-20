@@ -32,7 +32,21 @@ pub enum Error {
     Io(io::Error),
 }
 
-pub fn parse(path: &Path) -> Result<PatternSet, Error> {
+pub fn parse(paths: &[PathBuf]) -> Result<PatternSet, Error> {
+    let mut all_patterns = Vec::new();
+
+    for path in paths {
+        let file_patterns = try!(parse_file(path));
+
+        for pattern in file_patterns {
+            all_patterns.push(pattern);
+        }
+    }
+
+    Ok(PatternSet::new(all_patterns))
+}
+
+fn parse_file(path: &Path) -> Result<Vec<Pattern>, Error> {
     let mut file = try!(fs::File::open(path));
     let mut contents = String::new();
     try!(file.read_to_string(&mut contents));
@@ -46,7 +60,7 @@ pub fn parse(path: &Path) -> Result<PatternSet, Error> {
         .map(|l| Pattern::new(l, root))
         .collect());
 
-    Ok(PatternSet::new(patterns))
+    Ok(patterns)
 }
 
 impl PatternSet {
@@ -166,18 +180,6 @@ impl From<io::Error> for Error {
         Error::Io(error)
     }
 }
-
-//fn main() {
-    //let cwd = env::current_dir().unwrap();
-    //let gitignore_file = cwd.join(".gitignore");
-    //let file = File::new(&gitignore_file).unwrap();
-
-    //for arg in env::args().skip(1) {
-        //let path = cwd.join(&arg);
-        //let matches = file.is_excluded(&path);
-        //println!("File: {}, Excluded: {}", arg, matches);
-    //}
-//}
 
 #[cfg(test)]
 mod tests {
