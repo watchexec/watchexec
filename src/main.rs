@@ -19,24 +19,28 @@ use notify::{Event, PollWatcher, Watcher};
 use notification_filter::NotificationFilter;
 use runner::Runner;
 
-// Starting at the specified path, search for gitignore files,
-// stopping at the first one found.
-fn find_gitignore_file(path: &Path) -> Option<PathBuf> {
-    let mut gitignore_path = path.join(".gitignore");
-    if gitignore_path.exists() {
-        return Some(gitignore_path);
-    }
+fn find_gitignore_files(path: &Path) -> Vec<PathBuf> {
+    let mut files = Vec::new();
+    let mut stack = vec![path.to_owned()];
 
-    let p = path.to_owned();
+    while let Some(path) = stack.pop() {
+        let gitignore_path = path.join(".gitignore");
 
-    while let Some(p) = p.parent() {
-        gitignore_path = p.join(".gitignore");
         if gitignore_path.exists() {
-            return Some(gitignore_path);
+            files.push(gitignore_path);
+        }
+        else {
+            if let Ok(files) = path.read_dir() {
+                for file_result in files {
+                    if let Ok(file) = file_result {
+                        stack.push(file.path().to_owned());
+                    }
+                }
+            }
         }
     }
 
-    None
+    files
 }
 
 fn get_args<'a>() -> ArgMatches<'a> {
@@ -126,16 +130,19 @@ fn main() {
         .canonicalize()
         .expect("unable to canonicalize cwd");
 
-    let mut gitignore_file = None;
-    if !args.is_present("no-vcs-ignore") {
-        if let Some(gitignore_path) = find_gitignore_file(&cwd) {
-            debug!("Found .gitignore file: {:?}", gitignore_path);
+    let mut pattern_set = None;
 
-            gitignore_file = gitignore::parse(&gitignore_path).ok();
+    if !args.is_present("no-vcs-ignore") {
+        let gitignore_files = find_gitignore_files(&cwd);
+
+        if !gitignore_files.is_empty() {
+            debug!("Found .gitignore files: {:?}", gitignore_files);
         }
+
+        pattern_set = gitignore::parse(&*gitignore_files).ok();
     }
 
-    let mut filter = NotificationFilter::new(&cwd, gitignore_file).expect("unable to create notification filter");
+    let mut filter = NotificationFilter::new(&cwd, pattern_set).expect("unable to create notification filter");
 
     // Add default ignore list
     let dotted_dirs = Path::new(".*").join("*");
@@ -189,7 +196,7 @@ fn main() {
     let mut runner = Runner::new(args.is_present("restart"), args.is_present("clear"));
 
     if args.is_present("run-initially") {
-        runner.run_command(&cmd, vec![]);
+        runner.run_command(&cmd, &[]);
     }
 
     loop {
@@ -203,7 +210,7 @@ fn main() {
             .map(|p| p.to_str().unwrap())
             .collect();
 
-        runner.run_command(&cmd, updated);
+        runner.run_command(&cmd, &updated);
     }
 }
 
