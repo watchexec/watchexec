@@ -33,14 +33,17 @@ pub fn install() -> Receiver<()> {
 #[cfg(windows)]
 pub fn install() -> Receiver<()> {
     use kernel32::SetConsoleCtrlHandler;
-    use winapi::{BOOL, DWORD};
+    use winapi::{BOOL, DWORD, TRUE};
 
     pub unsafe extern "system" fn ctrl_handler(_: DWORD) -> BOOL {
         send_interrupt();
+        TRUE
     }
 
     let rx = create_channel();
-    SetConsoleCtrlHandler(Some(ctrl_handler), TRUE);
+    unsafe {
+        SetConsoleCtrlHandler(Some(ctrl_handler), TRUE);
+    }
 
     rx
 }
