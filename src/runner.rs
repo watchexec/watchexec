@@ -26,20 +26,28 @@ impl Runner {
     }
 
     #[cfg(target_family = "windows")]
-    fn kill(child: &mut Child) {
-        let _ = child.kill();
+    fn kill(&self) {
+        if let Some(ref child) = self.process {
+            debug!("Killing child process (pid: {})", child.id());
+
+            let _ = child.kill();
+        }
     }
 
     #[cfg(target_family = "unix")]
-    fn kill(child: &mut Child) {
+    fn kill(&self) {
         use libc;
 
         extern {
             fn killpg(pgrp: libc::pid_t, sig: libc::c_int) -> libc::c_int;
         }
 
-        unsafe {
-            killpg(child.id() as i32, libc::SIGTERM);
+        if let Some(ref child) = self.process {
+            debug!("Killing child process (pid: {})", child.id());
+
+            unsafe {
+                killpg(child.id() as i32, libc::SIGTERM);
+            }
         }
     }
 
@@ -51,6 +59,8 @@ impl Runner {
         if !updated_paths.is_empty() {
             command.env("WATCHEXEC_UPDATED_PATH", updated_paths[0]);
         }
+
+        debug!("Executing: {}", cmd);
 
         command.spawn().ok()
     }
@@ -67,6 +77,8 @@ impl Runner {
             command.env("WATCHEXEC_UPDATED_PATH", updated_paths[0]);
         }
 
+        debug!("Executing: {}", cmd);
+
         command
             .before_exec(|| unsafe { libc::setpgid(0, 0); Ok(()) })
             .spawn()
@@ -74,39 +86,43 @@ impl Runner {
     }
 
     pub fn run_command(&mut self, cmd: &str, updated_paths: Vec<&str>) {
-        if let Some(ref mut child) = self.process {
-            if self.restart {
-                debug!("Killing child process (pid: {})", child.id());
-                Runner::kill(child);
-            }
-
-            debug!("Waiting for child process (pid: {})", child.id());
-            Runner::wait(child);
+        if self.restart {
+            self.kill();
         }
+
+        self.wait();
 
         if self.cls {
             self.clear();
         }
 
-        debug!("Executing: {}", cmd);
-
         self.process = self.invoke(cmd, updated_paths);
     }
 
     #[cfg(target_family = "windows")]
-    fn wait(child: &mut Child) {
-        let _ = child.wait();
-    }
-
-    #[cfg(target_family = "unix")]
-    fn wait(child: &mut Child) {
-        use libc;
-
-        unsafe {
-            let pid = child.id() as i32;
-            let status: Box<i32> = Box::new(0);
-            libc::waitpid(-pid, Box::into_raw(status), 0);
+    fn wait(&self) {
+        if let Some(ref child) = self.process {
+            debug!("Waiting for child process (pid: {})", child.id());
+            let _ = child.wait();
         }
     }
 
+    #[cfg(target_family = "unix")]
+    fn wait(&self) {
+        use nix::sys::wait::{waitpid};
+
+        if let Some(ref child) = self.process {
+            debug!("Waiting for child process (pid: {})", child.id());
+
+            let pid = child.id() as i32;
+            let _ = waitpid(-pid, None);
+        }
+    }
+}
+
+impl Drop for Runner {
+    fn drop(&mut self) {
+        self.kill();
+        self.wait();
+    }
 }
