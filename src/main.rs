@@ -6,9 +6,17 @@ extern crate env_logger;
 extern crate libc;
 #[macro_use]
 extern crate log;
+#[macro_use] extern crate lazy_static;
 extern crate notify;
 
+#[cfg(unix)] extern crate nix;
+#[cfg(unix)] extern crate signal;
+
+#[cfg(windows)] extern crate winapi;
+#[cfg(windows)] extern crate kernel32;
+
 mod gitignore;
+mod interrupt_handler;
 mod notification_filter;
 mod runner;
 mod watcher;
