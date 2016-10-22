@@ -26,8 +26,8 @@ impl Runner {
     }
 
     #[cfg(target_family = "windows")]
-    fn kill(&self) {
-        if let Some(ref child) = self.process {
+    fn kill(&mut self) {
+        if let Some(ref mut child) = self.process {
             debug!("Killing child process (pid: {})", child.id());
 
             let _ = child.kill();
@@ -35,14 +35,14 @@ impl Runner {
     }
 
     #[cfg(target_family = "unix")]
-    fn kill(&self) {
+    fn kill(&mut self) {
         use libc;
 
         extern {
             fn killpg(pgrp: libc::pid_t, sig: libc::c_int) -> libc::c_int;
         }
 
-        if let Some(ref child) = self.process {
+        if let Some(ref mut child) = self.process {
             debug!("Killing child process (pid: {})", child.id());
 
             unsafe {
@@ -100,18 +100,18 @@ impl Runner {
     }
 
     #[cfg(target_family = "windows")]
-    fn wait(&self) {
-        if let Some(ref child) = self.process {
+    fn wait(&mut self) {
+        if let Some(ref mut child) = self.process {
             debug!("Waiting for child process (pid: {})", child.id());
             let _ = child.wait();
         }
     }
 
     #[cfg(target_family = "unix")]
-    fn wait(&self) {
+    fn wait(&mut self) {
         use nix::sys::wait::{waitpid};
 
-        if let Some(ref child) = self.process {
+        if let Some(ref mut child) = self.process {
             debug!("Waiting for child process (pid: {})", child.id());
 
             let pid = child.id() as i32;
