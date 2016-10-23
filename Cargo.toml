@@ -32,11 +32,7 @@ features = []
 
 [target.'cfg(unix)'.dependencies]
 nix = "0.6.0"
-signal = "0.3.2"
 
 [target.'cfg(windows)'.dependencies]
 winapi = "0.2.8"
 kernel32-sys = "0.2.2"
-
-[replace]
-"signal:0.3.2" = { git = 'https://github.com/mattgreen/signal' }
