@@ -9,6 +9,7 @@ lazy_static! {
 
 /// On Unix platforms, mask reception of SIGINT/SIGTERM, spawn a thread,
 /// and sigwait on those signals to safely relay them.
+#[cfg(unix)]
 pub fn install() -> Receiver<()> {
     use std::thread;
     use nix::sys::signal::{SigSet, SIGTERM, SIGINT};
