@@ -2,32 +2,34 @@ extern crate glob;
 
 use gitignore;
 use std::io;
-use std::path::{Path,PathBuf};
+use std::path::{Path, PathBuf};
 
-use self::glob::{Pattern,PatternError};
+use self::glob::{Pattern, PatternError};
 
 pub struct NotificationFilter {
     cwd: PathBuf,
     filters: Vec<Pattern>,
     ignores: Vec<Pattern>,
-    ignore_file: Option<gitignore::PatternSet>
+    ignore_file: Option<gitignore::PatternSet>,
 }
 
 #[derive(Debug)]
 pub enum NotificationError {
     BadPattern(PatternError),
-    Io(io::Error)
+    Io(io::Error),
 }
 
 impl NotificationFilter {
-    pub fn new(current_dir: &Path, ignore_file: Option<gitignore::PatternSet>) -> Result<NotificationFilter, io::Error> {
+    pub fn new(current_dir: &Path,
+               ignore_file: Option<gitignore::PatternSet>)
+               -> Result<NotificationFilter, io::Error> {
         let canonicalized = try!(current_dir.canonicalize());
 
         Ok(NotificationFilter {
             cwd: canonicalized,
             filters: vec![],
             ignores: vec![],
-            ignore_file: ignore_file
+            ignore_file: ignore_file,
         })
     }
 

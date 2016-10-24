@@ -10,7 +10,7 @@ use notify::{PollWatcher, RecommendedWatcher};
 /// (e.g. polymorphically). This has the nice side effect of separating out
 /// all coupling to the notify crate into this module.
 pub struct Watcher {
-    watcher_impl: WatcherImpl
+    watcher_impl: WatcherImpl,
 }
 
 pub use notify::Event;
@@ -18,7 +18,7 @@ pub use notify::Error;
 
 enum WatcherImpl {
     Recommended(RecommendedWatcher),
-    Poll(PollWatcher)
+    Poll(PollWatcher),
 }
 
 impl Watcher {
@@ -31,9 +31,7 @@ impl Watcher {
             WatcherImpl::Recommended(try!(RecommendedWatcher::new(tx)))
         };
 
-        Ok(self::Watcher {
-            watcher_impl: imp
-        })
+        Ok(self::Watcher { watcher_impl: imp })
     }
 
     pub fn is_polling(&self) -> bool {
@@ -49,7 +47,7 @@ impl Watcher {
 
         match self.watcher_impl {
             WatcherImpl::Recommended(ref mut w) => w.watch(path),
-            WatcherImpl::Poll(ref mut w)        => w.watch(path)
+            WatcherImpl::Poll(ref mut w) => w.watch(path),
         }
     }
 }

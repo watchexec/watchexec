@@ -11,7 +11,7 @@ impl Runner {
         Runner {
             process: None,
             restart: restart,
-            cls: clear
+            cls: clear,
         }
     }
 
@@ -38,7 +38,7 @@ impl Runner {
     fn kill(&mut self) {
         use libc;
 
-        extern {
+        extern "C" {
             fn killpg(pgrp: libc::pid_t, sig: libc::c_int) -> libc::c_int;
         }
 
@@ -79,8 +79,10 @@ impl Runner {
 
         debug!("Executing: {}", cmd);
 
-        command
-            .before_exec(|| unsafe { libc::setpgid(0, 0); Ok(()) })
+        command.before_exec(|| unsafe {
+                libc::setpgid(0, 0);
+                Ok(())
+            })
             .spawn()
             .ok()
     }
@@ -109,7 +111,7 @@ impl Runner {
 
     #[cfg(target_family = "unix")]
     fn wait(&mut self) {
-        use nix::sys::wait::{waitpid};
+        use nix::sys::wait::waitpid;
 
         if let Some(ref mut child) = self.process {
             debug!("Waiting for child process (pid: {})", child.id());

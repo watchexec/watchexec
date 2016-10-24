@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 // Immutable, ordered set of Patterns
 // Used to implement whitelisting
 pub struct PatternSet {
-    patterns: Vec<Pattern>
+    patterns: Vec<Pattern>,
 }
 
 // Represents a single gitignore rule
@@ -23,7 +23,7 @@ struct Pattern {
     whitelist: bool,
     #[allow(dead_code)]
     directory: bool,
-    anchored: bool
+    anchored: bool,
 }
 
 #[derive(Debug)]
@@ -39,8 +39,7 @@ pub fn parse(path: &Path) -> Result<PatternSet, Error> {
 
     // If we've opened the file, we'll have at least one other path component
     let root = path.parent().unwrap();
-    let patterns = try!(contents
-        .lines()
+    let patterns = try!(contents.lines()
         .filter(|l| !l.is_empty())
         .filter(|l| !l.starts_with("#"))
         .map(|l| Pattern::new(l, root))
@@ -51,9 +50,7 @@ pub fn parse(path: &Path) -> Result<PatternSet, Error> {
 
 impl PatternSet {
     fn new(patterns: Vec<Pattern>) -> PatternSet {
-        PatternSet {
-            patterns: patterns
-        }
+        PatternSet { patterns: patterns }
     }
 
     // Apply the patterns to the path one-by-one
@@ -70,8 +67,7 @@ impl PatternSet {
             if matched {
                 if pattern.whitelist {
                     excluded = false;
-                }
-                else {
+                } else {
                     excluded = true;
 
                     // We can stop running rules in this case
@@ -93,17 +89,23 @@ impl Pattern {
         let whitelisted = if normalized.starts_with('!') {
             normalized.remove(0);
             true
-        } else { false };
+        } else {
+            false
+        };
 
         let anchored = if normalized.starts_with('/') {
             normalized.remove(0);
             true
-        } else { false };
+        } else {
+            false
+        };
 
         let directory = if normalized.ends_with('/') {
             normalized.pop();
             true
-        } else { false };
+        } else {
+            false
+        };
 
         if normalized.starts_with("\\#") || normalized.starts_with("\\!") {
             normalized.remove(0);
@@ -117,7 +119,7 @@ impl Pattern {
             root: root.to_path_buf(),
             whitelist: whitelisted,
             directory: directory,
-            anchored: anchored
+            anchored: anchored,
         })
     }
 
@@ -125,12 +127,12 @@ impl Pattern {
         let options = glob::MatchOptions {
             case_sensitive: false,
             require_literal_separator: true,
-            require_literal_leading_dot: false
+            require_literal_leading_dot: false,
         };
 
         let stripped_path = match path.strip_prefix(&self.root) {
-            Ok(p)   => p,
-            Err(_)  => return false
+            Ok(p) => p,
+            Err(_) => return false,
         };
 
         let mut result = false;
@@ -138,16 +140,13 @@ impl Pattern {
         if self.anchored {
             let first_component = stripped_path.iter().next();
             result = match first_component {
-                Some(s)     => self.pattern.matches_path_with(Path::new(&s), &options),
-                None        => false
+                Some(s) => self.pattern.matches_path_with(Path::new(&s), &options),
+                None => false,
             }
-        }
-        else if !self.str.contains('/') {
-            result = stripped_path.iter().any(|c| {
-                self.pattern.matches_path_with(Path::new(c), &options)
-            });
-        }
-        else if self.pattern.matches_path_with(stripped_path, &options) {
+        } else if !self.str.contains('/') {
+            result = stripped_path.iter()
+                .any(|c| self.pattern.matches_path_with(Path::new(c), &options));
+        } else if self.pattern.matches_path_with(stripped_path, &options) {
             result = true;
         }
 
@@ -167,17 +166,17 @@ impl From<io::Error> for Error {
     }
 }
 
-//fn main() {
-    //let cwd = env::current_dir().unwrap();
-    //let gitignore_file = cwd.join(".gitignore");
-    //let file = File::new(&gitignore_file).unwrap();
+// fn main() {
+// let cwd = env::current_dir().unwrap();
+// let gitignore_file = cwd.join(".gitignore");
+// let file = File::new(&gitignore_file).unwrap();
 
-    //for arg in env::args().skip(1) {
-        //let path = cwd.join(&arg);
-        //let matches = file.is_excluded(&path);
-        //println!("File: {}, Excluded: {}", arg, matches);
-    //}
-//}
+// for arg in env::args().skip(1) {
+// let path = cwd.join(&arg);
+// let matches = file.is_excluded(&path);
+// println!("File: {}, Excluded: {}", arg, matches);
+// }
+// }
 
 #[cfg(test)]
 mod tests {
@@ -290,4 +289,3 @@ mod tests {
         assert!(!set.is_excluded(&base_dir().join("target").join("foo.txt")));
     }
 }
-

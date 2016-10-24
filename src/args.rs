@@ -33,48 +33,48 @@ pub fn get_args() -> Args {
             .multiple(true)
             .required(true))
         .arg(Arg::with_name("extensions")
-             .help("Comma-separated list of file extensions to watch (js,css,html)")
-             .short("e")
-             .long("exts")
-             .takes_value(true))
+            .help("Comma-separated list of file extensions to watch (js,css,html)")
+            .short("e")
+            .long("exts")
+            .takes_value(true))
         .arg(Arg::with_name("clear")
             .help("Clear screen before executing command")
             .short("c")
             .long("clear"))
         .arg(Arg::with_name("restart")
-             .help("Restart the process if it's still running")
-             .short("r")
-             .long("restart"))
+            .help("Restart the process if it's still running")
+            .short("r")
+            .long("restart"))
         .arg(Arg::with_name("debug")
-             .help("Print debugging messages to stderr")
-             .short("d")
-             .long("debug"))
+            .help("Print debugging messages to stderr")
+            .short("d")
+            .long("debug"))
         .arg(Arg::with_name("filter")
-             .help("Ignore all modifications except those matching the pattern")
-             .short("f")
-             .long("filter")
-             .number_of_values(1)
-             .multiple(true)
-             .takes_value(true)
-             .value_name("pattern"))
+            .help("Ignore all modifications except those matching the pattern")
+            .short("f")
+            .long("filter")
+            .number_of_values(1)
+            .multiple(true)
+            .takes_value(true)
+            .value_name("pattern"))
         .arg(Arg::with_name("ignore")
-             .help("Ignore modifications to paths matching the pattern")
-             .short("i")
-             .long("ignore")
-             .number_of_values(1)
-             .multiple(true)
-             .takes_value(true)
-             .value_name("pattern"))
+            .help("Ignore modifications to paths matching the pattern")
+            .short("i")
+            .long("ignore")
+            .number_of_values(1)
+            .multiple(true)
+            .takes_value(true)
+            .value_name("pattern"))
         .arg(Arg::with_name("no-vcs-ignore")
-             .help("Skip auto-loading of .gitignore files for filtering")
-             .long("no-vcs-ignore"))
+            .help("Skip auto-loading of .gitignore files for filtering")
+            .long("no-vcs-ignore"))
         .arg(Arg::with_name("run-initially")
-             .help("Run command initially, before first file change")
-             .long("run-initially"))
+            .help("Run command initially, before first file change")
+            .long("run-initially"))
         .arg(Arg::with_name("poll")
-             .help("Forces polling mode")
-             .long("force-poll")
-             .value_name("interval"))
+            .help("Forces polling mode")
+            .long("force-poll")
+            .value_name("interval"))
         .get_matches();
 
     let cmd = values_t!(args.values_of("command"), String).unwrap().join(" ");
@@ -83,10 +83,9 @@ pub fn get_args() -> Args {
 
     if let Some(extensions) = args.values_of("extensions") {
         for exts in extensions {
-            filters.extend(exts
-                           .split(",")
-                           .filter(|ext| !ext.is_empty())
-                           .map(|ext| format!("*.{}", ext.replace(".", ""))));
+            filters.extend(exts.split(",")
+                .filter(|ext| !ext.is_empty())
+                .map(|ext| format!("*.{}", ext.replace(".", ""))));
 
         }
     }
@@ -102,7 +101,9 @@ pub fn get_args() -> Args {
     ignores.extend(values_t!(args.values_of("ignore"), String).unwrap_or(vec![]));
     let poll_interval = if args.occurrences_of("poll") > 0 {
         value_t!(args.value_of("poll"), u32).unwrap_or_else(|e| e.exit())
-    } else { 1000 };
+    } else {
+        1000
+    };
 
     Args {
         cmd: cmd,
@@ -115,6 +116,6 @@ pub fn get_args() -> Args {
         run_initially: args.is_present("run-initially"),
         no_vcs_ignore: args.is_present("no-vcs-ignore"),
         poll: args.occurrences_of("poll") > 0,
-        poll_interval: poll_interval
+        poll_interval: poll_interval,
     }
 }

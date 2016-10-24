@@ -1,15 +1,21 @@
 #![feature(process_exec)]
 
-#[macro_use] extern crate clap;
+#[macro_use]
+extern crate clap;
 extern crate env_logger;
 extern crate libc;
-#[macro_use] extern crate log;
-#[macro_use] extern crate lazy_static;
+#[macro_use]
+extern crate log;
+#[macro_use]
+extern crate lazy_static;
 extern crate notify;
 
-#[cfg(unix)] extern crate nix;
-#[cfg(windows)] extern crate winapi;
-#[cfg(windows)] extern crate kernel32;
+#[cfg(unix)]
+extern crate nix;
+#[cfg(windows)]
+extern crate winapi;
+#[cfg(windows)]
+extern crate kernel32;
 
 mod args;
 mod gitignore;
@@ -51,11 +57,10 @@ fn init_logger(debug: bool) {
     let level = if debug {
         log::LogLevelFilter::Debug
     } else {
-		log::LogLevelFilter::Warn
+        log::LogLevelFilter::Warn
     };
 
-    log_builder
-        .format(|r| format!("*** {}", r.args()))
+    log_builder.format(|r| format!("*** {}", r.args()))
         .filter(None, level);
     log_builder.init().expect("unable to initialize logger");
 }
@@ -79,7 +84,8 @@ fn main() {
         }
     }
 
-    let mut filter = NotificationFilter::new(&cwd, gitignore_file).expect("unable to create notification filter");
+    let mut filter = NotificationFilter::new(&cwd, gitignore_file)
+        .expect("unable to create notification filter");
 
     for f in args.filters {
         filter.add_filter(&f).expect("bad filter");
@@ -99,8 +105,8 @@ fn main() {
 
     for path in args.paths {
         match Path::new(&path).canonicalize() {
-            Ok(canonicalized)   => watcher.watch(canonicalized).expect("unable to watch path"),
-            Err(_)              => {
+            Ok(canonicalized) => watcher.watch(canonicalized).expect("unable to watch path"),
+            Err(_) => {
                 println!("invalid path: {}", path);
                 return;
             }
@@ -144,7 +150,7 @@ fn wait(rx: &Receiver<Event>, filter: &NotificationFilter) -> Result<Event, Recv
 
         // Drain rx buffer and drop them
         while let Ok(_) = rx.try_recv() {
-			// nothing to do here
+            // nothing to do here
         }
 
         return Ok(e);
