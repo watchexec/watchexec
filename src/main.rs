@@ -1,20 +1,17 @@
 #![feature(process_exec)]
 
-#[macro_use]
-extern crate clap;
+#[macro_use] extern crate clap;
 extern crate env_logger;
 extern crate libc;
-#[macro_use]
-extern crate log;
+#[macro_use] extern crate log;
 #[macro_use] extern crate lazy_static;
 extern crate notify;
 
 #[cfg(unix)] extern crate nix;
-#[cfg(unix)] extern crate signal;
-
 #[cfg(windows)] extern crate winapi;
 #[cfg(windows)] extern crate kernel32;
 
+mod args;
 mod gitignore;
 mod interrupt_handler;
 mod notification_filter;
@@ -24,8 +21,6 @@ mod watcher;
 use std::sync::mpsc::{channel, Receiver, RecvError};
 use std::{env, thread, time};
 use std::path::{Path, PathBuf};
-
-use clap::{App, Arg, ArgMatches};
 
 use notification_filter::NotificationFilter;
 use runner::Runner;
@@ -51,68 +46,6 @@ fn find_gitignore_file(path: &Path) -> Option<PathBuf> {
     None
 }
 
-fn get_args<'a>() -> ArgMatches<'a> {
-    App::new("watchexec")
-        .version(crate_version!())
-        .about("Execute commands when watched files change")
-        .arg(Arg::with_name("path")
-            .help("Path to watch")
-            .short("w")
-            .long("watch")
-            .number_of_values(1)
-            .multiple(true)
-            .takes_value(true)
-            .default_value("."))
-        .arg(Arg::with_name("command")
-            .help("Command to execute")
-            .multiple(true)
-            .required(true))
-        .arg(Arg::with_name("extensions")
-             .help("Comma-separated list of file extensions to watch (js,css,html)")
-             .short("e")
-             .long("exts")
-             .takes_value(true))
-        .arg(Arg::with_name("clear")
-            .help("Clear screen before executing command")
-            .short("c")
-            .long("clear"))
-        .arg(Arg::with_name("restart")
-             .help("Restart the process if it's still running")
-             .short("r")
-             .long("restart"))
-        .arg(Arg::with_name("debug")
-             .help("Print debugging messages to stderr")
-             .short("d")
-             .long("debug"))
-        .arg(Arg::with_name("filter")
-             .help("Ignore all modifications except those matching the pattern")
-             .short("f")
-             .long("filter")
-             .number_of_values(1)
-             .multiple(true)
-             .takes_value(true)
-             .value_name("pattern"))
-        .arg(Arg::with_name("ignore")
-             .help("Ignore modifications to paths matching the pattern")
-             .short("i")
-             .long("ignore")
-             .number_of_values(1)
-             .multiple(true)
-             .takes_value(true)
-             .value_name("pattern"))
-        .arg(Arg::with_name("no-vcs-ignore")
-             .help("Skip auto-loading of .gitignore files for filtering")
-             .long("no-vcs-ignore"))
-        .arg(Arg::with_name("run-initially")
-             .help("Run command initially, before first file change")
-             .long("run-initially"))
-        .arg(Arg::with_name("poll")
-             .help("Forces polling mode")
-             .long("force-poll")
-             .value_name("interval"))
-        .get_matches()
-}
-
 fn init_logger(debug: bool) {
     let mut log_builder = env_logger::LogBuilder::new();
     let level = if debug {
@@ -128,9 +61,9 @@ fn init_logger(debug: bool) {
 }
 
 fn main() {
-    let args = get_args();
+    let args = args::get_args();
 
-    init_logger(args.is_present("debug"));
+    init_logger(args.debug);
 
     let cwd = env::current_dir()
         .expect("unable to get cwd")
@@ -138,7 +71,7 @@ fn main() {
         .expect("unable to canonicalize cwd");
 
     let mut gitignore_file = None;
-    if !args.is_present("no-vcs-ignore") {
+    if !args.no_vcs_ignore {
         if let Some(gitignore_path) = find_gitignore_file(&cwd) {
             debug!("Found .gitignore file: {:?}", gitignore_path);
 
@@ -148,46 +81,24 @@ fn main() {
 
     let mut filter = NotificationFilter::new(&cwd, gitignore_file).expect("unable to create notification filter");
 
-    // Add default ignore list
-    let dotted_dirs = Path::new(".*").join("*");
-    let default_filters = vec!["*/.DS_Store", "*.pyc", "*.swp", dotted_dirs.to_str().unwrap()];
-    for p in default_filters {
-        filter.add_ignore(p).expect("bad default filter");
+    for f in args.filters {
+        filter.add_filter(&f).expect("bad filter");
     }
 
-    if let Some(extensions) = args.values_of("extensions") {
-        for ext in extensions {
-            filter.add_extension(ext).expect("bad extension");
-        }
-    }
-
-    if let Some(filters) = args.values_of("filter") {
-        for p in filters {
-            filter.add_filter(p).expect("bad filter");
-        }
-    }
-
-    if let Some(ignores) = args.values_of("ignore") {
-        for i in ignores {
-            filter.add_ignore(i).expect("bad ignore pattern");
-        }
+    for i in args.ignores {
+        filter.add_ignore(&i).expect("bad ignore pattern");
     }
 
     let (tx, rx) = channel();
-
-    // TODO: die on invalid input, seems to be a clap issue
-    let interval = value_t!(args.value_of("poll"), u32).unwrap_or(1000);
-    let force_poll = args.is_present("poll");
-    let mut watcher = Watcher::new(tx, force_poll, interval)
+    let mut watcher = Watcher::new(tx, args.poll, args.poll_interval)
         .expect("unable to create watcher");
 
     if watcher.is_polling() {
-        warn!("Polling for changes every {} ms", interval);
+        warn!("Polling for changes every {} ms", args.poll_interval);
     }
 
-    let paths = args.values_of("path").unwrap();
-    for path in paths {
-        match Path::new(path).canonicalize() {
+    for path in args.paths {
+        match Path::new(&path).canonicalize() {
             Ok(canonicalized)   => watcher.watch(canonicalized).expect("unable to watch path"),
             Err(_)              => {
                 println!("invalid path: {}", path);
@@ -196,15 +107,14 @@ fn main() {
         }
     }
 
-    let cmd_parts: Vec<&str> = args.values_of("command").unwrap().collect();
-    let cmd = cmd_parts.join(" ");
-    let mut runner = Runner::new(args.is_present("restart"), args.is_present("clear"));
+    let cmd = args.cmd;
+    let mut runner = Runner::new(args.restart, args.clear_screen);
 
-    if args.is_present("run-initially") {
+    if args.run_initially {
         runner.run_command(&cmd, vec![]);
     }
 
-    loop {
+    while !interrupt_handler::interrupt_requested() {
         let e = wait(&rx, &filter).expect("error when waiting for filesystem changes");
 
         debug!("{:?}: {:?}", e.op, e.path);

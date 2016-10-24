@@ -31,20 +31,6 @@ impl NotificationFilter {
         })
     }
 
-    pub fn add_extension(&mut self, extensions: &str) -> Result<(), NotificationError> {
-        let patterns: Vec<String> = extensions
-            .split(',')
-            .filter(|ext| !ext.is_empty())
-            .map(|ext| format!("*.{}", ext.replace(".", "")))
-            .collect();
-
-        for pattern in patterns {
-            try!(self.add_filter(&pattern));
-        }
-
-        Ok(())
-    }
-
     pub fn add_filter(&mut self, pattern: &str) -> Result<(), NotificationError> {
         let compiled = try!(self.pattern_for(pattern));
         self.filters.push(compiled);
