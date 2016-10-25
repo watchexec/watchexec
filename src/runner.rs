@@ -3,6 +3,11 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 
 use threadpool::ThreadPool;
 
+/// Runs child processes and provides a channel to asynchronously wait on
+/// their completion.
+///
+/// This enables us to remain responsive to interruption requests even if
+/// the child process does not honor our kill requests.
 pub struct Runner {
     pool: ThreadPool,
     tx: Sender<()>,
@@ -49,6 +54,8 @@ impl Runner {
     }
 }
 
+/// High-level wrapper around a child process
+/// Unlike `platform::Process`, `Process` kills the child when it is dropped.
 pub struct Process {
     process: platform::Process
 }
@@ -185,5 +192,57 @@ mod platform {
                 let _ = WaitForSingleObject(self.child_handle, INFINITE);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod process_tests {
+    use std::path::Path;
+    use std::thread;
+    use std::time::Duration;
+
+    use mktemp::Temp;
+
+    use super::Process;
+
+    fn file_contents(path: &Path) -> String {
+        use std::fs::File;
+        use std::io::Read;
+
+        let mut f = File::open(path).unwrap();
+        let mut s = String::new();
+        f.read_to_string(&mut s).unwrap();
+
+        s
+    }
+
+    #[test]
+    fn test_start() {
+        let process = Process::new("echo hi", vec![]);
+
+        assert!(process.is_some());
+    }
+
+    #[test]
+    fn test_wait() {
+        let file = Temp::new_file().unwrap();
+        let path = file.to_path_buf();
+        let mut process = Process::new(&format!("echo hi > {:?}", path), vec![]).unwrap();
+        process.wait();
+
+        assert!(file_contents(&path).starts_with("hi"));
+    }
+
+    #[test]
+    fn test_kill() {
+        let file = Temp::new_file().unwrap();
+        let path = file.to_path_buf();
+
+        let mut process = Process::new(&format!("sleep 20; echo hi > {:?}", path), vec![]).unwrap();
+        thread::sleep(Duration::from_millis(250));
+        process.kill();
+        process.wait();
+
+        assert!(file_contents(&path) == "");
     }
 }

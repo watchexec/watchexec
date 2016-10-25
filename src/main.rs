@@ -19,6 +19,9 @@ extern crate winapi;
 #[cfg(windows)]
 extern crate kernel32;
 
+#[cfg(test)]
+extern crate mktemp;
+
 mod args;
 mod gitignore;
 mod interrupt_handler;
