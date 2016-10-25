@@ -217,6 +217,7 @@ mod process_tests {
     }
 
     #[test]
+    #[cfg(target_family = "unix")]
     fn test_start() {
         let process = Process::new("echo hi", vec![]);
 
@@ -224,21 +225,23 @@ mod process_tests {
     }
 
     #[test]
+    #[cfg(target_family = "unix")]
     fn test_wait() {
         let file = Temp::new_file().unwrap();
         let path = file.to_path_buf();
-        let mut process = Process::new(&format!("echo hi > {:?}", path), vec![]).unwrap();
+        let mut process = Process::new(&format!("echo hi > {}", path.to_str().unwrap()), vec![]).unwrap();
         process.wait();
 
         assert!(file_contents(&path).starts_with("hi"));
     }
 
     #[test]
+    #[cfg(target_family = "unix")]
     fn test_kill() {
         let file = Temp::new_file().unwrap();
         let path = file.to_path_buf();
 
-        let mut process = Process::new(&format!("sleep 20; echo hi > {:?}", path), vec![]).unwrap();
+        let mut process = Process::new(&format!("sleep 20; echo hi > {}", path.to_str().unwrap()), vec![]).unwrap();
         thread::sleep(Duration::from_millis(250));
         process.kill();
         process.wait();
