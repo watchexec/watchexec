@@ -43,7 +43,7 @@ pub fn install() -> Receiver<()> {
     use winapi::{BOOL, DWORD, TRUE};
 
     pub unsafe extern "system" fn ctrl_handler(_: DWORD) -> BOOL {
-        send_interrupt();
+        let _ = send_interrupt();
         TRUE
     }
 

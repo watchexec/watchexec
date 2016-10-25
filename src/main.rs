@@ -10,6 +10,7 @@ extern crate log;
 #[macro_use]
 extern crate lazy_static;
 extern crate notify;
+extern crate threadpool;
 
 #[cfg(unix)]
 extern crate nix;
@@ -117,22 +118,42 @@ fn main() {
     }
 
     let cmd = args.cmd;
-    let mut runner = Runner::new(args.restart, args.clear_screen);
+    let mut runner = Runner::new();
 
     if args.run_initially {
+        if args.clear_screen {
+            runner.clear_screen();
+        }
+
         runner.run_command(&cmd, vec![]);
     }
 
+    let mut child_wait_rx = None;
     while !interrupt_handler::interrupt_requested() {
         match wait(&rx, &interrupt_rx, &filter) {
             Some(paths) => {
-                let updated = paths
-                    .iter()
+                let updated = paths.iter()
                     .map(|p| p.to_str().unwrap())
                     .collect();
 
-                runner.run_command(&cmd, updated);
-            },
+                if args.restart {
+                    runner.kill();
+                }
+
+                debug!("Waiting for process to exit...");
+                if let Some(child_rx) = child_wait_rx {
+                    select! {
+                        _ = child_rx.recv() => {},
+                        _ = interrupt_rx.recv() => break
+                    }
+                }
+
+                if args.clear_screen {
+                    runner.clear_screen();
+                }
+
+                child_wait_rx = Some(runner.run_command(&cmd, updated));
+            }
             None => {
                 // interrupted
             }
@@ -140,7 +161,10 @@ fn main() {
     }
 }
 
-fn wait(rx: &Receiver<Event>, interrupt_rx: &Receiver<()>, filter: &NotificationFilter) -> Option<Vec<PathBuf>> {
+fn wait(rx: &Receiver<Event>,
+        interrupt_rx: &Receiver<()>,
+        filter: &NotificationFilter)
+        -> Option<Vec<PathBuf>> {
     let mut paths = vec![];
 
     loop {

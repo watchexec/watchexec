@@ -1,130 +1,160 @@
-use std::process::{Child, Command};
+use std::process::Command;
+use std::sync::mpsc::{channel, Receiver};
+
+use threadpool::ThreadPool;
 
 pub struct Runner {
-    process: Option<Child>,
-    restart: bool,
-    cls: bool,
+    pool: ThreadPool,
+    process: Option<platform::Process>,
 }
 
 impl Runner {
-    pub fn new(restart: bool, clear: bool) -> Runner {
+    pub fn new() -> Runner {
         Runner {
+            pool: ThreadPool::new(1),
             process: None,
-            restart: restart,
-            cls: clear,
         }
     }
 
     #[cfg(target_family = "windows")]
-    fn clear(&self) {
+    pub fn clear_screen(&self) {
         let _ = Command::new("cls").status();
     }
 
     #[cfg(target_family = "unix")]
-    fn clear(&self) {
+    pub fn clear_screen(&self) {
         let _ = Command::new("clear").status();
     }
 
-    #[cfg(target_family = "windows")]
-    fn kill(&mut self) {
-        if let Some(ref mut child) = self.process {
-            debug!("Killing child process (pid: {})", child.id());
-
-            let _ = child.kill();
+    pub fn kill(&mut self) {
+        if let Some(ref mut process) = self.process {
+            process.kill();
         }
     }
 
-    #[cfg(target_family = "unix")]
-    fn kill(&mut self) {
-        use libc;
+    pub fn run_command(&mut self, cmd: &str, updated_paths: Vec<&str>) -> Receiver<()> {
+        let (tx, rx) = channel();
 
-        extern "C" {
-            fn killpg(pgrp: libc::pid_t, sig: libc::c_int) -> libc::c_int;
+        if let Some(mut process) = platform::Process::new(cmd, updated_paths) {
+            self.process = Some(process.clone());
+
+            self.pool.execute(move || {
+                process.wait();
+
+                let _ = tx.send(());
+            });
         }
 
-        if let Some(ref mut child) = self.process {
-            debug!("Killing child process (pid: {})", child.id());
-
-            unsafe {
-                killpg(child.id() as i32, libc::SIGTERM);
-            }
-        }
-    }
-
-    #[cfg(target_family = "windows")]
-    fn invoke(&self, cmd: &str, updated_paths: Vec<&str>) -> Option<Child> {
-        let mut command = Command::new("cmd.exe");
-        command.arg("/C").arg(cmd);
-
-        if !updated_paths.is_empty() {
-            command.env("WATCHEXEC_UPDATED_PATH", updated_paths[0]);
-        }
-
-        debug!("Executing: {}", cmd);
-
-        command.spawn().ok()
-    }
-
-    #[cfg(target_family = "unix")]
-    fn invoke(&self, cmd: &str, updated_paths: Vec<&str>) -> Option<Child> {
-        use libc;
-        use std::os::unix::process::CommandExt;
-
-        let mut command = Command::new("sh");
-        command.arg("-c").arg(cmd);
-
-        if !updated_paths.is_empty() {
-            command.env("WATCHEXEC_UPDATED_PATH", updated_paths[0]);
-        }
-
-        debug!("Executing: {}", cmd);
-
-        command.before_exec(|| unsafe {
-                libc::setpgid(0, 0);
-                Ok(())
-            })
-            .spawn()
-            .ok()
-    }
-
-    pub fn run_command(&mut self, cmd: &str, updated_paths: Vec<&str>) {
-        if self.restart {
-            self.kill();
-        }
-
-        self.wait();
-
-        if self.cls {
-            self.clear();
-        }
-
-        self.process = self.invoke(cmd, updated_paths);
-    }
-
-    #[cfg(target_family = "windows")]
-    fn wait(&mut self) {
-        if let Some(ref mut child) = self.process {
-            debug!("Waiting for child process (pid: {})", child.id());
-            let _ = child.wait();
-        }
-    }
-
-    #[cfg(target_family = "unix")]
-    fn wait(&mut self) {
-        use nix::sys::wait::waitpid;
-
-        if let Some(ref mut child) = self.process {
-            debug!("Waiting for child process (pid: {})", child.id());
-
-            let pid = child.id() as i32;
-            let _ = waitpid(-pid, None);
-        }
+        rx
     }
 }
 
 impl Drop for Runner {
     fn drop(&mut self) {
         self.kill();
-        self.wait();
+    }
+}
+
+#[cfg(target_family = "unix")]
+mod platform {
+    use std::process::Command;
+
+    #[derive(Clone)]
+    pub struct Process {
+        child_pid: i32,
+    }
+
+    #[cfg(target_family = "unix")]
+    impl Process {
+        pub fn new(cmd: &str, updated_paths: Vec<&str>) -> Option<Process> {
+            use libc;
+            use std::os::unix::process::CommandExt;
+
+            let mut command = Command::new("sh");
+            command.arg("-c").arg(cmd);
+
+            if !updated_paths.is_empty() {
+                command.env("WATCHEXEC_UPDATED_PATH", updated_paths[0]);
+            }
+
+            let c = command.before_exec(|| unsafe {
+                    libc::setpgid(0, 0);
+                    Ok(())
+                })
+                .spawn()
+                .ok();
+
+            match c {
+                Some(process) => Some(Process { child_pid: process.id() as i32 }),
+                None => None,
+            }
+        }
+
+        pub fn kill(&mut self) {
+            use libc;
+
+            extern "C" {
+                fn killpg(pgrp: libc::pid_t, sig: libc::c_int) -> libc::c_int;
+            }
+
+            unsafe {
+                killpg(self.child_pid, libc::SIGTERM);
+            }
+        }
+
+        pub fn wait(&mut self) {
+            use nix::sys::wait::waitpid;
+
+            let _ = waitpid(-self.child_pid, None);
+        }
+    }
+}
+
+#[cfg(target_family = "windows")]
+mod platform {
+    use std::process::Command;
+    use winapi::winnt::HANDLE;
+
+    #[derive(Clone)]
+    pub struct Process {
+        child_handle: HANDLE,
+    }
+
+    unsafe impl Send for Process {}
+
+    #[cfg(target_family = "windows")]
+    impl Process {
+        pub fn new(cmd: &str, updated_paths: Vec<&str>) -> Option<Process> {
+            use std::os::windows::io::AsRawHandle;
+
+            let mut command = Command::new("cmd.exe");
+            command.arg("/C").arg(cmd);
+
+            if !updated_paths.is_empty() {
+                command.env("WATCHEXEC_UPDATED_PATH", updated_paths[0]);
+            }
+
+            match command.spawn().ok() {
+                Some(process) => Some(Process { child_handle: process.as_raw_handle() }),
+                None => None,
+            }
+        }
+
+        pub fn kill(&mut self) {
+            use kernel32::TerminateProcess;
+
+            unsafe {
+                let _ = TerminateProcess(self.child_handle, 0);
+            }
+        }
+
+        pub fn wait(&mut self) {
+            use kernel32::WaitForSingleObject;
+            use winapi::winbase::INFINITE;
+
+            unsafe {
+                let _ = WaitForSingleObject(self.child_handle, INFINITE);
+            }
+        }
     }
 }
