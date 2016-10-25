@@ -118,17 +118,17 @@ fn main() {
     }
 
     let cmd = args.cmd;
-    let mut runner = Runner::new();
+    let (mut runner, child_rx) = Runner::new();
+    let mut child_process = None;
 
     if args.run_initially {
         if args.clear_screen {
             runner.clear_screen();
         }
 
-        runner.run_command(&cmd, vec![]);
+        child_process = runner.run_command(&cmd, vec![]);
     }
 
-    let mut child_wait_rx = None;
     while !interrupt_handler::interrupt_requested() {
         match wait(&rx, &interrupt_rx, &filter) {
             Some(paths) => {
@@ -136,12 +136,13 @@ fn main() {
                     .map(|p| p.to_str().unwrap())
                     .collect();
 
-                if args.restart {
-                    runner.kill();
-                }
+                if let Some(mut child) = child_process {
+                    if args.restart {
+                        debug!("Killing child process");
+                        child.kill();
+                    }
 
-                debug!("Waiting for process to exit...");
-                if let Some(child_rx) = child_wait_rx {
+                    debug!("Waiting for process to exit...");
                     select! {
                         _ = child_rx.recv() => {},
                         _ = interrupt_rx.recv() => break
@@ -152,7 +153,7 @@ fn main() {
                     runner.clear_screen();
                 }
 
-                child_wait_rx = Some(runner.run_command(&cmd, updated));
+                child_process = runner.run_command(&cmd, updated);
             }
             None => {
                 // interrupted

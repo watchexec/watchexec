@@ -1,19 +1,21 @@
 use std::process::Command;
-use std::sync::mpsc::{channel, Receiver};
+use std::sync::mpsc::{channel, Receiver, Sender};
 
 use threadpool::ThreadPool;
 
 pub struct Runner {
     pool: ThreadPool,
-    process: Option<platform::Process>,
+    tx: Sender<()>,
 }
 
 impl Runner {
-    pub fn new() -> Runner {
-        Runner {
+    pub fn new() -> (Runner, Receiver<()>) {
+        let (tx, rx) = channel();
+        (Runner {
             pool: ThreadPool::new(1),
-            process: None,
-        }
+            tx: tx,
+        },
+         rx)
     }
 
     #[cfg(target_family = "windows")]
@@ -26,30 +28,53 @@ impl Runner {
         let _ = Command::new("clear").status();
     }
 
-    pub fn kill(&mut self) {
-        if let Some(ref mut process) = self.process {
-            process.kill();
-        }
-    }
+    pub fn run_command(&mut self,
+                       cmd: &str,
+                       updated_paths: Vec<&str>)
+                       -> Option<Process> {
+        let child = Process::new(cmd, updated_paths);
 
-    pub fn run_command(&mut self, cmd: &str, updated_paths: Vec<&str>) -> Receiver<()> {
-        let (tx, rx) = channel();
-
-        if let Some(mut process) = platform::Process::new(cmd, updated_paths) {
-            self.process = Some(process.clone());
+        if let Some(ref process) = child {
+            let tx = self.tx.clone();
+            let mut p = process.as_platform_process();
 
             self.pool.execute(move || {
-                process.wait();
+                p.wait();
 
                 let _ = tx.send(());
             });
         }
 
-        rx
+        child
     }
 }
 
-impl Drop for Runner {
+pub struct Process {
+    process: platform::Process
+}
+
+impl Process {
+    pub fn new(cmd: &str, updated_paths: Vec<&str>) -> Option<Process> {
+        platform::Process::new(cmd, updated_paths).and_then(|p| {
+            Some(Process { process: p })
+        })
+    }
+
+    fn as_platform_process(&self) -> platform::Process {
+        self.process.clone()
+    }
+
+    pub fn kill(&mut self) {
+        self.process.kill();
+    }
+
+    #[allow(dead_code)]
+    pub fn wait(&mut self) {
+        self.process.wait();
+    }
+}
+
+impl Drop for Process {
     fn drop(&mut self) {
         self.kill();
     }
@@ -85,7 +110,11 @@ mod platform {
                 .ok();
 
             match c {
-                Some(process) => Some(Process { child_pid: process.id() as i32 }),
+                Some(process) => {
+                    Some(Process {
+                        child_pid: process.id() as i32,
+                    })
+                }
                 None => None,
             }
         }
