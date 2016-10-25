@@ -196,6 +196,7 @@ mod platform {
 }
 
 #[cfg(test)]
+#[cfg(target_family = "unix")]
 mod process_tests {
     use std::path::Path;
     use std::thread;
@@ -217,7 +218,6 @@ mod process_tests {
     }
 
     #[test]
-    #[cfg(target_family = "unix")]
     fn test_start() {
         let process = Process::new("echo hi", vec![]);
 
@@ -225,7 +225,6 @@ mod process_tests {
     }
 
     #[test]
-    #[cfg(target_family = "unix")]
     fn test_wait() {
         let file = Temp::new_file().unwrap();
         let path = file.to_path_buf();
@@ -236,7 +235,6 @@ mod process_tests {
     }
 
     #[test]
-    #[cfg(target_family = "unix")]
     fn test_kill() {
         let file = Temp::new_file().unwrap();
         let path = file.to_path_buf();
