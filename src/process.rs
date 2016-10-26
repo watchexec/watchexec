@@ -59,8 +59,6 @@ impl Process {
 #[cfg(target_family = "windows")]
 impl Process {
     pub fn new(cmd: &str, updated_paths: Vec<&str>) -> Option<Process> {
-        use std::os::windows::io::AsRawHandle;
-
         let mut command = Command::new("cmd.exe");
         command.arg("/C").arg(cmd);
 
@@ -78,12 +76,12 @@ impl Process {
             return;
         }
 
-        self.process.kill();
+        let _ = self.process.kill();
         self.killed = true;
     }
 
     pub fn wait(&mut self) {
-        self.process.wait();
+        let _ = self.process.wait();
     }
 }
 
