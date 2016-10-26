@@ -213,7 +213,7 @@ mod tests {
     fn test_start() {
         let process = Process::new("echo hi", vec![]);
 
-        assert!(process.is_some());
+        assert!(process.is_ok());
     }
 
     #[test]
