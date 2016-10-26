@@ -9,6 +9,9 @@ release: src/* Cargo.toml
 clean:
 		@cargo clean
 
+test:
+		@cargo test
+
 install: release
 		@cp target/release/watchexec /usr/bin
 
