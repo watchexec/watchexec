@@ -22,11 +22,11 @@ extern crate kernel32;
 #[cfg(test)]
 extern crate mktemp;
 
-mod args;
+mod cli;
 mod gitignore;
 mod interrupt_handler;
 mod notification_filter;
-mod runner;
+mod process;
 mod watcher;
 
 use std::env;
@@ -35,7 +35,7 @@ use std::time::Duration;
 use std::path::{Path, PathBuf};
 
 use notification_filter::NotificationFilter;
-use runner::Runner;
+use process::{Process, ProcessReaper};
 use watcher::{Event, Watcher};
 
 // Starting at the specified path, search for gitignore files,
@@ -73,7 +73,7 @@ fn init_logger(debug: bool) {
 
 fn main() {
     let interrupt_rx = interrupt_handler::install();
-    let args = args::get_args();
+    let args = cli::get_args();
 
     init_logger(args.debug);
 
@@ -121,46 +121,43 @@ fn main() {
     }
 
     let cmd = args.cmd;
-    let (mut runner, child_rx) = Runner::new();
-    let mut child_process = None;
 
-    if args.run_initially {
+    let (child_finish_tx, child_finish_rx) = channel();
+    let reaper = ProcessReaper::new(child_finish_tx);
+
+    let mut child_process = if args.run_initially {
         if args.clear_screen {
-            runner.clear_screen();
+            cli::clear_screen();
         }
 
-        child_process = runner.run_command(&cmd, vec![]);
-    }
+        Process::new(&cmd, vec![])
+    } else { None };
 
     while !interrupt_handler::interrupt_requested() {
-        match wait(&rx, &interrupt_rx, &filter) {
-            Some(paths) => {
-                let updated = paths.iter()
-                    .map(|p| p.to_str().unwrap())
-                    .collect();
+        if let Some(paths) = wait(&rx, &interrupt_rx, &filter) {
+            let updated = paths.iter()
+                .map(|p| p.to_str().unwrap())
+                .collect();
 
-                if let Some(mut child) = child_process {
-                    if args.restart {
-                        debug!("Killing child process");
-                        child.kill();
-                    }
-
-                    debug!("Waiting for process to exit...");
-                    select! {
-                        _ = child_rx.recv() => {},
-                        _ = interrupt_rx.recv() => break
-                    }
+            if let Some(mut child) = child_process {
+                if args.restart {
+                    debug!("Killing child process");
+                    child.kill();
                 }
 
-                if args.clear_screen {
-                    runner.clear_screen();
-                }
+                debug!("Waiting for process to exit...");
+                reaper.wait_process(child);
+                select! {
+                    _ = child_finish_rx.recv() => {},
+                    _ = interrupt_rx.recv() => break
+                };
+            }
 
-                child_process = runner.run_command(&cmd, updated);
+            if args.clear_screen {
+                cli::clear_screen();
             }
-            None => {
-                // interrupted
-            }
+
+            child_process = Process::new(&cmd, updated);
         }
     }
 }

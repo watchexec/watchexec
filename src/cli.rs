@@ -1,3 +1,4 @@
+use std::process::Command;
 use std::path::Path;
 
 use clap::{App, Arg};
@@ -15,6 +16,16 @@ pub struct Args {
     pub no_vcs_ignore: bool,
     pub poll: bool,
     pub poll_interval: u32,
+}
+
+#[cfg(target_family = "windows")]
+pub fn clear_screen() {
+    let _ = Command::new("cls").status();
+}
+
+#[cfg(target_family = "unix")]
+pub fn clear_screen() {
+    let _ = Command::new("clear").status();
 }
 
 pub fn get_args() -> Args {
@@ -83,7 +94,7 @@ pub fn get_args() -> Args {
 
     if let Some(extensions) = args.values_of("extensions") {
         for exts in extensions {
-            filters.extend(exts.split(",")
+            filters.extend(exts.split(',')
                 .filter(|ext| !ext.is_empty())
                 .map(|ext| format!("*.{}", ext.replace(".", ""))));
 
