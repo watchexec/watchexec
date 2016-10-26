@@ -59,7 +59,14 @@ Run `make` when any file changes, using the `.gitignore` file in the current dir
 
 ###Cargo (nightly Rust only)
 
+If you're running nightly Rust, install it using cargo:
+
     $ cargo install watchexec
+
+If you're using rustup, install it like this:
+
+    $ rustup toolchain install nightly
+    $ rustup run nightly cargo install watchexec
 
 ###OS X with Homebrew
 
