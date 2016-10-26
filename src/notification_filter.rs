@@ -69,13 +69,6 @@ impl NotificationFilter {
     pub fn is_excluded(&self, path: &Path) -> bool {
         let path_as_str = path.to_str().unwrap();
 
-        if let Ok(metadata) = path.metadata() {
-            if metadata.is_dir() {
-                debug!("Ignoring {:?}: is a directory", path);
-                return true;
-            }
-        }
-
         for pattern in &self.ignores {
             if pattern.matches(path_as_str) {
                 debug!("Ignoring {:?}: matched ignore filter", path);
