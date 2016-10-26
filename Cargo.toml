@@ -35,7 +35,7 @@ default-features = false
 features = []
 
 [target.'cfg(unix)'.dependencies]
-nix = "0.6.0"
+nix = "0.7.0"
 
 [target.'cfg(windows)'.dependencies]
 winapi = "0.2.8"

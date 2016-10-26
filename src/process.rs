@@ -1,96 +1,168 @@
 use threadpool::ThreadPool;
 
-use std::process::{Child, Command};
-use std::sync::mpsc::{Sender};
+use std::sync::mpsc::Sender;
 
-pub struct Process {
-    process: Child,
-    killed: bool
-}
+pub use self::imp::*;
 
 #[cfg(target_family = "unix")]
-impl Process {
-    pub fn new(cmd: &str, updated_paths: Vec<&str>) -> Option<Process>{
-        use libc;
-        use std::os::unix::process::CommandExt;
+mod imp {
+    use std::io::Result;
+    use std::process::Command;
 
-        let mut command = Command::new("sh");
-        command.arg("-c").arg(cmd);
-
-        if !updated_paths.is_empty() {
-            command.env("WATCHEXEC_UPDATED_PATH", updated_paths[0]);
-        }
-
-        command.before_exec(|| unsafe {
-            libc::setpgid(0, 0);
-            Ok(())
-        })
-        .spawn()
-        .ok()
-        .and_then(|p| Some(Process { process: p, killed: false }))
+    pub struct Process {
+        pid: i32,
+        killed: bool,
     }
 
-    pub fn kill(&mut self) {
-        if self.killed {
-            return;
+    impl Process {
+        pub fn new(cmd: &str, updated_paths: Vec<&str>) -> Result<Process> {
+            use std::io;
+            use std::os::unix::process::CommandExt;
+            use nix::unistd::setpgid;
+
+            let mut command = Command::new("sh");
+            command.arg("-c").arg(cmd);
+
+            if !updated_paths.is_empty() {
+                command.env("WATCHEXEC_UPDATED_PATH", updated_paths[0]);
+            }
+
+            command.before_exec(|| setpgid(0, 0).map_err(io::Error::from))
+                .spawn()
+                .and_then(|p| {
+                    Ok(Process {
+                        pid: p.id() as i32,
+                        killed: false,
+                    })
+                })
         }
 
-        use libc;
+        pub fn kill(&mut self) {
+            use libc;
 
-        extern "C" {
-            fn killpg(pgrp: libc::pid_t, sig: libc::c_int) -> libc::c_int;
+            if self.killed {
+                return;
+            }
+
+            extern "C" {
+                fn killpg(pgrp: libc::pid_t, sig: libc::c_int) -> libc::c_int;
+            }
+
+            unsafe {
+                killpg(self.pid, libc::SIGTERM);
+            }
+
+            self.killed = true;
         }
 
-        unsafe {
-            killpg(self.process.id() as i32, libc::SIGTERM);
-        }
+        pub fn wait(&mut self) {
+            use nix::sys::wait::waitpid;
 
-        self.killed = true;
+            let _ = waitpid(-self.pid, None);
+        }
     }
 
-    pub fn wait(&mut self) {
-        use nix::sys::wait::waitpid;
-
-        let pid = self.process.id() as i32;
-        let _ = waitpid(-pid, None);
+    impl Drop for Process {
+        fn drop(&mut self) {
+            self.kill();
+        }
     }
 }
 
 #[cfg(target_family = "windows")]
-impl Process {
-    pub fn new(cmd: &str, updated_paths: Vec<&str>) -> Option<Process> {
-        let mut command = Command::new("cmd.exe");
-        command.arg("/C").arg(cmd);
+mod imp {
+    use std::io;
+    use std::io::Result;
+    use std::mem;
+    use std::process::Command;
+    use kernel32::*;
+    use winapi::*;
 
-        if !updated_paths.is_empty() {
-            command.env("WATCHEXEC_UPDATED_PATH", updated_paths[0]);
+    pub struct Process {
+        job: HANDLE,
+        killed: bool,
+    }
+
+    impl Process {
+        pub fn new(cmd: &str, updated_paths: Vec<&str>) -> Result<Process> {
+            use std::os::windows::io::IntoRawHandle;
+
+            fn last_err() -> io::Error {
+                io::Error::last_os_error()
+            }
+
+            let job = unsafe { CreateJobObjectW(0 as *mut _, 0 as *const _) };
+            if job.is_null() {
+                panic!("failed to create job object: {}", last_err());
+            }
+
+            let mut info: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = unsafe { mem::zeroed() };
+            info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+            let r = unsafe {
+                SetInformationJobObject(job,
+                                        JobObjectExtendedLimitInformation,
+                                        &mut info as *mut _ as LPVOID,
+                                        mem::size_of_val(&info) as DWORD)
+            };
+            if r == 0 {
+                panic!("failed to set job info: {}", last_err());
+            }
+
+            let mut command = Command::new("cmd.exe");
+            command.arg("/C").arg(cmd);
+
+            if !updated_paths.is_empty() {
+                command.env("WATCHEXEC_UPDATED_PATH", updated_paths[0]);
+            }
+
+            command.spawn()
+                .and_then(|p| {
+                    let r = unsafe { AssignProcessToJobObject(job, p.into_raw_handle()) };
+                    if r == 0 {
+                        panic!("failed to add to job object: {}", last_err());
+                    }
+
+                    Ok(Process {
+                        job: job,
+                        killed: false,
+                    })
+                })
         }
 
-        command.spawn()
-            .ok()
-            .and_then(|p| { Some(Process { process: p, killed: false })})
-    }
+        pub fn kill(&mut self) {
+            if self.killed {
+                return;
+            }
 
-    pub fn kill(&mut self) {
-        if self.killed {
-            return;
+            unsafe {
+                let _ = TerminateJobObject(self.job, 1);
+            }
+
+            self.killed = true;
         }
 
-        let _ = self.process.kill();
-        self.killed = true;
+        pub fn wait(&mut self) {
+            unsafe {
+                let _ = WaitForSingleObject(self.job, INFINITE);
+            }
+        }
     }
 
-    pub fn wait(&mut self) {
-        let _ = self.process.wait();
+    impl Drop for Process {
+        fn drop(&mut self) {
+            unsafe {
+                let _ = CloseHandle(self.job);
+            }
+        }
     }
+
+    unsafe impl Send for Process {}
 }
 
-impl Drop for Process {
-    fn drop(&mut self) {
-        self.kill();
-    }
-}
-
+/// Watches for child process death, notifying callers via a channel.
+///
+/// On Windows, we don't have SIGCHLD, and even if we did, we'd still need
+/// to relay that over a channel.
 pub struct ProcessReaper {
     pool: ThreadPool,
     tx: Sender<()>,
@@ -100,15 +172,16 @@ impl ProcessReaper {
     pub fn new(tx: Sender<()>) -> ProcessReaper {
         ProcessReaper {
             pool: ThreadPool::new(1),
-            tx: tx
+            tx: tx,
         }
     }
 
-    pub fn wait_process(&self, mut process: Process) {
+    pub fn wait_process(&self, mut process: imp::Process) {
         let tx = self.tx.clone();
 
         self.pool.execute(move || {
             process.wait();
+
             let _ = tx.send(());
         });
     }
@@ -123,7 +196,7 @@ mod tests {
 
     use mktemp::Temp;
 
-    use super::Process;
+    use super::imp::Process;
 
     fn file_contents(path: &Path) -> String {
         use std::fs::File;
@@ -147,7 +220,8 @@ mod tests {
     fn test_wait() {
         let file = Temp::new_file().unwrap();
         let path = file.to_path_buf();
-        let mut process = Process::new(&format!("echo hi > {}", path.to_str().unwrap()), vec![]).unwrap();
+        let mut process = Process::new(&format!("echo hi > {}", path.to_str().unwrap()), vec![])
+            .unwrap();
         process.wait();
 
         assert!(file_contents(&path).starts_with("hi"));
@@ -158,7 +232,9 @@ mod tests {
         let file = Temp::new_file().unwrap();
         let path = file.to_path_buf();
 
-        let mut process = Process::new(&format!("sleep 20; echo hi > {}", path.to_str().unwrap()), vec![]).unwrap();
+        let mut process = Process::new(&format!("sleep 20; echo hi > {}", path.to_str().unwrap()),
+                                       vec![])
+            .unwrap();
         thread::sleep(Duration::from_millis(250));
         process.kill();
         process.wait();

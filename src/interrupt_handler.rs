@@ -15,8 +15,8 @@ pub fn install() -> Receiver<()> {
     use nix::sys::signal::{SigSet, SIGTERM, SIGINT};
 
     let mut mask = SigSet::empty();
-    mask.add(SIGTERM).expect("unable to add SIGTERM to mask");
-    mask.add(SIGINT).expect("unable to add SIGINT to mask");
+    mask.add(SIGTERM);
+    mask.add(SIGINT);
     mask.thread_set_mask().expect("unable to set signal mask");
 
     let rx = create_channel();

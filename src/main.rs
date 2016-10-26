@@ -130,8 +130,10 @@ fn main() {
             cli::clear_screen();
         }
 
-        Process::new(&cmd, vec![])
-    } else { None };
+        Process::new(&cmd, vec![]).ok()
+    } else {
+        None
+    };
 
     while !interrupt_handler::interrupt_requested() {
         if let Some(paths) = wait(&rx, &interrupt_rx, &filter) {
@@ -157,7 +159,7 @@ fn main() {
                 cli::clear_screen();
             }
 
-            child_process = Process::new(&cmd, updated);
+            child_process = Process::new(&cmd, updated).ok();
         }
     }
 }
