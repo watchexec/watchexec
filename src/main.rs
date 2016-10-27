@@ -91,16 +91,8 @@ fn main() {
         }
     }
 
-    let mut filter = NotificationFilter::new(&cwd, gitignore_file)
+    let filter = NotificationFilter::new(&cwd, args.filters, args.ignores, gitignore_file)
         .expect("unable to create notification filter");
-
-    for f in args.filters {
-        filter.add_filter(&f).expect("bad filter");
-    }
-
-    for i in args.ignores {
-        filter.add_ignore(&i).expect("bad ignore pattern");
-    }
 
     let (tx, rx) = channel();
     let mut watcher = Watcher::new(tx, args.poll, args.poll_interval)

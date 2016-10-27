@@ -7,54 +7,52 @@ use std::path::{Path, PathBuf};
 use self::glob::{Pattern, PatternError};
 
 pub struct NotificationFilter {
-    cwd: PathBuf,
     filters: Vec<Pattern>,
     ignores: Vec<Pattern>,
     ignore_file: Option<gitignore::PatternSet>,
 }
 
 #[derive(Debug)]
-pub enum NotificationError {
+pub enum Error {
     BadPattern(PatternError),
     Io(io::Error),
 }
 
 impl NotificationFilter {
     pub fn new(current_dir: &Path,
+               filters: Vec<String>,
+               ignores: Vec<String>,
                ignore_file: Option<gitignore::PatternSet>)
-               -> Result<NotificationFilter, io::Error> {
-        let canonicalized = try!(current_dir.canonicalize());
+               -> Result<NotificationFilter, Error> {
+        let cwd = try!(current_dir.canonicalize());
+
+        let compiled_filters = try!(filters.iter()
+                                    .map(|p| NotificationFilter::pattern_for(&cwd, p))
+                                    .collect());
+
+        for compiled_filter in &compiled_filters {
+            debug!("Adding filter: {}", compiled_filter);
+        }
+
+        let compiled_ignores = try!(ignores.iter()
+                                    .map(|p| NotificationFilter::pattern_for(&cwd, p))
+                                    .collect());
+
+        for compiled_ignore in &compiled_ignores {
+            debug!("Adding ignore: {}", compiled_ignore);
+        }
 
         Ok(NotificationFilter {
-            cwd: canonicalized,
-            filters: vec![],
-            ignores: vec![],
+            filters: compiled_filters,
+            ignores: compiled_ignores,
             ignore_file: ignore_file,
         })
     }
 
-    pub fn add_filter(&mut self, pattern: &str) -> Result<(), NotificationError> {
-        let compiled = try!(self.pattern_for(pattern));
-        self.filters.push(compiled);
-
-        debug!("Adding filter: {}", pattern);
-
-        Ok(())
-    }
-
-    pub fn add_ignore(&mut self, pattern: &str) -> Result<(), NotificationError> {
-        let compiled = try!(self.pattern_for(pattern));
-        self.ignores.push(compiled);
-
-        debug!("Adding ignore: {}", pattern);
-
-        Ok(())
-    }
-
-    fn pattern_for(&self, p: &str) -> Result<Pattern, PatternError> {
+    fn pattern_for(cwd: &PathBuf, p: &str) -> Result<Pattern, PatternError> {
         let mut path = PathBuf::from(p);
         if path.is_relative() {
-            path = self.cwd.join(path.as_path());
+            path = cwd.join(path.as_path());
         }
 
         if let Ok(metadata) = path.metadata() {
@@ -97,14 +95,14 @@ impl NotificationFilter {
     }
 }
 
-impl From<io::Error> for NotificationError {
-    fn from(err: io::Error) -> NotificationError {
-        NotificationError::Io(err)
+impl From<io::Error> for Error {
+    fn from(err: io::Error) -> Error {
+        Error::Io(err)
     }
 }
 
-impl From<PatternError> for NotificationError {
-    fn from(err: PatternError) -> NotificationError {
-        NotificationError::BadPattern(err)
+impl From<PatternError> for Error {
+    fn from(err: PatternError) -> Error {
+        Error::BadPattern(err)
     }
 }
