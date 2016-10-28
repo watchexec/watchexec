@@ -1,5 +1,9 @@
 use threadpool::ThreadPool;
 
+use std::cell::RefCell;
+use std::collections::{BTreeMap, VecDeque};
+use std::path::{Component, PathBuf};
+use std::rc::Rc;
 use std::sync::mpsc::Sender;
 
 pub use self::imp::*;
@@ -7,6 +11,7 @@ pub use self::imp::*;
 #[cfg(target_family = "unix")]
 mod imp {
     use std::io::Result;
+    use std::path::PathBuf;
     use std::process::Command;
 
     pub struct Process {
@@ -15,7 +20,7 @@ mod imp {
     }
 
     impl Process {
-        pub fn new(cmd: &str, updated_paths: Vec<&str>) -> Result<Process> {
+        pub fn new(cmd: &str, updated_paths: Vec<PathBuf>) -> Result<Process> {
             use std::io;
             use std::os::unix::process::CommandExt;
             use nix::unistd::setpgid;
@@ -23,8 +28,12 @@ mod imp {
             let mut command = Command::new("sh");
             command.arg("-c").arg(cmd);
 
-            if !updated_paths.is_empty() {
-                command.env("WATCHEXEC_UPDATED_PATH", updated_paths[0]);
+            if let Some(single_path) = super::get_single_updated_path(&updated_paths) {
+                command.env("WATCHEXEC_UPDATED_PATH", single_path);
+            }
+
+            if let Some(common_path) = super::get_longest_common_path(&updated_paths) {
+                command.env("WATCHEXEC_COMMON_PATH", common_path);
             }
 
             command.before_exec(|| setpgid(0, 0).map_err(io::Error::from))
@@ -74,6 +83,7 @@ mod imp {
     use std::io;
     use std::io::Result;
     use std::mem;
+    use std::path::PathBuf;
     use std::process::Command;
     use kernel32::*;
     use winapi::*;
@@ -84,7 +94,7 @@ mod imp {
     }
 
     impl Process {
-        pub fn new(cmd: &str, updated_paths: Vec<&str>) -> Result<Process> {
+        pub fn new(cmd: &str, updated_paths: Vec<PathBuf>) -> Result<Process> {
             use std::os::windows::io::IntoRawHandle;
 
             fn last_err() -> io::Error {
@@ -111,8 +121,12 @@ mod imp {
             let mut command = Command::new("cmd.exe");
             command.arg("/C").arg(cmd);
 
-            if !updated_paths.is_empty() {
-                command.env("WATCHEXEC_UPDATED_PATH", updated_paths[0]);
+            if let Some(single_path) = super::get_single_updated_path(&updated_paths) {
+                command.env("WATCHEXEC_UPDATED_PATH", single_path);
+            }
+
+            if let Some(common_path) = super::get_longest_common_path(&updated_paths) {
+                command.env("WATCHEXEC_COMMON_PATH", common_path);
             }
 
             command.spawn()
@@ -187,16 +201,84 @@ impl ProcessReaper {
     }
 }
 
+fn get_single_updated_path<'a>(paths: &'a[PathBuf]) -> Option<&'a str> {
+    paths.get(0).and_then(|p| p.to_str())
+}
+
+fn get_longest_common_path(paths: &[PathBuf]) -> Option<String> {
+    struct TreeNode<'a> {
+        value: Component<'a>,
+        children: BTreeMap<Component<'a>, Rc<RefCell<TreeNode<'a>>>>
+    }
+
+    match paths.len() {
+        0 => return None,
+        1 => return paths[0].to_str().map(|ref_val| ref_val.to_string()),
+        _ => {}
+    };
+
+    // Step 1:
+    // Build tree that contains each path component as a node value
+    let tree = Rc::new(RefCell::new(TreeNode {
+        value: Component::RootDir,
+        children: BTreeMap::new()
+    }));
+
+    for path in paths {
+        let mut cur_node = tree.clone();
+
+        for component in path.components() {
+            if cur_node.borrow().value == component {
+                continue;
+            }
+
+            let cur_clone = cur_node.clone();
+            let mut borrowed = cur_clone.borrow_mut();
+
+            cur_node = borrowed.children.entry(component).or_insert(
+                Rc::new(RefCell::new(TreeNode {
+                    value: component,
+                    children: BTreeMap::new()
+                }))).clone();
+        }
+    }
+
+    // Step 2:
+    // Navigate through tree until finding a divergence,
+    // which indicates path is no longer common
+    let mut queue = VecDeque::new();
+    queue.push_back(tree.clone());
+
+    let mut result = PathBuf::new();
+
+    while let Some(node) = queue.pop_back() {
+        let node = node.borrow();
+        result.push(node.value.as_os_str());
+
+        if node.children.len() > 1 {
+            break;
+        }
+
+        for child in node.children.values() {
+            queue.push_front(child.clone());
+        }
+    }
+
+    result.to_str().map(|ref_val| ref_val.to_string())
+}
+
+
 #[cfg(test)]
 #[cfg(target_family = "unix")]
 mod tests {
-    use std::path::Path;
+    use std::path::{Path, PathBuf};
     use std::thread;
     use std::time::Duration;
 
     use mktemp::Temp;
 
     use super::imp::Process;
+    use super::get_longest_common_path;
 
     fn file_contents(path: &Path) -> String {
         use std::fs::File;
@@ -240,5 +322,41 @@ mod tests {
         process.wait();
 
         assert!(file_contents(&path) == "");
+    }
+
+
+    #[test]
+    fn longest_common_path_should_return_correct_value() {
+        let single_path = vec![PathBuf::from("/tmp/random/")];
+        let single_result = get_longest_common_path(&single_path).unwrap();
+        assert_eq!(single_result, "/tmp/random/");
+
+        let common_paths = vec![
+            PathBuf::from("/tmp/logs/hi"),
+            PathBuf::from("/tmp/logs/bye"),
+            PathBuf::from("/tmp/logs/bye"),
+            PathBuf::from("/tmp/logs/fly")
+        ];
+
+        let common_result = get_longest_common_path(&common_paths).unwrap();
+        assert_eq!(common_result, "/tmp/logs");
+
+
+        let diverging_paths = vec![
+            PathBuf::from("/tmp/logs/hi"),
+            PathBuf::from("/var/logs/hi")
+        ];
+
+        let diverging_result = get_longest_common_path(&diverging_paths).unwrap();
+        assert_eq!(diverging_result, "/");
+
+        let uneven_paths = vec![
+            PathBuf::from("/tmp/logs/hi"),
+            PathBuf::from("/tmp/logs/"),
+            PathBuf::from("/tmp/logs/bye")
+        ];
+
+        let uneven_result = get_longest_common_path(&uneven_paths).unwrap();
+        assert_eq!(uneven_result, "/tmp/logs");
     }
 }

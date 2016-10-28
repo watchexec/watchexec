@@ -137,9 +137,6 @@ fn main() {
 
     while !interrupt_handler::interrupt_requested() {
         if let Some(paths) = wait(&rx, &interrupt_rx, &filter) {
-            let updated = paths.iter()
-                .map(|p| p.to_str().unwrap())
-                .collect();
 
             if let Some(mut child) = child_process {
                 if args.restart {
@@ -159,7 +156,7 @@ fn main() {
                 cli::clear_screen();
             }
 
-            child_process = Process::new(&cmd, updated).ok();
+            child_process = Process::new(&cmd, paths).ok();
         }
     }
 }
@@ -201,3 +198,4 @@ fn wait(rx: &Receiver<Event>,
 
     Some(paths)
 }
+
