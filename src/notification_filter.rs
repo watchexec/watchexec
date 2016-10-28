@@ -27,16 +27,16 @@ impl NotificationFilter {
         let cwd = try!(current_dir.canonicalize());
 
         let compiled_filters = try!(filters.iter()
-                                    .map(|p| NotificationFilter::pattern_for(&cwd, p))
-                                    .collect());
+            .map(|p| NotificationFilter::pattern_for(&cwd, p))
+            .collect());
+
+        let compiled_ignores = try!(ignores.iter()
+            .map(|p| NotificationFilter::pattern_for(&cwd, p))
+            .collect());
 
         for compiled_filter in &compiled_filters {
             debug!("Adding filter: {}", compiled_filter);
         }
-
-        let compiled_ignores = try!(ignores.iter()
-                                    .map(|p| NotificationFilter::pattern_for(&cwd, p))
-                                    .collect());
 
         for compiled_ignore in &compiled_ignores {
             debug!("Adding ignore: {}", compiled_ignore);
