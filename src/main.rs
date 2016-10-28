@@ -29,6 +29,7 @@ mod notification_filter;
 mod process;
 mod watcher;
 
+use std::collections::HashMap;
 use std::env;
 use std::sync::mpsc::{channel, Receiver};
 use std::time::Duration;
@@ -161,6 +162,7 @@ fn wait(rx: &Receiver<Event>,
         filter: &NotificationFilter)
         -> Option<Vec<PathBuf>> {
     let mut paths = vec![];
+    let mut cache = HashMap::new();
 
     loop {
         select! {
@@ -169,8 +171,17 @@ fn wait(rx: &Receiver<Event>,
                 let e = ev.expect("error when reading event");
 
                 if let Some(ref path) = e.path {
-                    if !filter.is_excluded(path) {
-                        paths.push(path.to_owned());
+                    if cache.contains_key(path) {
+                        continue;
+                    }
+
+                    let excluded = filter.is_excluded(path);
+
+                    let p = path.to_owned();
+                    cache.insert(p.clone(), excluded);
+
+                    if !excluded {
+                        paths.push(p);
                         break;
                     }
                 }
@@ -187,7 +198,18 @@ fn wait(rx: &Receiver<Event>,
         }
 
         if let Some(ref path) = e.path {
-            paths.push(path.to_owned());
+            if cache.contains_key(path) {
+                continue;
+            }
+
+            let excluded = filter.is_excluded(path);
+
+            let p = path.to_owned();
+            cache.insert(p.clone(), excluded);
+
+            if !excluded {
+                paths.push(p);
+            }
         }
     }
 
