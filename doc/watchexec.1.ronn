@@ -13,8 +13,8 @@ At startup, the specified <command> (passing any supplied <argument>s) is run on
 
 ## OPTIONS
 
-* command:
-Command to run when watched files are modified. This command is also run at startup, unless `--postpone` is specified.
+* <command>:
+Command to run when watched files are modified, and at startup, unless `--postpone` is specified. All <argument>s are passed to <command>.
 
 * `-w`, `--watch` <path>:
 Specifies the path to watch. This argument can be specified multiple times, with all paths being watched simultaneously. Defaults to current directory.

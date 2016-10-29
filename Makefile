@@ -1,5 +1,7 @@
 VER=$(shell grep version Cargo.toml | head -n1 | grep -Eow '".+"' | sed 's/"//g')
 
+.PHONY: doc
+
 debug:	src/* Cargo.toml
 		@cargo build
 
