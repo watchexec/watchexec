@@ -1,5 +1,5 @@
+use std::path::MAIN_SEPARATOR;
 use std::process::Command;
-use std::path::Path;
 
 use clap::{App, Arg};
 
@@ -101,15 +101,16 @@ pub fn get_args() -> Args {
         }
     }
 
-    let dotted_dirs = Path::new(".*").join("*");
-    let default_ignores = vec!["*/.DS_Store", "*.pyc", "*.swp", dotted_dirs.to_str().unwrap()];
     let mut ignores = vec![];
+    let default_ignores = vec![
+        format!("*{}.*{}*", MAIN_SEPARATOR, MAIN_SEPARATOR),
+        format!("*{}.DS_Store", MAIN_SEPARATOR),
+        String::from("*.pyc"),
+        String::from("*.swp")];
 
-    for default_ignore in default_ignores {
-        ignores.push(String::from(default_ignore));
-    }
-
+    ignores.extend(default_ignores);
     ignores.extend(values_t!(args.values_of("ignore"), String).unwrap_or(vec![]));
+
     let poll_interval = if args.occurrences_of("poll") > 0 {
         value_t!(args.value_of("poll"), u32).unwrap_or_else(|e| e.exit())
     } else {
