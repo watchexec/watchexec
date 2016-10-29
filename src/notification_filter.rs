@@ -106,3 +106,49 @@ impl From<PatternError> for Error {
         Error::BadPattern(err)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::NotificationFilter;
+    use std::path::Path;
+
+    #[test]
+    fn test_allows_everything_by_default() {
+        let filter = NotificationFilter::new(&Path::new("."), vec![], vec![], None).unwrap();
+
+        assert!(!filter.is_excluded(&Path::new("foo")));
+    }
+
+    #[test]
+    fn test_multiple_filters() {
+        let filters = vec![String::from("*.rs"), String::from("*.toml")];
+        let filter = NotificationFilter::new(&Path::new("."), filters, vec![], None).unwrap();
+        let cwd = Path::new(".").canonicalize().unwrap();
+
+        assert!(!filter.is_excluded(&cwd.join("hello.rs")));
+        assert!(!filter.is_excluded(&cwd.join("Cargo.toml")));
+        assert!(filter.is_excluded(&cwd.join("README.md")));
+    }
+
+    #[test]
+    fn test_multiple_ignores() {
+        let ignores = vec![String::from("*.rs"), String::from("*.toml")];
+        let filter = NotificationFilter::new(&Path::new("."), vec![], ignores, None).unwrap();
+        let cwd = Path::new(".").canonicalize().unwrap();
+
+        assert!(filter.is_excluded(&cwd.join("hello.rs")));
+        assert!(filter.is_excluded(&cwd.join("Cargo.toml")));
+        assert!(!filter.is_excluded(&cwd.join("README.md")));
+    }
+
+    #[test]
+    fn test_ignores_take_precedence() {
+        let ignores = vec![String::from("*.rs"), String::from("*.toml")];
+        let filter = NotificationFilter::new(&Path::new("."), ignores.clone(), ignores, None).unwrap();
+        let cwd = Path::new(".").canonicalize().unwrap();
+
+        assert!(filter.is_excluded(&cwd.join("hello.rs")));
+        assert!(filter.is_excluded(&cwd.join("Cargo.toml")));
+        assert!(filter.is_excluded(&cwd.join("README.md")));
+    }
+}
