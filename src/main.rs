@@ -92,7 +92,7 @@ fn main() {
         }
     }
 
-    let filter = NotificationFilter::new(&cwd, args.filters, args.ignores, gitignore_file)
+    let filter = NotificationFilter::new(args.filters, args.ignores, gitignore_file)
         .expect("unable to create notification filter");
 
     let (tx, rx) = channel();
@@ -134,6 +134,10 @@ fn main() {
                 .map(|p| p.to_str().unwrap())
                 .collect();
 
+            if let Some(path) = paths.iter().nth(0) {
+                debug!("Path updated: {:?}", path);
+            }
+
             if let Some(mut child) = child_process {
                 if args.restart {
                     debug!("Killing child process");
@@ -171,17 +175,15 @@ fn wait(rx: &Receiver<Event>,
                 let e = ev.expect("error when reading event");
 
                 if let Some(ref path) = e.path {
-                    if cache.contains_key(path) {
-                        continue;
+                    // Ignore cache for the initial file. Otherwise, in
+                    // debug mode it's hard to track what's going on
+                    let excluded = filter.is_excluded(path);
+                    if !cache.contains_key(path) {
+                        cache.insert(path.to_owned(), excluded);
                     }
 
-                    let excluded = filter.is_excluded(path);
-
-                    let p = path.to_owned();
-                    cache.insert(p.clone(), excluded);
-
                     if !excluded {
-                        paths.push(p);
+                        paths.push(path.to_owned());
                         break;
                     }
                 }
