@@ -79,9 +79,10 @@ pub fn get_args() -> Args {
         .arg(Arg::with_name("no-vcs-ignore")
             .help("Skip auto-loading of .gitignore files for filtering")
             .long("no-vcs-ignore"))
-        .arg(Arg::with_name("run-initially")
-            .help("Run command initially, before first file change")
-            .long("run-initially"))
+        .arg(Arg::with_name("postpone")
+            .help("Wait until first change to execute command")
+            .short("p")
+            .long("postpone"))
         .arg(Arg::with_name("poll")
             .help("Forces polling mode")
             .long("force-poll")
@@ -125,7 +126,7 @@ pub fn get_args() -> Args {
         clear_screen: args.is_present("clear"),
         restart: args.is_present("restart"),
         debug: args.is_present("debug"),
-        run_initially: args.is_present("run-initially"),
+        run_initially: !args.is_present("postpone"),
         no_vcs_ignore: args.is_present("no-vcs-ignore"),
         poll: args.occurrences_of("poll") > 0,
         poll_interval: poll_interval,
