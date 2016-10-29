@@ -1,0 +1,118 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "WATCHEXEC" "1" "October 2016" "" ""
+.
+.SH "NAME"
+\fBwatchexec\fR \- execute commands when watched files change
+.
+.SH "SYNOPSIS"
+watchexec [\fB\-\-watch\fR | \fB\-w\fR \fIpath\fR] [\fB\-\-exts\fR | \fB\-e\fR \fIextensions\fR]\.\.\. [\fB\-\-filter\fR | \fB\-f\fR \fIpattern\fR]\.\.\. [\fB\-\-ignore\fR | \fB\-i\fR \fIpattern\fR]\.\.\. [\fB\-\-restart\fR | \fB\-r\fR] [\fB\-\-clear\fR | \fB\-c\fR] [\fB\-\-postpone\fR | \fB\-p\fR] [\fB\-\-force\-poll\fR \fIinterval\fR] [\fB\-\-debug\fR | \fB\-d\fR] [\fB\-\-no\-vcs\-ignore\fR] \fIcommand\fR [\fIargument\fR\.\.\.]
+.
+.SH "DESCRIPTION"
+Recursively monitors directories for changes, executing the command when a filesystem change (add/modify/delete) is detected\. By default, watchexec uses efficient kernel\-level mechanisms to watch for changes\.
+.
+.P
+At startup, the specified \fIcommand\fR (passing any supplied \fIargument\fRs) is run once, and watchexec begins monitoring for changes\.
+.
+.SH "OPTIONS"
+.
+.TP
+command
+Command to run when watched files are modified\. This command is also run at startup, unless \fB\-\-postpone\fR is specified\.
+.
+.TP
+\fB\-w\fR, \fB\-\-watch\fR \fIpath\fR
+Specifies the path to watch\. This argument can be specified multiple times, with all paths being watched simultaneously\. Defaults to current directory\.
+.
+.TP
+\fB\-e\fR, \fB\-\-exts\fR \fIextensions\fR
+Comma\-separated list of file extensions to filter by\. Leading dots are allowed (\.rs) are allowed\. (This is a shorthand for \fB\-f\fR)\.
+.
+.TP
+\fB\-f\fR, \fB\-\-filter\fR \fIpattern\fR
+Ignores modifications from paths that do not match \fIpattern\fR\. This option can be specified multiple times, where a match on any given pattern causes the path to trigger \fICOMMAND\fR\.
+.
+.TP
+\fB\-i\fR, \fB\-\-ignore\fR \fIpattern\fR
+Ignores modifications from paths that match \fIpattern\fR\. This option can be specified multiple times, and a match on any pattern causes the path to be ignored\.
+.
+.TP
+\fB\-r\fR, \fB\-\-restart\fR
+Sends SIGTERM to the child process if it is still running when subsequent file modifications are detected, then waits for the child to exit\.
+.
+.TP
+\fB\-c\fR, \fB\-\-clear\fR
+Clears the screen before executing \fIcommand\fR\.
+.
+.TP
+\fB\-p\fR, \fB\-\-postpone\fR
+Postpone execution of \fIcommand\fR until the first file modification is detected\.
+.
+.TP
+\fB\-d\fR, \fB\-\-debug\fR
+Prints diagnostic messages to STDERR
+.
+.TP
+\fB\-\-force\-poll\fR \fIinterval\fR
+When watching directories, poll for changes every \fIinterval\fR ms instead of using system\-specific notification mechanisms (such as inotify)\. This is useful when you are monitoring NFS shares\.
+.
+.TP
+\fB\-\-no\-vcs\-ignore\fR
+Skip loading of version control system (VCS) ignore files\. By default, watchexec loads \.gitignore files in the current directory (or parent directories) and uses them to populate the ignore list\.
+.
+.SH "ENVIRONMENT"
+Processes started by watchexec have the $WATCHEXEC_UPDATED_PATH environment variable set to the path of the first modification observed\.
+.
+.SH "EXAMPLES"
+Rebuild a project when source files change:
+.
+.IP "" 4
+.
+.nf
+
+$ watchexec make
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Watch all HTML, CSS, and JavaScript files for changes:
+.
+.IP "" 4
+.
+.nf
+
+$ watchexec \-e html,css,js make
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Run tests when source files change, clearing the screen each time:
+.
+.IP "" 4
+.
+.nf
+
+$ watchexec \-c make test
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Launch and restart a node\.js server
+.
+.IP "" 4
+.
+.nf
+
+$ watchexec \-r node app\.js
+.
+.fi
+.
+.IP "" 0
+
