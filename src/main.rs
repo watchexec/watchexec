@@ -213,4 +213,3 @@ fn wait(rx: &Receiver<Event>,
 
     Some(paths)
 }
-

@@ -103,11 +103,10 @@ pub fn get_args() -> Args {
     }
 
     let mut ignores = vec![];
-    let default_ignores = vec![
-        format!("*{}.*{}*", MAIN_SEPARATOR, MAIN_SEPARATOR),
-        format!("*{}.DS_Store", MAIN_SEPARATOR),
-        String::from("*.pyc"),
-        String::from("*.swp")];
+    let default_ignores = vec![format!("*{}.*{}*", MAIN_SEPARATOR, MAIN_SEPARATOR),
+                               format!("*{}.DS_Store", MAIN_SEPARATOR),
+                               String::from("*.pyc"),
+                               String::from("*.swp")];
 
     ignores.extend(default_ignores);
     ignores.extend(values_t!(args.values_of("ignore"), String).unwrap_or(vec![]));

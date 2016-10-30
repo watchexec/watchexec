@@ -194,9 +194,7 @@ impl ProcessReaper {
             }
         });
 
-        ProcessReaper {
-            processes_tx: processes_tx
-        }
+        ProcessReaper { processes_tx: processes_tx }
     }
 
     pub fn wait_process(&self, process: imp::Process) {
@@ -204,14 +202,14 @@ impl ProcessReaper {
     }
 }
 
-fn get_single_updated_path<'a>(paths: &'a[PathBuf]) -> Option<&'a str> {
+fn get_single_updated_path<'a>(paths: &'a [PathBuf]) -> Option<&'a str> {
     paths.get(0).and_then(|p| p.to_str())
 }
 
 fn get_longest_common_path(paths: &[PathBuf]) -> Option<String> {
     struct TreeNode<'a> {
         value: Component<'a>,
-        children: BTreeMap<Component<'a>, Rc<RefCell<TreeNode<'a>>>>
+        children: BTreeMap<Component<'a>, Rc<RefCell<TreeNode<'a>>>>,
     }
 
     match paths.len() {
@@ -224,7 +222,7 @@ fn get_longest_common_path(paths: &[PathBuf]) -> Option<String> {
     // Build tree that contains each path component as a node value
     let tree = Rc::new(RefCell::new(TreeNode {
         value: Component::RootDir,
-        children: BTreeMap::new()
+        children: BTreeMap::new(),
     }));
 
     for path in paths {
@@ -238,11 +236,13 @@ fn get_longest_common_path(paths: &[PathBuf]) -> Option<String> {
             let cur_clone = cur_node.clone();
             let mut borrowed = cur_clone.borrow_mut();
 
-            cur_node = borrowed.children.entry(component).or_insert(
-                Rc::new(RefCell::new(TreeNode {
+            cur_node = borrowed.children
+                .entry(component)
+                .or_insert(Rc::new(RefCell::new(TreeNode {
                     value: component,
-                    children: BTreeMap::new()
-                }))).clone();
+                    children: BTreeMap::new(),
+                })))
+                .clone();
         }
     }
 
@@ -334,30 +334,23 @@ mod tests {
         let single_result = get_longest_common_path(&single_path).unwrap();
         assert_eq!(single_result, "/tmp/random/");
 
-        let common_paths = vec![
-            PathBuf::from("/tmp/logs/hi"),
-            PathBuf::from("/tmp/logs/bye"),
-            PathBuf::from("/tmp/logs/bye"),
-            PathBuf::from("/tmp/logs/fly")
-        ];
+        let common_paths = vec![PathBuf::from("/tmp/logs/hi"),
+                                PathBuf::from("/tmp/logs/bye"),
+                                PathBuf::from("/tmp/logs/bye"),
+                                PathBuf::from("/tmp/logs/fly")];
 
         let common_result = get_longest_common_path(&common_paths).unwrap();
         assert_eq!(common_result, "/tmp/logs");
 
 
-        let diverging_paths = vec![
-            PathBuf::from("/tmp/logs/hi"),
-            PathBuf::from("/var/logs/hi")
-        ];
+        let diverging_paths = vec![PathBuf::from("/tmp/logs/hi"), PathBuf::from("/var/logs/hi")];
 
         let diverging_result = get_longest_common_path(&diverging_paths).unwrap();
         assert_eq!(diverging_result, "/");
 
-        let uneven_paths = vec![
-            PathBuf::from("/tmp/logs/hi"),
-            PathBuf::from("/tmp/logs/"),
-            PathBuf::from("/tmp/logs/bye")
-        ];
+        let uneven_paths = vec![PathBuf::from("/tmp/logs/hi"),
+                                PathBuf::from("/tmp/logs/"),
+                                PathBuf::from("/tmp/logs/bye")];
 
         let uneven_result = get_longest_common_path(&uneven_paths).unwrap();
         assert_eq!(uneven_result, "/tmp/logs");
