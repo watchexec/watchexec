@@ -1,10 +1,9 @@
-use threadpool::ThreadPool;
-
 use std::cell::RefCell;
 use std::collections::{BTreeMap, VecDeque};
 use std::path::{Component, PathBuf};
 use std::rc::Rc;
-use std::sync::mpsc::Sender;
+use std::sync::mpsc::{channel, Receiver, Sender};
+use std::thread;
 
 pub use self::imp::*;
 
@@ -178,26 +177,30 @@ mod imp {
 /// On Windows, we don't have SIGCHLD, and even if we did, we'd still need
 /// to relay that over a channel.
 pub struct ProcessReaper {
-    pool: ThreadPool,
-    tx: Sender<()>,
+    processes_tx: Sender<Process>,
 }
 
 impl ProcessReaper {
     pub fn new(tx: Sender<()>) -> ProcessReaper {
+        let (processes_tx, processes_rx): (Sender<Process>, Receiver<Process>) = channel();
+
+        thread::spawn(move || {
+            loop {
+                while let Ok(mut process) = processes_rx.recv() {
+                    process.wait();
+
+                    let _ = tx.send(());
+                }
+            }
+        });
+
         ProcessReaper {
-            pool: ThreadPool::new(1),
-            tx: tx,
+            processes_tx: processes_tx
         }
     }
 
-    pub fn wait_process(&self, mut process: imp::Process) {
-        let tx = self.tx.clone();
-
-        self.pool.execute(move || {
-            process.wait();
-
-            let _ = tx.send(());
-        });
+    pub fn wait_process(&self, process: imp::Process) {
+        let _ = self.processes_tx.send(process);
     }
 }
 

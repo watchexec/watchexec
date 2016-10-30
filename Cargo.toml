@@ -19,7 +19,6 @@ lazy_static = "0.2.1"
 libc = "0.2.16"
 log = "0.3.6"
 notify = "2.6.3"
-threadpool = "1.3.2"
 
 [dev-dependencies]
 mktemp = "0.3.1"
