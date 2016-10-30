@@ -31,7 +31,7 @@ Comma\-separated list of file extensions to filter by\. Leading dots are allowed
 .
 .TP
 \fB\-f\fR, \fB\-\-filter\fR \fIpattern\fR
-Ignores modifications from paths that do not match \fIpattern\fR\. This option can be specified multiple times, where a match on any given pattern causes the path to trigger \fICOMMAND\fR\.
+Ignores modifications from paths that do not match \fIpattern\fR\. This option can be specified multiple times, where a match on any given pattern causes the path to trigger \fIcommand\fR\.
 .
 .TP
 \fB\-i\fR, \fB\-\-ignore\fR \fIpattern\fR
@@ -62,7 +62,7 @@ When watching directories, poll for changes every \fIinterval\fR ms instead of u
 Skip loading of version control system (VCS) ignore files\. By default, watchexec loads \.gitignore files in the current directory (or parent directories) and uses them to populate the ignore list\.
 .
 .SH "ENVIRONMENT"
-Processes started by watchexec have the $WATCHEXEC_UPDATED_PATH environment variable set to the path of the first modification observed\.
+Processes started by watchexec have the \fB$WATCHEXEC_UPDATED_PATH\fR environment variable set to the path of the first modification observed\. In addition, the \fB$WATCHEXEC_COMMON_PATH\fR environment variable is set to the common path of all observed modifications\.
 .
 .SH "EXAMPLES"
 Rebuild a project when source files change:

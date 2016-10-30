@@ -23,7 +23,7 @@ Specifies the path to watch. This argument can be specified multiple times, with
 Comma-separated list of file extensions to filter by. Leading dots are allowed (.rs) are allowed. (This is a shorthand for `-f`).
 
 * `-f`, `--filter` <pattern>:
-Ignores modifications from paths that do not match <pattern>. This option can be specified multiple times, where a match on any given pattern causes the path to trigger *COMMAND*.
+Ignores modifications from paths that do not match <pattern>. This option can be specified multiple times, where a match on any given pattern causes the path to trigger *command*.
 
 * `-i`, `--ignore` *pattern*:
 Ignores modifications from paths that match <pattern>. This option can be specified multiple times, and a match on any pattern causes the path to be ignored.
@@ -48,7 +48,7 @@ Skip loading of version control system (VCS) ignore files. By default, watchexec
 
 ## ENVIRONMENT
 
-Processes started by watchexec have the $WATCHEXEC_UPDATED_PATH environment variable set to the path of the first modification observed.
+Processes started by watchexec have the `$WATCHEXEC_UPDATED_PATH` environment variable set to the path of the first modification observed. In addition, the `$WATCHEXEC_COMMON_PATH` environment variable is set to the common path of all observed modifications.
 
 ## EXAMPLES
 
