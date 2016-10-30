@@ -28,6 +28,8 @@ pub fn clear_screen() {
     let _ = Command::new("clear").status();
 }
 
+#[allow(unknown_lints)]
+#[allow(or_fun_call)]
 pub fn get_args() -> Args {
     let args = App::new("watchexec")
         .version(crate_version!())

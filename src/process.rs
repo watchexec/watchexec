@@ -202,7 +202,7 @@ impl ProcessReaper {
     }
 }
 
-fn get_single_updated_path<'a>(paths: &'a [PathBuf]) -> Option<&'a str> {
+fn get_single_updated_path(paths: &[PathBuf]) -> Option<&str> {
     paths.get(0).and_then(|p| p.to_str())
 }
 
@@ -238,7 +238,7 @@ fn get_longest_common_path(paths: &[PathBuf]) -> Option<String> {
 
             cur_node = borrowed.children
                 .entry(component)
-                .or_insert(Rc::new(RefCell::new(TreeNode {
+                .or_insert_with(|| Rc::new(RefCell::new(TreeNode {
                     value: component,
                     children: BTreeMap::new(),
                 })))

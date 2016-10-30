@@ -130,7 +130,7 @@ fn main() {
     while !interrupt_handler::interrupt_requested() {
         if let Some(paths) = wait(&rx, &interrupt_rx, &filter) {
 
-            if let Some(path) = paths.iter().nth(0) {
+            if let Some(path) = paths.get(0) {
                 debug!("Path updated: {:?}", path);
             }
 
