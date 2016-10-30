@@ -23,7 +23,9 @@ Example use cases:
 * Support for watching files with a specific extension
 * Support for filtering/ignoring events based on glob patterns
 * Launches child processes in a new process group
-* Sets `$WATCHEXEC_UPDATED_PATH` in the environment of the child process to the first file that triggered a change
+* Sets the following environment variables in the child process:
+    * `$WATCHEXEC_UPDATED_PATH` the path of the first file that triggered a change
+    * `$WATCHEXEC_COMMON_PATH` the longest common path of all of the files that triggered a change
 * Optionally clears screen between executions
 * Optionally restarts the command with every modification (good for servers)
 * Does not require a language runtime
