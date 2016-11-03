@@ -1,7 +1,7 @@
 use std::path::Path;
 use std::sync::mpsc::Sender;
 
-use notify::{PollWatcher, RecommendedWatcher};
+use notify::{PollWatcher, RecommendedWatcher, RecursiveMode, raw_watcher};
 
 /// Thin wrapper over the notify crate
 ///
@@ -13,7 +13,7 @@ pub struct Watcher {
     watcher_impl: WatcherImpl,
 }
 
-pub use notify::Event;
+pub use notify::RawEvent as Event;
 pub use notify::Error;
 
 enum WatcherImpl {
@@ -23,15 +23,13 @@ enum WatcherImpl {
 
 impl Watcher {
     pub fn new(tx: Sender<Event>, poll: bool, interval_ms: u32) -> Result<Watcher, Error> {
-        use notify::Watcher;
-
         let imp = if poll {
-            WatcherImpl::Poll(try!(PollWatcher::with_delay(tx, interval_ms)))
+            WatcherImpl::Poll(try!(PollWatcher::with_delay_ms(tx, interval_ms)))
         } else {
-            WatcherImpl::Recommended(try!(RecommendedWatcher::new(tx)))
+            WatcherImpl::Recommended(try!(raw_watcher(tx)))
         };
 
-        Ok(self::Watcher { watcher_impl: imp })
+        Ok(Watcher { watcher_impl: imp })
     }
 
     pub fn is_polling(&self) -> bool {
@@ -46,8 +44,8 @@ impl Watcher {
         use notify::Watcher;
 
         match self.watcher_impl {
-            WatcherImpl::Recommended(ref mut w) => w.watch(path),
-            WatcherImpl::Poll(ref mut w) => w.watch(path),
+            WatcherImpl::Recommended(ref mut w) => w.watch(path, RecursiveMode::Recursive),
+            WatcherImpl::Poll(ref mut w) => w.watch(path, RecursiveMode::Recursive),
         }
     }
 }

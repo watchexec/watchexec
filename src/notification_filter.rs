@@ -1,20 +1,23 @@
 extern crate glob;
 
-use gitignore;
 use std::io;
 use std::path::Path;
 
-use self::glob::{Pattern, PatternError};
+use globset;
+use globset::{Glob, GlobSet, GlobSetBuilder};
+
+use gitignore;
 
 pub struct NotificationFilter {
-    filters: Vec<Pattern>,
-    ignores: Vec<Pattern>,
+    filters: GlobSet,
+    filter_count: usize,
+    ignores: GlobSet,
     ignore_file: Option<gitignore::PatternSet>,
 }
 
 #[derive(Debug)]
 pub enum Error {
-    BadPattern(PatternError),
+    Glob(globset::Error),
     Io(io::Error),
 }
 
@@ -23,43 +26,39 @@ impl NotificationFilter {
                ignores: Vec<String>,
                ignore_file: Option<gitignore::PatternSet>)
                -> Result<NotificationFilter, Error> {
-        let compiled_filters = try!(filters.iter()
-            .map(|p| Pattern::new(p))
-            .collect());
+        let mut filter_set_builder = GlobSetBuilder::new();
+        for f in &filters {
+            filter_set_builder.add(try!(Glob::new(f)));
 
-        let compiled_ignores = try!(ignores.iter()
-            .map(|p| Pattern::new(p))
-            .collect());
-
-        for compiled_filter in &compiled_filters {
-            debug!("Adding filter: \"{}\"", compiled_filter);
+            debug!("Adding filter: \"{}\"", f);
         }
 
-        for compiled_ignore in &compiled_ignores {
-            debug!("Adding ignore: \"{}\"", compiled_ignore);
+        let mut ignore_set_builder = GlobSetBuilder::new();
+        for i in &ignores {
+            ignore_set_builder.add(try!(Glob::new(i)));
+
+            debug!("Adding ignore: \"{}\"", i);
         }
+
+        let filter_set = try!(filter_set_builder.build());
+        let ignore_set = try!(ignore_set_builder.build());
 
         Ok(NotificationFilter {
-            filters: compiled_filters,
-            ignores: compiled_ignores,
+            filters: filter_set,
+            filter_count: filters.len(),
+            ignores: ignore_set,
             ignore_file: ignore_file,
         })
     }
 
     pub fn is_excluded(&self, path: &Path) -> bool {
-        let path_as_str = path.to_str().unwrap();
-
-        for pattern in &self.ignores {
-            if pattern.matches(path_as_str) {
-                debug!("Ignoring {:?}: matched ignore filter", path);
-                return true;
-            }
+        if self.ignores.is_match(path) {
+            debug!("Ignoring {:?}: matched ignore filter", path);
+            return true;
         }
 
-        for pattern in &self.filters {
-            if pattern.matches(path_as_str) {
-                return false;
-            }
+        if self.filters.is_match(path) {
+            return false;
         }
 
         if let Some(ref ignore_file) = self.ignore_file {
@@ -69,11 +68,11 @@ impl NotificationFilter {
             }
         }
 
-        if !self.filters.is_empty() {
+        if self.filter_count > 0 {
             debug!("Ignoring {:?}: did not match any given filters", path);
         }
 
-        !self.filters.is_empty()
+        self.filter_count > 0
     }
 }
 
@@ -83,9 +82,9 @@ impl From<io::Error> for Error {
     }
 }
 
-impl From<PatternError> for Error {
-    fn from(err: PatternError) -> Error {
-        Error::BadPattern(err)
+impl From<globset::Error> for Error {
+    fn from(err: globset::Error) -> Error {
+        Error::Glob(err)
     }
 }
 
