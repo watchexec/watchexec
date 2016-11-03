@@ -2,6 +2,7 @@
 
 [![Build Status](https://travis-ci.org/mattgreen/watchexec.svg?branch=master)](https://travis-ci.org/mattgreen/watchexec)
 [![Build status](https://ci.appveyor.com/api/projects/status/ivxu31g4rcf4740t?svg=true)](https://ci.appveyor.com/project/mattgreen/watchexec)
+[![Crates.io status](https://img.shields.io/crates/v/watchexec.svg)](https://crates.io/crates/watchexec)
 
 Software development often involves running the same commands over and over. Boring!
 
