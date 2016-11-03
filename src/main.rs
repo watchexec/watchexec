@@ -3,6 +3,7 @@
 
 #[macro_use]
 extern crate clap;
+extern crate globset;
 extern crate env_logger;
 extern crate libc;
 #[macro_use]
