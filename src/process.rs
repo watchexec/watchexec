@@ -1,7 +1,4 @@
-use std::cell::RefCell;
-use std::collections::{BTreeMap, VecDeque};
-use std::path::{Component, PathBuf};
-use std::rc::Rc;
+use std::path::PathBuf;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::thread;
 
@@ -207,64 +204,32 @@ fn get_single_updated_path(paths: &[PathBuf]) -> Option<&str> {
 }
 
 fn get_longest_common_path(paths: &[PathBuf]) -> Option<String> {
-    struct TreeNode<'a> {
-        value: Component<'a>,
-        children: BTreeMap<Component<'a>, Rc<RefCell<TreeNode<'a>>>>,
-    }
-
     match paths.len() {
         0 => return None,
         1 => return paths[0].to_str().map(|ref_val| ref_val.to_string()),
         _ => {}
     };
 
-    // Step 1:
-    // Build tree that contains each path component as a node value
-    let tree = Rc::new(RefCell::new(TreeNode {
-        value: Component::RootDir,
-        children: BTreeMap::new(),
-    }));
+    let mut longest_path: Vec<_> = paths[0].components().collect();
 
-    for path in paths {
-        let mut cur_node = tree.clone();
-
-        for component in path.components() {
-            if cur_node.borrow().value == component {
-                continue;
+    for path in &paths[1..] {
+        let mut greatest_distance = 0;
+        for component_pair in path.components().zip(longest_path.iter()) {
+            if component_pair.0 != *component_pair.1 {
+                break;
             }
 
-            let cur_clone = cur_node.clone();
-            let mut borrowed = cur_clone.borrow_mut();
+            greatest_distance += 1;
+        }
 
-            cur_node = borrowed.children
-                .entry(component)
-                .or_insert_with(|| Rc::new(RefCell::new(TreeNode {
-                    value: component,
-                    children: BTreeMap::new(),
-                })))
-                .clone();
+        if greatest_distance != longest_path.len() {
+            longest_path.truncate(greatest_distance);
         }
     }
 
-    // Step 2:
-    // Navigate through tree until finding a divergence,
-    // which indicates path is no longer common
-    let mut queue = VecDeque::new();
-    queue.push_back(tree.clone());
-
     let mut result = PathBuf::new();
-
-    while let Some(node) = queue.pop_back() {
-        let node = node.borrow();
-        result.push(node.value.as_os_str());
-
-        if node.children.len() > 1 {
-            break;
-        }
-
-        for child in node.children.values() {
-            queue.push_front(child.clone());
-        }
+    for component in longest_path {
+        result.push(component.as_os_str());
     }
 
     result.to_str().map(|ref_val| ref_val.to_string())
