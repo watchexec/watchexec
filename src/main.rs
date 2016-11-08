@@ -39,21 +39,27 @@ use notification_filter::NotificationFilter;
 use process::{Process, ProcessReaper};
 use watcher::{Event, Watcher};
 
-// Starting at the specified path, search for gitignore files,
-// stopping at the first one found.
-fn find_gitignore_file(path: &Path) -> Option<PathBuf> {
-    let mut gitignore_path = path.join(".gitignore");
-    if gitignore_path.exists() {
-        return Some(gitignore_path);
-    }
+fn find_gitignore(path: &Path) -> Option<PathBuf> {
+    let mut p = path.to_owned();
 
-    let p = path.to_owned();
-
-    while let Some(p) = p.parent() {
-        gitignore_path = p.join(".gitignore");
+    loop {
+        let gitignore_path = p.join(".gitignore");
         if gitignore_path.exists() {
             return Some(gitignore_path);
         }
+
+        // Stop if we see a .git directory
+        if let Ok(metadata) = p.join(".git").metadata() {
+            if metadata.is_dir() {
+                break;
+            }
+        }
+
+        if p.parent().is_none() {
+            break;
+        }
+
+        p.pop();
     }
 
     None
@@ -85,7 +91,7 @@ fn main() {
 
     let mut gitignore_file = None;
     if !args.no_vcs_ignore {
-        if let Some(gitignore_path) = find_gitignore_file(&cwd) {
+        if let Some(gitignore_path) = find_gitignore(&cwd) {
             debug!("Found .gitignore file: {:?}", gitignore_path);
 
             gitignore_file = gitignore::parse(&gitignore_path).ok();
