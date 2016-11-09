@@ -90,3 +90,4 @@ Currently, **watchexec requires a recent nightly Rust** to build, due to use of 
 ##Credits
 
 * [notify](https://github.com/passcod/rsnotify) for doing most of the heavy-lifting
+* [globset](https://crates.io/crates/globset) for super-fast glob matching
