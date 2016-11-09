@@ -80,8 +80,8 @@ fn init_logger(debug: bool) {
 
 fn main() {
     let child_process: Arc<RwLock<Option<Process>>> = Arc::new(RwLock::new(None));
-
     let weak_child = Arc::downgrade(&child_process);
+
     interrupt::install_handler(move || {
         if let Some(lock) = weak_child.upgrade() {
             let strong = lock.read().unwrap();
@@ -147,7 +147,7 @@ fn main() {
             debug!("Path updated: {:?}", path);
         }
 
-        //. Wait for current child process to exit
+        // Wait for current child process to exit
         {
             let guard = child_process.read().unwrap();
 
@@ -168,8 +168,8 @@ fn main() {
         }
 
         {
-            let mut lock = child_process.write().unwrap();
-            *lock = Process::new(&args.cmd, paths).ok();
+            let mut guard = child_process.write().unwrap();
+            *guard = Process::new(&args.cmd, paths).ok();
         }
     }
 }

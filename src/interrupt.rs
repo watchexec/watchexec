@@ -1,3 +1,9 @@
+use std::sync::Mutex;
+
+lazy_static! {
+    static ref CLEANUP: Mutex<Option<Box<Fn() + Send>>> = Mutex::new(None);
+}
+
 #[cfg(unix)]
 pub fn install_handler<F>(handler: F)
     where F: Fn() + 'static + Send + Sync {
@@ -12,12 +18,14 @@ pub fn install_handler<F>(handler: F)
     mask.add(SIGINT);
     mask.thread_set_mask().expect("unable to set signal mask");
 
+    set_handler(handler);
+
     // Spawn a thread to catch these signals
     thread::spawn(move || {
         let sig = mask.wait().expect("unable to sigwait");
 
         // Invoke closure
-        handler();
+        invoke();
 
         // Restore default behavior for received signal and unmask it
         unsafe {
@@ -33,22 +41,34 @@ pub fn install_handler<F>(handler: F)
     });
 }
 
-/// On Windows, use SetConsoleCtrlHandler() to send an interrupt
-/// SetConsoleCtrlHandler runs in it's own thread, so it's safe.
 #[cfg(windows)]
-pub fn install() -> Receiver<()> {
+pub fn install_handler<F>(handler: F)
+    where F: Fn() + 'static + Send + Sync {
+
     use kernel32::SetConsoleCtrlHandler;
-    use winapi::{BOOL, DWORD, TRUE};
+    use winapi::{BOOL, DWORD, FALSE};
 
     pub unsafe extern "system" fn ctrl_handler(_: DWORD) -> BOOL {
-        let _ = send_interrupt();
-        TRUE
+        invoke();
+
+        FALSE
     }
 
-    let rx = create_channel();
+    set_handler(handler);
+
     unsafe {
         SetConsoleCtrlHandler(Some(ctrl_handler), TRUE);
     }
+}
 
-    rx
+fn invoke() {
+    if let Some(ref handler) = *CLEANUP.lock().unwrap() {
+        handler()
+    }
+}
+
+fn set_handler<F>(handler: F)
+    where F: Fn() + 'static + Send + Sync {
+
+    *CLEANUP.lock().unwrap() = Some(Box::new(handler));
 }
