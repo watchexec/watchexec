@@ -36,7 +36,7 @@ use std::time::Duration;
 use std::path::{Path, PathBuf};
 
 use notification_filter::NotificationFilter;
-use process::{Process};
+use process::Process;
 use watcher::{Event, Watcher};
 
 fn find_gitignore(path: &Path) -> Option<PathBuf> {
@@ -133,7 +133,7 @@ fn main() {
 
     // Start child process initially, if necessary
     if args.run_initially {
-         if args.clear_screen {
+        if args.clear_screen {
             cli::clear_screen();
         }
 

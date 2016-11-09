@@ -6,7 +6,8 @@ lazy_static! {
 
 #[cfg(unix)]
 pub fn install_handler<F>(handler: F)
-    where F: Fn() + 'static + Send + Sync {
+    where F: Fn() + 'static + Send + Sync
+{
 
     use std::thread;
     use nix::sys::signal::*;
@@ -29,7 +30,9 @@ pub fn install_handler<F>(handler: F)
 
         // Restore default behavior for received signal and unmask it
         unsafe {
-            let _ = sigaction(sig, &SigAction::new(SigHandler::SigDfl, SaFlags::empty(), SigSet::empty()));
+            let _ =
+                sigaction(sig,
+                          &SigAction::new(SigHandler::SigDfl, SaFlags::empty(), SigSet::empty()));
         }
 
         let mut new_mask = SigSet::empty();
@@ -43,7 +46,8 @@ pub fn install_handler<F>(handler: F)
 
 #[cfg(windows)]
 pub fn install_handler<F>(handler: F)
-    where F: Fn() + 'static + Send + Sync {
+    where F: Fn() + 'static + Send + Sync
+{
 
     use kernel32::SetConsoleCtrlHandler;
     use winapi::{BOOL, DWORD, FALSE, TRUE};
@@ -68,7 +72,8 @@ fn invoke() {
 }
 
 fn set_handler<F>(handler: F)
-    where F: Fn() + 'static + Send + Sync {
+    where F: Fn() + 'static + Send + Sync
+{
 
     *CLEANUP.lock().unwrap() = Some(Box::new(handler));
 }

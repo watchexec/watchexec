@@ -31,11 +31,7 @@ mod imp {
 
             command.before_exec(|| setpgid(0, 0).map_err(io::Error::from))
                 .spawn()
-                .and_then(|p| {
-                    Ok(Process {
-                        pid: p.id() as i32,
-                    })
-                })
+                .and_then(|p| Ok(Process { pid: p.id() as i32 }))
         }
 
         pub fn kill(&self) {
@@ -115,9 +111,7 @@ mod imp {
                         panic!("failed to add to job object: {}", last_err());
                     }
 
-                    Ok(Process {
-                        job: job,
-                    })
+                    Ok(Process { job: job })
                 })
         }
 
