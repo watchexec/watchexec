@@ -46,7 +46,7 @@ pub fn install_handler<F>(handler: F)
     where F: Fn() + 'static + Send + Sync {
 
     use kernel32::SetConsoleCtrlHandler;
-    use winapi::{BOOL, DWORD, FALSE};
+    use winapi::{BOOL, DWORD, FALSE, TRUE};
 
     pub unsafe extern "system" fn ctrl_handler(_: DWORD) -> BOOL {
         invoke();

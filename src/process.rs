@@ -135,7 +135,7 @@ mod imp {
     }
 
     impl Drop for Process {
-        fn drop(&self) {
+        fn drop(&mut self) {
             unsafe {
                 let _ = CloseHandle(self.job);
             }
