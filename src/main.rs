@@ -1,4 +1,3 @@
-#![feature(mpsc_select)]
 #![feature(process_exec)]
 
 #[macro_use]
@@ -24,19 +23,20 @@ extern crate mktemp;
 
 mod cli;
 mod gitignore;
-mod interrupt_handler;
+mod interrupt;
 mod notification_filter;
 mod process;
 mod watcher;
 
 use std::collections::HashMap;
 use std::env;
+use std::sync::{Arc, RwLock};
 use std::sync::mpsc::{channel, Receiver};
 use std::time::Duration;
 use std::path::{Path, PathBuf};
 
 use notification_filter::NotificationFilter;
-use process::{Process, ProcessReaper};
+use process::{Process};
 use watcher::{Event, Watcher};
 
 fn find_gitignore(path: &Path) -> Option<PathBuf> {
@@ -79,7 +79,19 @@ fn init_logger(debug: bool) {
 }
 
 fn main() {
-    let interrupt_rx = interrupt_handler::install();
+    let child_process: Arc<RwLock<Option<Process>>> = Arc::new(RwLock::new(None));
+
+    let weak_child = Arc::downgrade(&child_process);
+    interrupt::install_handler(move || {
+        if let Some(lock) = weak_child.upgrade() {
+            let strong = lock.read().unwrap();
+            if let Some(ref child) = *strong {
+                child.kill();
+                child.wait();
+            }
+        }
+    });
+
     let args = cli::get_args();
 
     init_logger(args.debug);
@@ -119,89 +131,74 @@ fn main() {
         }
     }
 
-    let cmd = args.cmd;
-
-    let (child_finish_tx, child_finish_rx) = channel();
-    let reaper = ProcessReaper::new(child_finish_tx);
-
-    let mut child_process = if args.run_initially {
-        if args.clear_screen {
+    // Start child process initially, if necessary
+    if args.run_initially {
+         if args.clear_screen {
             cli::clear_screen();
         }
 
-        Process::new(&cmd, vec![]).ok()
-    } else {
-        None
-    };
+        let mut guard = child_process.write().unwrap();
+        *guard = Process::new(&args.cmd, vec![]).ok();
+    }
 
-    while !interrupt_handler::interrupt_requested() {
-        if let Some(paths) = wait(&rx, &interrupt_rx, &filter) {
+    loop {
+        let paths = wait(&rx, &filter);
+        if let Some(path) = paths.get(0) {
+            debug!("Path updated: {:?}", path);
+        }
 
-            if let Some(path) = paths.get(0) {
-                debug!("Path updated: {:?}", path);
-            }
+        //. Wait for current child process to exit
+        {
+            let guard = child_process.read().unwrap();
 
-            if let Some(mut child) = child_process {
+            if let Some(ref child) = *guard {
                 if args.restart {
                     debug!("Killing child process");
                     child.kill();
                 }
 
                 debug!("Waiting for process to exit...");
-                reaper.wait_process(child);
-                select! {
-                    _ = child_finish_rx.recv() => {},
-                    _ = interrupt_rx.recv() => break
-                };
+                child.wait();
             }
+        }
 
-            if args.clear_screen {
-                cli::clear_screen();
-            }
+        // Launch child process
+        if args.clear_screen {
+            cli::clear_screen();
+        }
 
-            child_process = Process::new(&cmd, paths).ok();
+        {
+            let mut lock = child_process.write().unwrap();
+            *lock = Process::new(&args.cmd, paths).ok();
         }
     }
 }
 
-fn wait(rx: &Receiver<Event>,
-        interrupt_rx: &Receiver<()>,
-        filter: &NotificationFilter)
-        -> Option<Vec<PathBuf>> {
+fn wait(rx: &Receiver<Event>, filter: &NotificationFilter) -> Vec<PathBuf> {
     let mut paths = vec![];
     let mut cache = HashMap::new();
 
     loop {
-        select! {
-            _ = interrupt_rx.recv() => { return None; },
-            ev = rx.recv() => {
-                let e = ev.expect("error when reading event");
+        let e = rx.recv().expect("error when reading event");
 
-                if let Some(ref path) = e.path {
-                    // Ignore cache for the initial file. Otherwise, in
-                    // debug mode it's hard to track what's going on
-                    let excluded = filter.is_excluded(path);
-                    if !cache.contains_key(path) {
-                        cache.insert(path.to_owned(), excluded);
-                    }
-
-                    if !excluded {
-                        paths.push(path.to_owned());
-                        break;
-                    }
-                }
+        if let Some(ref path) = e.path {
+            // Ignore cache for the initial file. Otherwise, in
+            // debug mode it's hard to track what's going on
+            let excluded = filter.is_excluded(path);
+            if !cache.contains_key(path) {
+                cache.insert(path.to_owned(), excluded);
             }
-        };
+
+            if !excluded {
+                paths.push(path.to_owned());
+                break;
+            }
+        }
     }
 
     // Wait for filesystem activity to cool off
-    // Unfortunately, we can't use select! with recv_timeout :(
     let timeout = Duration::from_millis(500);
     while let Ok(e) = rx.recv_timeout(timeout) {
-        if interrupt_handler::interrupt_requested() {
-            break;
-        }
-
         if let Some(ref path) = e.path {
             if cache.contains_key(path) {
                 continue;
@@ -218,5 +215,5 @@ fn wait(rx: &Receiver<Event>,
         }
     }
 
-    Some(paths)
+    paths
 }

@@ -1,6 +1,4 @@
 use std::path::PathBuf;
-use std::sync::mpsc::{channel, Receiver, Sender};
-use std::thread;
 
 pub use self::imp::*;
 
@@ -12,7 +10,6 @@ mod imp {
 
     pub struct Process {
         pid: i32,
-        killed: bool,
     }
 
     impl Process {
@@ -37,17 +34,12 @@ mod imp {
                 .and_then(|p| {
                     Ok(Process {
                         pid: p.id() as i32,
-                        killed: false,
                     })
                 })
         }
 
-        pub fn kill(&mut self) {
+        pub fn kill(&self) {
             use libc;
-
-            if self.killed {
-                return;
-            }
 
             extern "C" {
                 fn killpg(pgrp: libc::pid_t, sig: libc::c_int) -> libc::c_int;
@@ -56,20 +48,12 @@ mod imp {
             unsafe {
                 killpg(self.pid, libc::SIGTERM);
             }
-
-            self.killed = true;
         }
 
-        pub fn wait(&mut self) {
+        pub fn wait(&self) {
             use nix::sys::wait::waitpid;
 
             let _ = waitpid(-self.pid, None);
-        }
-    }
-
-    impl Drop for Process {
-        fn drop(&mut self) {
-            self.kill();
         }
     }
 }
@@ -86,7 +70,6 @@ mod imp {
 
     pub struct Process {
         job: HANDLE,
-        killed: bool,
     }
 
     impl Process {
@@ -134,24 +117,17 @@ mod imp {
 
                     Ok(Process {
                         job: job,
-                        killed: false,
                     })
                 })
         }
 
-        pub fn kill(&mut self) {
-            if self.killed {
-                return;
-            }
-
+        pub fn kill(&self) {
             unsafe {
                 let _ = TerminateJobObject(self.job, 1);
             }
-
-            self.killed = true;
         }
 
-        pub fn wait(&mut self) {
+        pub fn wait(&self) {
             unsafe {
                 let _ = WaitForSingleObject(self.job, INFINITE);
             }
@@ -159,7 +135,7 @@ mod imp {
     }
 
     impl Drop for Process {
-        fn drop(&mut self) {
+        fn drop(&self) {
             unsafe {
                 let _ = CloseHandle(self.job);
             }
@@ -167,36 +143,7 @@ mod imp {
     }
 
     unsafe impl Send for Process {}
-}
-
-/// Watches for child process death, notifying callers via a channel.
-///
-/// On Windows, we don't have SIGCHLD, and even if we did, we'd still need
-/// to relay that over a channel.
-pub struct ProcessReaper {
-    processes_tx: Sender<Process>,
-}
-
-impl ProcessReaper {
-    pub fn new(tx: Sender<()>) -> ProcessReaper {
-        let (processes_tx, processes_rx): (Sender<Process>, Receiver<Process>) = channel();
-
-        thread::spawn(move || {
-            loop {
-                while let Ok(mut process) = processes_rx.recv() {
-                    process.wait();
-
-                    let _ = tx.send(());
-                }
-            }
-        });
-
-        ProcessReaper { processes_tx: processes_tx }
-    }
-
-    pub fn wait_process(&self, process: imp::Process) {
-        let _ = self.processes_tx.send(process);
-    }
+    unsafe impl Sync for Process {}
 }
 
 fn get_single_updated_path(paths: &[PathBuf]) -> Option<&str> {
