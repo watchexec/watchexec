@@ -211,7 +211,7 @@ mod tests {
     fn test_wait() {
         let file = Temp::new_file().unwrap();
         let path = file.to_path_buf();
-        let mut process = Process::new(&format!("echo hi > {}", path.to_str().unwrap()), vec![])
+        let process = Process::new(&format!("echo hi > {}", path.to_str().unwrap()), vec![])
             .unwrap();
         process.wait();
 
@@ -223,7 +223,7 @@ mod tests {
         let file = Temp::new_file().unwrap();
         let path = file.to_path_buf();
 
-        let mut process = Process::new(&format!("sleep 20; echo hi > {}", path.to_str().unwrap()),
+        let process = Process::new(&format!("sleep 20; echo hi > {}", path.to_str().unwrap()),
                                        vec![])
             .unwrap();
         thread::sleep(Duration::from_millis(250));
