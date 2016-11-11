@@ -10,8 +10,13 @@ readme = "README.md"
 keywords = ["watcher", "inotify", "fsevents", "kqueue"]
 license = "Apache-2.0"
 
+[profile.dev]
+panic = "abort"
+
 [profile.release]
 lto = true
+opt-level = "s"
+panic = "abort"
 
 [dependencies]
 glob = "0.2.11"
