@@ -15,7 +15,6 @@ panic = "abort"
 
 [profile.release]
 lto = true
-opt-level = "s"
 panic = "abort"
 
 [dependencies]

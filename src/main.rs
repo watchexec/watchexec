@@ -1,6 +1,4 @@
 #![feature(process_exec)]
-#![feature(alloc_system)]
-extern crate alloc_system;
 
 #[macro_use]
 extern crate clap;
