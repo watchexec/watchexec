@@ -6,7 +6,6 @@ use clap::{App, Arg};
 #[derive(Debug)]
 pub struct Args {
     pub cmd: String,
-    pub paths: Vec<String>,
     pub filters: Vec<String>,
     pub ignores: Vec<String>,
     pub clear_screen: bool,
@@ -34,13 +33,6 @@ pub fn get_args() -> Args {
     let args = App::new("watchexec")
         .version(crate_version!())
         .about("Execute commands when watched files change")
-        .arg(Arg::with_name("path")
-            .help("Path to watch [default: .]")
-            .short("w")
-            .long("watch")
-            .number_of_values(1)
-            .multiple(true)
-            .takes_value(true))
         .arg(Arg::with_name("command")
             .help("Command to execute")
             .multiple(true)
@@ -92,7 +84,6 @@ pub fn get_args() -> Args {
         .get_matches();
 
     let cmd = values_t!(args.values_of("command"), String).unwrap().join(" ");
-    let paths = values_t!(args.values_of("path"), String).unwrap_or(vec![String::from(".")]);
     let mut filters = values_t!(args.values_of("filter"), String).unwrap_or(vec![]);
 
     if let Some(extensions) = args.values_of("extensions") {
@@ -121,7 +112,6 @@ pub fn get_args() -> Args {
 
     Args {
         cmd: cmd,
-        paths: paths,
         filters: filters,
         ignores: ignores,
         clear_screen: args.is_present("clear"),
