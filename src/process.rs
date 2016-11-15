@@ -16,6 +16,7 @@ mod imp {
         pub fn new(cmd: &str, updated_paths: Vec<PathBuf>) -> Result<Process> {
             use std::io;
             use std::os::unix::process::CommandExt;
+            use libc::exit;
             use nix::unistd::*;
 
             let mut command = Command::new("sh");
@@ -42,9 +43,12 @@ mod imp {
                 },
                 Ok(ForkResult::Child) => {
                     let _ = setpgid(0, 0);
-                    let e = command.exec();
+                    let _ = command.exec();
 
-                    Err(e)
+                    // If we get here, there isn't much we can do
+                    unsafe {
+                        exit(1);
+                    }
                 }
                 Err(e) => { Err(io::Error::from(e)) }
             }
