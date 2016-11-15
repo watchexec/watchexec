@@ -16,7 +16,7 @@ mod imp {
         pub fn new(cmd: &str, updated_paths: Vec<PathBuf>) -> Result<Process> {
             use std::io;
             use std::os::unix::process::CommandExt;
-            use nix::unistd::setpgid;
+            use nix::unistd::*;
 
             let mut command = Command::new("sh");
             command.arg("-c").arg(cmd);
@@ -29,9 +29,25 @@ mod imp {
                 command.env("WATCHEXEC_COMMON_PATH", common_path);
             }
 
-            command.before_exec(|| setpgid(0, 0).map_err(io::Error::from))
-                .spawn()
-                .and_then(|p| Ok(Process { pid: p.id() as i32 }))
+            // Until process_exec lands in stable, handle fork/exec ourselves
+            //command.before_exec(|| setpgid(0, 0).map_err(io::Error::from))
+                //.spawn()
+                //.and_then(|p| Ok(Process { pid: p.id() as i32 }))
+
+            match fork() {
+                Ok(ForkResult::Parent {child, .. }) => {
+                    Ok(Process {
+                        pid: child as i32
+                    })
+                },
+                Ok(ForkResult::Child) => {
+                    let _ = setpgid(0, 0);
+                    let e = command.exec();
+
+                    Err(e)
+                }
+                Err(e) => { Err(io::Error::from(e)) }
+            }
         }
 
         pub fn kill(&self) {
