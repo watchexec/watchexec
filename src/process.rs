@@ -69,7 +69,7 @@ mod imp {
         pub fn wait(&self) {
             use nix::sys::wait::waitpid;
 
-            let _ = waitpid(-self.pid, None);
+            let _ = waitpid(self.pid, None);
         }
     }
 }
