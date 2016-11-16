@@ -4,20 +4,21 @@ pub use self::imp::*;
 
 #[cfg(target_family = "unix")]
 mod imp {
+    use libc::pid_t;
     use std::io::Result;
     use std::path::PathBuf;
     use std::process::Command;
 
     pub struct Process {
-        pid: i32,
+        pgid: pid_t,
     }
 
     impl Process {
         pub fn new(cmd: &str, updated_paths: Vec<PathBuf>) -> Result<Process> {
-            use std::io;
-            use std::os::unix::process::CommandExt;
             use libc::exit;
             use nix::unistd::*;
+            use std::io;
+            use std::os::unix::process::CommandExt;
 
             let mut command = Command::new("sh");
             command.arg("-c").arg(cmd);
@@ -35,14 +36,28 @@ mod imp {
                 //.spawn()
                 //.and_then(|p| Ok(Process { pid: p.id() as i32 }))
 
+            // Wait for child to call setpgid()
+            // Else, we risk racing waitpid/killpg (mostly just in tests, but hey)
+            let (r, w) = try!(pipe());
+
             match fork() {
                 Ok(ForkResult::Parent {child, .. }) => {
+                    let mut buffer = vec![0];
+                    let _ = read(r, &mut buffer);
+                    let _ = close(r);
+                    let _ = close(w);
+
                     Ok(Process {
-                        pid: child as i32
+                        pgid: child
                     })
                 },
                 Ok(ForkResult::Child) => {
                     let _ = setpgid(0, 0);
+
+                    let _ = write(w, &[42]);
+                    let _ = close(w);
+                    let _ = close(r);
+
                     let _ = command.exec();
 
                     // If we get here, there isn't much we can do
@@ -55,21 +70,21 @@ mod imp {
         }
 
         pub fn kill(&self) {
-            use libc;
+            use libc::*;
 
             extern "C" {
-                fn killpg(pgrp: libc::pid_t, sig: libc::c_int) -> libc::c_int;
+                fn killpg(pgrp: pid_t, sig: c_int) -> c_int;
             }
 
             unsafe {
-                killpg(self.pid, libc::SIGTERM);
+                killpg(self.pgid, SIGTERM);
             }
         }
 
         pub fn wait(&self) {
             use nix::sys::wait::waitpid;
 
-            let _ = waitpid(self.pid, None);
+            while let Ok(_) = waitpid(-self.pgid, None) {}
         }
     }
 }
@@ -201,8 +216,6 @@ fn get_longest_common_path(paths: &[PathBuf]) -> Option<String> {
 #[cfg(target_family = "unix")]
 mod tests {
     use std::path::{Path, PathBuf};
-    use std::thread;
-    use std::time::Duration;
 
     use mktemp::Temp;
 
@@ -246,7 +259,6 @@ mod tests {
         let process = Process::new(&format!("sleep 20; echo hi > {}", path.to_str().unwrap()),
                                        vec![])
             .unwrap();
-        thread::sleep(Duration::from_millis(250));
         process.kill();
         process.wait();
 
