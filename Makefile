@@ -15,7 +15,7 @@ test:
 		@cargo test
 
 doc: doc/watchexec.1.ronn
-		@ronn --roff doc/watchexec.1.ronn
+		@ronn doc/watchexec.1.ronn
 
 install: release
 		@cp target/release/watchexec /usr/bin

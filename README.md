@@ -17,7 +17,7 @@ Example use cases:
 
 * Simple invocation and use
 * Runs on OS X, Linux and Windows
-* Monitors current directory and all subdirectories for changes (use `--watch` to override)
+* Monitors current directory and all subdirectories for changes
 	* Uses most efficient event polling mechanism for your platform (except for [BSD](https://github.com/passcod/rsnotify#todo))
 * Coalesces multiple filesystem events into one, for editors that use swap/backup files during saving
 * By default, uses `.gitignore` to determine which files to ignore notifications for
@@ -41,10 +41,6 @@ Example use cases:
 Watch all JavaScript, CSS and HTML files in the current directory and all subdirectories for changes, running `make` when a change is detected:
 
 	$ watchexec --exts js,css,html make
-
-Watch all files below `src` and subdirectories for changes, running `make test` when a change is detected:
-
-    $ watchexec --watch src make test
 
 Call `make test` when any file changes in this directory/subdirectory, except for everything below `target`:
 

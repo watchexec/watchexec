@@ -3,21 +3,18 @@ watchexec(1) -- execute commands when watched files change
 
 ## SYNOPSIS
 
-watchexec [`--watch` | `-w` <path>] [`--exts` | `-e` <extensions>]... [`--filter` | `-f` <pattern>]... [`--ignore` | `-i` <pattern>]... [`--restart` | `-r`] [`--clear` | `-c`] [`--postpone` | `-p`] [`--force-poll` <interval>] [`--debug` | `-d`] [`--no-vcs-ignore`] <command> [<argument>...]
+watchexec [`--exts` | `-e` <extensions>]... [`--filter` | `-f` <pattern>]... [`--ignore` | `-i` <pattern>]... [`--restart` | `-r`] [`--clear` | `-c`] [`--postpone` | `-p`] [`--force-poll` <interval>] [`--debug` | `-d`] [`--no-vcs-ignore`] <cmd> [<argument>...]
 
 ## DESCRIPTION
 
-Recursively monitors directories for changes, executing the command when a filesystem change (add/modify/delete) is detected. By default, watchexec uses efficient kernel-level mechanisms to watch for changes.
+Recursively monitors the current directory for changes, executing the command when a filesystem change is detected. By default, watchexec uses efficient kernel-level mechanisms to watch for changes.
 
 At startup, the specified <command> (passing any supplied <argument>s) is run once, and watchexec begins monitoring for changes.
 
 ## OPTIONS
 
-* <command>:
-Command to run when watched files are modified, and at startup, unless `--postpone` is specified. All <argument>s are passed to <command>.
-
-* `-w`, `--watch` <path>:
-Specifies the path to watch. This argument can be specified multiple times, with all paths being watched simultaneously. Defaults to current directory.
+* <cmd>:
+Command to run when watched files are modified, and at startup, unless `--postpone` is specified. All <argument>s are passed to <cmd>.
 
 * `-e`, `--exts` <extensions>:
 Comma-separated list of file extensions to filter by. Leading dots are allowed (.rs) are allowed. (This is a shorthand for `-f`).
@@ -29,7 +26,7 @@ Ignores modifications from paths that do not match <pattern>. This option can be
 Ignores modifications from paths that match <pattern>. This option can be specified multiple times, and a match on any pattern causes the path to be ignored.
 
 * `-r`, `--restart`:
-Sends SIGTERM to the child process if it is still running when subsequent file modifications are detected, then waits for the child to exit.
+Sends `SIGTERM` to the child process if it is still running when subsequent file modifications are detected, then waits for the child to exit.
 
 * `-c`, `--clear`:
 Clears the screen before executing <command>.
@@ -41,7 +38,7 @@ Postpone execution of <command> until the first file modification is detected.
 Prints diagnostic messages to STDERR
 
 * `--force-poll` <interval>:
-When watching directories, poll for changes every <interval> ms instead of using system-specific notification mechanisms (such as inotify). This is useful when you are monitoring NFS shares.
+Poll for changes every <interval> ms instead of using system-specific notification mechanisms (such as inotify). This is useful when you are monitoring NFS shares.
 
 * `--no-vcs-ignore`:
 Skip loading of version control system (VCS) ignore files. By default, watchexec loads .gitignore files in the current directory (or parent directories) and uses them to populate the ignore list.
