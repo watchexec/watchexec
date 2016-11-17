@@ -17,7 +17,10 @@ mod imp {
         pub fn new(cmd: &str, updated_paths: Vec<PathBuf>) -> Result<Process> {
             use libc::exit;
             use nix::unistd::*;
+            use std::fs::File;
             use std::io;
+            use std::io::{Read, Write};
+            use std::os::unix::io::FromRawFd;
             use std::os::unix::process::CommandExt;
 
             let mut command = Command::new("sh");
@@ -32,30 +35,32 @@ mod imp {
             }
 
             // Until process_exec lands in stable, handle fork/exec ourselves
-            //command.before_exec(|| setpgid(0, 0).map_err(io::Error::from))
-                //.spawn()
-                //.and_then(|p| Ok(Process { pid: p.id() as i32 }))
+            // command.before_exec(|| setpgid(0, 0).map_err(io::Error::from))
+            // .spawn()
+            // .and_then(|p| Ok(Process { pid: p.id() as i32 }))
 
             // Wait for child to call setpgid()
             // Else, we risk racing waitpid/killpg (mostly just in tests, but hey)
             let (r, w) = try!(pipe());
 
             match fork() {
-                Ok(ForkResult::Parent {child, .. }) => {
-                    let mut buffer = vec![0];
-                    let _ = read(r, &mut buffer);
-                    let _ = close(r);
+                Ok(ForkResult::Parent { child, .. }) => {
+                    {
+                        let mut reader = unsafe { File::from_raw_fd(r) };
+                        let mut buffer = vec![0];
+                        let _ = reader.read_exact(&mut buffer);
+                    }
                     let _ = close(w);
 
-                    Ok(Process {
-                        pgid: child
-                    })
-                },
+                    Ok(Process { pgid: child })
+                }
                 Ok(ForkResult::Child) => {
                     let _ = setpgid(0, 0);
 
-                    let _ = write(w, &[42]);
-                    let _ = close(w);
+                    {
+                        let mut writer = unsafe { File::from_raw_fd(w) };
+                        let _ = writer.write_all(&[42]);
+                    }
                     let _ = close(r);
 
                     let _ = command.exec();
@@ -65,7 +70,7 @@ mod imp {
                         exit(1);
                     }
                 }
-                Err(e) => { Err(io::Error::from(e)) }
+                Err(e) => Err(io::Error::from(e)),
             }
         }
 
@@ -257,7 +262,7 @@ mod tests {
         let path = file.to_path_buf();
 
         let process = Process::new(&format!("sleep 20; echo hi > {}", path.to_str().unwrap()),
-                                       vec![])
+                                   vec![])
             .unwrap();
         process.kill();
         process.wait();
