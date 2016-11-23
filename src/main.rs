@@ -120,7 +120,11 @@ fn main() {
         warn!("Polling for changes every {} ms", args.poll_interval);
     }
 
-    watcher.watch(cwd).expect("unable to watch cwd");
+    let result = watcher.watch(cwd);
+    if let Err(e) = result {
+        error!("Unable to watch directory/subdirectory: {}", e);
+        return;
+    }
 
     // Start child process initially, if necessary
     if args.run_initially {
@@ -129,7 +133,7 @@ fn main() {
         }
 
         let mut guard = child_process.write().unwrap();
-        *guard = Process::new(&args.cmd, vec![]).ok();
+        *guard = Some(process::spawn(&args.cmd, vec![]));
     }
 
     loop {
@@ -160,7 +164,7 @@ fn main() {
 
         {
             let mut guard = child_process.write().unwrap();
-            *guard = Process::new(&args.cmd, paths).ok();
+            *guard = Some(process::spawn(&args.cmd, paths));
         }
     }
 }

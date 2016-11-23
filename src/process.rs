@@ -1,6 +1,10 @@
 use std::path::PathBuf;
 
-pub use self::imp::*;
+pub fn spawn(cmd: &str, updated_paths: Vec<PathBuf>) -> Process {
+    self::imp::Process::new(cmd, updated_paths).expect("unable to spawn process")
+}
+
+pub use self::imp::Process;
 
 #[cfg(target_family = "unix")]
 mod imp {
@@ -224,7 +228,7 @@ mod tests {
 
     use mktemp::Temp;
 
-    use super::imp::Process;
+    use super::spawn;
     use super::get_longest_common_path;
 
     fn file_contents(path: &Path) -> String {
@@ -240,17 +244,14 @@ mod tests {
 
     #[test]
     fn test_start() {
-        let process = Process::new("echo hi", vec![]);
-
-        assert!(process.is_ok());
+        let _ = spawn("echo hi", vec![]);
     }
 
     #[test]
     fn test_wait() {
         let file = Temp::new_file().unwrap();
         let path = file.to_path_buf();
-        let process = Process::new(&format!("echo hi > {}", path.to_str().unwrap()), vec![])
-            .unwrap();
+        let process = spawn(&format!("echo hi > {}", path.to_str().unwrap()), vec![]);
         process.wait();
 
         assert!(file_contents(&path).starts_with("hi"));
@@ -261,9 +262,8 @@ mod tests {
         let file = Temp::new_file().unwrap();
         let path = file.to_path_buf();
 
-        let process = Process::new(&format!("sleep 20; echo hi > {}", path.to_str().unwrap()),
-                                   vec![])
-            .unwrap();
+        let process = spawn(&format!("sleep 20; echo hi > {}", path.to_str().unwrap()),
+                                   vec![]);
         process.kill();
         process.wait();
 
