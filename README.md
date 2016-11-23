@@ -56,16 +56,11 @@ Run `make` when any file changes, using the `.gitignore` file in the current dir
 
 ##Installation
 
-###Cargo (nightly Rust only)
+###Cargo
 
-If you're running nightly Rust, install it using cargo:
+watchexec requires Rust 1.9 or later. You can install it using cargo:
 
     $ cargo install watchexec
-
-If you're using rustup, install it like this:
-
-    $ rustup toolchain install nightly
-    $ rustup run nightly cargo install watchexec
 
 ###OS X with Homebrew
 
@@ -81,7 +76,7 @@ Use the GitHub Releases tab to obtain the binary. In the future, I'll look at ad
 
 ##Building
 
-Currently, **watchexec requires a recent nightly Rust** to build, due to use of unstable features.
+Rust 1.9 or later is required.
 
 ##Credits
 
