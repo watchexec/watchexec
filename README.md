@@ -46,6 +46,10 @@ Call `make test` when any file changes in this directory/subdirectory, except fo
 
     $ watchexec -i target make test
 
+Call `ls -la` when any file changes in this directory/subdirectory:
+
+    $ watchexec -- ls -la
+
 Call/restart `python server.py` when any Python file in the current directory (and all subdirectories) changes:
 
     $ watchexec -e py -r python server.py
