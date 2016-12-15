@@ -21,9 +21,9 @@ extern crate mktemp;
 
 mod cli;
 mod gitignore;
-mod interrupt;
 mod notification_filter;
 mod process;
+mod signal;
 mod watcher;
 
 use std::collections::HashMap;
@@ -36,6 +36,7 @@ use std::path::{PathBuf};
 
 use notification_filter::NotificationFilter;
 use process::Process;
+use signal::Signal;
 use watcher::{Event, Watcher};
 
 fn find_gitignore(path: &Path) -> Option<PathBuf> {
@@ -81,12 +82,22 @@ fn main() {
     let child_process: Arc<RwLock<Option<Process>>> = Arc::new(RwLock::new(None));
     let weak_child = Arc::downgrade(&child_process);
 
-    interrupt::install_handler(move || {
+    signal::install_handler(move |sig: Signal| {
         if let Some(lock) = weak_child.upgrade() {
             let strong = lock.read().unwrap();
             if let Some(ref child) = *strong {
-                child.kill();
-                child.wait();
+                match sig {
+                    Signal::Terminate => {
+                        child.kill();
+                        child.wait();
+                    },
+                    Signal::Stop => {
+                        child.pause();
+                    },
+                    Signal::Continue => {
+                        child.resume();
+                    }
+                }
             }
         }
     });

@@ -8,6 +8,7 @@ pub use self::imp::Process;
 
 #[cfg(target_family = "unix")]
 mod imp {
+    use libc::c_int;
     use libc::pid_t;
     use std::io::Result;
     use std::path::PathBuf;
@@ -79,6 +80,25 @@ mod imp {
         }
 
         pub fn kill(&self) {
+            use libc::SIGTERM;
+
+            self.signal(SIGTERM);
+        }
+
+        pub fn pause(&self) {
+            use libc::SIGTSTP;
+
+            self.signal(SIGTSTP);
+        }
+
+
+        pub fn resume(&self) {
+            use libc::SIGCONT;
+
+            self.signal(SIGCONT);
+        }
+
+        fn signal(&self, sig: c_int) {
             use libc::*;
 
             extern "C" {
@@ -86,8 +106,9 @@ mod imp {
             }
 
             unsafe {
-                killpg(self.pgid, SIGTERM);
+                killpg(self.pgid, sig);
             }
+
         }
 
         pub fn wait(&self) {
@@ -163,6 +184,12 @@ mod imp {
             unsafe {
                 let _ = TerminateJobObject(self.job, 1);
             }
+        }
+
+        pub fn pause(&self) {
+        }
+
+        pub fn resume(&self) {
         }
 
         pub fn wait(&self) {
