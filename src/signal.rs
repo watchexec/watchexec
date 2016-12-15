@@ -53,10 +53,11 @@ pub fn install_handler<F>(handler: F)
 
             let mut new_mask = SigSet::empty();
             new_mask.add(raw_signal);
-            let _ = new_mask.thread_unblock();
 
-            // Re-raise
+            // Re-raise with signal unmasked
+            let _ = new_mask.thread_unblock();
             let _ = raise(raw_signal);
+            let _ = new_mask.thread_block();
         }
     });
 }
