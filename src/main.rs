@@ -164,8 +164,12 @@ fn main() {
 
             if let Some(ref child) = *guard {
                 if args.restart {
-                    debug!("Killing child process");
-                    child.kill();
+                    debug!("Stopping child process");
+                    if kill {
+                        child.kill();
+                    } else {
+                        child.terminate();
+                    }
                 }
 
                 debug!("Waiting for process to exit...");
