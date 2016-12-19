@@ -1,7 +1,7 @@
 .\" generated with Ronn/v0.7.3
 .\" http://github.com/rtomayko/ronn/tree/0.7.3
 .
-.TH "WATCHEXEC" "1" "November 2016" "" ""
+.TH "WATCHEXEC" "1" "December 2016" "" ""
 .
 .SH "NAME"
 \fBwatchexec\fR \- execute commands when watched files change
@@ -30,12 +30,16 @@ Comma\-separated list of file extensions to filter by\. Leading dots are allowed
 Ignores modifications from paths that do not match \fIpattern\fR\. This option can be specified multiple times, where a match on any given pattern causes the path to trigger \fIcommand\fR\.
 .
 .TP
+\fB\-k\fR, \fB\-\-kill\fR
+Send \fBSIGKILL\fR to the child process group instead of \fBSIGTERM\fR\.
+.
+.TP
 \fB\-i\fR, \fB\-\-ignore\fR \fIpattern\fR
 Ignores modifications from paths that match \fIpattern\fR\. This option can be specified multiple times, and a match on any pattern causes the path to be ignored\.
 .
 .TP
 \fB\-r\fR, \fB\-\-restart\fR
-Sends \fBSIGTERM\fR to the child process if it is still running when subsequent file modifications are detected, then waits for the child to exit\.
+Terminates the child process group if it is still running when subsequent file modifications are detected\. By default, sends \fBSIGTERM\fR; use \fB\-\-kill\fR to send \fBSIGKILL\fR\.
 .
 .TP
 \fB\-c\fR, \fB\-\-clear\fR

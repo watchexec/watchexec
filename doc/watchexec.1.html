@@ -88,8 +88,9 @@
 <dt class="flush"><var>cmd</var></dt><dd><p>Command to run when watched files are modified, and at startup, unless <code>--postpone</code> is specified. All <var>argument</var>s are passed to <var>cmd</var>.</p></dd>
 <dt><code>-e</code>, <code>--exts</code> <var>extensions</var></dt><dd><p>Comma-separated list of file extensions to filter by. Leading dots are allowed (.rs) are allowed. (This is a shorthand for <code>-f</code>).</p></dd>
 <dt><code>-f</code>, <code>--filter</code> <var>pattern</var></dt><dd><p>Ignores modifications from paths that do not match <var>pattern</var>. This option can be specified multiple times, where a match on any given pattern causes the path to trigger <em>command</em>.</p></dd>
+<dt><code>-k</code>, <code>--kill</code></dt><dd><p>Send <code>SIGKILL</code> to the child process group instead of <code>SIGTERM</code>.</p></dd>
 <dt><code>-i</code>, <code>--ignore</code> <em>pattern</em></dt><dd><p>Ignores modifications from paths that match <var>pattern</var>. This option can be specified multiple times, and a match on any pattern causes the path to be ignored.</p></dd>
-<dt><code>-r</code>, <code>--restart</code></dt><dd><p>Sends <code>SIGTERM</code> to the child process if it is still running when subsequent file modifications are detected, then waits for the child to exit.</p></dd>
+<dt><code>-r</code>, <code>--restart</code></dt><dd><p>Terminates the child process group if it is still running when subsequent file modifications are detected. By default, sends <code>SIGTERM</code>; use <code>--kill</code> to send <code>SIGKILL</code>.</p></dd>
 <dt><code>-c</code>, <code>--clear</code></dt><dd><p>Clears the screen before executing <var>command</var>.</p></dd>
 <dt><code>-p</code>, <code>--postpone</code></dt><dd><p>Postpone execution of <var>command</var> until the first file modification is detected.</p></dd>
 <dt><code>-d</code>, <code>--debug</code></dt><dd><p>Prints diagnostic messages to STDERR</p></dd>
@@ -127,7 +128,7 @@
 
   <ol class='man-decor man-foot man foot'>
     <li class='tl'></li>
-    <li class='tc'>November 2016</li>
+    <li class='tc'>December 2016</li>
     <li class='tr'>watchexec(1)</li>
   </ol>
 

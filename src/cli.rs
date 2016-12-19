@@ -9,6 +9,7 @@ pub struct Args {
     pub filters: Vec<String>,
     pub ignores: Vec<String>,
     pub clear_screen: bool,
+    pub kill: bool,
     pub restart: bool,
     pub debug: bool,
     pub run_initially: bool,
@@ -81,6 +82,9 @@ pub fn get_args() -> Args {
             .help("Forces polling mode")
             .long("force-poll")
             .value_name("interval"))
+        .arg(Arg::with_name("kill")
+             .help("Send SIGKILL to child processes")
+             .long("kill"))
         .get_matches();
 
     let cmd = values_t!(args.values_of("command"), String).unwrap().join(" ");
@@ -115,6 +119,7 @@ pub fn get_args() -> Args {
         filters: filters,
         ignores: ignores,
         clear_screen: args.is_present("clear"),
+        kill: args.is_present("kill"),
         restart: args.is_present("restart"),
         debug: args.is_present("debug"),
         run_initially: !args.is_present("postpone"),

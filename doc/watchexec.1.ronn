@@ -22,11 +22,14 @@ Comma-separated list of file extensions to filter by. Leading dots are allowed (
 * `-f`, `--filter` <pattern>:
 Ignores modifications from paths that do not match <pattern>. This option can be specified multiple times, where a match on any given pattern causes the path to trigger *command*.
 
+* `-k`, `--kill`:
+Send `SIGKILL` to the child process group instead of `SIGTERM`.
+
 * `-i`, `--ignore` *pattern*:
 Ignores modifications from paths that match <pattern>. This option can be specified multiple times, and a match on any pattern causes the path to be ignored.
 
 * `-r`, `--restart`:
-Sends `SIGTERM` to the child process if it is still running when subsequent file modifications are detected, then waits for the child to exit.
+Terminates the child process group if it is still running when subsequent file modifications are detected. By default, sends `SIGTERM`; use `--kill` to send `SIGKILL`.
 
 * `-c`, `--clear`:
 Clears the screen before executing <command>.

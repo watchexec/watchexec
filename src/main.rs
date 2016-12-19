@@ -79,8 +79,10 @@ fn init_logger(debug: bool) {
 }
 
 fn main() {
+    let args = cli::get_args();
     let child_process: Arc<RwLock<Option<Process>>> = Arc::new(RwLock::new(None));
     let weak_child = Arc::downgrade(&child_process);
+    let kill = args.kill;
 
     signal::install_handler(move |sig: Signal| {
         if let Some(lock) = weak_child.upgrade() {
@@ -88,7 +90,12 @@ fn main() {
             if let Some(ref child) = *strong {
                 match sig {
                     Signal::Terminate => {
-                        child.kill();
+                        if kill {
+                            child.kill();
+                        } else {
+                            child.terminate();
+                        }
+
                         child.wait();
                     },
                     Signal::Stop => {
@@ -101,8 +108,6 @@ fn main() {
             }
         }
     });
-
-    let args = cli::get_args();
 
     init_logger(args.debug);
 
