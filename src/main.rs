@@ -95,15 +95,10 @@ fn main() {
                         } else {
                             child.terminate();
                         }
-
-                        child.wait();
                     },
-                    Signal::Stop => {
-                        child.pause();
-                    },
-                    Signal::Continue => {
-                        child.resume();
-                    }
+                    Signal::Stop => child.pause(),
+                    Signal::Continue => child.resume(),
+                    Signal::ChildExit => child.reap(),
                 }
             }
         }
@@ -153,6 +148,7 @@ fn main() {
     }
 
     loop {
+        debug!("Waiting for filesystem activity");
         let paths = wait(&rx, &filter);
         if let Some(path) = paths.get(0) {
             debug!("Path updated: {:?}", path);
@@ -182,6 +178,7 @@ fn main() {
             cli::clear_screen();
         }
 
+        debug!("Launching child process");
         {
             let mut guard = child_process.write().unwrap();
             *guard = Some(process::spawn(&args.cmd, paths));

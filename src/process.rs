@@ -12,9 +12,12 @@ mod imp {
     use std::io::Result;
     use std::path::PathBuf;
     use std::process::Command;
+    use std::sync::*;
 
     pub struct Process {
         pgid: pid_t,
+        lock: Mutex<bool>,
+        cvar: Condvar,
     }
 
     impl Process {
@@ -55,7 +58,11 @@ mod imp {
                     }
                     let _ = close(w);
 
-                    Ok(Process { pgid: child })
+                    Ok(Process {
+                        pgid: child,
+                        lock: Mutex::new(false),
+                        cvar: Condvar::new(),
+                    })
                 }
                 Ok(ForkResult::Child) => {
                     let _ = setpgid(0, 0);
@@ -85,6 +92,25 @@ mod imp {
             self.signal(SIGTSTP);
         }
 
+        pub fn reap(&self) {
+            use nix::sys::wait::*;
+
+            let mut finished = true;
+            loop {
+                match waitpid(-self.pgid, Some(WNOHANG)) {
+                    Ok(WaitStatus::Exited(_, _)) => finished = finished && true,
+                    Ok(WaitStatus::Signaled(_, _, _)) => finished = finished && true,
+                    Ok(_) => finished = false,
+                    Err(_) => break
+                }
+            }
+
+            if finished {
+                let mut done = self.lock.lock().unwrap();
+                *done = true;
+                self.cvar.notify_one();
+            }
+        }
 
         pub fn resume(&self) {
             self.signal(SIGCONT);
@@ -106,9 +132,10 @@ mod imp {
         }
 
         pub fn wait(&self) {
-            use nix::sys::wait::waitpid;
-
-            while let Ok(_) = waitpid(-self.pgid, None) {}
+            let mut done = self.lock.lock().unwrap();
+            while !*done {
+                done = self.cvar.wait(done).unwrap();
+            }
         }
     }
 }
@@ -181,6 +208,9 @@ mod imp {
         pub fn pause(&self) {
         }
 
+        pub fn reap(&self) {
+        }
+
         pub fn resume(&self) {
         }
 
@@ -189,7 +219,6 @@ mod imp {
                 let _ = TerminateJobObject(self.job, 1);
             }
         }
-
 
         pub fn wait(&self) {
             unsafe {

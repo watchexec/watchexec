@@ -7,7 +7,8 @@ lazy_static! {
 pub enum Signal {
     Terminate,
     Stop,
-    Continue
+    Continue,
+    ChildExit
 }
 
 #[cfg(unix)]
@@ -15,6 +16,7 @@ pub fn install_handler<F>(handler: F)
     where F: Fn(self::Signal) + 'static + Send + Sync
 {
     use std::thread;
+    use libc::c_int;
     use nix::sys::signal::*;
 
     // Mask all signals interesting to us. The mask propagates
@@ -24,20 +26,32 @@ pub fn install_handler<F>(handler: F)
     mask.add(SIGINT);
     mask.add(SIGTSTP);
     mask.add(SIGCONT);
+    mask.add(SIGCHLD);
     mask.thread_set_mask().expect("unable to set signal mask");
 
     set_handler(handler);
+
+    // Indicate interest in SIGCHLD by setting a dummy handler
+    pub extern "C" fn sigchld_handler(_: c_int) {
+    }
+
+    unsafe {
+        let _ = sigaction(SIGCHLD, &SigAction::new(
+                SigHandler::Handler(sigchld_handler), SaFlags::empty(), SigSet::empty()));
+    }
 
     // Spawn a thread to catch these signals
     thread::spawn(move || {
         loop {
             let raw_signal = mask.wait().expect("unable to sigwait");
+            debug!("Received {:?}", raw_signal);
 
             let sig = match raw_signal {
                 SIGTERM => self::Signal::Terminate,
                 SIGINT  => self::Signal::Terminate,
                 SIGTSTP => self::Signal::Stop,
                 SIGCONT => self::Signal::Continue,
+                SIGCHLD => self::Signal::ChildExit,
                 _       => unreachable!()
             };
 
@@ -45,10 +59,12 @@ pub fn install_handler<F>(handler: F)
             invoke(sig);
 
             // Restore default behavior for received signal and unmask it
-            let default_action = SigAction::new(SigHandler::SigDfl, SaFlags::empty(), SigSet::empty());
+            if raw_signal != SIGCHLD {
+                let default_action = SigAction::new(SigHandler::SigDfl, SaFlags::empty(), SigSet::empty());
 
-            unsafe {
-                let _ = sigaction(raw_signal, &default_action);
+                unsafe {
+                    let _ = sigaction(raw_signal, &default_action);
+                }
             }
 
             let mut new_mask = SigSet::empty();
