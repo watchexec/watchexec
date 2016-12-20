@@ -102,7 +102,10 @@ mod imp {
                 match waitpid(-self.pgid, Some(WNOHANG)) {
                     Ok(WaitStatus::Exited(_, _)) |
                     Ok(WaitStatus::Signaled(_, _, _)) => finished = finished && true,
-                    Ok(_) => finished = false,
+                    Ok(_) => {
+                        finished = false;
+                        break;
+                    }
                     Err(_) => break,
                 }
             }
