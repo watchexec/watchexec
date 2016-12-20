@@ -281,52 +281,15 @@ fn get_longest_common_path(paths: &[PathBuf]) -> Option<String> {
 #[cfg(test)]
 #[cfg(target_family = "unix")]
 mod tests {
-    use std::path::{Path, PathBuf};
-
-    use mktemp::Temp;
+    use std::path::PathBuf;
 
     use super::spawn;
     use super::get_longest_common_path;
-
-    fn file_contents(path: &Path) -> String {
-        use std::fs::File;
-        use std::io::Read;
-
-        let mut f = File::open(path).unwrap();
-        let mut s = String::new();
-        f.read_to_string(&mut s).unwrap();
-
-        s
-    }
 
     #[test]
     fn test_start() {
         let _ = spawn("echo hi", vec![]);
     }
-
-    #[test]
-    fn test_wait() {
-        let file = Temp::new_file().unwrap();
-        let path = file.to_path_buf();
-        let process = spawn(&format!("echo hi > {}", path.to_str().unwrap()), vec![]);
-        process.wait();
-
-        assert!(file_contents(&path).starts_with("hi"));
-    }
-
-    #[test]
-    fn test_kill() {
-        let file = Temp::new_file().unwrap();
-        let path = file.to_path_buf();
-
-        let process = spawn(&format!("sleep 20; echo hi > {}", path.to_str().unwrap()),
-                            vec![]);
-        process.kill();
-        process.wait();
-
-        assert!(file_contents(&path) == "");
-    }
-
 
     #[test]
     fn longest_common_path_should_return_correct_value() {
