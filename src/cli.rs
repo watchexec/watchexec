@@ -83,8 +83,8 @@ pub fn get_args() -> Args {
             .long("force-poll")
             .value_name("interval"))
         .arg(Arg::with_name("kill")
-             .help("Send SIGKILL to child processes")
-             .long("kill"))
+            .help("Send SIGKILL to child processes")
+            .long("kill"))
         .get_matches();
 
     let cmd = values_t!(args.values_of("command"), String).unwrap().join(" ");

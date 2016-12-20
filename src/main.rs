@@ -32,7 +32,7 @@ use std::path::Path;
 use std::sync::{Arc, RwLock};
 use std::sync::mpsc::{channel, Receiver};
 use std::time::Duration;
-use std::path::{PathBuf};
+use std::path::PathBuf;
 
 use notification_filter::NotificationFilter;
 use process::Process;
@@ -95,7 +95,7 @@ fn main() {
                         } else {
                             child.terminate();
                         }
-                    },
+                    }
                     Signal::Stop => child.pause(),
                     Signal::Continue => child.resume(),
                     Signal::ChildExit => child.reap(),

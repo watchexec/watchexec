@@ -8,7 +8,7 @@ pub enum Signal {
     Terminate,
     Stop,
     Continue,
-    ChildExit
+    ChildExit,
 }
 
 #[cfg(unix)]
@@ -32,12 +32,13 @@ pub fn install_handler<F>(handler: F)
     set_handler(handler);
 
     // Indicate interest in SIGCHLD by setting a dummy handler
-    pub extern "C" fn sigchld_handler(_: c_int) {
-    }
+    pub extern "C" fn sigchld_handler(_: c_int) {}
 
     unsafe {
-        let _ = sigaction(SIGCHLD, &SigAction::new(
-                SigHandler::Handler(sigchld_handler), SaFlags::empty(), SigSet::empty()));
+        let _ = sigaction(SIGCHLD,
+                          &SigAction::new(SigHandler::Handler(sigchld_handler),
+                                          SaFlags::empty(),
+                                          SigSet::empty()));
     }
 
     // Spawn a thread to catch these signals
@@ -47,12 +48,11 @@ pub fn install_handler<F>(handler: F)
             debug!("Received {:?}", raw_signal);
 
             let sig = match raw_signal {
-                SIGTERM => self::Signal::Terminate,
-                SIGINT  => self::Signal::Terminate,
+                SIGTERM | SIGINT => self::Signal::Terminate,
                 SIGTSTP => self::Signal::Stop,
                 SIGCONT => self::Signal::Continue,
                 SIGCHLD => self::Signal::ChildExit,
-                _       => unreachable!()
+                _ => unreachable!(),
             };
 
             // Invoke closure
@@ -60,7 +60,8 @@ pub fn install_handler<F>(handler: F)
 
             // Restore default behavior for received signal and unmask it
             if raw_signal != SIGCHLD {
-                let default_action = SigAction::new(SigHandler::SigDfl, SaFlags::empty(), SigSet::empty());
+                let default_action =
+                    SigAction::new(SigHandler::SigDfl, SaFlags::empty(), SigSet::empty());
 
                 unsafe {
                     let _ = sigaction(raw_signal, &default_action);

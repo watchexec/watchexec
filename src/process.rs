@@ -20,6 +20,8 @@ mod imp {
         cvar: Condvar,
     }
 
+    #[allow(unknown_lints)]
+    #[allow(mutex_atomic)]
     impl Process {
         pub fn new(cmd: &str, updated_paths: Vec<PathBuf>) -> Result<Process> {
             use nix::unistd::*;
@@ -98,10 +100,10 @@ mod imp {
             let mut finished = true;
             loop {
                 match waitpid(-self.pgid, Some(WNOHANG)) {
-                    Ok(WaitStatus::Exited(_, _)) => finished = finished && true,
+                    Ok(WaitStatus::Exited(_, _)) |
                     Ok(WaitStatus::Signaled(_, _, _)) => finished = finished && true,
                     Ok(_) => finished = false,
-                    Err(_) => break
+                    Err(_) => break,
                 }
             }
 
@@ -205,14 +207,11 @@ mod imp {
             self.terminate();
         }
 
-        pub fn pause(&self) {
-        }
+        pub fn pause(&self) {}
 
-        pub fn reap(&self) {
-        }
+        pub fn reap(&self) {}
 
-        pub fn resume(&self) {
-        }
+        pub fn resume(&self) {}
 
         pub fn terminate(&self) {
             unsafe {
@@ -318,7 +317,7 @@ mod tests {
         let path = file.to_path_buf();
 
         let process = spawn(&format!("sleep 20; echo hi > {}", path.to_str().unwrap()),
-                                   vec![]);
+                            vec![]);
         process.kill();
         process.wait();
 
