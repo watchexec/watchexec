@@ -4,6 +4,7 @@ lazy_static! {
     static ref CLEANUP: Mutex<Option<Box<Fn(self::Signal) + Send>>> = Mutex::new(None);
 }
 
+#[allow(dead_code)]
 pub enum Signal {
     Terminate,
     Stop,
