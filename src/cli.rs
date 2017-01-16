@@ -84,6 +84,7 @@ pub fn get_args() -> Args {
             .value_name("interval"))
         .arg(Arg::with_name("kill")
             .help("Send SIGKILL to child processes")
+            .short("k")
             .long("kill"))
         .get_matches();
 
