@@ -72,7 +72,7 @@ watchexec requires Rust 1.9 or later. You can install it using cargo:
 
 ###OS X with Homebrew
 
-    $ brew install https://raw.githubusercontent.com/mattgreen/watchexec/master/pkg/brew/watchexec.rb
+    $ brew install watchexec
 
 ###Linux
 
