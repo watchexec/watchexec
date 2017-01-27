@@ -12,7 +12,7 @@ pub struct NotificationFilter {
     filters: GlobSet,
     filter_count: usize,
     ignores: GlobSet,
-    ignore_file: Option<gitignore::PatternSet>,
+    ignore_file: Option<gitignore::GitignoreFile>,
 }
 
 #[derive(Debug)]
@@ -24,7 +24,7 @@ pub enum Error {
 impl NotificationFilter {
     pub fn new(filters: Vec<String>,
                ignores: Vec<String>,
-               ignore_file: Option<gitignore::PatternSet>)
+               ignore_file: Option<gitignore::GitignoreFile>)
                -> Result<NotificationFilter, Error> {
         let mut filter_set_builder = GlobSetBuilder::new();
         for f in &filters {

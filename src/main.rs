@@ -28,42 +28,15 @@ mod watcher;
 
 use std::collections::HashMap;
 use std::env;
-use std::path::Path;
+use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 use std::sync::mpsc::{channel, Receiver};
 use std::time::Duration;
-use std::path::PathBuf;
 
 use notification_filter::NotificationFilter;
 use process::Process;
 use signal::Signal;
 use watcher::{Event, Watcher};
-
-fn find_gitignore(path: &Path) -> Option<PathBuf> {
-    let mut p = path.to_owned();
-
-    loop {
-        let gitignore_path = p.join(".gitignore");
-        if gitignore_path.exists() {
-            return Some(gitignore_path);
-        }
-
-        // Stop if we see a .git directory
-        if let Ok(metadata) = p.join(".git").metadata() {
-            if metadata.is_dir() {
-                break;
-            }
-        }
-
-        if p.parent().is_none() {
-            break;
-        }
-
-        p.pop();
-    }
-
-    None
-}
 
 fn init_logger(debug: bool) {
     let mut log_builder = env_logger::LogBuilder::new();
@@ -111,14 +84,11 @@ fn main() {
         .canonicalize()
         .expect("unable to canonicalize cwd");
 
-    let mut gitignore_file = None;
-    if !args.no_vcs_ignore {
-        if let Some(gitignore_path) = find_gitignore(&cwd) {
-            debug!("Found .gitignore file: {:?}", gitignore_path);
-
-            gitignore_file = gitignore::parse(&gitignore_path).ok();
-        }
-    }
+    let gitignore_file = if !args.no_vcs_ignore {
+        gitignore::load(&cwd)
+    } else {
+        None
+    };
 
     let filter = NotificationFilter::new(args.filters, args.ignores, gitignore_file)
         .expect("unable to create notification filter");
