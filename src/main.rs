@@ -108,7 +108,7 @@ fn main() {
     }
 
     // Start child process initially, if necessary
-    if args.run_initially {
+    if args.run_initially && !args.once {
         if args.clear_screen {
             cli::clear_screen();
         }
@@ -119,29 +119,13 @@ fn main() {
 
     loop {
         debug!("Waiting for filesystem activity");
-        let paths = wait(&rx, &filter);
+        let paths = wait_fs(&rx, &filter);
         if let Some(path) = paths.get(0) {
             debug!("Path updated: {:?}", path);
         }
 
         // Wait for current child process to exit
-        {
-            let guard = child_process.read().unwrap();
-
-            if let Some(ref child) = *guard {
-                if args.restart {
-                    debug!("Stopping child process");
-                    if kill {
-                        child.kill();
-                    } else {
-                        child.terminate();
-                    }
-                }
-
-                debug!("Waiting for process to exit...");
-                child.wait();
-            }
-        }
+        wait_process(&child_process, kill, args.restart);
 
         // Launch child process
         if args.clear_screen {
@@ -153,10 +137,16 @@ fn main() {
             let mut guard = child_process.write().unwrap();
             *guard = Some(process::spawn(&args.cmd, paths));
         }
+
+        // Handle once option for integration testing
+        if args.once {
+            wait_process(&child_process, kill, false);
+            break;
+        }
     }
 }
 
-fn wait(rx: &Receiver<Event>, filter: &NotificationFilter) -> Vec<PathBuf> {
+fn wait_fs(rx: &Receiver<Event>, filter: &NotificationFilter) -> Vec<PathBuf> {
     let mut paths = vec![];
     let mut cache = HashMap::new();
 
@@ -198,4 +188,22 @@ fn wait(rx: &Receiver<Event>, filter: &NotificationFilter) -> Vec<PathBuf> {
     }
 
     paths
+}
+
+fn wait_process(process: &RwLock<Option<Process>>, kill: bool, restart: bool) {
+    let guard = process.read().unwrap();
+
+    if let Some(ref child) = *guard {
+        if restart {
+            debug!("Stopping child process");
+            if kill {
+                child.kill();
+            } else {
+                child.terminate();
+            }
+        }
+
+        debug!("Waiting for process to exit...");
+        child.wait();
+    }
 }

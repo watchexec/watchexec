@@ -14,6 +14,7 @@ pub struct Args {
     pub debug: bool,
     pub run_initially: bool,
     pub no_vcs_ignore: bool,
+    pub once: bool,
     pub poll: bool,
     pub poll_interval: u32,
 }
@@ -86,6 +87,9 @@ pub fn get_args() -> Args {
             .help("Send SIGKILL to child processes")
             .short("k")
             .long("kill"))
+        .arg(Arg::with_name("once")
+             .short("1")
+             .hidden(true))
         .get_matches();
 
     let cmd = values_t!(args.values_of("command"), String).unwrap().join(" ");
@@ -125,6 +129,7 @@ pub fn get_args() -> Args {
         debug: args.is_present("debug"),
         run_initially: !args.is_present("postpone"),
         no_vcs_ignore: args.is_present("no-vcs-ignore"),
+        once: args.is_present("once"),
         poll: args.occurrences_of("poll") > 0,
         poll_interval: poll_interval,
     }
