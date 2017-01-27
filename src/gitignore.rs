@@ -84,8 +84,8 @@ impl GitignoreFile {
             }
 
             let glob = try!(GlobBuilder::new(&pat)
-                            .literal_separator(true)
-                            .build());
+                .literal_separator(true)
+                .build());
 
             builder.add(glob);
             patterns.push(p);
@@ -110,9 +110,9 @@ impl GitignoreFile {
         for &i in matches.iter().rev() {
             let pattern = &self.patterns[i];
             return match pattern.pattern_type {
-                PatternType::Whitelist  => false,
-                PatternType::Ignore     => true,
-            }
+                PatternType::Whitelist => false,
+                PatternType::Ignore => true,
+            };
         }
 
         false
@@ -292,4 +292,3 @@ mod tests {
         assert!(file.is_excluded(&base_dir().join("target").join("blah.txt")));
     }
 }
-
