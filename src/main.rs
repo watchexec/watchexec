@@ -27,8 +27,7 @@ mod signal;
 mod watcher;
 
 use std::collections::HashMap;
-use std::env;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 use std::sync::mpsc::{channel, Receiver};
 use std::time::Duration;
@@ -79,32 +78,29 @@ fn main() {
 
     init_logger(args.debug);
 
-    let cwd = env::current_dir()
-        .expect("unable to get cwd")
-        .canonicalize()
-        .expect("unable to canonicalize cwd");
+    let paths: Vec<PathBuf> = args.paths
+        .iter()
+        .map(|p| Path::new(&p)
+                    .canonicalize()
+                    .expect(&format!("unable to canonicalize \"{}\"", &p))
+                    .to_owned())
+        .collect();
 
     let gitignore = if !args.no_vcs_ignore {
-        gitignore::load(vec![&cwd])
+        gitignore::load(&paths)
     } else {
-        gitignore::load(vec![])
+        gitignore::load(&vec![])
     };
 
     let filter = NotificationFilter::new(args.filters, args.ignores, gitignore)
         .expect("unable to create notification filter");
 
     let (tx, rx) = channel();
-    let mut watcher = Watcher::new(tx, args.poll, args.poll_interval)
+    let watcher = Watcher::new(tx, &paths, args.poll, args.poll_interval)
         .expect("unable to create watcher");
 
     if watcher.is_polling() {
         warn!("Polling for changes every {} ms", args.poll_interval);
-    }
-
-    let result = watcher.watch(cwd);
-    if let Err(e) = result {
-        error!("Unable to watch directory/subdirectory: {}", e);
-        return;
     }
 
     // Start child process initially, if necessary

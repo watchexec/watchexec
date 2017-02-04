@@ -94,7 +94,7 @@ mod tests {
 
     #[test]
     fn test_allows_everything_by_default() {
-        let filter = NotificationFilter::new(vec![], vec![], gitignore::load(vec![])).unwrap();
+        let filter = NotificationFilter::new(vec![], vec![], gitignore::load(&vec![])).unwrap();
 
         assert!(!filter.is_excluded(&Path::new("foo")));
     }
@@ -102,7 +102,7 @@ mod tests {
     #[test]
     fn test_multiple_filters() {
         let filters = vec![String::from("*.rs"), String::from("*.toml")];
-        let filter = NotificationFilter::new(filters, vec![], gitignore::load(vec![])).unwrap();
+        let filter = NotificationFilter::new(filters, vec![], gitignore::load(&vec![])).unwrap();
 
         assert!(!filter.is_excluded(&Path::new("hello.rs")));
         assert!(!filter.is_excluded(&Path::new("Cargo.toml")));
@@ -112,7 +112,7 @@ mod tests {
     #[test]
     fn test_multiple_ignores() {
         let ignores = vec![String::from("*.rs"), String::from("*.toml")];
-        let filter = NotificationFilter::new(vec![], ignores, gitignore::load(vec![])).unwrap();
+        let filter = NotificationFilter::new(vec![], ignores, gitignore::load(&vec![])).unwrap();
 
         assert!(filter.is_excluded(&Path::new("hello.rs")));
         assert!(filter.is_excluded(&Path::new("Cargo.toml")));
@@ -122,7 +122,7 @@ mod tests {
     #[test]
     fn test_ignores_take_precedence() {
         let ignores = vec![String::from("*.rs"), String::from("*.toml")];
-        let filter = NotificationFilter::new(ignores.clone(), ignores, gitignore::load(vec![]))
+        let filter = NotificationFilter::new(ignores.clone(), ignores, gitignore::load(&vec![]))
             .unwrap();
 
         assert!(filter.is_excluded(&Path::new("hello.rs")));

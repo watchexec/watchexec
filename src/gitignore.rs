@@ -41,7 +41,7 @@ enum MatchResult {
     None,
 }
 
-pub fn load(paths: Vec<&Path>) -> Gitignore {
+pub fn load(paths: &Vec<PathBuf>) -> Gitignore {
     let mut files = vec![];
     let mut checked_dirs = HashSet::new();
 

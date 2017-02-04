@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 
 use notify::{PollWatcher, RecommendedWatcher, RecursiveMode, raw_watcher};
@@ -22,14 +22,28 @@ enum WatcherImpl {
 }
 
 impl Watcher {
-    pub fn new(tx: Sender<Event>, poll: bool, interval_ms: u32) -> Result<Watcher, Error> {
+    pub fn new(tx: Sender<Event>, paths: &Vec<PathBuf>, poll: bool, interval_ms: u32) -> Result<Watcher, Error> {
+        use notify::Watcher;
+
         let imp = if poll {
-            WatcherImpl::Poll(try!(PollWatcher::with_delay_ms(tx, interval_ms)))
+            let mut watcher = try!(PollWatcher::with_delay_ms(tx, interval_ms));
+            for ref path in paths {
+                try!(watcher.watch(path, RecursiveMode::Recursive));
+                debug!("Watching {:?}", path);
+            }
+
+            WatcherImpl::Poll(watcher)
         } else {
-            WatcherImpl::Recommended(try!(raw_watcher(tx)))
+            let mut watcher = try!(raw_watcher(tx));
+            for ref path in paths {
+                try!(watcher.watch(path, RecursiveMode::Recursive));
+                debug!("Watching {:?}", path);
+            }
+
+            WatcherImpl::Recommended(watcher)
         };
 
-        Ok(Watcher { watcher_impl: imp })
+        Ok(self::Watcher { watcher_impl: imp })
     }
 
     pub fn is_polling(&self) -> bool {
@@ -37,15 +51,6 @@ impl Watcher {
             true
         } else {
             false
-        }
-    }
-
-    pub fn watch<P: AsRef<Path>>(&mut self, path: P) -> Result<(), Error> {
-        use notify::Watcher;
-
-        match self.watcher_impl {
-            WatcherImpl::Recommended(ref mut w) => w.watch(path, RecursiveMode::Recursive),
-            WatcherImpl::Poll(ref mut w) => w.watch(path, RecursiveMode::Recursive),
         }
     }
 }
