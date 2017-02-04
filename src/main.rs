@@ -80,16 +80,18 @@ fn main() {
 
     let paths: Vec<PathBuf> = args.paths
         .iter()
-        .map(|p| Path::new(&p)
-                    .canonicalize()
-                    .expect(&format!("unable to canonicalize \"{}\"", &p))
-                    .to_owned())
+        .map(|p| {
+            Path::new(&p)
+                .canonicalize()
+                .expect(&format!("unable to canonicalize \"{}\"", &p))
+                .to_owned()
+        })
         .collect();
 
     let gitignore = if !args.no_vcs_ignore {
         gitignore::load(&paths)
     } else {
-        gitignore::load(&vec![])
+        gitignore::load(&[])
     };
 
     let filter = NotificationFilter::new(args.filters, args.ignores, gitignore)

@@ -22,12 +22,16 @@ enum WatcherImpl {
 }
 
 impl Watcher {
-    pub fn new(tx: Sender<Event>, paths: &Vec<PathBuf>, poll: bool, interval_ms: u32) -> Result<Watcher, Error> {
+    pub fn new(tx: Sender<Event>,
+               paths: &[PathBuf],
+               poll: bool,
+               interval_ms: u32)
+               -> Result<Watcher, Error> {
         use notify::Watcher;
 
         let imp = if poll {
             let mut watcher = try!(PollWatcher::with_delay_ms(tx, interval_ms));
-            for ref path in paths {
+            for path in paths {
                 try!(watcher.watch(path, RecursiveMode::Recursive));
                 debug!("Watching {:?}", path);
             }
@@ -35,7 +39,7 @@ impl Watcher {
             WatcherImpl::Poll(watcher)
         } else {
             let mut watcher = try!(raw_watcher(tx));
-            for ref path in paths {
+            for path in paths {
                 try!(watcher.watch(path, RecursiveMode::Recursive));
                 debug!("Watching {:?}", path);
             }
