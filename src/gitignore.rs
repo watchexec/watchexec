@@ -1,48 +1,26 @@
 extern crate globset;
 
 use globset::{GlobBuilder, GlobSet, GlobSetBuilder};
+use std::collections::HashSet;
 use std::fs;
 use std::io;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
-pub fn load(path: &Path) -> Option<GitignoreFile> {
-    let mut p = path.to_owned();
-
-    loop {
-        let gitignore_path = p.join(".gitignore");
-        if gitignore_path.exists() {
-            return GitignoreFile::new(&gitignore_path).ok();
-        }
-
-        // Stop if we see a .git directory
-        if let Ok(metadata) = p.join(".git").metadata() {
-            if metadata.is_dir() {
-                break;
-            }
-        }
-
-        if p.parent().is_none() {
-            break;
-        }
-
-        p.pop();
-    }
-
-    None
-
-}
-
-pub struct GitignoreFile {
-    set: GlobSet,
-    patterns: Vec<Pattern>,
-    root: PathBuf,
+pub struct Gitignore {
+    files: Vec<GitignoreFile>,
 }
 
 #[derive(Debug)]
 pub enum Error {
     GlobSet(globset::Error),
     Io(io::Error),
+}
+
+struct GitignoreFile {
+    set: GlobSet,
+    patterns: Vec<Pattern>,
+    root: PathBuf,
 }
 
 struct Pattern {
@@ -54,6 +32,82 @@ struct Pattern {
 enum PatternType {
     Ignore,
     Whitelist,
+}
+
+#[derive(PartialEq)]
+enum MatchResult {
+    Ignore,
+    Whitelist,
+    None,
+}
+
+pub fn load(paths: Vec<&Path>) -> Gitignore {
+    let mut files = vec![];
+    let mut checked_dirs = HashSet::new();
+
+    for path in paths {
+        let mut p = path.to_owned();
+
+        loop {
+            if !checked_dirs.contains(&p) {
+                checked_dirs.insert(p.clone());
+
+                let gitignore_path = p.join(".gitignore");
+                if gitignore_path.exists() {
+                    match GitignoreFile::new(&gitignore_path) {
+                        Ok(f) => {
+                            debug!("Loaded {:?}", gitignore_path);
+                            files.push(f);
+                        }
+                        Err(_) => debug!("Unable to load {:?}", gitignore_path),
+                    }
+                }
+            }
+
+            // Stop if we see a .git directory
+            if let Ok(metadata) = p.join(".git").metadata() {
+                if metadata.is_dir() {
+                    break;
+                }
+            }
+
+            if p.parent().is_none() {
+                break;
+            }
+
+            p.pop();
+        }
+    }
+
+    Gitignore::new(files)
+}
+
+impl Gitignore {
+    fn new(files: Vec<GitignoreFile>) -> Gitignore {
+        Gitignore { files: files }
+    }
+
+    pub fn is_excluded(&self, path: &Path) -> bool {
+        let mut applicable_files: Vec<&GitignoreFile> = self.files
+            .iter()
+            .filter(|f| path.starts_with(&f.root))
+            .collect();
+        applicable_files.sort_by(|l, r| l.root_len().cmp(&r.root_len()));
+
+        // TODO: add user gitignores
+
+        let mut result = MatchResult::None;
+
+        for file in applicable_files {
+            match file.matches(path) {
+                MatchResult::Ignore => result = MatchResult::Ignore,
+                MatchResult::Whitelist => result = MatchResult::Whitelist,
+                MatchResult::None => {}
+            }
+        }
+
+        result == MatchResult::Ignore
+    }
 }
 
 impl GitignoreFile {
@@ -99,10 +153,15 @@ impl GitignoreFile {
 
     }
 
-    pub fn is_excluded(&self, path: &Path) -> bool {
+    #[cfg(test)]
+    fn is_excluded(&self, path: &Path) -> bool {
+        self.matches(path) == MatchResult::Ignore
+    }
+
+    fn matches(&self, path: &Path) -> MatchResult {
         let stripped = path.strip_prefix(&self.root);
         if !stripped.is_ok() {
-            return false;
+            return MatchResult::None;
         }
 
         let matches = self.set.matches(stripped.unwrap());
@@ -110,12 +169,16 @@ impl GitignoreFile {
         for &i in matches.iter().rev() {
             let pattern = &self.patterns[i];
             return match pattern.pattern_type {
-                PatternType::Whitelist => false,
-                PatternType::Ignore => true,
+                PatternType::Whitelist => MatchResult::Whitelist,
+                PatternType::Ignore => MatchResult::Ignore,
             };
         }
 
-        false
+        MatchResult::None
+    }
+
+    pub fn root_len(&self) -> usize {
+        self.root.as_os_str().len()
     }
 
     fn parse(contents: Vec<&str>) -> Vec<Pattern> {

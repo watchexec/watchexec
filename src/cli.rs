@@ -88,8 +88,8 @@ pub fn get_args() -> Args {
             .short("k")
             .long("kill"))
         .arg(Arg::with_name("once")
-             .short("1")
-             .hidden(true))
+            .short("1")
+            .hidden(true))
         .get_matches();
 
     let cmd = values_t!(args.values_of("command"), String).unwrap().join(" ");

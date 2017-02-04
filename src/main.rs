@@ -84,13 +84,13 @@ fn main() {
         .canonicalize()
         .expect("unable to canonicalize cwd");
 
-    let gitignore_file = if !args.no_vcs_ignore {
-        gitignore::load(&cwd)
+    let gitignore = if !args.no_vcs_ignore {
+        gitignore::load(vec![&cwd])
     } else {
-        None
+        gitignore::load(vec![])
     };
 
-    let filter = NotificationFilter::new(args.filters, args.ignores, gitignore_file)
+    let filter = NotificationFilter::new(args.filters, args.ignores, gitignore)
         .expect("unable to create notification filter");
 
     let (tx, rx) = channel();
