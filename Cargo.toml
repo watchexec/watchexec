@@ -8,6 +8,7 @@ homepage = "https://github.com/mattgreen/watchexec"
 repository = "https://github.com/mattgreen/watchexec"
 readme = "README.md"
 keywords = ["watcher", "inotify", "fsevents", "kqueue"]
+categories = ["command-line-utilities"]
 license = "Apache-2.0"
 
 [profile.dev]
