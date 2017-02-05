@@ -3,7 +3,7 @@ watchexec(1) -- execute commands when watched files change
 
 ## SYNOPSIS
 
-watchexec [`--exts` | `-e` <extensions>]... [`--filter` | `-f` <pattern>]... [`--ignore` | `-i` <pattern>]... [`--restart` | `-r`] [`--clear` | `-c`] [`--postpone` | `-p`] [`--force-poll` <interval>] [`--debug` | `-d`] [`--no-vcs-ignore`] <cmd> [<argument>...]
+watchexec [`--exts` | `-e` <extensions>]... [`--filter` | `-f` <pattern>]... [`--ignore` | `-i` <pattern>]... [`--watch` | `-w` <path>]... [`--restart` | `-r`] [`--clear` | `-c`] [`--postpone` | `-p`] [`--force-poll` <interval>] [`--debug` | `-d`] [`--no-vcs-ignore`] <command> [<argument>...]
 
 ## DESCRIPTION
 
@@ -13,20 +13,23 @@ At startup, the specified <command> (passing any supplied <argument>s) is run on
 
 ## OPTIONS
 
-* <cmd>:
-Command to run when watched files are modified, and at startup, unless `--postpone` is specified. All <argument>s are passed to <cmd>.
+* <command>:
+Command to run when watched files are modified, and at startup, unless `--postpone` is specified. All <argument>s are passed to <command>.
 
 * `-e`, `--exts` <extensions>:
 Comma-separated list of file extensions to filter by. Leading dots are allowed (.rs) are allowed. (This is a shorthand for `-f`).
 
 * `-f`, `--filter` <pattern>:
-Ignores modifications from paths that do not match <pattern>. This option can be specified multiple times, where a match on any given pattern causes the path to trigger *command*.
+Ignores modifications from paths that do not match <pattern>. This option can be specified multiple times, where a match on any given pattern causes the path to trigger <command>.
 
 * `-k`, `--kill`:
 Send `SIGKILL` to the child process group instead of `SIGTERM`.
 
-* `-i`, `--ignore` *pattern*:
+* `-i`, `--ignore` <pattern>:
 Ignores modifications from paths that match <pattern>. This option can be specified multiple times, and a match on any pattern causes the path to be ignored.
+
+* `-w`, `--watch` <path>:
+Monitor a specific path for changes. By default, the current working directory is watched. This may be specified multiple times, where a change in any watched directory (and subdirectories) causes <command> to be executed.
 
 * `-r`, `--restart`:
 Terminates the child process group if it is still running when subsequent file modifications are detected. By default, sends `SIGTERM`; use `--kill` to send `SIGKILL`.
@@ -64,7 +67,11 @@ Run tests when source files change, clearing the screen each time:
 
     $ watchexec -c make test
 
-Launch and restart a node.js server
+Launch and restart a node.js server:
 
     $ watchexec -r node app.js
+
+Watch lib and src directories for changes, rebuilding each time:
+
+    $ watchexec -w lib -w src make
 

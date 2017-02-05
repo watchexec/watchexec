@@ -74,7 +74,7 @@
 
 <h2 id="SYNOPSIS">SYNOPSIS</h2>
 
-<p>watchexec [<code>--exts</code> | <code>-e</code> <var>extensions</var>]... [<code>--filter</code> | <code>-f</code> <var>pattern</var>]... [<code>--ignore</code> | <code>-i</code> <var>pattern</var>]... [<code>--restart</code> | <code>-r</code>] [<code>--clear</code> | <code>-c</code>] [<code>--postpone</code> | <code>-p</code>] [<code>--force-poll</code> <var>interval</var>] [<code>--debug</code> | <code>-d</code>] [<code>--no-vcs-ignore</code>] <var>cmd</var> [<var>argument</var>...]</p>
+<p>watchexec [<code>--exts</code> | <code>-e</code> <var>extensions</var>]... [<code>--filter</code> | <code>-f</code> <var>pattern</var>]... [<code>--ignore</code> | <code>-i</code> <var>pattern</var>]... [<code>--watch</code> | <code>-w</code> <var>path</var>]... [<code>--restart</code> | <code>-r</code>] [<code>--clear</code> | <code>-c</code>] [<code>--postpone</code> | <code>-p</code>] [<code>--force-poll</code> <var>interval</var>] [<code>--debug</code> | <code>-d</code>] [<code>--no-vcs-ignore</code>] <var>command</var> [<var>argument</var>...]</p>
 
 <h2 id="DESCRIPTION">DESCRIPTION</h2>
 
@@ -85,11 +85,12 @@
 <h2 id="OPTIONS">OPTIONS</h2>
 
 <dl>
-<dt class="flush"><var>cmd</var></dt><dd><p>Command to run when watched files are modified, and at startup, unless <code>--postpone</code> is specified. All <var>argument</var>s are passed to <var>cmd</var>.</p></dd>
+<dt class="flush"><var>command</var></dt><dd><p>Command to run when watched files are modified, and at startup, unless <code>--postpone</code> is specified. All <var>argument</var>s are passed to <var>command</var>.</p></dd>
 <dt><code>-e</code>, <code>--exts</code> <var>extensions</var></dt><dd><p>Comma-separated list of file extensions to filter by. Leading dots are allowed (.rs) are allowed. (This is a shorthand for <code>-f</code>).</p></dd>
-<dt><code>-f</code>, <code>--filter</code> <var>pattern</var></dt><dd><p>Ignores modifications from paths that do not match <var>pattern</var>. This option can be specified multiple times, where a match on any given pattern causes the path to trigger <em>command</em>.</p></dd>
+<dt><code>-f</code>, <code>--filter</code> <var>pattern</var></dt><dd><p>Ignores modifications from paths that do not match <var>pattern</var>. This option can be specified multiple times, where a match on any given pattern causes the path to trigger <var>command</var>.</p></dd>
 <dt><code>-k</code>, <code>--kill</code></dt><dd><p>Send <code>SIGKILL</code> to the child process group instead of <code>SIGTERM</code>.</p></dd>
-<dt><code>-i</code>, <code>--ignore</code> <em>pattern</em></dt><dd><p>Ignores modifications from paths that match <var>pattern</var>. This option can be specified multiple times, and a match on any pattern causes the path to be ignored.</p></dd>
+<dt><code>-i</code>, <code>--ignore</code> <var>pattern</var></dt><dd><p>Ignores modifications from paths that match <var>pattern</var>. This option can be specified multiple times, and a match on any pattern causes the path to be ignored.</p></dd>
+<dt><code>-w</code>, <code>--watch</code> <var>path</var></dt><dd><p>Monitor a specific path for changes. By default, the current working directory is watched. This may be specified multiple times, where a change in any watched directory (and subdirectories) causes <var>command</var> to be executed.</p></dd>
 <dt><code>-r</code>, <code>--restart</code></dt><dd><p>Terminates the child process group if it is still running when subsequent file modifications are detected. By default, sends <code>SIGTERM</code>; use <code>--kill</code> to send <code>SIGKILL</code>.</p></dd>
 <dt><code>-c</code>, <code>--clear</code></dt><dd><p>Clears the screen before executing <var>command</var>.</p></dd>
 <dt><code>-p</code>, <code>--postpone</code></dt><dd><p>Postpone execution of <var>command</var> until the first file modification is detected.</p></dd>
@@ -120,15 +121,20 @@
 <pre><code>$ watchexec -c make test
 </code></pre>
 
-<p>Launch and restart a node.js server</p>
+<p>Launch and restart a node.js server:</p>
 
 <pre><code>$ watchexec -r node app.js
+</code></pre>
+
+<p>Watch lib and src directories for changes, rebuilding each time:</p>
+
+<pre><code>$ watchexec -w lib -w src make
 </code></pre>
 
 
   <ol class='man-decor man-foot man foot'>
     <li class='tl'></li>
-    <li class='tc'>December 2016</li>
+    <li class='tc'>February 2017</li>
     <li class='tr'>watchexec(1)</li>
   </ol>
 

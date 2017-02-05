@@ -62,6 +62,10 @@ Run `make` when any file changes, using the `.gitignore` file in the current dir
 
     $ watchexec make
 
+Run `make` when any file in `lib` or `src` changes:
+
+    $ watchexec -w lib -w src make
+
 ##Installation
 
 ###Cargo
