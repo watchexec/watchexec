@@ -1,4 +1,4 @@
-VER=$(shell grep version Cargo.toml | head -n1 | grep -Eow '".+"' | sed 's/"//g')
+LATEST_TAG=$(shell git tag | tail -n1)
 
 .PHONY: doc test
 
@@ -17,12 +17,14 @@ test:
 doc: doc/watchexec.1.ronn
 		@ronn doc/watchexec.1.ronn
 
+cargo-release:
+		@cargo publish
+
+homebrew-release:
+		@brew bump-formula-pr --strict --url="https://github.com/mattgreen/watchexec/archive/$(LATEST_TAG).tar.gz" watchexec
+
 install: release
 		@cp target/release/watchexec /usr/bin
 
 uninstall:
 		@rm /usr/bin/watchexec
-
-dist-osx: release
-		@tar -cz -C target/release -f target/release/watchexec_osx_$(VER).tar.gz watchexec
-		@shasum -a 256 target/release/watchexec_osx_$(VER).tar.gz
