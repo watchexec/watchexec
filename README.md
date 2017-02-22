@@ -57,6 +57,7 @@ Call/restart `python server.py` when any Python file in the current directory (a
 Call/restart `my_server` when any file in the current directory (and all subdirectories) changes, sending `SIGKILL` to stop the child process:
 
     $ watchexec -r -k my_server
+    $ watchexec -r -g my_server # Send SIGHUP instead
 
 Run `make` when any file changes, using the `.gitignore` file in the current directory to filter:
 
