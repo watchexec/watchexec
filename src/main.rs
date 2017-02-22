@@ -55,6 +55,7 @@ fn main() {
     let child_process: Arc<RwLock<Option<Process>>> = Arc::new(RwLock::new(None));
     let weak_child = Arc::downgrade(&child_process);
     let kill = args.kill;
+    let hup = args.hup;
 
     signal::install_handler(move |sig: Signal| {
         if let Some(lock) = weak_child.upgrade() {
@@ -64,6 +65,8 @@ fn main() {
                     Signal::Terminate => {
                         if kill {
                             child.kill();
+                        } else if hup {
+                            child.hup();
                         } else {
                             child.terminate();
                         }

@@ -11,6 +11,7 @@ pub struct Args {
     pub ignores: Vec<String>,
     pub clear_screen: bool,
     pub kill: bool,
+    pub hup: bool,
     pub restart: bool,
     pub debug: bool,
     pub run_initially: bool,
@@ -95,6 +96,10 @@ pub fn get_args() -> Args {
             .help("Send SIGKILL to child processes")
             .short("k")
             .long("kill"))
+        .arg(Arg::with_name("hup")
+            .help("Send SIGHUP to child processes")
+            .short("g") // -h is taken by --help, using -g for "graceful"
+            .long("hup"))
         .arg(Arg::with_name("once")
             .short("1")
             .hidden(true))
@@ -136,6 +141,7 @@ pub fn get_args() -> Args {
         ignores: ignores,
         clear_screen: args.is_present("clear"),
         kill: args.is_present("kill"),
+        hup: args.is_present("hup"),
         restart: args.is_present("restart"),
         debug: args.is_present("debug"),
         run_initially: !args.is_present("postpone"),
