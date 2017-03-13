@@ -52,16 +52,6 @@ mod imp {
                 })
         }
 
-        // TODO: Required?
-        pub fn kill(&self) {
-            self.c_signal(SIGKILL);
-        }
-
-        // TODO: Required?
-        pub fn pause(&self) {
-            self.c_signal(SIGTSTP);
-        }
-
         pub fn reap(&self) {
             use nix::sys::wait::*;
 
@@ -85,11 +75,6 @@ mod imp {
             }
         }
 
-        // TODO: Is this required? - This can probably be streamlined with just using --signal SIGCONT
-        pub fn resume(&self) {
-            self.c_signal(SIGCONT);
-        }
-
         pub fn signal(&self, signal: Signal) {
             // TODO: Sending dummy signal for now
             self.c_signal(SIGCONT);
@@ -104,11 +89,6 @@ mod imp {
                 killpg(self.pgid, sig);
             }
 
-        }
-
-        // TODO: Is this required?
-        pub fn terminate(&self) {
-            self.c_signal(SIGTERM);
         }
 
         pub fn wait(&self) {
