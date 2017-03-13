@@ -13,7 +13,7 @@ mod imp {
     use std::path::PathBuf;
     use std::process::Command;
     use std::sync::*;
-    use signal::Signal;
+    use nix::sys::signal::Signal;
 
     pub struct Process {
         pgid: pid_t,
@@ -92,7 +92,6 @@ mod imp {
 
         pub fn signal(&self, signal: Signal) {
             // TODO: Sending dummy signal for now
-            println!("DEBUG: {}", signal);
             self.c_signal(SIGCONT);
         }
 

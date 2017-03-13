@@ -34,8 +34,8 @@ use std::time::Duration;
 
 use notification_filter::NotificationFilter;
 use process::Process;
-use signal::Signal;
 use watcher::{Event, Watcher};
+use nix::sys::signal::Signal;
 
 fn init_logger(debug: bool) {
     let mut log_builder = env_logger::LogBuilder::new();
@@ -65,13 +65,14 @@ fn main() {
                 match sig {
                     // TODO: This should be generalized to use new --signal flag
                     // TODO: Not sure what this is doing tbh :(
-                    Signal::Terminate => {
+                    Signal::SIGTERM => {
                         // TODO: Removed kill variable for now
                         child.terminate();
                     }
-                    Signal::Stop => child.pause(),
-                    Signal::Continue => child.resume(),
-                    Signal::ChildExit => child.reap(),
+                    Signal::SIGSTOP => child.pause(),
+                    Signal::SIGCONT => child.resume(),
+                    Signal::SIGCHLD => child.reap(),
+                    _ => debug!("Unhandled signal: {:?}", sig),
                 }
             }
         }
@@ -191,12 +192,12 @@ fn wait_fs(rx: &Receiver<Event>, filter: &NotificationFilter) -> Vec<PathBuf> {
     paths
 }
 
-fn wait_process(process: &RwLock<Option<Process>>, signal: signal::Signal, restart: bool) {
+fn wait_process(process: &RwLock<Option<Process>>, signal: Signal, restart: bool) {
     let guard = process.read().unwrap();
 
     if let Some(ref child) = *guard {
         if restart {
-            debug!("Stopping child process with {} signal", signal);
+            debug!("Stopping child process with {:?} signal", signal);
             child.signal(signal);
         }
 

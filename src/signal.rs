@@ -1,31 +1,13 @@
 use std::sync::Mutex;
-use std::fmt;
+use nix::sys::signal::Signal;
 
 lazy_static! {
     static ref CLEANUP: Mutex<Option<Box<Fn(self::Signal) + Send>>> = Mutex::new(None);
 }
 
-// TODO: Probably a good idea to use
-// https://nix-rust.github.io/nix/nix/sys/signal/enum.Signal.html
-#[derive(Debug, Clone, Copy)]
-pub enum Signal {
-    // TODO: Probably a good idea to use original names here:
-    // TODO: Add SIGUSR1+2 SIGHUP here?
-    Terminate, // SIGTERM
-    Stop, // SIGTSTP
-    Continue, // SIGCONT
-    ChildExit, // SIGCHLD
-}
-
-impl fmt::Display for Signal {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
 pub fn new(signal_name: &str) -> Signal {
     println!("Using signal {}", signal_name);
-    Signal::Terminate
+    Signal::SIGTERM
 }
 
 #[cfg(unix)]
@@ -64,36 +46,28 @@ pub fn install_handler<F>(handler: F)
     // Spawn a thread to catch these signals
     thread::spawn(move || {
         loop {
-            let raw_signal = mask.wait().expect("unable to sigwait");
-            debug!("Received {:?}", raw_signal);
-
-            let sig = match raw_signal {
-                SIGTERM | SIGINT => self::Signal::Terminate,
-                SIGTSTP => self::Signal::Stop,
-                SIGCONT => self::Signal::Continue,
-                SIGCHLD => self::Signal::ChildExit,
-                _ => unreachable!(),
-            };
+            let signal = mask.wait().expect("Unable to sigwait");
+            debug!("Received {:?}", signal);
 
             // Invoke closure
-            invoke(sig);
+            invoke(signal);
 
             // Restore default behavior for received signal and unmask it
-            if raw_signal != SIGCHLD {
+            if signal != SIGCHLD {
                 let default_action =
                     SigAction::new(SigHandler::SigDfl, SaFlags::empty(), SigSet::empty());
 
                 unsafe {
-                    let _ = sigaction(raw_signal, &default_action);
+                    let _ = sigaction(signal, &default_action);
                 }
             }
 
             let mut new_mask = SigSet::empty();
-            new_mask.add(raw_signal);
+            new_mask.add(signal);
 
             // Re-raise with signal unmasked
             let _ = new_mask.thread_unblock();
-            let _ = raise(raw_signal);
+            let _ = raise(signal);
             let _ = new_mask.thread_block();
         }
     });
@@ -107,7 +81,7 @@ pub fn install_handler<F>(handler: F)
     use winapi::{BOOL, DWORD, FALSE, TRUE};
 
     pub unsafe extern "system" fn ctrl_handler(_: DWORD) -> BOOL {
-        invoke(self::Signal::Terminate);
+        invoke(self::Signal::SIGTERM);
 
         FALSE
     }
