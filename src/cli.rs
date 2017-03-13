@@ -10,7 +10,7 @@ pub struct Args {
     pub filters: Vec<String>,
     pub ignores: Vec<String>,
     pub clear_screen: bool,
-    pub kill: bool,
+    pub signal: String,
     pub restart: bool,
     pub debug: bool,
     pub run_initially: bool,
@@ -60,6 +60,13 @@ pub fn get_args() -> Args {
             .help("Restart the process if it's still running")
             .short("r")
             .long("restart"))
+        .arg(Arg::with_name("signal") // TODO: --signal only makes sense when used with --restart
+            .help("Signal to send when --restart is used, defaults to SIGTERM")
+            .short("s")
+            .long("signal")
+            .takes_value(true)
+            .number_of_values(1)
+            .value_name("signal"))
         .arg(Arg::with_name("debug")
             .help("Print debugging messages to stderr")
             .short("d")
@@ -91,10 +98,6 @@ pub fn get_args() -> Args {
             .help("Forces polling mode")
             .long("force-poll")
             .value_name("interval"))
-        .arg(Arg::with_name("kill")
-            .help("Send SIGKILL to child processes")
-            .short("k")
-            .long("kill"))
         .arg(Arg::with_name("once")
             .short("1")
             .hidden(true))
@@ -102,6 +105,11 @@ pub fn get_args() -> Args {
 
     let cmd = values_t!(args.values_of("command"), String).unwrap().join(" ");
     let paths = values_t!(args.values_of("path"), String).unwrap_or(vec![String::from(".")]);
+
+    // TODO: I suppose there must be a better way of getting a string and a default value in clap
+    let signal = values_t!(args.values_of("signal"), String)
+        .unwrap_or(vec![String::from("SIGTERM")]) // TODO: Use SIGHUP as default?
+        .join(" ");
 
     let mut filters = values_t!(args.values_of("filter"), String).unwrap_or(vec![]);
 
@@ -134,8 +142,8 @@ pub fn get_args() -> Args {
         paths: paths,
         filters: filters,
         ignores: ignores,
+        signal: signal,
         clear_screen: args.is_present("clear"),
-        kill: args.is_present("kill"),
         restart: args.is_present("restart"),
         debug: args.is_present("debug"),
         run_initially: !args.is_present("postpone"),

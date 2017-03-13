@@ -54,19 +54,20 @@ fn main() {
     let args = cli::get_args();
     let child_process: Arc<RwLock<Option<Process>>> = Arc::new(RwLock::new(None));
     let weak_child = Arc::downgrade(&child_process);
-    let kill = args.kill;
+
+    // Convert signal string to the corresponding integer
+    let signal = signal::new(&*args.signal);
 
     signal::install_handler(move |sig: Signal| {
         if let Some(lock) = weak_child.upgrade() {
             let strong = lock.read().unwrap();
             if let Some(ref child) = *strong {
                 match sig {
+                    // TODO: This should be generalized to use new --signal flag
+                    // TODO: Not sure what this is doing tbh :(
                     Signal::Terminate => {
-                        if kill {
-                            child.kill();
-                        } else {
-                            child.terminate();
-                        }
+                        // TODO: Removed kill variable for now
+                        child.terminate();
                     }
                     Signal::Stop => child.pause(),
                     Signal::Continue => child.resume(),
@@ -123,7 +124,8 @@ fn main() {
         }
 
         // Wait for current child process to exit
-        wait_process(&child_process, kill, args.restart);
+        // Note: signal is cloned here automatically
+        wait_process(&child_process, signal, args.restart);
 
         // Launch child process
         if args.clear_screen {
@@ -138,7 +140,8 @@ fn main() {
 
         // Handle once option for integration testing
         if args.once {
-            wait_process(&child_process, kill, false);
+            // Note: signal is cloned here automatically
+            wait_process(&child_process, signal, false);
             break;
         }
     }
@@ -188,17 +191,13 @@ fn wait_fs(rx: &Receiver<Event>, filter: &NotificationFilter) -> Vec<PathBuf> {
     paths
 }
 
-fn wait_process(process: &RwLock<Option<Process>>, kill: bool, restart: bool) {
+fn wait_process(process: &RwLock<Option<Process>>, signal: signal::Signal, restart: bool) {
     let guard = process.read().unwrap();
 
     if let Some(ref child) = *guard {
         if restart {
-            debug!("Stopping child process");
-            if kill {
-                child.kill();
-            } else {
-                child.terminate();
-            }
+            debug!("Stopping child process with {} signal", signal);
+            child.signal(signal);
         }
 
         debug!("Waiting for process to exit...");

@@ -1,15 +1,31 @@
 use std::sync::Mutex;
+use std::fmt;
 
 lazy_static! {
     static ref CLEANUP: Mutex<Option<Box<Fn(self::Signal) + Send>>> = Mutex::new(None);
 }
 
-#[allow(dead_code)]
+// TODO: Probably a good idea to use
+// https://nix-rust.github.io/nix/nix/sys/signal/enum.Signal.html
+#[derive(Debug, Clone, Copy)]
 pub enum Signal {
-    Terminate,
-    Stop,
-    Continue,
-    ChildExit,
+    // TODO: Probably a good idea to use original names here:
+    // TODO: Add SIGUSR1+2 SIGHUP here?
+    Terminate, // SIGTERM
+    Stop, // SIGTSTP
+    Continue, // SIGCONT
+    ChildExit, // SIGCHLD
+}
+
+impl fmt::Display for Signal {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+pub fn new(signal_name: &str) -> Signal {
+    println!("Using signal {}", signal_name);
+    Signal::Terminate
 }
 
 #[cfg(unix)]
@@ -25,9 +41,12 @@ pub fn install_handler<F>(handler: F)
     let mut mask = SigSet::empty();
     mask.add(SIGTERM);
     mask.add(SIGINT);
+    // mask.add(SIGHUP);
     mask.add(SIGTSTP);
     mask.add(SIGCONT);
     mask.add(SIGCHLD);
+    // mask.add(SIGUSR1);
+    // mask.add(SIGUSR2);
     mask.thread_set_mask().expect("unable to set signal mask");
 
     set_handler(handler);

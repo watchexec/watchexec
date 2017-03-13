@@ -13,6 +13,7 @@ mod imp {
     use std::path::PathBuf;
     use std::process::Command;
     use std::sync::*;
+    use signal::Signal;
 
     pub struct Process {
         pgid: pid_t,
@@ -51,12 +52,14 @@ mod imp {
                 })
         }
 
+        // TODO: Required?
         pub fn kill(&self) {
-            self.signal(SIGKILL);
+            self.c_signal(SIGKILL);
         }
 
+        // TODO: Required?
         pub fn pause(&self) {
-            self.signal(SIGTSTP);
+            self.c_signal(SIGTSTP);
         }
 
         pub fn reap(&self) {
@@ -82,11 +85,18 @@ mod imp {
             }
         }
 
+        // TODO: Is this required? - This can probably be streamlined with just using --signal SIGCONT
         pub fn resume(&self) {
-            self.signal(SIGCONT);
+            self.c_signal(SIGCONT);
         }
 
-        fn signal(&self, sig: c_int) {
+        pub fn signal(&self, signal: Signal) {
+            // TODO: Sending dummy signal for now
+            println!("DEBUG: {}", signal);
+            self.c_signal(SIGCONT);
+        }
+
+        fn c_signal(&self, sig: c_int) {
             extern "C" {
                 fn killpg(pgrp: pid_t, sig: c_int) -> c_int;
             }
@@ -97,8 +107,9 @@ mod imp {
 
         }
 
+        // TODO: Is this required?
         pub fn terminate(&self) {
-            self.signal(SIGTERM);
+            self.c_signal(SIGTERM);
         }
 
         pub fn wait(&self) {
