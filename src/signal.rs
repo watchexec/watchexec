@@ -21,14 +21,15 @@ pub fn install_handler<F>(handler: F)
     // Mask all signals interesting to us. The mask propagates
     // to all threads started after this point.
     let mut mask = SigSet::empty();
+    mask.add(SIGKILL);
     mask.add(SIGTERM);
     mask.add(SIGINT);
-    // mask.add(SIGHUP);
-    mask.add(SIGTSTP);
+    mask.add(SIGHUP);
+    mask.add(SIGSTOP);
     mask.add(SIGCONT);
     mask.add(SIGCHLD);
-    // mask.add(SIGUSR1);
-    // mask.add(SIGUSR2);
+    mask.add(SIGUSR1);
+    mask.add(SIGUSR2);
     mask.thread_set_mask().expect("unable to set signal mask");
 
     set_handler(handler);
