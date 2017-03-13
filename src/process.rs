@@ -13,7 +13,7 @@ mod imp {
     use std::path::PathBuf;
     use std::process::Command;
     use std::sync::*;
-    use nix::sys::signal::Signal;
+    use signal::Signal;
 
     pub struct Process {
         pgid: pid_t,
@@ -76,8 +76,24 @@ mod imp {
         }
 
         pub fn signal(&self, signal: Signal) {
-            // TODO: Sending dummy signal for now
-            self.c_signal(SIGCONT);
+
+            // Convert from signal::Signal enum to libc::* c_int constants
+            // TODO: This probably belongs into signal.rs (Maybe directly using libc::SIG*)
+            let signo = match signal {
+                Signal::SIGKILL => SIGKILL,
+                Signal::SIGTERM => SIGTERM,
+                Signal::SIGINT => SIGINT,
+                Signal::SIGHUP => SIGHUP,
+                Signal::SIGSTOP => SIGSTOP,
+                Signal::SIGCONT => SIGCONT,
+                Signal::SIGCHLD => SIGCHLD,
+                Signal::SIGUSR1 => SIGUSR1,
+                Signal::SIGUSR2 => SIGUSR2,
+                _ => panic!("unsupported signal: {:?}", signal),
+            };
+
+            debug!("Sending {:?} (int: {}) to child process", signal, signo);
+            self.c_signal(signo);
         }
 
         fn c_signal(&self, sig: c_int) {

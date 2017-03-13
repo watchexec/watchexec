@@ -62,17 +62,10 @@ fn main() {
         if let Some(lock) = weak_child.upgrade() {
             let strong = lock.read().unwrap();
             if let Some(ref child) = *strong {
+                use nix::sys::signal::*;
                 match sig {
-                    // TODO: This should be generalized to use new --signal flag
-                    // TODO: Not sure what this is doing tbh :(
-                    Signal::SIGTERM => {
-                        // TODO: Removed kill variable for now
-                        child.terminate();
-                    }
-                    Signal::SIGSTOP => child.pause(),
-                    Signal::SIGCONT => child.resume(),
-                    Signal::SIGCHLD => child.reap(),
-                    _ => debug!("Unhandled signal: {:?}", sig),
+                    SIGCHLD => child.reap(), // SIGCHLD is special, initiate reap()
+                    _ => child.signal(sig),
                 }
             }
         }
@@ -197,7 +190,6 @@ fn wait_process(process: &RwLock<Option<Process>>, signal: Signal, restart: bool
 
     if let Some(ref child) = *guard {
         if restart {
-            debug!("Stopping child process with {:?} signal", signal);
             child.signal(signal);
         }
 

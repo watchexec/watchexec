@@ -6,8 +6,20 @@ lazy_static! {
 }
 
 pub fn new(signal_name: &str) -> Signal {
-    println!("Using signal {}", signal_name);
-    Signal::SIGTERM
+    use nix::sys::signal::*;
+
+    match signal_name {
+        "SIGKILL" | "KILL" => SIGKILL,
+        "SIGTERM" | "TERM" => SIGTERM,
+        "SIGINT" | "INT" => SIGINT,
+        "SIGHUP" | "HUP" => SIGHUP,
+        "SIGSTOP" | "STOP" => SIGSTOP,
+        "SIGCONT" | "CONT" => SIGCONT,
+        "SIGCHLD" | "CHLD" => SIGCHLD,
+        "SIGUSR1" | "USR1" => SIGUSR1,
+        "SIGUSR2" | "USR2" => SIGUSR2,
+        _ => panic!("unsupported signal: {}", signal_name),
+    }
 }
 
 #[cfg(unix)]
