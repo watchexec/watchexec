@@ -1,15 +1,36 @@
-use libc::*;
 use std::sync::Mutex;
-use nix::sys::signal::Signal;
 
 lazy_static! {
     static ref CLEANUP: Mutex<Option<Box<Fn(self::Signal) + Send>>> = Mutex::new(None);
 }
 
+#[cfg(unix)]
+pub use nix::sys::signal::Signal;
+
+// This is a dummy enum for Windows
+#[cfg(windows)]
+#[derive(Debug, Copy, Clone)]
+pub enum Signal {
+    SIGKILL,
+    SIGTERM,
+    SIGINT,
+    SIGHUP,
+    SIGSTOP,
+    SIGCONT,
+    SIGCHLD,
+    SIGUSR1,
+    SIGUSR2,
+}
+
+#[cfg(unix)]
+use libc::*;
+
+#[cfg(unix)]
 pub trait ConvertToLibc {
     fn convert_to_libc(self) -> c_int;
 }
 
+#[cfg(unix)]
 impl ConvertToLibc for Signal {
     fn convert_to_libc(self) -> c_int {
         // Convert from signal::Signal enum to libc::* c_int constants
@@ -29,18 +50,16 @@ impl ConvertToLibc for Signal {
 }
 
 pub fn new(signal_name: &str) -> Signal {
-    use nix::sys::signal::*;
-
     match signal_name {
-        "SIGKILL" | "KILL" => SIGKILL,
-        "SIGTERM" | "TERM" => SIGTERM,
-        "SIGINT" | "INT" => SIGINT,
-        "SIGHUP" | "HUP" => SIGHUP,
-        "SIGSTOP" | "STOP" => SIGSTOP,
-        "SIGCONT" | "CONT" => SIGCONT,
-        "SIGCHLD" | "CHLD" => SIGCHLD,
-        "SIGUSR1" | "USR1" => SIGUSR1,
-        "SIGUSR2" | "USR2" => SIGUSR2,
+        "SIGKILL" | "KILL" => Signal::SIGKILL,
+        "SIGTERM" | "TERM" => Signal::SIGTERM,
+        "SIGINT" | "INT" => Signal::SIGINT,
+        "SIGHUP" | "HUP" => Signal::SIGHUP,
+        "SIGSTOP" | "STOP" => Signal::SIGSTOP,
+        "SIGCONT" | "CONT" => Signal::SIGCONT,
+        "SIGCHLD" | "CHLD" => Signal::SIGCHLD,
+        "SIGUSR1" | "USR1" => Signal::SIGUSR1,
+        "SIGUSR2" | "USR2" => Signal::SIGUSR2,
         _ => panic!("unsupported signal: {}", signal_name),
     }
 }

@@ -112,6 +112,7 @@ mod imp {
     use std::process::Command;
     use kernel32::*;
     use winapi::*;
+    use signal::Signal;
 
     pub struct Process {
         job: HANDLE,
@@ -163,17 +164,10 @@ mod imp {
             })
         }
 
-        pub fn kill(&self) {
-            self.terminate();
-        }
-
-        pub fn pause(&self) {}
-
         pub fn reap(&self) {}
 
-        pub fn resume(&self) {}
-
-        pub fn terminate(&self) {
+        pub fn signal(&self, signal: Signal) {
+            debug!("Ignoring signal {:?} (not supported by Windows)", signal);
             unsafe {
                 let _ = TerminateJobObject(self.job, 1);
             }

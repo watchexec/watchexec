@@ -34,8 +34,8 @@ use std::time::Duration;
 
 use notification_filter::NotificationFilter;
 use process::Process;
+use signal::Signal;
 use watcher::{Event, Watcher};
-use nix::sys::signal::Signal;
 
 fn init_logger(debug: bool) {
     let mut log_builder = env_logger::LogBuilder::new();
@@ -62,9 +62,8 @@ fn main() {
         if let Some(lock) = weak_child.upgrade() {
             let strong = lock.read().unwrap();
             if let Some(ref child) = *strong {
-                use nix::sys::signal::*;
                 match sig {
-                    SIGCHLD => child.reap(), // SIGCHLD is special, initiate reap()
+                    Signal::SIGCHLD => child.reap(), // SIGCHLD is special, initiate reap()
                     _ => child.signal(sig),
                 }
             }
