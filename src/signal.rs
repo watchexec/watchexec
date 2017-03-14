@@ -1,8 +1,31 @@
+use libc::*;
 use std::sync::Mutex;
 use nix::sys::signal::Signal;
 
 lazy_static! {
     static ref CLEANUP: Mutex<Option<Box<Fn(self::Signal) + Send>>> = Mutex::new(None);
+}
+
+pub trait ConvertToLibc {
+    fn convert_to_libc(self) -> c_int;
+}
+
+impl ConvertToLibc for Signal {
+    fn convert_to_libc(self) -> c_int {
+        // Convert from signal::Signal enum to libc::* c_int constants
+        match self {
+            Signal::SIGKILL => SIGKILL,
+            Signal::SIGTERM => SIGTERM,
+            Signal::SIGINT => SIGINT,
+            Signal::SIGHUP => SIGHUP,
+            Signal::SIGSTOP => SIGSTOP,
+            Signal::SIGCONT => SIGCONT,
+            Signal::SIGCHLD => SIGCHLD,
+            Signal::SIGUSR1 => SIGUSR1,
+            Signal::SIGUSR2 => SIGUSR2,
+            _ => panic!("unsupported signal: {:?}", self),
+        }
+    }
 }
 
 pub fn new(signal_name: &str) -> Signal {

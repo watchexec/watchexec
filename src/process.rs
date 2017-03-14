@@ -76,22 +76,9 @@ mod imp {
         }
 
         pub fn signal(&self, signal: Signal) {
+            use signal::ConvertToLibc;
 
-            // Convert from signal::Signal enum to libc::* c_int constants
-            // TODO: This probably belongs into signal.rs (Maybe directly using libc::SIG*)
-            let signo = match signal {
-                Signal::SIGKILL => SIGKILL,
-                Signal::SIGTERM => SIGTERM,
-                Signal::SIGINT => SIGINT,
-                Signal::SIGHUP => SIGHUP,
-                Signal::SIGSTOP => SIGSTOP,
-                Signal::SIGCONT => SIGCONT,
-                Signal::SIGCHLD => SIGCHLD,
-                Signal::SIGUSR1 => SIGUSR1,
-                Signal::SIGUSR2 => SIGUSR2,
-                _ => panic!("unsupported signal: {:?}", signal),
-            };
-
+            let signo = signal.convert_to_libc();
             debug!("Sending {:?} (int: {}) to child process", signal, signo);
             self.c_signal(signo);
         }
