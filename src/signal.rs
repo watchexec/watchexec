@@ -84,7 +84,8 @@ pub fn install_handler<F>(handler: F)
     mask.add(SIGCHLD);
     mask.add(SIGUSR1);
     mask.add(SIGUSR2);
-    mask.thread_set_mask().expect("unable to set signal mask");
+    mask.thread_set_mask()
+        .expect("unable to set signal mask");
 
     set_handler(handler);
 

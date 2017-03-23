@@ -45,7 +45,8 @@ fn init_logger(debug: bool) {
         log::LogLevelFilter::Warn
     };
 
-    log_builder.format(|r| format!("*** {}", r.args()))
+    log_builder
+        .format(|r| format!("*** {}", r.args()))
         .filter(None, level);
     log_builder.init().expect("unable to initialize logger");
 }
@@ -75,11 +76,11 @@ fn main() {
     let paths: Vec<PathBuf> = args.paths
         .iter()
         .map(|p| {
-            Path::new(&p)
-                .canonicalize()
-                .expect(&format!("unable to canonicalize \"{}\"", &p))
-                .to_owned()
-        })
+                 Path::new(&p)
+                     .canonicalize()
+                     .expect(&format!("unable to canonicalize \"{}\"", &p))
+                     .to_owned()
+             })
         .collect();
 
     let gitignore = if !args.no_vcs_ignore {
@@ -92,8 +93,8 @@ fn main() {
         .expect("unable to create notification filter");
 
     let (tx, rx) = channel();
-    let watcher = Watcher::new(tx, &paths, args.poll, args.poll_interval)
-        .expect("unable to create watcher");
+    let watcher =
+        Watcher::new(tx, &paths, args.poll, args.poll_interval).expect("unable to create watcher");
 
     if watcher.is_polling() {
         warn!("Polling for changes every {} ms", args.poll_interval);

@@ -41,15 +41,16 @@ mod imp {
             }
 
             // Until process_exec lands in stable, handle fork/exec ourselves
-            command.before_exec(|| setpgid(0, 0).map_err(io::Error::from))
+            command
+                .before_exec(|| setpgid(0, 0).map_err(io::Error::from))
                 .spawn()
                 .and_then(|p| {
-                    Ok(Process {
-                           pgid: p.id() as i32,
-                           lock: Mutex::new(false),
-                           cvar: Condvar::new(),
-                       })
-                })
+                              Ok(Process {
+                                     pgid: p.id() as i32,
+                                     lock: Mutex::new(false),
+                                     cvar: Condvar::new(),
+                                 })
+                          })
         }
 
         pub fn reap(&self) {
@@ -154,14 +155,16 @@ mod imp {
                 command.env("WATCHEXEC_COMMON_PATH", common_path);
             }
 
-            command.spawn().and_then(|p| {
-                let r = unsafe { AssignProcessToJobObject(job, p.into_raw_handle()) };
-                if r == 0 {
-                    panic!("failed to add to job object: {}", last_err());
-                }
+            command
+                .spawn()
+                .and_then(|p| {
+                              let r = unsafe { AssignProcessToJobObject(job, p.into_raw_handle()) };
+                              if r == 0 {
+                                  panic!("failed to add to job object: {}", last_err());
+                              }
 
-                Ok(Process { job: job })
-            })
+                              Ok(Process { job: job })
+                          })
         }
 
         pub fn reap(&self) {}

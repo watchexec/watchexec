@@ -44,11 +44,11 @@ impl NotificationFilter {
         let ignore_set = try!(ignore_set_builder.build());
 
         Ok(NotificationFilter {
-            filters: filter_set,
-            filter_count: filters.len(),
-            ignores: ignore_set,
-            ignore_files: ignore_files,
-        })
+               filters: filter_set,
+               filter_count: filters.len(),
+               ignores: ignore_set,
+               ignore_files: ignore_files,
+           })
     }
 
     pub fn is_excluded(&self, path: &Path) -> bool {

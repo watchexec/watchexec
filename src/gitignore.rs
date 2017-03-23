@@ -137,19 +137,17 @@ impl GitignoreFile {
                 pat = pat + "/**";
             }
 
-            let glob = try!(GlobBuilder::new(&pat)
-                .literal_separator(true)
-                .build());
+            let glob = try!(GlobBuilder::new(&pat).literal_separator(true).build());
 
             builder.add(glob);
             patterns.push(p);
         }
 
         Ok(GitignoreFile {
-            set: try!(builder.build()),
-            patterns: patterns,
-            root: root.to_owned(),
-        })
+               set: try!(builder.build()),
+               patterns: patterns,
+               root: root.to_owned(),
+           })
 
     }
 
@@ -169,9 +167,9 @@ impl GitignoreFile {
         for &i in matches.iter().rev() {
             let pattern = &self.patterns[i];
             return match pattern.pattern_type {
-                PatternType::Whitelist => MatchResult::Whitelist,
-                PatternType::Ignore => MatchResult::Ignore,
-            };
+                       PatternType::Whitelist => MatchResult::Whitelist,
+                       PatternType::Ignore => MatchResult::Ignore,
+                   };
         }
 
         MatchResult::None
@@ -182,7 +180,8 @@ impl GitignoreFile {
     }
 
     fn parse(contents: Vec<&str>) -> Vec<Pattern> {
-        contents.iter()
+        contents
+            .iter()
             .filter(|l| !l.is_empty())
             .filter(|l| !l.starts_with('#'))
             .map(|l| Pattern::parse(l))
