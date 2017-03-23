@@ -58,6 +58,10 @@ Call/restart `my_server` when any file in the current directory (and all subdire
 
     $ watchexec -r -s SIGKILL my_server
 
+Send a SIGHUP to the child process upon changes:
+
+    $ watchexec -s SIGHUP my_server
+
 Run `make` when any file changes, using the `.gitignore` file in the current directory to filter:
 
     $ watchexec make
