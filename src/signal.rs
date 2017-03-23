@@ -49,18 +49,24 @@ impl ConvertToLibc for Signal {
     }
 }
 
-pub fn new(signal_name: &str) -> Signal {
-    match signal_name {
-        "SIGKILL" | "KILL" => Signal::SIGKILL,
-        "SIGTERM" | "TERM" => Signal::SIGTERM,
-        "SIGINT" | "INT" => Signal::SIGINT,
-        "SIGHUP" | "HUP" => Signal::SIGHUP,
-        "SIGSTOP" | "STOP" => Signal::SIGSTOP,
-        "SIGCONT" | "CONT" => Signal::SIGCONT,
-        "SIGCHLD" | "CHLD" => Signal::SIGCHLD,
-        "SIGUSR1" | "USR1" => Signal::SIGUSR1,
-        "SIGUSR2" | "USR2" => Signal::SIGUSR2,
-        _ => panic!("unsupported signal: {}", signal_name),
+pub fn new(signal_name: Option<String>) -> Option<Signal> {
+    if let Some(signame) = signal_name {
+        let signal = match signame.as_ref() {
+            "SIGKILL" | "KILL" => Signal::SIGKILL,
+            "SIGTERM" | "TERM" => Signal::SIGTERM,
+            "SIGINT" | "INT" => Signal::SIGINT,
+            "SIGHUP" | "HUP" => Signal::SIGHUP,
+            "SIGSTOP" | "STOP" => Signal::SIGSTOP,
+            "SIGCONT" | "CONT" => Signal::SIGCONT,
+            "SIGCHLD" | "CHLD" => Signal::SIGCHLD,
+            "SIGUSR1" | "USR1" => Signal::SIGUSR1,
+            "SIGUSR2" | "USR2" => Signal::SIGUSR2,
+            _ => panic!("unsupported signal: {}", signame),
+        };
+
+        Some(signal)
+    } else {
+        None
     }
 }
 
