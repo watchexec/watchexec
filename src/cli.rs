@@ -105,11 +105,7 @@ pub fn get_args() -> Args {
 
     let cmd = values_t!(args.values_of("command"), String).unwrap().join(" ");
     let paths = values_t!(args.values_of("path"), String).unwrap_or(vec![String::from(".")]);
-
-    // TODO: I suppose there must be a better way of getting a string and a default value in clap
-    let signal = values_t!(args.values_of("signal"), String)
-        .unwrap_or(vec![String::from("SIGTERM")]) // TODO: Use SIGHUP as default?
-        .join(" ");
+    let signal = args.value_of("signal").unwrap_or("SIGTERM").to_owned();
 
     let mut filters = values_t!(args.values_of("filter"), String).unwrap_or(vec![]);
 
