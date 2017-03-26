@@ -1,7 +1,7 @@
 use std::path::MAIN_SEPARATOR;
 use std::process::Command;
 
-use clap::{App, Arg};
+use clap::{App, Arg, Error};
 
 #[derive(Debug)]
 pub struct Args {
@@ -131,6 +131,12 @@ pub fn get_args() -> Args {
     } else {
         1000
     };
+
+    if signal.is_some() && args.is_present("postpone") {
+        // TODO: Error::argument_conflict() might be the better fit, usage was unclear, though
+        Error::value_validation_auto(format!("--postpone and --signal are mutually exclusive"))
+            .exit();
+    }
 
     Args {
         cmd: cmd,
