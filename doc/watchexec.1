@@ -30,8 +30,8 @@ Comma\-separated list of file extensions to filter by\. Leading dots are allowed
 Ignores modifications from paths that do not match \fIpattern\fR\. This option can be specified multiple times, where a match on any given pattern causes the path to trigger \fIcommand\fR\.
 .
 .TP
-\fB\-k\fR, \fB\-\-kill\fR
-Send \fBSIGKILL\fR to the child process group instead of \fBSIGTERM\fR\.
+\fB\-s\fR, \fB\-\-signal <SIGKILL|SIGHUP|...>\fR
+Sends the specified signal (e\.g\. \fBSIGKILL\fR) to the child process\. Defaults to \fBSIGTERM\fR\.
 .
 .TP
 \fB\-i\fR, \fB\-\-ignore\fR \fIpattern\fR
