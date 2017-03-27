@@ -1,4 +1,4 @@
-#watchexec
+# watchexec
 
 [![Build Status](https://travis-ci.org/mattgreen/watchexec.svg?branch=master)](https://travis-ci.org/mattgreen/watchexec)
 [![Build status](https://ci.appveyor.com/api/projects/status/ivxu31g4rcf4740t?svg=true)](https://ci.appveyor.com/project/mattgreen/watchexec)
@@ -13,7 +13,7 @@ Example use cases:
 * Automatically run unit tests
 * Run linters/syntax checkers
 
-##Features
+## Features
 
 * Simple invocation and use
 * Runs on OS X, Linux and Windows
@@ -31,12 +31,12 @@ Example use cases:
 * Optionally restarts the command with every modification (good for servers)
 * Does not require a language runtime
 
-##Anti-Features
+## Anti-Features
 
 * Not tied to any particular language or ecosystem
 * Does not require a cryptic command line involving `xargs`
 
-##Usage Examples
+## Usage Examples
 
 Watch all JavaScript, CSS and HTML files in the current directory and all subdirectories for changes, running `make` when a change is detected:
 
@@ -66,31 +66,31 @@ Run `make` when any file in `lib` or `src` changes:
 
     $ watchexec -w lib -w src make
 
-##Installation
+## Installation
 
-###Cargo
+### Cargo
 
 watchexec requires Rust 1.9 or later. You can install it using cargo:
 
     $ cargo install watchexec
 
-###OS X with Homebrew
+### OS X with Homebrew
 
     $ brew install watchexec
 
-###Linux
+### Linux
 
 For now, use the GitHub Releases tab to obtain the binary. PRs for packaging in various distros are welcomed.
 
-###Windows
+### Windows
 
 Use the GitHub Releases tab to obtain the binary. In the future, I'll look at adding it to Chocolatey.
 
-##Building
+## Building
 
 Rust 1.9 or later is required.
 
-##Credits
+## Credits
 
 * [notify](https://github.com/passcod/rsnotify) for doing most of the heavy-lifting
 * [globset](https://crates.io/crates/globset) for super-fast glob matching
