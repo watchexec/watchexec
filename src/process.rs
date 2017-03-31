@@ -25,10 +25,7 @@ mod imp {
     impl Process {
         pub fn new(cmd: &str, updated_paths: Vec<PathBuf>) -> Result<Process> {
             use nix::unistd::*;
-            use std::fs::File;
             use std::io;
-            use std::io::{Read, Write};
-            use std::os::unix::io::FromRawFd;
             use std::os::unix::process::CommandExt;
 
             let mut command = Command::new("sh");
@@ -43,47 +40,15 @@ mod imp {
             }
 
             // Until process_exec lands in stable, handle fork/exec ourselves
-            // command.before_exec(|| setpgid(0, 0).map_err(io::Error::from))
-            // .spawn()
-            // .and_then(|p| Ok(Process { pid: p.id() as i32 }))
-
-            // Wait for child to call setpgid()
-            // Else, we risk racing waitpid/killpg (mostly just in tests, but hey)
-            let (r, w) = try!(pipe());
-
-            match fork() {
-                Ok(ForkResult::Parent { child, .. }) => {
-                    {
-                        let mut reader = unsafe { File::from_raw_fd(r) };
-                        let mut buffer = vec![0];
-                        let _ = reader.read_exact(&mut buffer);
-                    }
-                    let _ = close(w);
-
+            command.before_exec(|| setpgid(0, 0).map_err(io::Error::from))
+                .spawn()
+                .and_then(|p| {
                     Ok(Process {
-                        pgid: child,
-                        lock: Mutex::new(false),
-                        cvar: Condvar::new(),
-                    })
-                }
-                Ok(ForkResult::Child) => {
-                    let _ = setpgid(0, 0);
-
-                    {
-                        let mut writer = unsafe { File::from_raw_fd(w) };
-                        let _ = writer.write_all(&[42]);
-                    }
-                    let _ = close(r);
-
-                    let _ = command.exec();
-
-                    // If we get here, there isn't much we can do
-                    unsafe {
-                        exit(1);
-                    }
-                }
-                Err(e) => Err(io::Error::from(e)),
-            }
+                           pgid: p.id() as i32,
+                           lock: Mutex::new(false),
+                           cvar: Condvar::new(),
+                       })
+                })
         }
 
         pub fn kill(&self) {
@@ -195,15 +160,14 @@ mod imp {
                 command.env("WATCHEXEC_COMMON_PATH", common_path);
             }
 
-            command.spawn()
-                .and_then(|p| {
-                    let r = unsafe { AssignProcessToJobObject(job, p.into_raw_handle()) };
-                    if r == 0 {
-                        panic!("failed to add to job object: {}", last_err());
-                    }
+            command.spawn().and_then(|p| {
+                let r = unsafe { AssignProcessToJobObject(job, p.into_raw_handle()) };
+                if r == 0 {
+                    panic!("failed to add to job object: {}", last_err());
+                }
 
-                    Ok(Process { job: job })
-                })
+                Ok(Process { job: job })
+            })
         }
 
         pub fn kill(&self) {
