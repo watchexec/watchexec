@@ -124,10 +124,12 @@ fn main() {
         // 3. Send SIGTERM to the child, wait for it to exit, then run the command again
         // 4. Send a specified signal to the child, wait for it to exit, then run the command again
         //
-        match args.restart {
+        let scenario = (args.restart, signal.is_some());
+
+        match scenario {
             // Custom restart behaviour (--restart was given, and --signal specified):
             // Send specified signal to the child, wait for it to exit, then run the command again
-            true if signal.is_some() => {
+            (true, true) => {
                 signal_process(&child_process, signal, true);
 
                 // Launch child process
@@ -144,7 +146,7 @@ fn main() {
 
             // Default restart behaviour (--restart was given, but --signal wasn't specified):
             // Send SIGTERM to the child, wait for it to exit, then run the command again
-            true if signal.is_none() => {
+            (true, false) => {
                 let sigterm = signal::new(Some("SIGTERM".to_owned()));
                 signal_process(&child_process, sigterm, true);
 
@@ -162,11 +164,11 @@ fn main() {
 
             // SIGHUP scenario: --signal was given, but --restart was not
             // Just send a signal (e.g. SIGHUP) to the child, do nothing more
-            false if signal.is_some() => signal_process(&child_process, signal, false),
+            (false, true) => signal_process(&child_process, signal, false),
 
             // Default behaviour (neither --signal nor --restart specified):
             // Make sure the previous run was ended, then run the command again
-            false if signal.is_none() => {
+            (false, false) => {
                 signal_process(&child_process, None, true);
 
                 // Launch child process
@@ -180,9 +182,6 @@ fn main() {
                     *guard = Some(process::spawn(&args.cmd, paths));
                 }
             }
-
-            // Catch everything else, just to be sure.
-            _ => panic!("This should never be called. Please file a bug report!"),
         }
 
         // Handle once option for integration testing
