@@ -128,7 +128,7 @@ fn main() {
             // Custom restart behaviour (--restart was given, and --signal specified):
             // Send specified signal to the child, wait for it to exit, then run the command again
             true if signal.is_some() => {
-                wait_process(&child_process, signal, true);
+                signal_process(&child_process, signal, true);
 
                 // Launch child process
                 if args.clear_screen {
@@ -146,7 +146,7 @@ fn main() {
             // Send SIGTERM to the child, wait for it to exit, then run the command again
             true if signal.is_none() => {
                 let sigterm = signal::new(Some("SIGTERM".to_owned()));
-                wait_process(&child_process, sigterm, true);
+                signal_process(&child_process, sigterm, true);
 
                 // Launch child process
                 if args.clear_screen {
@@ -162,12 +162,12 @@ fn main() {
 
             // SIGHUP scenario: --signal was given, but --restart was not
             // Just send a signal (e.g. SIGHUP) to the child, do nothing more
-            false if signal.is_some() => wait_process(&child_process, signal, false),
+            false if signal.is_some() => signal_process(&child_process, signal, false),
 
             // Default behaviour (neither --signal nor --restart specified):
             // Make sure the previous run was ended, then run the command again
             false if signal.is_none() => {
-                wait_process(&child_process, None, true);
+                signal_process(&child_process, None, true);
 
                 // Launch child process
                 if args.clear_screen {
@@ -187,7 +187,7 @@ fn main() {
 
         // Handle once option for integration testing
         if args.once {
-            wait_process(&child_process, signal, false);
+            signal_process(&child_process, signal, false);
             break;
         }
     }
@@ -237,8 +237,8 @@ fn wait_fs(rx: &Receiver<Event>, filter: &NotificationFilter) -> Vec<PathBuf> {
     paths
 }
 
-// wait_process sends signal to process. It waits for the process to exit if wait is true
-fn wait_process(process: &RwLock<Option<Process>>, signal: Option<Signal>, wait: bool) {
+// signal_process sends signal to process. It waits for the process to exit if wait is true
+fn signal_process(process: &RwLock<Option<Process>>, signal: Option<Signal>, wait: bool) {
     let guard = process.read().unwrap();
 
     if let Some(ref child) = *guard {
