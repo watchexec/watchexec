@@ -33,86 +33,96 @@ pub fn clear_screen() {
 #[allow(unknown_lints)]
 #[allow(or_fun_call)]
 pub fn get_args() -> Args {
-    let args =
-        App::new("watchexec")
-            .version(crate_version!())
-            .about("Execute commands when watched files change")
-            .arg(Arg::with_name("command")
-                     .help("Command to execute")
-                     .multiple(true)
-                     .required(true))
-            .arg(Arg::with_name("extensions")
-                     .help("Comma-separated list of file extensions to watch (js,css,html)")
-                     .short("e")
-                     .long("exts")
-                     .takes_value(true))
-            .arg(Arg::with_name("path")
-                     .help("Watch a specific directory")
-                     .short("w")
-                     .long("watch")
-                     .number_of_values(1)
-                     .multiple(true)
-                     .takes_value(true))
-            .arg(Arg::with_name("clear")
-                     .help("Clear screen before executing command")
-                     .short("c")
-                     .long("clear"))
-            .arg(Arg::with_name("restart")
-                     .help("Restart the process if it's still running")
-                     .short("r")
-                     .long("restart"))
-            .arg(Arg::with_name("signal")
-                     .help("Send signal to process upon changes, e.g. SIGHUP")
-                     .short("s")
-                     .long("signal")
-                     .takes_value(true)
-                     .number_of_values(1)
-                     .value_name("signal"))
-            .arg(Arg::with_name("debug")
-                     .help("Print debugging messages to stderr")
-                     .short("d")
-                     .long("debug"))
-            .arg(Arg::with_name("filter")
-                     .help("Ignore all modifications except those matching the pattern")
-                     .short("f")
-                     .long("filter")
-                     .number_of_values(1)
-                     .multiple(true)
-                     .takes_value(true)
-                     .value_name("pattern"))
-            .arg(Arg::with_name("ignore")
-                     .help("Ignore modifications to paths matching the pattern")
-                     .short("i")
-                     .long("ignore")
-                     .number_of_values(1)
-                     .multiple(true)
-                     .takes_value(true)
-                     .value_name("pattern"))
-            .arg(Arg::with_name("no-vcs-ignore")
-                     .help("Skip auto-loading of .gitignore files for filtering")
-                     .long("no-vcs-ignore"))
-            .arg(Arg::with_name("postpone")
-                     .help("Wait until first change to execute command")
-                     .short("p")
-                     .long("postpone"))
-            .arg(Arg::with_name("poll")
-                     .help("Forces polling mode")
-                     .long("force-poll")
-                     .value_name("interval"))
-            .arg(Arg::with_name("once").short("1").hidden(true))
-            .get_matches();
+    let args = App::new("watchexec")
+        .version(crate_version!())
+        .about("Execute commands when watched files change")
+        .arg(Arg::with_name("command")
+                 .help("Command to execute")
+                 .multiple(true)
+                 .required(true))
+        .arg(Arg::with_name("extensions")
+                 .help("Comma-separated list of file extensions to watch (js,css,html)")
+                 .short("e")
+                 .long("exts")
+                 .takes_value(true))
+        .arg(Arg::with_name("path")
+                 .help("Watch a specific directory")
+                 .short("w")
+                 .long("watch")
+                 .number_of_values(1)
+                 .multiple(true)
+                 .takes_value(true))
+        .arg(Arg::with_name("clear")
+                 .help("Clear screen before executing command")
+                 .short("c")
+                 .long("clear"))
+        .arg(Arg::with_name("restart")
+                 .help("Restart the process if it's still running")
+                 .short("r")
+                 .long("restart"))
+        .arg(Arg::with_name("signal")
+                 .help("Send signal to process upon changes, e.g. SIGHUP")
+                 .short("s")
+                 .long("signal")
+                 .takes_value(true)
+                 .number_of_values(1)
+                 .value_name("signal"))
+        .arg(Arg::with_name("kill")
+                 .help("Send SIGKILL to child processes (deprecated, use -s SIGKILL instead)")
+                 .short("k")
+                 .long("kill"))
+        .arg(Arg::with_name("debug")
+                 .help("Print debugging messages to stderr")
+                 .short("d")
+                 .long("debug"))
+        .arg(Arg::with_name("filter")
+                 .help("Ignore all modifications except those matching the pattern")
+                 .short("f")
+                 .long("filter")
+                 .number_of_values(1)
+                 .multiple(true)
+                 .takes_value(true)
+                 .value_name("pattern"))
+        .arg(Arg::with_name("ignore")
+                 .help("Ignore modifications to paths matching the pattern")
+                 .short("i")
+                 .long("ignore")
+                 .number_of_values(1)
+                 .multiple(true)
+                 .takes_value(true)
+                 .value_name("pattern"))
+        .arg(Arg::with_name("no-vcs-ignore")
+                 .help("Skip auto-loading of .gitignore files for filtering")
+                 .long("no-vcs-ignore"))
+        .arg(Arg::with_name("postpone")
+                 .help("Wait until first change to execute command")
+                 .short("p")
+                 .long("postpone"))
+        .arg(Arg::with_name("poll")
+                 .help("Forces polling mode")
+                 .long("force-poll")
+                 .value_name("interval"))
+        .arg(Arg::with_name("once").short("1").hidden(true))
+        .get_matches();
 
-    let cmd = values_t!(args.values_of("command"), String).unwrap().join(" ");
+    let cmd = values_t!(args.values_of("command"), String)
+        .unwrap()
+        .join(" ");
     let paths = values_t!(args.values_of("path"), String).unwrap_or(vec![String::from(".")]);
-    let signal = args.value_of("signal").map(str::to_string); // Convert Option<&str> to Option<String>
+
+    // Treat --kill as --signal SIGKILL (for compatibility with older syntax)
+    let signal = match args.is_present("kill") {
+        true => Some("SIGKILL".to_string()),
+        false => args.value_of("signal").map(str::to_string), // Convert Option<&str> to Option<String>
+    };
 
     let mut filters = values_t!(args.values_of("filter"), String).unwrap_or(vec![]);
 
     if let Some(extensions) = args.values_of("extensions") {
         for exts in extensions {
             filters.extend(exts.split(',')
-                .filter(|ext| !ext.is_empty())
-                .map(|ext| format!("*.{}", ext.replace(".", ""))));
+                               .filter(|ext| !ext.is_empty())
+                               .map(|ext| format!("*.{}", ext.replace(".", ""))));
 
         }
     }
@@ -135,6 +145,12 @@ pub fn get_args() -> Args {
     if signal.is_some() && args.is_present("postpone") {
         // TODO: Error::argument_conflict() might be the better fit, usage was unclear, though
         Error::value_validation_auto(format!("--postpone and --signal are mutually exclusive"))
+            .exit();
+    }
+
+    if signal.is_some() && args.is_present("kill") {
+        // TODO: Error::argument_conflict() might be the better fit, usage was unclear, though
+        Error::value_validation_auto(format!("--kill and --signal is ambiguous.\n       Hint: Use only '--signal SIGKILL' without --kill"))
             .exit();
     }
 
