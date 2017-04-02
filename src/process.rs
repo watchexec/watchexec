@@ -55,6 +55,10 @@ mod imp {
             self.signal(SIGKILL);
         }
 
+        pub fn hup(&self) {
+            self.signal(SIGHUP);
+        }
+
         pub fn pause(&self) {
             self.signal(SIGTSTP);
         }

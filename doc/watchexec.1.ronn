@@ -25,6 +25,9 @@ Ignores modifications from paths that do not match <pattern>. This option can be
 * `-k`, `--kill`:
 Send `SIGKILL` to the child process group instead of `SIGTERM`.
 
+* `-g`, `--hup`:
+Send `SIGHUP` to the child process group instead of `SIGTERM`.
+
 * `-i`, `--ignore` <pattern>:
 Ignores modifications from paths that match <pattern>. This option can be specified multiple times, and a match on any pattern causes the path to be ignored.
 
