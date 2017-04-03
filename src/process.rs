@@ -13,6 +13,7 @@ mod imp {
     use std::path::PathBuf;
     use std::process::Command;
     use std::sync::*;
+    use signal::Signal;
 
     pub struct Process {
         pgid: pid_t,
@@ -40,23 +41,16 @@ mod imp {
             }
 
             // Until process_exec lands in stable, handle fork/exec ourselves
-            command.before_exec(|| setpgid(0, 0).map_err(io::Error::from))
+            command
+                .before_exec(|| setpgid(0, 0).map_err(io::Error::from))
                 .spawn()
                 .and_then(|p| {
-                    Ok(Process {
-                           pgid: p.id() as i32,
-                           lock: Mutex::new(false),
-                           cvar: Condvar::new(),
-                       })
-                })
-        }
-
-        pub fn kill(&self) {
-            self.signal(SIGKILL);
-        }
-
-        pub fn pause(&self) {
-            self.signal(SIGTSTP);
+                              Ok(Process {
+                                     pgid: p.id() as i32,
+                                     lock: Mutex::new(false),
+                                     cvar: Condvar::new(),
+                                 })
+                          })
         }
 
         pub fn reap(&self) {
@@ -82,11 +76,15 @@ mod imp {
             }
         }
 
-        pub fn resume(&self) {
-            self.signal(SIGCONT);
+        pub fn signal(&self, signal: Signal) {
+            use signal::ConvertToLibc;
+
+            let signo = signal.convert_to_libc();
+            debug!("Sending {:?} (int: {}) to child process", signal, signo);
+            self.c_signal(signo);
         }
 
-        fn signal(&self, sig: c_int) {
+        fn c_signal(&self, sig: c_int) {
             extern "C" {
                 fn killpg(pgrp: pid_t, sig: c_int) -> c_int;
             }
@@ -95,10 +93,6 @@ mod imp {
                 killpg(self.pgid, sig);
             }
 
-        }
-
-        pub fn terminate(&self) {
-            self.signal(SIGTERM);
         }
 
         pub fn wait(&self) {
@@ -119,6 +113,7 @@ mod imp {
     use std::process::Command;
     use kernel32::*;
     use winapi::*;
+    use signal::Signal;
 
     pub struct Process {
         job: HANDLE,
@@ -160,27 +155,22 @@ mod imp {
                 command.env("WATCHEXEC_COMMON_PATH", common_path);
             }
 
-            command.spawn().and_then(|p| {
-                let r = unsafe { AssignProcessToJobObject(job, p.into_raw_handle()) };
-                if r == 0 {
-                    panic!("failed to add to job object: {}", last_err());
-                }
+            command
+                .spawn()
+                .and_then(|p| {
+                              let r = unsafe { AssignProcessToJobObject(job, p.into_raw_handle()) };
+                              if r == 0 {
+                                  panic!("failed to add to job object: {}", last_err());
+                              }
 
-                Ok(Process { job: job })
-            })
+                              Ok(Process { job: job })
+                          })
         }
-
-        pub fn kill(&self) {
-            self.terminate();
-        }
-
-        pub fn pause(&self) {}
 
         pub fn reap(&self) {}
 
-        pub fn resume(&self) {}
-
-        pub fn terminate(&self) {
+        pub fn signal(&self, signal: Signal) {
+            debug!("Ignoring signal {:?} (not supported by Windows)", signal);
             unsafe {
                 let _ = TerminateJobObject(self.job, 1);
             }

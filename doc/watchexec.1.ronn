@@ -22,8 +22,8 @@ Comma-separated list of file extensions to filter by. Leading dots are allowed (
 * `-f`, `--filter` <pattern>:
 Ignores modifications from paths that do not match <pattern>. This option can be specified multiple times, where a match on any given pattern causes the path to trigger <command>.
 
-* `-k`, `--kill`:
-Send `SIGKILL` to the child process group instead of `SIGTERM`.
+* `-s`, `--signal`:
+Sends the specified signal (e.g. `SIGKILL`) to the child process. Defaults to `SIGTERM`.
 
 * `-i`, `--ignore` <pattern>:
 Ignores modifications from paths that match <pattern>. This option can be specified multiple times, and a match on any pattern causes the path to be ignored.

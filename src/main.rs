@@ -45,7 +45,8 @@ fn init_logger(debug: bool) {
         log::LogLevelFilter::Warn
     };
 
-    log_builder.format(|r| format!("*** {}", r.args()))
+    log_builder
+        .format(|r| format!("*** {}", r.args()))
         .filter(None, level);
     log_builder.init().expect("unable to initialize logger");
 }
@@ -54,23 +55,17 @@ fn main() {
     let args = cli::get_args();
     let child_process: Arc<RwLock<Option<Process>>> = Arc::new(RwLock::new(None));
     let weak_child = Arc::downgrade(&child_process);
-    let kill = args.kill;
+
+    // Convert signal string to the corresponding integer
+    let signal = signal::new(args.signal);
 
     signal::install_handler(move |sig: Signal| {
         if let Some(lock) = weak_child.upgrade() {
             let strong = lock.read().unwrap();
             if let Some(ref child) = *strong {
                 match sig {
-                    Signal::Terminate => {
-                        if kill {
-                            child.kill();
-                        } else {
-                            child.terminate();
-                        }
-                    }
-                    Signal::Stop => child.pause(),
-                    Signal::Continue => child.resume(),
-                    Signal::ChildExit => child.reap(),
+                    Signal::SIGCHLD => child.reap(), // SIGCHLD is special, initiate reap()
+                    _ => child.signal(sig),
                 }
             }
         }
@@ -81,11 +76,11 @@ fn main() {
     let paths: Vec<PathBuf> = args.paths
         .iter()
         .map(|p| {
-            Path::new(&p)
-                .canonicalize()
-                .expect(&format!("unable to canonicalize \"{}\"", &p))
-                .to_owned()
-        })
+                 Path::new(&p)
+                     .canonicalize()
+                     .expect(&format!("unable to canonicalize \"{}\"", &p))
+                     .to_owned()
+             })
         .collect();
 
     let gitignore = if !args.no_vcs_ignore {
@@ -98,8 +93,8 @@ fn main() {
         .expect("unable to create notification filter");
 
     let (tx, rx) = channel();
-    let watcher = Watcher::new(tx, &paths, args.poll, args.poll_interval)
-        .expect("unable to create watcher");
+    let watcher =
+        Watcher::new(tx, &paths, args.poll, args.poll_interval).expect("unable to create watcher");
 
     if watcher.is_polling() {
         warn!("Polling for changes every {} ms", args.poll_interval);
@@ -122,23 +117,76 @@ fn main() {
             debug!("Path updated: {:?}", path);
         }
 
-        // Wait for current child process to exit
-        wait_process(&child_process, kill, args.restart);
+        // We have three scenarios here:
+        //
+        // 1. Make sure the previous run was ended, then run the command again
+        // 2. Just send a specified signal to the child, do nothing more
+        // 3. Send SIGTERM to the child, wait for it to exit, then run the command again
+        // 4. Send a specified signal to the child, wait for it to exit, then run the command again
+        //
+        let scenario = (args.restart, signal.is_some());
 
-        // Launch child process
-        if args.clear_screen {
-            cli::clear_screen();
-        }
+        match scenario {
+            // Custom restart behaviour (--restart was given, and --signal specified):
+            // Send specified signal to the child, wait for it to exit, then run the command again
+            (true, true) => {
+                signal_process(&child_process, signal, true);
 
-        debug!("Launching child process");
-        {
-            let mut guard = child_process.write().unwrap();
-            *guard = Some(process::spawn(&args.cmd, paths));
+                // Launch child process
+                if args.clear_screen {
+                    cli::clear_screen();
+                }
+
+                debug!("Launching child process");
+                {
+                    let mut guard = child_process.write().unwrap();
+                    *guard = Some(process::spawn(&args.cmd, paths));
+                }
+            }
+
+            // Default restart behaviour (--restart was given, but --signal wasn't specified):
+            // Send SIGTERM to the child, wait for it to exit, then run the command again
+            (true, false) => {
+                let sigterm = signal::new(Some("SIGTERM".to_owned()));
+                signal_process(&child_process, sigterm, true);
+
+                // Launch child process
+                if args.clear_screen {
+                    cli::clear_screen();
+                }
+
+                debug!("Launching child process");
+                {
+                    let mut guard = child_process.write().unwrap();
+                    *guard = Some(process::spawn(&args.cmd, paths));
+                }
+            }
+
+            // SIGHUP scenario: --signal was given, but --restart was not
+            // Just send a signal (e.g. SIGHUP) to the child, do nothing more
+            (false, true) => signal_process(&child_process, signal, false),
+
+            // Default behaviour (neither --signal nor --restart specified):
+            // Make sure the previous run was ended, then run the command again
+            (false, false) => {
+                signal_process(&child_process, None, true);
+
+                // Launch child process
+                if args.clear_screen {
+                    cli::clear_screen();
+                }
+
+                debug!("Launching child process");
+                {
+                    let mut guard = child_process.write().unwrap();
+                    *guard = Some(process::spawn(&args.cmd, paths));
+                }
+            }
         }
 
         // Handle once option for integration testing
         if args.once {
-            wait_process(&child_process, kill, false);
+            signal_process(&child_process, signal, false);
             break;
         }
     }
@@ -188,20 +236,18 @@ fn wait_fs(rx: &Receiver<Event>, filter: &NotificationFilter) -> Vec<PathBuf> {
     paths
 }
 
-fn wait_process(process: &RwLock<Option<Process>>, kill: bool, restart: bool) {
+// signal_process sends signal to process. It waits for the process to exit if wait is true
+fn signal_process(process: &RwLock<Option<Process>>, signal: Option<Signal>, wait: bool) {
     let guard = process.read().unwrap();
 
     if let Some(ref child) = *guard {
-        if restart {
-            debug!("Stopping child process");
-            if kill {
-                child.kill();
-            } else {
-                child.terminate();
-            }
+        if let Some(s) = signal {
+            child.signal(s);
         }
 
-        debug!("Waiting for process to exit...");
-        child.wait();
+        if wait {
+            debug!("Waiting for process to exit...");
+            child.wait();
+        }
     }
 }

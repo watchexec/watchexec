@@ -4,12 +4,70 @@ lazy_static! {
     static ref CLEANUP: Mutex<Option<Box<Fn(self::Signal) + Send>>> = Mutex::new(None);
 }
 
-#[allow(dead_code)]
+#[cfg(unix)]
+pub use nix::sys::signal::Signal;
+
+// This is a dummy enum for Windows
+#[cfg(windows)]
+#[derive(Debug, Copy, Clone)]
 pub enum Signal {
-    Terminate,
-    Stop,
-    Continue,
-    ChildExit,
+    SIGKILL,
+    SIGTERM,
+    SIGINT,
+    SIGHUP,
+    SIGSTOP,
+    SIGCONT,
+    SIGCHLD,
+    SIGUSR1,
+    SIGUSR2,
+}
+
+#[cfg(unix)]
+use libc::*;
+
+#[cfg(unix)]
+pub trait ConvertToLibc {
+    fn convert_to_libc(self) -> c_int;
+}
+
+#[cfg(unix)]
+impl ConvertToLibc for Signal {
+    fn convert_to_libc(self) -> c_int {
+        // Convert from signal::Signal enum to libc::* c_int constants
+        match self {
+            Signal::SIGKILL => SIGKILL,
+            Signal::SIGTERM => SIGTERM,
+            Signal::SIGINT => SIGINT,
+            Signal::SIGHUP => SIGHUP,
+            Signal::SIGSTOP => SIGSTOP,
+            Signal::SIGCONT => SIGCONT,
+            Signal::SIGCHLD => SIGCHLD,
+            Signal::SIGUSR1 => SIGUSR1,
+            Signal::SIGUSR2 => SIGUSR2,
+            _ => panic!("unsupported signal: {:?}", self),
+        }
+    }
+}
+
+pub fn new(signal_name: Option<String>) -> Option<Signal> {
+    if let Some(signame) = signal_name {
+        let signal = match signame.as_ref() {
+            "SIGKILL" | "KILL" => Signal::SIGKILL,
+            "SIGTERM" | "TERM" => Signal::SIGTERM,
+            "SIGINT" | "INT" => Signal::SIGINT,
+            "SIGHUP" | "HUP" => Signal::SIGHUP,
+            "SIGSTOP" | "STOP" => Signal::SIGSTOP,
+            "SIGCONT" | "CONT" => Signal::SIGCONT,
+            "SIGCHLD" | "CHLD" => Signal::SIGCHLD,
+            "SIGUSR1" | "USR1" => Signal::SIGUSR1,
+            "SIGUSR2" | "USR2" => Signal::SIGUSR2,
+            _ => panic!("unsupported signal: {}", signame),
+        };
+
+        Some(signal)
+    } else {
+        None
+    }
 }
 
 #[cfg(unix)]
@@ -23,12 +81,17 @@ pub fn install_handler<F>(handler: F)
     // Mask all signals interesting to us. The mask propagates
     // to all threads started after this point.
     let mut mask = SigSet::empty();
+    mask.add(SIGKILL);
     mask.add(SIGTERM);
     mask.add(SIGINT);
-    mask.add(SIGTSTP);
+    mask.add(SIGHUP);
+    mask.add(SIGSTOP);
     mask.add(SIGCONT);
     mask.add(SIGCHLD);
-    mask.thread_set_mask().expect("unable to set signal mask");
+    mask.add(SIGUSR1);
+    mask.add(SIGUSR2);
+    mask.thread_set_mask()
+        .expect("unable to set signal mask");
 
     set_handler(handler);
 
@@ -45,36 +108,28 @@ pub fn install_handler<F>(handler: F)
     // Spawn a thread to catch these signals
     thread::spawn(move || {
         loop {
-            let raw_signal = mask.wait().expect("unable to sigwait");
-            debug!("Received {:?}", raw_signal);
-
-            let sig = match raw_signal {
-                SIGTERM | SIGINT => self::Signal::Terminate,
-                SIGTSTP => self::Signal::Stop,
-                SIGCONT => self::Signal::Continue,
-                SIGCHLD => self::Signal::ChildExit,
-                _ => unreachable!(),
-            };
+            let signal = mask.wait().expect("Unable to sigwait");
+            debug!("Received {:?}", signal);
 
             // Invoke closure
-            invoke(sig);
+            invoke(signal);
 
             // Restore default behavior for received signal and unmask it
-            if raw_signal != SIGCHLD {
+            if signal != SIGCHLD {
                 let default_action =
                     SigAction::new(SigHandler::SigDfl, SaFlags::empty(), SigSet::empty());
 
                 unsafe {
-                    let _ = sigaction(raw_signal, &default_action);
+                    let _ = sigaction(signal, &default_action);
                 }
             }
 
             let mut new_mask = SigSet::empty();
-            new_mask.add(raw_signal);
+            new_mask.add(signal);
 
             // Re-raise with signal unmasked
             let _ = new_mask.thread_unblock();
-            let _ = raise(raw_signal);
+            let _ = raise(signal);
             let _ = new_mask.thread_block();
         }
     });
@@ -88,7 +143,7 @@ pub fn install_handler<F>(handler: F)
     use winapi::{BOOL, DWORD, FALSE, TRUE};
 
     pub unsafe extern "system" fn ctrl_handler(_: DWORD) -> BOOL {
-        invoke(self::Signal::Terminate);
+        invoke(self::Signal::SIGTERM);
 
         FALSE
     }
