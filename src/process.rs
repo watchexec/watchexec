@@ -40,7 +40,6 @@ mod imp {
                 command.env("WATCHEXEC_COMMON_PATH", common_path);
             }
 
-            // Until process_exec lands in stable, handle fork/exec ourselves
             command
                 .before_exec(|| setpgid(0, 0).map_err(io::Error::from))
                 .spawn()
