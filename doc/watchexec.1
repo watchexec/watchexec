@@ -34,6 +34,10 @@ Ignores modifications from paths that do not match \fIpattern\fR\. This option c
 Sends the specified signal (e\.g\. \fBSIGKILL\fR) to the child process\. Defaults to \fBSIGTERM\fR\.
 .
 .TP
+\fB\-n\fR, \fB\-\-no\-shell\fR
+Execute command directly, do not use \fBsh -c\fR\. This is especially useful in combination with \fB--signal\fR, as the signal is then send directly to the specified command\. While \fB--no-shell\fR is a little more performant than the default, it prevents using shell-features like pipes and redirects\.
+.
+.TP
 \fB\-i\fR, \fB\-\-ignore\fR \fIpattern\fR
 Ignores modifications from paths that match \fIpattern\fR\. This option can be specified multiple times, and a match on any pattern causes the path to be ignored\.
 .

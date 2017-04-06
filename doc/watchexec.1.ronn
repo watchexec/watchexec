@@ -25,6 +25,9 @@ Ignores modifications from paths that do not match <pattern>. This option can be
 * `-s`, `--signal`:
 Sends the specified signal (e.g. `SIGKILL`) to the child process. Defaults to `SIGTERM`.
 
+* `-n`, `--no-shell`:
+Execute command directly, do not use `sh -c`. This is especially useful in combination with `--signal`, as the signal is then send directly to the specified command. While `--no-shell` is a little more performant than the default, it prevents using shell-features like pipes and redirects.
+
 * `-i`, `--ignore` <pattern>:
 Ignores modifications from paths that match <pattern>. This option can be specified multiple times, and a match on any pattern causes the path to be ignored.
 
