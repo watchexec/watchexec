@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
-pub fn spawn(cmd: &str, updated_paths: Vec<PathBuf>) -> Process {
-    self::imp::Process::new(cmd, updated_paths).expect("unable to spawn process")
+pub fn spawn(cmd: &str, updated_paths: Vec<PathBuf>, no_shell: bool) -> Process {
+    self::imp::Process::new(cmd, updated_paths, no_shell).expect("unable to spawn process")
 }
 
 pub use self::imp::Process;
@@ -24,13 +24,33 @@ mod imp {
     #[allow(unknown_lints)]
     #[allow(mutex_atomic)]
     impl Process {
-        pub fn new(cmd: &str, updated_paths: Vec<PathBuf>) -> Result<Process> {
+        pub fn new(cmd: &str, updated_paths: Vec<PathBuf>, no_shell: bool) -> Result<Process> {
             use nix::unistd::*;
             use std::io;
             use std::os::unix::process::CommandExt;
 
-            let mut command = Command::new("sh");
-            command.arg("-c").arg(cmd);
+            // Assemble command to run.
+            // This is either the first argument from cmd (if no_shell was given) or "sh".
+            // Using "sh -c" gives us features like supportin pipes and redirects,
+            // but is a little less performant and can cause trouble when using custom signals
+            // (e.g. --signal SIGHUP)
+            let mut iter_args = cmd.split_whitespace();
+            let arg0 = match no_shell {
+                true => iter_args.next().unwrap(),
+                false => "sh",
+            };
+
+            // TODO: There might be a better way of doing this with &str.
+            //       I've had to fall back to String, as I wasn't able to join(" ") a Vec<&str>
+            //       into a &str
+            let args: Vec<String> = match no_shell {
+                true => iter_args.map(str::to_string).collect(),
+                false => vec!["-c".to_string(), iter_args.collect::<Vec<&str>>().join(" ")],
+            };
+
+            let mut command = Command::new(arg0);
+            command.args(args);
+            debug!("Assembled command {:?}", command);
 
             if let Some(single_path) = super::get_single_updated_path(&updated_paths) {
                 command.env("WATCHEXEC_UPDATED_PATH", single_path);

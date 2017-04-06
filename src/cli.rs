@@ -14,6 +14,7 @@ pub struct Args {
     pub restart: bool,
     pub debug: bool,
     pub run_initially: bool,
+    pub no_shell: bool,
     pub no_vcs_ignore: bool,
     pub once: bool,
     pub poll: bool,
@@ -102,6 +103,10 @@ pub fn get_args() -> Args {
                  .help("Forces polling mode")
                  .long("force-poll")
                  .value_name("interval"))
+        .arg(Arg::with_name("no-shell")
+                 .help("Do not wrap command in 'sh -c'")
+                 .short("n")
+                 .long("no-shell"))
         .arg(Arg::with_name("once").short("1").hidden(true))
         .get_matches();
 
@@ -164,6 +169,7 @@ pub fn get_args() -> Args {
         restart: args.is_present("restart"),
         debug: args.is_present("debug"),
         run_initially: !args.is_present("postpone"),
+        no_shell: args.is_present("no-shell"),
         no_vcs_ignore: args.is_present("no-vcs-ignore"),
         once: args.is_present("once"),
         poll: args.occurrences_of("poll") > 0,

@@ -107,7 +107,7 @@ fn main() {
         }
 
         let mut guard = child_process.write().unwrap();
-        *guard = Some(process::spawn(&args.cmd, vec![]));
+        *guard = Some(process::spawn(&args.cmd, vec![], args.no_shell));
     }
 
     loop {
@@ -140,7 +140,7 @@ fn main() {
                 debug!("Launching child process");
                 {
                     let mut guard = child_process.write().unwrap();
-                    *guard = Some(process::spawn(&args.cmd, paths));
+                    *guard = Some(process::spawn(&args.cmd, paths, args.no_shell));
                 }
             }
 
@@ -158,7 +158,7 @@ fn main() {
                 debug!("Launching child process");
                 {
                     let mut guard = child_process.write().unwrap();
-                    *guard = Some(process::spawn(&args.cmd, paths));
+                    *guard = Some(process::spawn(&args.cmd, paths, args.no_shell));
                 }
             }
 
@@ -179,7 +179,7 @@ fn main() {
                 debug!("Launching child process");
                 {
                     let mut guard = child_process.write().unwrap();
-                    *guard = Some(process::spawn(&args.cmd, paths));
+                    *guard = Some(process::spawn(&args.cmd, paths, args.no_shell));
                 }
             }
         }
