@@ -104,7 +104,7 @@ pub fn get_args() -> Args {
                  .long("force-poll")
                  .value_name("interval"))
         .arg(Arg::with_name("no-shell")
-                 .help("Do not wrap command in 'sh -c'")
+                 .help("Do not wrap command in 'sh -c' resp. 'cmd.exe /C'")
                  .short("n")
                  .long("no-shell"))
         .arg(Arg::with_name("once").short("1").hidden(true))

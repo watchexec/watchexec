@@ -139,7 +139,7 @@ mod imp {
     }
 
     impl Process {
-        pub fn new(cmd: &str, updated_paths: Vec<PathBuf>) -> Result<Process> {
+        pub fn new(cmd: &str, updated_paths: Vec<PathBuf>, no_shell: bool) -> Result<Process> {
             use std::os::windows::io::IntoRawHandle;
 
             fn last_err() -> io::Error {
@@ -163,8 +163,23 @@ mod imp {
                 panic!("failed to set job info: {}", last_err());
             }
 
-            let mut command = Command::new("cmd.exe");
-            command.arg("/C").arg(cmd);
+            let mut iter_args = cmd.split_whitespace();
+            let arg0 = match no_shell {
+                true => iter_args.next().unwrap(),
+                false => "cmd.exe",
+            };
+
+            // TODO: There might be a better way of doing this with &str.
+            //       I've had to fall back to String, as I wasn't able to join(" ") a Vec<&str>
+            //       into a &str
+            let args: Vec<String> = match no_shell {
+                true => iter_args.map(str::to_string).collect(),
+                false => vec!["/C".to_string(), iter_args.collect::<Vec<&str>>().join(" ")],
+            };
+
+            let mut command = Command::new(arg0);
+            command.args(args);
+            debug!("Assembled command {:?}", command);
 
             if let Some(single_path) = super::get_single_updated_path(&updated_paths) {
                 command.env("WATCHEXEC_UPDATED_PATH", single_path);
