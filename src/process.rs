@@ -261,7 +261,7 @@ mod tests {
 
     #[test]
     fn test_start() {
-        let _ = spawn("echo hi", vec![]);
+        let _ = spawn("echo hi", vec![], true);
     }
 
     #[test]
