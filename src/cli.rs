@@ -116,9 +116,11 @@ pub fn get_args() -> Args {
     let paths = values_t!(args.values_of("path"), String).unwrap_or(vec![String::from(".")]);
 
     // Treat --kill as --signal SIGKILL (for compatibility with older syntax)
-    let signal = match args.is_present("kill") {
-        true => Some("SIGKILL".to_string()),
-        false => args.value_of("signal").map(str::to_string), // Convert Option<&str> to Option<String>
+    let signal = if args.is_present("kill") {
+        Some("SIGKILL".to_string())
+    } else {
+        // Convert Option<&str> to Option<String>
+        args.value_of("signal").map(str::to_string)
     };
 
     let mut filters = values_t!(args.values_of("filter"), String).unwrap_or(vec![]);

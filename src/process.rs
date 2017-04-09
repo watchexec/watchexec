@@ -35,17 +35,19 @@ mod imp {
             // but is a little less performant and can cause trouble when using custom signals
             // (e.g. --signal SIGHUP)
             let mut iter_args = cmd.split_whitespace();
-            let arg0 = match no_shell {
-                true => iter_args.next().unwrap(),
-                false => "sh",
+            let arg0 = if no_shell {
+                iter_args.next().unwrap()
+            } else {
+                "sh"
             };
 
             // TODO: There might be a better way of doing this with &str.
             //       I've had to fall back to String, as I wasn't able to join(" ") a Vec<&str>
             //       into a &str
-            let args: Vec<String> = match no_shell {
-                true => iter_args.map(str::to_string).collect(),
-                false => vec!["-c".to_string(), iter_args.collect::<Vec<&str>>().join(" ")],
+            let args: Vec<String> = if no_shell {
+                iter_args.map(str::to_string).collect()
+            } else {
+                vec!["-c".to_string(), iter_args.collect::<Vec<&str>>().join(" ")]
             };
 
             let mut command = Command::new(arg0);
