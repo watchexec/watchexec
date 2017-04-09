@@ -151,13 +151,13 @@ pub fn get_args() -> Args {
 
     if signal.is_some() && args.is_present("postpone") {
         // TODO: Error::argument_conflict() might be the better fit, usage was unclear, though
-        Error::value_validation_auto(format!("--postpone and --signal are mutually exclusive"))
+        Error::value_validation_auto("--postpone and --signal are mutually exclusive".to_string())
             .exit();
     }
 
     if signal.is_some() && args.is_present("kill") {
         // TODO: Error::argument_conflict() might be the better fit, usage was unclear, though
-        Error::value_validation_auto(format!("--kill and --signal is ambiguous.\n       Hint: Use only '--signal SIGKILL' without --kill"))
+        Error::value_validation_auto("--kill and --signal is ambiguous.\n       Hint: Use only '--signal SIGKILL' without --kill".to_string())
             .exit();
     }
 
