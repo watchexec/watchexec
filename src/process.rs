@@ -34,24 +34,17 @@ mod imp {
             // Using "sh -c" gives us features like supportin pipes and redirects,
             // but is a little less performant and can cause trouble when using custom signals
             // (e.g. --signal SIGHUP)
-            let mut iter_args = cmd.split_whitespace();
-            let arg0 = if no_shell {
-                iter_args.next().unwrap()
+            let mut command = if no_shell {
+                let mut split = cmd.split_whitespace();
+                let mut command = Command::new(split.next().unwrap());
+                command.args(split);
+                command
             } else {
-                "sh"
+                let mut command = Command::new("sh");
+                command.arg("-c").arg(cmd);
+                command
             };
 
-            // TODO: There might be a better way of doing this with &str.
-            //       I've had to fall back to String, as I wasn't able to join(" ") a Vec<&str>
-            //       into a &str
-            let args: Vec<String> = if no_shell {
-                iter_args.map(str::to_string).collect()
-            } else {
-                vec!["-c".to_string(), iter_args.collect::<Vec<&str>>().join(" ")]
-            };
-
-            let mut command = Command::new(arg0);
-            command.args(args);
             debug!("Assembled command {:?}", command);
 
             if let Some(single_path) = super::get_single_updated_path(&updated_paths) {
