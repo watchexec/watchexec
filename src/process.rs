@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
-pub fn spawn(cmd: &str, updated_paths: Vec<PathBuf>) -> Process {
-    self::imp::Process::new(cmd, updated_paths).expect("unable to spawn process")
+pub fn spawn(cmd: &str, updated_paths: Vec<PathBuf>, no_shell: bool) -> Process {
+    self::imp::Process::new(cmd, updated_paths, no_shell).expect("unable to spawn process")
 }
 
 pub use self::imp::Process;
@@ -24,13 +24,28 @@ mod imp {
     #[allow(unknown_lints)]
     #[allow(mutex_atomic)]
     impl Process {
-        pub fn new(cmd: &str, updated_paths: Vec<PathBuf>) -> Result<Process> {
+        pub fn new(cmd: &str, updated_paths: Vec<PathBuf>, no_shell: bool) -> Result<Process> {
             use nix::unistd::*;
             use std::io;
             use std::os::unix::process::CommandExt;
 
-            let mut command = Command::new("sh");
-            command.arg("-c").arg(cmd);
+            // Assemble command to run.
+            // This is either the first argument from cmd (if no_shell was given) or "sh".
+            // Using "sh -c" gives us features like supportin pipes and redirects,
+            // but is a little less performant and can cause trouble when using custom signals
+            // (e.g. --signal SIGHUP)
+            let mut command = if no_shell {
+                let mut split = cmd.split_whitespace();
+                let mut command = Command::new(split.next().unwrap());
+                command.args(split);
+                command
+            } else {
+                let mut command = Command::new("sh");
+                command.arg("-c").arg(cmd);
+                command
+            };
+
+            debug!("Assembled command {:?}", command);
 
             if let Some(single_path) = super::get_single_updated_path(&updated_paths) {
                 command.env("WATCHEXEC_UPDATED_PATH", single_path);
@@ -119,7 +134,7 @@ mod imp {
     }
 
     impl Process {
-        pub fn new(cmd: &str, updated_paths: Vec<PathBuf>) -> Result<Process> {
+        pub fn new(cmd: &str, updated_paths: Vec<PathBuf>, no_shell: bool) -> Result<Process> {
             use std::os::windows::io::IntoRawHandle;
 
             fn last_err() -> io::Error {
@@ -143,8 +158,23 @@ mod imp {
                 panic!("failed to set job info: {}", last_err());
             }
 
-            let mut command = Command::new("cmd.exe");
-            command.arg("/C").arg(cmd);
+            let mut iter_args = cmd.split_whitespace();
+            let arg0 = match no_shell {
+                true => iter_args.next().unwrap(),
+                false => "cmd.exe",
+            };
+
+            // TODO: There might be a better way of doing this with &str.
+            //       I've had to fall back to String, as I wasn't able to join(" ") a Vec<&str>
+            //       into a &str
+            let args: Vec<String> = match no_shell {
+                true => iter_args.map(str::to_string).collect(),
+                false => vec!["/C".to_string(), iter_args.collect::<Vec<&str>>().join(" ")],
+            };
+
+            let mut command = Command::new(arg0);
+            command.args(args);
+            debug!("Assembled command {:?}", command);
 
             if let Some(single_path) = super::get_single_updated_path(&updated_paths) {
                 command.env("WATCHEXEC_UPDATED_PATH", single_path);
@@ -241,7 +271,7 @@ mod tests {
 
     #[test]
     fn test_start() {
-        let _ = spawn("echo hi", vec![]);
+        let _ = spawn("echo hi", vec![], true);
     }
 
     #[test]

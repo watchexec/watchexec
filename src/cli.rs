@@ -14,6 +14,7 @@ pub struct Args {
     pub restart: bool,
     pub debug: bool,
     pub run_initially: bool,
+    pub no_shell: bool,
     pub no_vcs_ignore: bool,
     pub once: bool,
     pub poll: bool,
@@ -102,6 +103,10 @@ pub fn get_args() -> Args {
                  .help("Forces polling mode")
                  .long("force-poll")
                  .value_name("interval"))
+        .arg(Arg::with_name("no-shell")
+                 .help("Do not wrap command in 'sh -c' resp. 'cmd.exe /C'")
+                 .short("n")
+                 .long("no-shell"))
         .arg(Arg::with_name("once").short("1").hidden(true))
         .get_matches();
 
@@ -111,9 +116,11 @@ pub fn get_args() -> Args {
     let paths = values_t!(args.values_of("path"), String).unwrap_or(vec![String::from(".")]);
 
     // Treat --kill as --signal SIGKILL (for compatibility with older syntax)
-    let signal = match args.is_present("kill") {
-        true => Some("SIGKILL".to_string()),
-        false => args.value_of("signal").map(str::to_string), // Convert Option<&str> to Option<String>
+    let signal = if args.is_present("kill") {
+        Some("SIGKILL".to_string())
+    } else {
+        // Convert Option<&str> to Option<String>
+        args.value_of("signal").map(str::to_string)
     };
 
     let mut filters = values_t!(args.values_of("filter"), String).unwrap_or(vec![]);
@@ -144,13 +151,13 @@ pub fn get_args() -> Args {
 
     if signal.is_some() && args.is_present("postpone") {
         // TODO: Error::argument_conflict() might be the better fit, usage was unclear, though
-        Error::value_validation_auto(format!("--postpone and --signal are mutually exclusive"))
+        Error::value_validation_auto("--postpone and --signal are mutually exclusive".to_string())
             .exit();
     }
 
     if signal.is_some() && args.is_present("kill") {
         // TODO: Error::argument_conflict() might be the better fit, usage was unclear, though
-        Error::value_validation_auto(format!("--kill and --signal is ambiguous.\n       Hint: Use only '--signal SIGKILL' without --kill"))
+        Error::value_validation_auto("--kill and --signal is ambiguous.\n       Hint: Use only '--signal SIGKILL' without --kill".to_string())
             .exit();
     }
 
@@ -164,6 +171,7 @@ pub fn get_args() -> Args {
         restart: args.is_present("restart"),
         debug: args.is_present("debug"),
         run_initially: !args.is_present("postpone"),
+        no_shell: args.is_present("no-shell"),
         no_vcs_ignore: args.is_present("no-vcs-ignore"),
         once: args.is_present("once"),
         poll: args.occurrences_of("poll") > 0,
