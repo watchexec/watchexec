@@ -95,6 +95,9 @@ pub fn get_args() -> Args {
         .arg(Arg::with_name("no-vcs-ignore")
                  .help("Skip auto-loading of .gitignore files for filtering")
                  .long("no-vcs-ignore"))
+        .arg(Arg::with_name("no-default-ignore")
+                 .help("Skip auto-ignoring of commonly ignored globs")
+                 .long("no-default-ignore"))
         .arg(Arg::with_name("postpone")
                  .help("Wait until first change to execute command")
                  .short("p")
@@ -139,7 +142,10 @@ pub fn get_args() -> Args {
                                String::from("*.pyc"),
                                String::from("*.swp")];
 
-    ignores.extend(default_ignores);
+
+    if args.occurrences_of("no-default-ignore") == 0 {
+        ignores.extend(default_ignores)
+    };
     ignores.extend(values_t!(args.values_of("ignore"), String).unwrap_or(vec![]));
 
     let poll_interval = if args.occurrences_of("poll") > 0 {
