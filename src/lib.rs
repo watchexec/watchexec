@@ -19,15 +19,12 @@ extern crate kernel32;
 #[cfg(test)]
 extern crate mktemp;
 
-mod cli;
+pub mod cli;
 mod gitignore;
 mod notification_filter;
 mod process;
-mod run;
+pub mod run;
 mod signal;
 mod watcher;
 
-fn main() {
-    let args = cli::get_args();
-    run::run(args);
-}
+pub use run::run;
