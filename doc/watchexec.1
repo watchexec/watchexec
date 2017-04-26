@@ -1,13 +1,13 @@
 .\" generated with Ronn/v0.7.3
 .\" http://github.com/rtomayko/ronn/tree/0.7.3
 .
-.TH "WATCHEXEC" "1" "February 2017" "" ""
+.TH "WATCHEXEC" "1" "April 2017" "" ""
 .
 .SH "NAME"
 \fBwatchexec\fR \- execute commands when watched files change
 .
 .SH "SYNOPSIS"
-watchexec [\fB\-\-exts\fR | \fB\-e\fR \fIextensions\fR]\.\.\. [\fB\-\-filter\fR | \fB\-f\fR \fIpattern\fR]\.\.\. [\fB\-\-ignore\fR | \fB\-i\fR \fIpattern\fR]\.\.\. [\fB\-\-watch\fR | \fB\-w\fR \fIpath\fR]\.\.\. [\fB\-\-restart\fR | \fB\-r\fR] [\fB\-\-clear\fR | \fB\-c\fR] [\fB\-\-postpone\fR | \fB\-p\fR] [\fB\-\-force\-poll\fR \fIinterval\fR] [\fB\-\-debug\fR | \fB\-d\fR] [\fB\-\-no\-vcs\-ignore\fR] \fIcommand\fR [\fIargument\fR\.\.\.]
+watchexec [\fB\-\-exts\fR | \fB\-e\fR \fIextensions\fR]\.\.\. [\fB\-\-filter\fR | \fB\-f\fR \fIpattern\fR]\.\.\. [\fB\-\-ignore\fR | \fB\-i\fR \fIpattern\fR]\.\.\. [\fB\-\-watch\fR | \fB\-w\fR \fIpath\fR]\.\.\. [\fB\-\-restart\fR | \fB\-r\fR] [\fB\-\-clear\fR | \fB\-c\fR] [\fB\-\-postpone\fR | \fB\-p\fR] [\fB\-\-force\-poll\fR \fIinterval\fR] [\fB\-\-debug\fR | \fB\-d\fR] [\fB\-\-no\-vcs\-ignore\fR] [\fB\-\-no\-default\-ignore\fR] \fIcommand\fR [\fIargument\fR\.\.\.]
 .
 .SH "DESCRIPTION"
 Recursively monitors the current directory for changes, executing the command when a filesystem change is detected\. By default, watchexec uses efficient kernel\-level mechanisms to watch for changes\.
@@ -30,12 +30,12 @@ Comma\-separated list of file extensions to filter by\. Leading dots are allowed
 Ignores modifications from paths that do not match \fIpattern\fR\. This option can be specified multiple times, where a match on any given pattern causes the path to trigger \fIcommand\fR\.
 .
 .TP
-\fB\-s\fR, \fB\-\-signal <SIGKILL|SIGHUP|...>\fR
+\fB\-s\fR, \fB\-\-signal\fR
 Sends the specified signal (e\.g\. \fBSIGKILL\fR) to the child process\. Defaults to \fBSIGTERM\fR\.
 .
 .TP
 \fB\-n\fR, \fB\-\-no\-shell\fR
-Execute command directly, do not wrap it in \fBsh -c\fR resp\. \fBcmd.exec /C\R\. This is especially useful in combination with \fB--signal\fR, as the signal is then send directly to the specified command\. While \fB--no-shell\fR is a little more performant than the default, it prevents using shell-features like pipes and redirects\.
+Execute command directly, do not wrap it in \fBsh \-c\fR resp\. \fBcmd\.exe /C\fR\. This is especially useful in combination with \fB\-\-signal\fR, as the signal is then send directly to the specified command\. While \fB\-\-no\-shell\fR is a little more performant than the default, it prevents using shell\-features like pipes and redirects\.
 .
 .TP
 \fB\-i\fR, \fB\-\-ignore\fR \fIpattern\fR
@@ -68,6 +68,10 @@ Poll for changes every \fIinterval\fR ms instead of using system\-specific notif
 .TP
 \fB\-\-no\-vcs\-ignore\fR
 Skip loading of version control system (VCS) ignore files\. By default, watchexec loads \.gitignore files in the current directory (or parent directories) and uses them to populate the ignore list\.
+.
+.TP
+\fB\-\-no\-default\-ignore\fR
+Skip default ignore statements\. By default, watchexec ignores common temporary files for you, for example \fB*\.swp\fR, \fB*\.pyc\fR, and \fB\.DS_Store\fR
 .
 .SH "ENVIRONMENT"
 Processes started by watchexec have the \fB$WATCHEXEC_UPDATED_PATH\fR environment variable set to the path of the first modification observed\. In addition, the \fB$WATCHEXEC_COMMON_PATH\fR environment variable is set to the common path of all observed modifications\.
