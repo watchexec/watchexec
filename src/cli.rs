@@ -140,7 +140,10 @@ pub fn get_args() -> Args {
     let mut ignores = vec![];
     let default_ignores = vec![format!("*{}.DS_Store", MAIN_SEPARATOR),
                                String::from("*.pyc"),
-                               String::from("*.swp")];
+                               String::from("*.swp"),
+                               String::from("*/.git/*"),
+                               String::from("*/.hg/*"),
+                               String::from("*/.svn/*")];
 
 
     if args.occurrences_of("no-default-ignore") == 0 {
