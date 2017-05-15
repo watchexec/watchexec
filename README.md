@@ -74,7 +74,7 @@ Run `make` when any file in `lib` or `src` changes:
 
 ### Cargo
 
-watchexec requires Rust 1.15 or later. You can install it using cargo:
+watchexec requires Rust 1.16 or later. You can install it using cargo:
 
     $ cargo install watchexec
 
@@ -92,7 +92,7 @@ Use the GitHub Releases tab to obtain the binary. In the future, I'll look at ad
 
 ## Building
 
-Rust 1.15 or later is required.
+Rust 1.16 or later is required.
 
 ## Credits
 
