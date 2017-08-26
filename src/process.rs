@@ -8,8 +8,9 @@ pub use self::imp::Process;
 
 #[cfg(target_family = "unix")]
 mod imp {
-    use libc::*;
-    use std::io::Result;
+    use nix::{self, Error};
+    use nix::libc::*;
+    use std::io::{self, Result};
     use std::path::PathBuf;
     use std::process::Command;
     use std::sync::*;
@@ -21,12 +22,19 @@ mod imp {
         cvar: Condvar,
     }
 
+    fn from_nix_error(err: nix::Error) -> io::Error {
+        match err {
+            Error::Sys(errno) => io::Error::from_raw_os_error(errno as i32),
+            Error::InvalidPath => io::Error::new(io::ErrorKind::InvalidInput, err),
+            _ => io::Error::new(io::ErrorKind::Other, err),
+        }
+    }
+
     #[allow(unknown_lints)]
     #[allow(mutex_atomic)]
     impl Process {
         pub fn new(cmd: &str, updated_paths: Vec<PathBuf>, no_shell: bool) -> Result<Process> {
             use nix::unistd::*;
-            use std::io;
             use std::os::unix::process::CommandExt;
 
             // Assemble command to run.
@@ -56,7 +64,8 @@ mod imp {
             }
 
             command
-                .before_exec(|| setpgid(0, 0).map_err(io::Error::from))
+                .before_exec(|| setpgid(Pid::from_raw(0), Pid::from_raw(0))
+                                    .map_err(from_nix_error))
                 .spawn()
                 .and_then(|p| {
                               Ok(Process {
@@ -69,10 +78,11 @@ mod imp {
 
         pub fn reap(&self) {
             use nix::sys::wait::*;
+            use nix::unistd::Pid;
 
             let mut finished = true;
             loop {
-                match waitpid(-self.pgid, Some(WNOHANG)) {
+                match waitpid(Pid::from_raw(-self.pgid), Some(WNOHANG)) {
                     Ok(WaitStatus::Exited(_, _)) |
                     Ok(WaitStatus::Signaled(_, _, _)) => finished = finished && true,
                     Ok(_) => {

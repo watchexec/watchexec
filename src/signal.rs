@@ -23,7 +23,7 @@ pub enum Signal {
 }
 
 #[cfg(unix)]
-use libc::*;
+use nix::libc::*;
 
 #[cfg(unix)]
 pub trait ConvertToLibc {
@@ -75,7 +75,7 @@ pub fn install_handler<F>(handler: F)
     where F: Fn(self::Signal) + 'static + Send + Sync
 {
     use std::thread;
-    use libc::c_int;
+    use nix::libc::c_int;
     use nix::sys::signal::*;
 
     // Mask all signals interesting to us. The mask propagates
