@@ -1,6 +1,8 @@
 use std::path::PathBuf;
+use std::collections::{HashMap, HashSet};
+use pathop::PathOp;
 
-pub fn spawn(cmd: &str, updated_paths: Vec<PathBuf>, no_shell: bool) -> Process {
+pub fn spawn(cmd: &str, updated_paths: Vec<PathOp>, no_shell: bool) -> Process {
     self::imp::Process::new(cmd, updated_paths, no_shell).expect("unable to spawn process")
 }
 
@@ -11,10 +13,10 @@ mod imp {
     use nix::{self, Error};
     use nix::libc::*;
     use std::io::{self, Result};
-    use std::path::PathBuf;
     use std::process::Command;
     use std::sync::*;
     use signal::Signal;
+    use pathop::PathOp;
 
     pub struct Process {
         pgid: pid_t,
@@ -33,7 +35,7 @@ mod imp {
     #[allow(unknown_lints)]
     #[allow(mutex_atomic)]
     impl Process {
-        pub fn new(cmd: &str, updated_paths: Vec<PathBuf>, no_shell: bool) -> Result<Process> {
+        pub fn new(cmd: &str, updated_paths: Vec<PathOp>, no_shell: bool) -> Result<Process> {
             use nix::unistd::*;
             use std::os::unix::process::CommandExt;
 
@@ -55,12 +57,9 @@ mod imp {
 
             debug!("Assembled command {:?}", command);
 
-            if let Some(single_path) = super::get_single_updated_path(&updated_paths) {
-                command.env("WATCHEXEC_UPDATED_PATH", single_path);
-            }
-
-            if let Some(common_path) = super::get_longest_common_path(&updated_paths) {
-                command.env("WATCHEXEC_COMMON_PATH", common_path);
+            let command_envs = super::collect_path_env_vars(&updated_paths);
+            for &(ref name, ref val) in &command_envs {
+                command.env(name, val);
             }
 
             command
@@ -133,12 +132,12 @@ mod imp {
     use std::io;
     use std::io::Result;
     use std::mem;
-    use std::path::PathBuf;
     use std::process::Command;
     use std::ptr;
     use kernel32::*;
     use winapi::*;
     use signal::Signal;
+    use pathop::PathOp;
 
     pub struct Process {
         job: HANDLE,
@@ -152,7 +151,7 @@ mod imp {
     }
 
     impl Process {
-        pub fn new(cmd: &str, updated_paths: Vec<PathBuf>, no_shell: bool) -> Result<Process> {
+        pub fn new(cmd: &str, updated_paths: Vec<PathOp>, no_shell: bool) -> Result<Process> {
             use std::os::windows::io::IntoRawHandle;
             use std::os::windows::process::CommandExt;
 
@@ -215,12 +214,9 @@ mod imp {
             command.creation_flags(CREATE_SUSPENDED);
             debug!("Assembled command {:?}", command);
 
-            if let Some(single_path) = super::get_single_updated_path(&updated_paths) {
-                command.env("WATCHEXEC_UPDATED_PATH", single_path);
-            }
-
-            if let Some(common_path) = super::get_longest_common_path(&updated_paths) {
-                command.env("WATCHEXEC_COMMON_PATH", common_path);
+            let command_envs = super::collect_path_env_vars(&updated_paths);
+            for &(ref name, ref val) in &command_envs {
+                command.env(name, val);
             }
 
             command
@@ -298,9 +294,61 @@ mod imp {
     }
 }
 
-fn get_single_updated_path(paths: &[PathBuf]) -> Option<&str> {
-    paths.get(0).and_then(|p| p.to_str())
+
+/// Collect `PathOp` details into op-categories to pass onto the exec'd command as env-vars
+///
+/// WRITTEN -> notify::ops::WRITE, notify::ops::CLOSE_WRITE
+/// META_CHANGED -> notify::ops::CHMOD
+/// REMOVED -> notify::ops::REMOVE
+/// CREATED -> notify::ops::CREATE
+/// RENAMED -> notify::ops::RENAME
+fn collect_path_env_vars(pathops: &[PathOp]) -> Vec<(String, String)> {
+    #[cfg(target_family = "unix")]
+    const ENV_SEP: &'static str = ":";
+    #[cfg(not(target_family = "unix"))]
+    const ENV_SEP: &'static str = ";";
+
+    let mut by_op = HashMap::new();         // Paths as `String`s collected by `notify::op`
+    let mut all_pathbufs = HashSet::new();  // All unique `PathBuf`s
+    for pathop in pathops {
+        if let Some(op) = pathop.op {                   // ignore pathops that don't have a `notify::op` set
+            if let Some(s) = pathop.path.to_str() {     // ignore invalid utf8 paths
+                all_pathbufs.insert(pathop.path.clone());
+                let e = by_op.entry(op).or_insert(vec![]);
+                e.push(s.to_owned());
+            }
+        }
+    }
+
+    let mut vars = vec![];
+    // Only break off a common path if we have more than one unique path,
+    // otherwise we end up with a `COMMON_PATH` being set and other vars
+    // being present but empty.
+    let common_path = if all_pathbufs.len() > 1 {
+        let all_pathbufs: Vec<PathBuf> = all_pathbufs.into_iter().collect();
+        get_longest_common_path(&all_pathbufs)
+    } else { None };
+    if let Some(ref common_path) = common_path {
+        vars.push(("WATCHEXEC_COMMON_PATH".to_string(), common_path.to_string()));
+    }
+    for (op, paths) in by_op.into_iter() {
+        let key = match op {
+            op if PathOp::is_create(op)    => "WATCHEXEC_CREATED_PATH",
+            op if PathOp::is_remove(op)    => "WATCHEXEC_REMOVED_PATH",
+            op if PathOp::is_rename(op)    => "WATCHEXEC_RENAMED_PATH",
+            op if PathOp::is_write(op)     => "WATCHEXEC_WRITTEN_PATH",
+            op if PathOp::is_meta(op)      => "WATCHEXEC_META_CHANGED_PATH",
+            _ => continue,  // ignore `notify::op::RESCAN`s
+        };
+
+        let paths = if let Some(ref common_path) = common_path {
+            paths.iter().map(|path_str| path_str.trim_left_matches(common_path).to_string()).collect::<Vec<_>>()
+        } else { paths };
+        vars.push((key.to_string(), paths.as_slice().join(ENV_SEP)));
+    }
+    vars
 }
+
 
 fn get_longest_common_path(paths: &[PathBuf]) -> Option<String> {
     match paths.len() {
@@ -339,9 +387,13 @@ fn get_longest_common_path(paths: &[PathBuf]) -> Option<String> {
 #[cfg(target_family = "unix")]
 mod tests {
     use std::path::PathBuf;
+    use std::collections::HashSet;
+    use notify;
+    use pathop::PathOp;
 
     use super::spawn;
     use super::get_longest_common_path;
+    use super::collect_path_env_vars;
 
     #[test]
     fn test_start() {
@@ -374,6 +426,22 @@ mod tests {
 
         let uneven_result = get_longest_common_path(&uneven_paths).unwrap();
         assert_eq!(uneven_result, "/tmp/logs");
+    }
+
+    #[test]
+    fn pathops_collect_to_env_vars() {
+        let pathops = vec![
+            PathOp::new(&PathBuf::from("/tmp/logs/hi"), Some(notify::op::CREATE), None),
+            PathOp::new(&PathBuf::from("/tmp/logs/hey/there"), Some(notify::op::CREATE), None),
+            PathOp::new(&PathBuf::from("/tmp/logs/bye"), Some(notify::op::REMOVE), None),
+        ];
+        let expected_vars = vec![
+            ("WATCHEXEC_COMMON_PATH".to_string(), "/tmp/logs".to_string()),
+            ("WATCHEXEC_REMOVED_PATH".to_string(), "/bye".to_string()),
+            ("WATCHEXEC_CREATED_PATH".to_string(), "/hi:/hey/there".to_string()),
+        ];
+        let vars = collect_path_env_vars(&pathops);
+        assert_eq!(vars.iter().collect::<HashSet<_>>(), expected_vars.iter().collect::<HashSet<_>>());
     }
 }
 

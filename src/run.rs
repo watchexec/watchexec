@@ -12,6 +12,7 @@ use notification_filter::NotificationFilter;
 use process::{self, Process};
 use signal::{self, Signal};
 use watcher::{Event, Watcher};
+use pathop::PathOp;
 
 fn init_logger(debug: bool) {
     let mut log_builder = env_logger::LogBuilder::new();
@@ -167,7 +168,7 @@ pub fn run(args: cli::Args) {
     }
 }
 
-fn wait_fs(rx: &Receiver<Event>, filter: &NotificationFilter, debounce: u64) -> Vec<PathBuf> {
+fn wait_fs(rx: &Receiver<Event>, filter: &NotificationFilter, debounce: u64) -> Vec<PathOp> {
     let mut paths = vec![];
     let mut cache = HashMap::new();
 
@@ -175,15 +176,16 @@ fn wait_fs(rx: &Receiver<Event>, filter: &NotificationFilter, debounce: u64) -> 
         let e = rx.recv().expect("error when reading event");
 
         if let Some(ref path) = e.path {
+            let pathop = PathOp::new(&path, e.op.ok(), e.cookie);
             // Ignore cache for the initial file. Otherwise, in
             // debug mode it's hard to track what's going on
             let excluded = filter.is_excluded(path);
-            if !cache.contains_key(path) {
-                cache.insert(path.to_owned(), excluded);
+            if !cache.contains_key(&pathop) {
+                cache.insert(pathop.clone(), excluded);
             }
 
             if !excluded {
-                paths.push(path.to_owned());
+                paths.push(pathop);
                 break;
             }
         }
@@ -193,17 +195,17 @@ fn wait_fs(rx: &Receiver<Event>, filter: &NotificationFilter, debounce: u64) -> 
     let timeout = Duration::from_millis(debounce);
     while let Ok(e) = rx.recv_timeout(timeout) {
         if let Some(ref path) = e.path {
-            if cache.contains_key(path) {
+            let pathop = PathOp::new(&path, e.op.ok(), e.cookie);
+            if cache.contains_key(&pathop) {
                 continue;
             }
 
             let excluded = filter.is_excluded(path);
 
-            let p = path.to_owned();
-            cache.insert(p.clone(), excluded);
+            cache.insert(pathop.clone(), excluded);
 
             if !excluded {
-                paths.push(p);
+                paths.push(pathop);
             }
         }
     }
