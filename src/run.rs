@@ -87,7 +87,7 @@ pub fn run(args: cli::Args) {
 
     loop {
         debug!("Waiting for filesystem activity");
-        let paths = wait_fs(&rx, &filter);
+        let paths = wait_fs(&rx, &filter, args.debounce);
         if let Some(path) = paths.get(0) {
             debug!("Path updated: {:?}", path);
         }
@@ -167,7 +167,7 @@ pub fn run(args: cli::Args) {
     }
 }
 
-fn wait_fs(rx: &Receiver<Event>, filter: &NotificationFilter) -> Vec<PathBuf> {
+fn wait_fs(rx: &Receiver<Event>, filter: &NotificationFilter, debounce: u64) -> Vec<PathBuf> {
     let mut paths = vec![];
     let mut cache = HashMap::new();
 
@@ -190,7 +190,7 @@ fn wait_fs(rx: &Receiver<Event>, filter: &NotificationFilter) -> Vec<PathBuf> {
     }
 
     // Wait for filesystem activity to cool off
-    let timeout = Duration::from_millis(500);
+    let timeout = Duration::from_millis(debounce);
     while let Ok(e) = rx.recv_timeout(timeout) {
         if let Some(ref path) = e.path {
             if cache.contains_key(path) {

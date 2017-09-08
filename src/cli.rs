@@ -12,6 +12,7 @@ pub struct Args {
     pub clear_screen: bool,
     pub signal: Option<String>,
     pub restart: bool,
+    pub debounce: u64,
     pub debug: bool,
     pub run_initially: bool,
     pub no_shell: bool,
@@ -72,10 +73,16 @@ pub fn get_args() -> Args {
                  .help("Send SIGKILL to child processes (deprecated, use -s SIGKILL instead)")
                  .short("k")
                  .long("kill"))
-        .arg(Arg::with_name("debug")
-                 .help("Print debugging messages to stderr")
+        .arg(Arg::with_name("debounce")
+                 .help("Set the timeout between detected change and command execution, defaults to 500ms")
+                 .takes_value(true)
+                 .value_name("milliseconds")
                  .short("d")
-                 .long("debug"))
+                 .long("debounce"))
+        .arg(Arg::with_name("verbose")
+                 .help("Print debugging messages to stderr")
+                 .short("v")
+                 .long("verbose"))
         .arg(Arg::with_name("filter")
                  .help("Ignore all modifications except those matching the pattern")
                  .short("f")
@@ -157,6 +164,12 @@ pub fn get_args() -> Args {
         1000
     };
 
+    let debounce = if args.occurrences_of("debounce") > 0 {
+        value_t!(args.value_of("debounce"), u64).unwrap_or_else(|e| e.exit())
+     } else {
+         500
+     };
+
     if signal.is_some() && args.is_present("postpone") {
         // TODO: Error::argument_conflict() might be the better fit, usage was unclear, though
         Error::value_validation_auto("--postpone and --signal are mutually exclusive".to_string())
@@ -177,7 +190,8 @@ pub fn get_args() -> Args {
         signal: signal,
         clear_screen: args.is_present("clear"),
         restart: args.is_present("restart"),
-        debug: args.is_present("debug"),
+        debounce: debounce,
+        debug: args.is_present("verbose"),
         run_initially: !args.is_present("postpone"),
         no_shell: args.is_present("no-shell"),
         no_vcs_ignore: args.is_present("no-vcs-ignore"),
