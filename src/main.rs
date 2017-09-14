@@ -25,6 +25,7 @@ mod process;
 mod run;
 mod signal;
 mod watcher;
+mod pathop;
 
 fn main() {
     let args = cli::get_args();

@@ -25,5 +25,6 @@ mod process;
 pub mod run;
 mod signal;
 mod watcher;
+mod pathop;
 
 pub use run::run;
