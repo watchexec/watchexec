@@ -176,7 +176,7 @@ fn wait_fs(rx: &Receiver<Event>, filter: &NotificationFilter, debounce: u64) -> 
         let e = rx.recv().expect("error when reading event");
 
         if let Some(ref path) = e.path {
-            let pathop = PathOp::new(&path, e.op.ok(), e.cookie);
+            let pathop = PathOp::new(path, e.op.ok(), e.cookie);
             // Ignore cache for the initial file. Otherwise, in
             // debug mode it's hard to track what's going on
             let excluded = filter.is_excluded(path);
@@ -195,7 +195,7 @@ fn wait_fs(rx: &Receiver<Event>, filter: &NotificationFilter, debounce: u64) -> 
     let timeout = Duration::from_millis(debounce);
     while let Ok(e) = rx.recv_timeout(timeout) {
         if let Some(ref path) = e.path {
-            let pathop = PathOp::new(&path, e.op.ok(), e.cookie);
+            let pathop = PathOp::new(path, e.op.ok(), e.cookie);
             if cache.contains_key(&pathop) {
                 continue;
             }
