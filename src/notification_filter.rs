@@ -35,9 +35,14 @@ impl NotificationFilter {
 
         let mut ignore_set_builder = GlobSetBuilder::new();
         for i in &ignores {
-            ignore_set_builder.add(try!(Glob::new(i)));
+            let mut ignore_path = Path::new(i).to_path_buf();
+            if ignore_path.is_relative() && !i.starts_with("*") {
+                ignore_path = Path::new("**").join(&ignore_path);
+            }
+            let pattern = ignore_path.to_str().unwrap();
+            ignore_set_builder.add(try!(Glob::new(pattern)));
 
-            debug!("Adding ignore: \"{}\"", i);
+            debug!("Adding ignore: \"{}\"", pattern);
         }
 
         let filter_set = try!(filter_set_builder.build());
@@ -97,6 +102,14 @@ mod tests {
         let filter = NotificationFilter::new(vec![], vec![], gitignore::load(&vec![])).unwrap();
 
         assert!(!filter.is_excluded(&Path::new("foo")));
+    }
+
+    #[test]
+    fn test_filename() {
+        let filter = NotificationFilter::new(vec![], vec![String::from("test.json")], gitignore::load(&vec![])).unwrap();
+
+        assert!(filter.is_excluded(&Path::new("/path/to/test.json")));
+        assert!(filter.is_excluded(&Path::new("test.json")));
     }
 
     #[test]
