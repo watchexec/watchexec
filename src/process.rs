@@ -297,11 +297,11 @@ mod imp {
 
 /// Collect `PathOp` details into op-categories to pass onto the exec'd command as env-vars
 ///
-/// WRITTEN -> notify::ops::WRITE, notify::ops::CLOSE_WRITE
-/// META_CHANGED -> notify::ops::CHMOD
-/// REMOVED -> notify::ops::REMOVE
-/// CREATED -> notify::ops::CREATE
-/// RENAMED -> notify::ops::RENAME
+/// WRITTEN -> `notify::ops::WRITE`, `notify::ops::CLOSE_WRITE`
+/// META_CHANGED -> `notify::ops::CHMOD`
+/// REMOVED -> `notify::ops::REMOVE`
+/// CREATED -> `notify::ops::CREATE`
+/// RENAMED -> `notify::ops::RENAME`
 fn collect_path_env_vars(pathops: &[PathOp]) -> Vec<(String, String)> {
     #[cfg(target_family = "unix")]
     const ENV_SEP: &'static str = ":";
@@ -314,7 +314,7 @@ fn collect_path_env_vars(pathops: &[PathOp]) -> Vec<(String, String)> {
         if let Some(op) = pathop.op {                   // ignore pathops that don't have a `notify::op` set
             if let Some(s) = pathop.path.to_str() {     // ignore invalid utf8 paths
                 all_pathbufs.insert(pathop.path.clone());
-                let e = by_op.entry(op).or_insert(vec![]);
+                let e = by_op.entry(op).or_insert_with(Vec::new);
                 e.push(s.to_owned());
             }
         }
@@ -331,7 +331,7 @@ fn collect_path_env_vars(pathops: &[PathOp]) -> Vec<(String, String)> {
     if let Some(ref common_path) = common_path {
         vars.push(("WATCHEXEC_COMMON_PATH".to_string(), common_path.to_string()));
     }
-    for (op, paths) in by_op.into_iter() {
+    for (op, paths) in by_op {
         let key = match op {
             op if PathOp::is_create(op)    => "WATCHEXEC_CREATED_PATH",
             op if PathOp::is_remove(op)    => "WATCHEXEC_REMOVED_PATH",
