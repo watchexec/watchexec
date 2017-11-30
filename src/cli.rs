@@ -29,7 +29,7 @@ pub fn clear_screen() {
 
 #[cfg(target_family = "unix")]
 pub fn clear_screen() {
-    let _ = Command::new("clear").status();
+    let _ = Command::new("tput").arg("reset").status();
 }
 
 #[allow(unknown_lints)]
