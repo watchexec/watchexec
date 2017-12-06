@@ -24,7 +24,7 @@ pub struct Args {
 
 #[cfg(target_family = "windows")]
 pub fn clear_screen() {
-    let _ = Command::new("cls").status();
+    let _ = Command::new("cmd").arg("/c").arg("cls").status();
 }
 
 #[cfg(target_family = "unix")]
