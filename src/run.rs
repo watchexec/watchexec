@@ -14,6 +14,8 @@ use signal::{self, Signal};
 use watcher::{Event, Watcher};
 use pathop::PathOp;
 
+type Result<T> = ::std::result::Result<T, Box<::std::error::Error>>;
+
 fn init_logger(debug: bool) {
     let mut log_builder = env_logger::LogBuilder::new();
     let level = if debug {
@@ -28,7 +30,7 @@ fn init_logger(debug: bool) {
     log_builder.init().expect("unable to initialize logger");
 }
 
-pub fn run(args: cli::Args) {
+pub fn run(args: cli::Args) -> Result<()> {
     let child_process: Arc<RwLock<Option<Process>>> = Arc::new(RwLock::new(None));
     let weak_child = Arc::downgrade(&child_process);
 
@@ -49,15 +51,16 @@ pub fn run(args: cli::Args) {
 
     init_logger(args.debug);
 
-    let paths: Vec<PathBuf> = args.paths
+    let paths: Result<Vec<PathBuf>> = args.paths
         .iter()
         .map(|p| {
-                 Path::new(&p)
+                 Ok(Path::new(&p)
                      .canonicalize()
-                     .expect(&format!("unable to canonicalize \"{}\"", &p))
-                     .to_owned()
+                     .map_err(|e| format!("Unable to canonicalize path: \"{}\", {}", p, e))?
+                     .to_owned())
              })
         .collect();
+    let paths = paths?;
 
     let gitignore = if !args.no_vcs_ignore {
         gitignore::load(&paths)
@@ -166,6 +169,7 @@ pub fn run(args: cli::Args) {
             break;
         }
     }
+    Ok(())
 }
 
 fn wait_fs(rx: &Receiver<Event>, filter: &NotificationFilter, debounce: u64) -> Vec<PathOp> {

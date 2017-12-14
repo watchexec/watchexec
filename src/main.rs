@@ -29,5 +29,10 @@ mod pathop;
 
 fn main() {
     let args = cli::get_args();
-    run::run(args);
+    if let Err(e) = run::run(args) {
+        eprintln!("Error: {}", e);
+
+        #[cfg(unix)]
+        std::process::exit(1)
+    }
 }
