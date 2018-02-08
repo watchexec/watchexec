@@ -147,6 +147,8 @@ pub fn get_args() -> Args {
     let mut ignores = vec![];
     let default_ignores = vec![format!("**{}.DS_Store", MAIN_SEPARATOR),
                                String::from("*.pyc"),
+                               String::from("#*#"),
+                               String::from(".#*"),
                                String::from(".*.sw?"),
                                String::from(".*.sw?x"),
                                format!("**{}.git{}**", MAIN_SEPARATOR, MAIN_SEPARATOR),
