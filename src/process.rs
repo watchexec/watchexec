@@ -81,7 +81,7 @@ mod imp {
 
             let mut finished = true;
             loop {
-                match waitpid(Pid::from_raw(-self.pgid), Some(WNOHANG)) {
+                match waitpid(Pid::from_raw(-self.pgid), Some(WaitPidFlag::WNOHANG)) {
                     Ok(WaitStatus::Exited(_, _)) |
                     Ok(WaitStatus::Signaled(_, _, _)) => finished = finished && true,
                     Ok(_) => {
