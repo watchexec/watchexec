@@ -71,7 +71,7 @@ Skip loading of version control system (VCS) ignore files\. By default, watchexe
 .
 .TP
 \fB\-\-no\-default\-ignore\fR
-Skip default ignore statements\. By default, watchexec ignores common temporary files for you, for example \fB*\.swp\fR, \fB*\.pyc\fR, and \fB\.DS_Store\fR
+Skip default ignore statements\. By default, watchexec ignores common temporary files for you, for example \fB.*\.swp\fR, \fB*\.pyc\fR, and \fB\.DS_Store\fR
 .
 .SH "ENVIRONMENT"
 Processes started by watchexec have the \fB$WATCHEXEC_UPDATED_PATH\fR environment variable set to the path of the first modification observed\. In addition, the \fB$WATCHEXEC_COMMON_PATH\fR environment variable is set to the common path of all observed modifications\.
