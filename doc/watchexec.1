@@ -1,7 +1,7 @@
 .\" generated with Ronn/v0.7.3
 .\" http://github.com/rtomayko/ronn/tree/0.7.3
 .
-.TH "WATCHEXEC" "1" "April 2017" "" ""
+.TH "WATCHEXEC" "1" "August 2018" "" ""
 .
 .SH "NAME"
 \fBwatchexec\fR \- execute commands when watched files change
@@ -71,10 +71,38 @@ Skip loading of version control system (VCS) ignore files\. By default, watchexe
 .
 .TP
 \fB\-\-no\-default\-ignore\fR
-Skip default ignore statements\. By default, watchexec ignores common temporary files for you, for example \fB.*\.swp\fR, \fB*\.pyc\fR, and \fB\.DS_Store\fR
+Skip default ignore statements\. By default, watchexec ignores common temporary files for you, for example \fB*\.swp\fR, \fB*\.pyc\fR, and \fB\.DS_Store\fR\.
 .
 .SH "ENVIRONMENT"
-Processes started by watchexec have the \fB$WATCHEXEC_UPDATED_PATH\fR environment variable set to the path of the first modification observed\. In addition, the \fB$WATCHEXEC_COMMON_PATH\fR environment variable is set to the common path of all observed modifications\.
+Processes started by watchexec have environment variables set describing the modification(s) observed\. Which variable is set depends on how many modifications were observed and/or what type they were\.
+.
+.P
+If a single file changed (depending on the event type):
+.
+.IP "\(bu" 4
+\fB$WATCHEXEC_CREATED_PATH\fR, the path of the file that was created
+.
+.IP "\(bu" 4
+\fB$WATCHEXEC_REMOVED_PATH\fR, the path of the file that was removed
+.
+.IP "\(bu" 4
+\fB$WATCHEXEC_RENAMED_PATH\fR, the path of the file that was renamed
+.
+.IP "\(bu" 4
+\fB$WATCHEXEC_WRITTEN_PATH\fR, the path of the file that was modified
+.
+.IP "\(bu" 4
+\fB$WATCHEXEC_META_CHANGED_PATH\fR, the path of the file whose metadata changed
+.
+.IP "" 0
+.
+.P
+If multiple files changed:
+.
+.IP "\(bu" 4
+\fB$WATCHEXEC_COMMON_PATH\fR, the longest common path of all of the files that triggered a change
+.
+.IP "" 0
 .
 .SH "EXAMPLES"
 Rebuild a project when source files change:
