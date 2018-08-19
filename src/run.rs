@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 use std::sync::mpsc::{channel, Receiver};
@@ -16,17 +17,17 @@ use watcher::{Event, Watcher};
 use pathop::PathOp;
 
 fn init_logger(debug: bool) {
-    let mut log_builder = env_logger::LogBuilder::new();
+    let mut log_builder = env_logger::Builder::new();
     let level = if debug {
-        log::LogLevelFilter::Debug
+        log::LevelFilter::Debug
     } else {
-        log::LogLevelFilter::Warn
+        log::LevelFilter::Warn
     };
 
     log_builder
-        .format(|r| format!("*** {}", r.args()))
-        .filter(None, level);
-    log_builder.init().expect("unable to initialize logger");
+        .format(|buf, r| writeln!(buf, "*** {}", r.args()))
+        .filter(None, level)
+        .init();
 }
 
 #[cfg(target_os="linux")]
