@@ -88,7 +88,7 @@ For now, use the GitHub Releases tab to obtain the binary. PRs for packaging in 
 
 ### Windows
 
-Use the GitHub Releases tab to obtain the binary. In the future, I'll look at adding it to Chocolatey.
+You can use [scoop](https://scoop.sh/) to install watchexec by typing `scoop install watchexec`. Or you can use the GitHub Releases tab to obtain the binary. In the future, I'll look at adding it to Chocolatey.
 
 ## Building
 
