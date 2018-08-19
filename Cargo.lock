@@ -453,7 +453,7 @@ dependencies = [
 
 [[package]]
 name = "watchexec"
-version = "1.8.6"
+version = "1.9.0"
 dependencies = [
  "clap 2.32.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.5.12 (registry+https://github.com/rust-lang/crates.io-index)",

@@ -1,6 +1,6 @@
 [package]
 name = "watchexec"
-version = "1.8.6"
+version = "1.9.0"
 authors = ["Matt Green <mattgreenrocks@gmail.com>"]
 description = "Executes commands in response to file modifications"
 documentation = "https://github.com/mattgreen/watchexec"
