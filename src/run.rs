@@ -8,6 +8,7 @@ use cli;
 use env_logger;
 use gitignore;
 use log;
+use notify::Error;
 use notification_filter::NotificationFilter;
 use process::{self, Process};
 use signal::{self, Signal};
@@ -26,6 +27,22 @@ fn init_logger(debug: bool) {
         .format(|r| format!("*** {}", r.args()))
         .filter(None, level);
     log_builder.init().expect("unable to initialize logger");
+}
+
+#[cfg(target_os="linux")]
+fn should_switch_to_poll(e: &Error) -> bool {
+    use nix::libc;
+
+    match e {
+        &Error::Io(ref e) if e.raw_os_error() == Some(libc::ENOSPC) => true,
+        _ => false,
+    }
+}
+
+#[cfg(not(target_os="linux"))]
+fn should_switch_to_poll(_: &Error) -> bool {
+    // not known conditions to switch
+    false
 }
 
 pub fn run(args: cli::Args) {
@@ -69,8 +86,22 @@ pub fn run(args: cli::Args) {
         .expect("unable to create notification filter");
 
     let (tx, rx) = channel();
-    let watcher =
-        Watcher::new(tx, &paths, args.poll, args.poll_interval).expect("unable to create watcher");
+    let watcher = match Watcher::new(tx.clone(), &paths, args.poll, args.poll_interval) {
+        Ok(watcher) => watcher,
+        Err(ref e) if !args.poll && should_switch_to_poll(e) => {
+            warn!("System notification limit is too small, \
+                falling back to polling mode.");
+            if cfg!(target_os="linux") {
+                warn!("For better performance increase system limit: \n   \
+                       sysctl fs.inotify.max_user_watches=524288");
+            }
+            Watcher::new(tx, &paths, true, args.poll_interval)
+                .expect("polling watcher should always work")
+        }
+        Err(e) => {
+            panic!("Error setting up watcher: {}", e);
+        }
+    };
 
     if watcher.is_polling() {
         warn!("Polling for changes every {} ms", args.poll_interval);
