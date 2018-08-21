@@ -8,10 +8,9 @@ pub fn spawn(cmd: &Vec<String>, updated_paths: Vec<PathOp>, no_shell: bool) -> P
 
 pub use self::imp::Process;
 
-fn has_whitespace(s: &String) -> bool {
+fn needs_wrapping(s: &String) -> bool {
     s.contains(|ch| match ch {
-        ' ' => true,
-        '\t' => true,
+        ' ' | '\t' | '\'' | '"' => true,
         _ => false
     })
 }
@@ -36,7 +35,7 @@ fn wrap_in_quotes(s: &String) -> String {
 
 fn wrap_commands(cmd: &Vec<String>) -> Vec<String> {
     cmd.iter().map(|fragment| {
-        if has_whitespace(fragment) {
+        if needs_wrapping(fragment) {
             wrap_in_quotes(fragment)
         } else {
             fragment.clone()
@@ -426,10 +425,51 @@ mod tests {
     use super::spawn;
     use super::get_longest_common_path;
     use super::collect_path_env_vars;
+    use super::wrap_commands;
 
     #[test]
     fn test_start() {
         let _ = spawn(&vec!["echo".into(), "hi".into()], vec![], true);
+    }
+
+    #[test]
+    fn wrap_commands_that_have_whitespace() {
+        assert_eq!(
+            wrap_commands(&vec!["echo".into(), "hello world".into()]),
+            vec!["echo".into(), "'hello world'".into()] as Vec<String>
+        );
+    }
+
+    #[test]
+    fn wrap_commands_that_have_long_whitespace() {
+        assert_eq!(
+            wrap_commands(&vec!["echo".into(), "hello    world".into()]),
+            vec!["echo".into(), "'hello    world'".into()] as Vec<String>
+        );
+    }
+
+    #[test]
+    fn wrap_commands_that_have_single_quotes() {
+        assert_eq!(
+            wrap_commands(&vec!["echo".into(), "hello ' world".into()]),
+            vec!["echo".into(), "'hello '\"'\"' world'".into()] as Vec<String>
+        );
+        assert_eq!(
+            wrap_commands(&vec!["echo".into(), "hello'world".into()]),
+            vec!["echo".into(), "'hello'\"'\"'world'".into()] as Vec<String>
+        );
+    }
+
+    #[test]
+    fn wrap_commands_that_have_double_quotes() {
+        assert_eq!(
+            wrap_commands(&vec!["echo".into(), "hello \" world".into()]),
+            vec!["echo".into(), "'hello \" world'".into()] as Vec<String>
+        );
+        assert_eq!(
+            wrap_commands(&vec!["echo".into(), "hello\"world".into()]),
+            vec!["echo".into(), "'hello\"world'".into()] as Vec<String>
+        );
     }
 
     #[test]
@@ -474,6 +514,58 @@ mod tests {
         ];
         let vars = collect_path_env_vars(&pathops);
         assert_eq!(vars.iter().collect::<HashSet<_>>(), expected_vars.iter().collect::<HashSet<_>>());
+    }
+}
+
+#[cfg(test)]
+#[cfg(target_family = "windows")]
+mod tests {
+    use super::spawn;
+    use super::wrap_commands;
+
+    #[test]
+    fn test_start() {
+        let _ = spawn(&vec!["echo".into(), "hi".into()], vec![], true);
+    }
+
+    #[test]
+    fn wrap_commands_that_have_whitespace() {
+        assert_eq!(
+            wrap_commands(&vec!["echo".into(), "hello world".into()]),
+            vec!["echo".into(), "\"hello world\"".into()] as Vec<String>
+        );
+    }
+
+    #[test]
+    fn wrap_commands_that_have_long_whitespace() {
+        assert_eq!(
+            wrap_commands(&vec!["echo".into(), "hello    world".into()]),
+            vec!["echo".into(), "\"hello    world\"".into()] as Vec<String>
+        );
+    }
+
+    #[test]
+    fn wrap_commands_that_have_single_quotes() {
+        assert_eq!(
+            wrap_commands(&vec!["echo".into(), "hello ' world".into()]),
+            vec!["echo".into(), "\"hello ' world\"".into()] as Vec<String>
+        );
+        assert_eq!(
+            wrap_commands(&vec!["echo".into(), "hello'world".into()]),
+            vec!["echo".into(), "\"hello'world\"".into()] as Vec<String>
+        );
+    }
+
+    #[test]
+    fn wrap_commands_that_have_double_quotes() {
+        assert_eq!(
+            wrap_commands(&vec!["echo".into(), "hello \" world".into()]),
+            vec!["echo".into(), "\"hello \"\" world\"".into()] as Vec<String>
+        );
+        assert_eq!(
+            wrap_commands(&vec!["echo".into(), "hello\"world".into()]),
+            vec!["echo".into(), "\"hello\"\"world\"".into()] as Vec<String>
+        );
     }
 }
 
