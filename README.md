@@ -98,7 +98,7 @@ You can use [scoop](https://scoop.sh/) to install watchexec by typing `scoop ins
 
 ## Building
 
-Rust 1.16 or later is required.
+Rust 1.20 or later is required.
 
 ## Credits
 
