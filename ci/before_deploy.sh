@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # Build script shamelessly stolen from ripgrep :)
 
 cargo build --target $TARGET --release
@@ -11,5 +13,6 @@ cp target/$TARGET/release/watchexec "$build_dir/$name/"
 cp {doc/watchexec.1,LICENSE} "$build_dir/$name/"
 
 pushd $build_dir
-GZIP=-9 tar czf "$out_dir/$name.tar.gz" *
+tar cvf "$out_dir/$name.tar" *
 popd
+gzip -f9 "$name.tar"

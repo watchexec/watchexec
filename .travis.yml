@@ -45,12 +45,10 @@ matrix:
     - rust: nightly
   fast_finish: true
 
-script:
-- bash ci/script.sh
+before_script: ci/before_script.sh
+script: ci/script.sh
 
-before_deploy:
-- bash ci/before_deploy.sh
-
+before_deploy: ci/before_deploy.sh
 deploy:
   provider: releases
   api_key:
