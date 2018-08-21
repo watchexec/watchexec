@@ -10,12 +10,20 @@ env:
 matrix:
   include:
     # Default test+release version
-    - os: linux
-      rust: stable
-      env: TARGET=x86_64-unknown-linux-gnu
     - os: osx
       rust: stable
       env: TARGET=x86_64-apple-darwin
+    - os: linux
+      rust: stable
+      env: TARGET=x86_64-unknown-linux-gnu
+
+    # Extra targets for linux only
+    - os: linux
+      rust: stable
+      env: TARGET=i686-unknown-linux-musl
+    - os: linux
+      rust: stable
+      env: TARGET=x86_64-unknown-linux-musl
 
     # Minimum version advertised in readme
     - os: linux
