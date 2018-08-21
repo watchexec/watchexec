@@ -2,11 +2,47 @@ use std::path::PathBuf;
 use std::collections::{HashMap, HashSet};
 use pathop::PathOp;
 
-pub fn spawn(cmd: &str, updated_paths: Vec<PathOp>, no_shell: bool) -> Process {
+pub fn spawn(cmd: &Vec<String>, updated_paths: Vec<PathOp>, no_shell: bool) -> Process {
     self::imp::Process::new(cmd, updated_paths, no_shell).expect("unable to spawn process")
 }
 
 pub use self::imp::Process;
+
+fn has_whitespace(s: &String) -> bool {
+    s.contains(|ch| match ch {
+        ' ' => true,
+        '\t' => true,
+        _ => false
+    })
+}
+
+#[cfg(target_family = "unix")]
+fn wrap_in_quotes(s: &String) -> String {
+    format!("'{}'", if s.contains('\'') {
+        s.replace('\'', "'\"'\"'")
+    } else {
+        s.clone()
+    })
+}
+
+#[cfg(target_family = "windows")]
+fn wrap_in_quotes(s: &String) -> String {
+    format!("\"{}\"", if s.contains('"') {
+        s.replace('"', "\"\"")
+    } else {
+        s.clone()
+    })
+}
+
+fn wrap_commands(cmd: &Vec<String>) -> Vec<String> {
+    cmd.iter().map(|fragment| {
+        if has_whitespace(fragment) {
+            wrap_in_quotes(fragment)
+        } else {
+            fragment.clone()
+        }
+    }).collect()
+}
 
 #[cfg(target_family = "unix")]
 mod imp {
@@ -15,6 +51,7 @@ mod imp {
     use std::io::{self, Result};
     use std::process::Command;
     use std::sync::*;
+    use super::wrap_commands;
     use signal::Signal;
     use pathop::PathOp;
 
@@ -35,7 +72,7 @@ mod imp {
     #[allow(unknown_lints)]
     #[allow(mutex_atomic)]
     impl Process {
-        pub fn new(cmd: &str, updated_paths: Vec<PathOp>, no_shell: bool) -> Result<Process> {
+        pub fn new(cmd: &Vec<String>, updated_paths: Vec<PathOp>, no_shell: bool) -> Result<Process> {
             use nix::unistd::*;
             use std::os::unix::process::CommandExt;
 
@@ -45,13 +82,13 @@ mod imp {
             // but is a little less performant and can cause trouble when using custom signals
             // (e.g. --signal SIGHUP)
             let mut command = if no_shell {
-                let mut split = cmd.split_whitespace();
-                let mut command = Command::new(split.next().unwrap());
-                command.args(split);
+                let (head, tail) = cmd.split_first().unwrap();
+                let mut command = Command::new(head);
+                command.args(tail);
                 command
             } else {
                 let mut command = Command::new("sh");
-                command.arg("-c").arg(cmd);
+                command.arg("-c").arg(wrap_commands(cmd).join(" "));
                 command
             };
 
@@ -134,6 +171,7 @@ mod imp {
     use std::mem;
     use std::process::Command;
     use std::ptr;
+    use super::wrap_commands;
     use kernel32::*;
     use winapi::*;
     use signal::Signal;
@@ -151,7 +189,7 @@ mod imp {
     }
 
     impl Process {
-        pub fn new(cmd: &str, updated_paths: Vec<PathOp>, no_shell: bool) -> Result<Process> {
+        pub fn new(cmd: &Vec<String>, updated_paths: Vec<PathOp>, no_shell: bool) -> Result<Process> {
             use std::os::windows::io::IntoRawHandle;
             use std::os::windows::process::CommandExt;
 
@@ -194,23 +232,17 @@ mod imp {
                 panic!("failed to set job info: {}", last_err());
             }
 
+            let mut command;
+            if no_shell {
+                let (arg0, args) = cmd.split_first().unwrap();
+                command = Command::new(arg0);
+                command.args(args);
+            } else {
+                command = Command::new("cmd.exe");
+                command.arg("/C");
+                command.arg(wrap_commands(cmd).join(" "));
+            }
 
-            let mut iter_args = cmd.split_whitespace();
-            let arg0 = match no_shell {
-                true => iter_args.next().unwrap(),
-                false => "cmd.exe",
-            };
-
-            // TODO: There might be a better way of doing this with &str.
-            //       I've had to fall back to String, as I wasn't able to join(" ") a Vec<&str>
-            //       into a &str
-            let args: Vec<String> = match no_shell {
-                true => iter_args.map(str::to_string).collect(),
-                false => vec!["/C".to_string(), iter_args.collect::<Vec<&str>>().join(" ")],
-            };
-
-            let mut command = Command::new(arg0);
-            command.args(args);
             command.creation_flags(CREATE_SUSPENDED);
             debug!("Assembled command {:?}", command);
 
@@ -397,7 +429,7 @@ mod tests {
 
     #[test]
     fn test_start() {
-        let _ = spawn("echo hi", vec![], true);
+        let _ = spawn(&vec!["echo".into(), "hi".into()], vec![], true);
     }
 
     #[test]
