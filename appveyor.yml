@@ -41,5 +41,4 @@ deploy:
   provider: Webhook
   url: https://example.com/goes-nowhere
   on:
-    branch: master
     appveyor_repo_tag: true
