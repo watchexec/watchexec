@@ -1,8 +1,8 @@
 # watchexec
 
-[![Build Status](https://travis-ci.org/mattgreen/watchexec.svg?branch=master)](https://travis-ci.org/mattgreen/watchexec)
-[![Build status](https://ci.appveyor.com/api/projects/status/ivxu31g4rcf4740t?svg=true)](https://ci.appveyor.com/project/mattgreen/watchexec)
-[![Crates.io status](https://img.shields.io/crates/v/watchexec.svg)](https://crates.io/crates/watchexec)
+[![Build Status](https://badgen.net/travis/watchexec/watchexec/master)](https://travis-ci.org/watchexec/watchexec)
+[![Build status](https://badgen.net/appveyor/ci/watchexec/watchexec/master)](https://ci.appveyor.com/project/watchexec/watchexec)
+[![Crates.io status](https://badgen.net/crates/v/watchexec)](https://crates.io/crates/watchexec)
 
 Software development often involves running the same commands over and over. Boring!
 
@@ -18,7 +18,7 @@ Example use cases:
 * Simple invocation and use
 * Runs on OS X, Linux and Windows
 * Monitors current directory and all subdirectories for changes
-    * Uses most efficient event polling mechanism for your platform (except for [BSD](https://github.com/passcod/rsnotify#todo))
+    * Uses most efficient event polling mechanism for your platform (except for [BSD](https://github.com/passcod/notify#todo))
 * Coalesces multiple filesystem events into one, for editors that use swap/backup files during saving
 * By default, uses `.gitignore` to determine which files to ignore notifications for
 * Support for watching files with a specific extension
@@ -102,5 +102,5 @@ Rust 1.16 or later is required.
 
 ## Credits
 
-* [notify](https://github.com/passcod/rsnotify) for doing most of the heavy-lifting
+* [notify](https://github.com/passcod/notify) for doing most of the heavy-lifting
 * [globset](https://crates.io/crates/globset) for super-fast glob matching

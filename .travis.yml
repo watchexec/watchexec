@@ -1,5 +1,7 @@
 language: rust
 cache: cargo
+dist: trusty
+sudo: false
 
 env:
   global:
@@ -7,12 +9,32 @@ env:
 
 matrix:
   include:
+    # Default test+release version
     - os: linux
       rust: stable
       env: TARGET=x86_64-unknown-linux-gnu
     - os: osx
       rust: stable
       env: TARGET=x86_64-apple-darwin
+
+    # Minimum version advertised in readme
+    - os: linux
+      rust: 1.16.0
+      env: TARGET=x86_64-unknown-linux-gnu
+    - os: osx
+      rust: 1.16.0
+      env: TARGET=x86_64-apple-darwin
+
+    # Non-critical but interesting for upcoming Rust changes
+    - os: linux
+      rust: nightly
+      env: TARGET=x86_64-unknown-linux-gnu
+    - os: osx
+      rust: nightly
+      env: TARGET=x86_64-apple-darwin
+
+  allow_failures:
+    - rust: nightly
 
 script:
 - bash ci/script.sh
@@ -23,17 +45,14 @@ before_deploy:
 deploy:
   provider: releases
   api_key:
-    secure: UsikH6ulNyA6vHcbNP16evFpHW9A/ns8+sP2eXWRgW9lmp2Fjwi+xiZaQdqvcUU/yxhjysnCVAvMKzIHKaWofxNLn/8H7s1+f0KeEYW3bJLKyc06vtNX41PTqFZ7/jFEYOroyKrLVzWz4oqRUs+nHZcFUM/stUfyRJe4RCX8MZ1rQ7d7LWl1DazaxXIwJ/0h1q2ywxW9UMeP1xLaUL0Wk2pKuvQ0YXG3ahxZ4mcfBmj4fQaW6ByifioATbCinoQRqGyR+tKKTWQtk/7qcyluMsIWtHOiVf3q8VW6DcV4xqNJig0jdPQvP2iciK0ajl6yvVc8rZkgTtbg8EKMFcx4QI15W5fi9lHt10FN1dkj0NYgZE78zz/7He0P8arsOj88zIGGT2t2CQyIWCkHLQscCDgJl7aTYD0BX5BiU6VfDxIx0KnLKe/+YIZETIZTF8GhnUIIdY04I+gao8MrzhkbFBJvUQje9nzHu2NOUAongj0u9ZEvJyX3vVV52/yv9IJAXqxqSoW4Uj1eJ3vOlLLM6WDPrGDwQjpdhQUt3PShElge3kOEhL1sFOAt58i8rCqKgnBFBlrYpZxD1vXrHaWSExAULI17c5h7Zysg7F42BShR0cJn326pM6slxWsp/d8PB7/neQ85jlRy6WCf/yxY38arJ7UpQIvnxrZuHzzH4vI=
+    secure: sbV2K4G2SA78U6d8SNZKExenWnuv1MsJ/9ovDDH4ucnzkpJEWDV2iwPklcu5oaRj3Sz4jYuYXToqcbJmSjL5eXjlk8rh2sG2LWT+8Up3X1vxte2XFXko15I/613rD8E/qWfS9FqzmuhMX+gb4P7OwWvVUwtw0IIuSGfBW/TEgUTFUZnUmgdm5ra8VnV3CvmTbn8botxbkdAUvk4C0g7yqHjlV7v9xU+DEXz2Y820cAH8ulu1ZU3JBm+XfVzZ09kByeQ7wnvyRuE4RhVtKK8nKUy+2JF7HX5N+0Du8z9ZHosV6+uoUz9i2OecYzAvL8xKiSkeHBqTxIDTeM4lnnDmnm5LsJ4aEU6pBSuWhglmflTbtAN7rBfYgZGJ6je6Gem5bOcCDtGI7+2qjf00Jo7vbmyK6D6Y6yxwf3W0QnOZcXrn9BWZLMMgochIBlVTTM1zFodcprpdHo8iHNVms3A++WqLnp1O0L/55id59VITGJNafy2vmXU/nlQi2MO03s3SF3jdHT7rchYjJRAcGR79QtCLiL3CbYnaQJsDNviyMm1VC6hkst0tXB8t12v2ht5NU7NEN8E31jnnRLRnwr7LUFRgOzFVF0M5jSqs3eCLnYyI7gCMKL2qOZ2yxJuD9bKsVZDpVvUqnaj5ifE+TMYoONPrc9W1hTyfcND9MhCsM+g=
   file_glob: true
   file: ${PROJECT_NAME}-${TRAVIS_TAG}-${TARGET}.*
   skip_cleanup: true
   on:
+    repo: watchexec/watchexec
     tags: true
-
-branches:
-  only:
-  - master
-  - "/^\\d+\\.\\d+\\.\\d+.*$/"
+    rust: stable
 
 notifications:
   email:
