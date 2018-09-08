@@ -72,11 +72,12 @@ pub fn new(signal_name: Option<String>) -> Option<Signal> {
 
 #[cfg(unix)]
 pub fn install_handler<F>(handler: F)
-    where F: Fn(self::Signal) + 'static + Send + Sync
+where
+    F: Fn(self::Signal) + 'static + Send + Sync,
 {
-    use std::thread;
     use nix::libc::c_int;
     use nix::sys::signal::*;
+    use std::thread;
 
     // Mask all signals interesting to us. The mask propagates
     // to all threads started after this point.
@@ -90,8 +91,7 @@ pub fn install_handler<F>(handler: F)
     mask.add(SIGCHLD);
     mask.add(SIGUSR1);
     mask.add(SIGUSR2);
-    mask.thread_set_mask()
-        .expect("unable to set signal mask");
+    mask.thread_set_mask().expect("unable to set signal mask");
 
     set_handler(handler);
 
@@ -99,10 +99,14 @@ pub fn install_handler<F>(handler: F)
     pub extern "C" fn sigchld_handler(_: c_int) {}
 
     unsafe {
-        let _ = sigaction(SIGCHLD,
-                          &SigAction::new(SigHandler::Handler(sigchld_handler),
-                                          SaFlags::empty(),
-                                          SigSet::empty()));
+        let _ = sigaction(
+            SIGCHLD,
+            &SigAction::new(
+                SigHandler::Handler(sigchld_handler),
+                SaFlags::empty(),
+                SigSet::empty(),
+            ),
+        );
     }
 
     // Spawn a thread to catch these signals
@@ -137,7 +141,8 @@ pub fn install_handler<F>(handler: F)
 
 #[cfg(windows)]
 pub fn install_handler<F>(handler: F)
-    where F: Fn(self::Signal) + 'static + Send + Sync
+where
+    F: Fn(self::Signal) + 'static + Send + Sync,
 {
     use kernel32::SetConsoleCtrlHandler;
     use winapi::{BOOL, DWORD, FALSE, TRUE};
@@ -162,7 +167,8 @@ fn invoke(sig: self::Signal) {
 }
 
 fn set_handler<F>(handler: F)
-    where F: Fn(self::Signal) + 'static + Send + Sync
+where
+    F: Fn(self::Signal) + 'static + Send + Sync,
 {
     *CLEANUP.lock().unwrap() = Some(Box::new(handler));
 }

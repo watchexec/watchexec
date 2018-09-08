@@ -1,19 +1,19 @@
 #[macro_use]
 extern crate clap;
-extern crate globset;
 extern crate env_logger;
+extern crate globset;
 #[macro_use]
 extern crate log;
 #[macro_use]
 extern crate lazy_static;
 extern crate notify;
 
+#[cfg(windows)]
+extern crate kernel32;
 #[cfg(unix)]
 extern crate nix;
 #[cfg(windows)]
 extern crate winapi;
-#[cfg(windows)]
-extern crate kernel32;
 
 #[cfg(test)]
 extern crate mktemp;
@@ -21,10 +21,10 @@ extern crate mktemp;
 pub mod cli;
 mod gitignore;
 mod notification_filter;
+mod pathop;
 mod process;
 pub mod run;
 mod signal;
 mod watcher;
-mod pathop;
 
 pub use run::run;

@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 
-use notify::{PollWatcher, RecommendedWatcher, RecursiveMode, raw_watcher};
+use notify::{raw_watcher, PollWatcher, RecommendedWatcher, RecursiveMode};
 
 /// Thin wrapper over the notify crate
 ///
@@ -13,8 +13,8 @@ pub struct Watcher {
     watcher_impl: WatcherImpl,
 }
 
-pub use notify::RawEvent as Event;
 pub use notify::Error;
+pub use notify::RawEvent as Event;
 
 enum WatcherImpl {
     Recommended(RecommendedWatcher),
@@ -22,11 +22,12 @@ enum WatcherImpl {
 }
 
 impl Watcher {
-    pub fn new(tx: Sender<Event>,
-               paths: &[PathBuf],
-               poll: bool,
-               interval_ms: u32)
-               -> Result<Watcher, Error> {
+    pub fn new(
+        tx: Sender<Event>,
+        paths: &[PathBuf],
+        poll: bool,
+        interval_ms: u32,
+    ) -> Result<Watcher, Error> {
         use notify::Watcher;
 
         let imp = if poll {

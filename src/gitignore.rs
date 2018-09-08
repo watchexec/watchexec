@@ -88,7 +88,8 @@ impl Gitignore {
     }
 
     pub fn is_excluded(&self, path: &Path) -> bool {
-        let mut applicable_files: Vec<&GitignoreFile> = self.files
+        let mut applicable_files: Vec<&GitignoreFile> = self
+            .files
             .iter()
             .filter(|f| path.starts_with(&f.root))
             .collect();
@@ -144,11 +145,10 @@ impl GitignoreFile {
         }
 
         Ok(GitignoreFile {
-               set: try!(builder.build()),
-               patterns: patterns,
-               root: root.to_owned(),
-           })
-
+            set: try!(builder.build()),
+            patterns: patterns,
+            root: root.to_owned(),
+        })
     }
 
     #[cfg(test)]
@@ -167,9 +167,9 @@ impl GitignoreFile {
         for &i in matches.iter().rev() {
             let pattern = &self.patterns[i];
             return match pattern.pattern_type {
-                       PatternType::Whitelist => MatchResult::Whitelist,
-                       PatternType::Ignore => MatchResult::Ignore,
-                   };
+                PatternType::Whitelist => MatchResult::Whitelist,
+                PatternType::Ignore => MatchResult::Ignore,
+            };
         }
 
         MatchResult::None
@@ -223,7 +223,6 @@ impl Pattern {
     }
 }
 
-
 impl From<globset::Error> for Error {
     fn from(error: globset::Error) -> Error {
         Error::GlobSet(error)
@@ -235,7 +234,6 @@ impl From<io::Error> for Error {
         Error::Io(error)
     }
 }
-
 
 #[cfg(test)]
 mod tests {

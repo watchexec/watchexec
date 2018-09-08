@@ -1,7 +1,6 @@
 extern crate watchexec;
 use watchexec::{cli, run};
-use std::error::Error;
 
-fn main() -> Result<(), Box<Error>> {
+fn main() -> run::Result<()> {
     run(cli::get_args())
 }

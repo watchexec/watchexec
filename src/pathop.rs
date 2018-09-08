@@ -1,7 +1,6 @@
 use notify::op;
 use std::path::{Path, PathBuf};
 
-
 /// Info about a path and its corresponding `notify` event
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub struct PathOp {
@@ -41,4 +40,3 @@ impl PathOp {
         op_.contains(op::CHMOD)
     }
 }
-

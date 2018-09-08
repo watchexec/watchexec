@@ -135,24 +135,26 @@ pub fn get_args() -> Args {
 
     if let Some(extensions) = args.values_of("extensions") {
         for exts in extensions {
-            filters.extend(exts.split(',')
-                               .filter(|ext| !ext.is_empty())
-                               .map(|ext| format!("*.{}", ext.replace(".", ""))));
-
+            filters.extend(
+                exts.split(',')
+                    .filter(|ext| !ext.is_empty())
+                    .map(|ext| format!("*.{}", ext.replace(".", ""))),
+            );
         }
     }
 
     let mut ignores = vec![];
-    let default_ignores = vec![format!("**{}.DS_Store", MAIN_SEPARATOR),
-                               String::from("*.py[co]"),
-                               String::from("#*#"),
-                               String::from(".#*"),
-                               String::from(".*.sw?"),
-                               String::from(".*.sw?x"),
-                               format!("**{}.git{}**", MAIN_SEPARATOR, MAIN_SEPARATOR),
-                               format!("**{}.hg{}**", MAIN_SEPARATOR, MAIN_SEPARATOR),
-                               format!("**{}.svn{}**", MAIN_SEPARATOR, MAIN_SEPARATOR)];
-
+    let default_ignores = vec![
+        format!("**{}.DS_Store", MAIN_SEPARATOR),
+        String::from("*.py[co]"),
+        String::from("#*#"),
+        String::from(".#*"),
+        String::from(".*.sw?"),
+        String::from(".*.sw?x"),
+        format!("**{}.git{}**", MAIN_SEPARATOR, MAIN_SEPARATOR),
+        format!("**{}.hg{}**", MAIN_SEPARATOR, MAIN_SEPARATOR),
+        format!("**{}.svn{}**", MAIN_SEPARATOR, MAIN_SEPARATOR),
+    ];
 
     if args.occurrences_of("no-default-ignore") == 0 {
         ignores.extend(default_ignores)
@@ -167,9 +169,9 @@ pub fn get_args() -> Args {
 
     let debounce = if args.occurrences_of("debounce") > 0 {
         value_t!(args.value_of("debounce"), u64).unwrap_or_else(|e| e.exit())
-     } else {
-         500
-     };
+    } else {
+        500
+    };
 
     if signal.is_some() && args.is_present("postpone") {
         // TODO: Error::argument_conflict() might be the better fit, usage was unclear, though

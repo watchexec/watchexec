@@ -22,10 +22,11 @@ pub enum Error {
 }
 
 impl NotificationFilter {
-    pub fn new(filters: Vec<String>,
-               ignores: Vec<String>,
-               ignore_files: gitignore::Gitignore)
-               -> Result<NotificationFilter, Error> {
+    pub fn new(
+        filters: Vec<String>,
+        ignores: Vec<String>,
+        ignore_files: gitignore::Gitignore,
+    ) -> Result<NotificationFilter, Error> {
         let mut filter_set_builder = GlobSetBuilder::new();
         for f in &filters {
             filter_set_builder.add(try!(Glob::new(f)));
@@ -49,11 +50,11 @@ impl NotificationFilter {
         let ignore_set = try!(ignore_set_builder.build());
 
         Ok(NotificationFilter {
-               filters: filter_set,
-               filter_count: filters.len(),
-               ignores: ignore_set,
-               ignore_files: ignore_files,
-           })
+            filters: filter_set,
+            filter_count: filters.len(),
+            ignores: ignore_set,
+            ignore_files: ignore_files,
+        })
     }
 
     pub fn is_excluded(&self, path: &Path) -> bool {
@@ -93,8 +94,8 @@ impl From<globset::Error> for Error {
 
 #[cfg(test)]
 mod tests {
-    use gitignore;
     use super::NotificationFilter;
+    use gitignore;
     use std::path::Path;
 
     #[test]
@@ -106,7 +107,11 @@ mod tests {
 
     #[test]
     fn test_filename() {
-        let filter = NotificationFilter::new(vec![], vec![String::from("test.json")], gitignore::load(&vec![])).unwrap();
+        let filter = NotificationFilter::new(
+            vec![],
+            vec![String::from("test.json")],
+            gitignore::load(&vec![]),
+        ).unwrap();
 
         assert!(filter.is_excluded(&Path::new("/path/to/test.json")));
         assert!(filter.is_excluded(&Path::new("test.json")));
@@ -135,8 +140,8 @@ mod tests {
     #[test]
     fn test_ignores_take_precedence() {
         let ignores = vec![String::from("*.rs"), String::from("*.toml")];
-        let filter = NotificationFilter::new(ignores.clone(), ignores, gitignore::load(&vec![]))
-            .unwrap();
+        let filter =
+            NotificationFilter::new(ignores.clone(), ignores, gitignore::load(&vec![])).unwrap();
 
         assert!(filter.is_excluded(&Path::new("hello.rs")));
         assert!(filter.is_excluded(&Path::new("Cargo.toml")));

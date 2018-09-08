@@ -1,22 +1,22 @@
 use std::collections::HashMap;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, RwLock};
 use std::sync::mpsc::{channel, Receiver};
+use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
 use cli;
 use env_logger;
 use gitignore;
 use log;
-use notify::Error;
 use notification_filter::NotificationFilter;
+use notify::Error;
+use pathop::PathOp;
 use process::{self, Process};
 use signal::{self, Signal};
 use watcher::{Event, Watcher};
-use pathop::PathOp;
 
-type Result<T> = ::std::result::Result<T, Box<::std::error::Error>>;
+pub type Result<T> = ::std::result::Result<T, Box<::std::error::Error>>;
 
 fn init_logger(debug: bool) {
     let mut log_builder = env_logger::Builder::new();
@@ -68,14 +68,15 @@ pub fn run(args: cli::Args) -> Result<()> {
 
     init_logger(args.debug);
 
-    let paths: Result<Vec<PathBuf>> = args.paths
+    let paths: Result<Vec<PathBuf>> = args
+        .paths
         .iter()
         .map(|p| {
-                 Ok(Path::new(&p)
-                     .canonicalize()
-                     .map_err(|e| format!("Unable to canonicalize path: \"{}\", {}", p, e))?
-                     .to_owned())
-             })
+            Ok(Path::new(&p)
+                .canonicalize()
+                .map_err(|e| format!("Unable to canonicalize path: \"{}\", {}", p, e))?
+                .to_owned())
+        })
         .collect();
     let paths = paths?;
 
@@ -92,11 +93,15 @@ pub fn run(args: cli::Args) -> Result<()> {
     let watcher = match Watcher::new(tx.clone(), &paths, args.poll, args.poll_interval) {
         Ok(watcher) => watcher,
         Err(ref e) if !args.poll && should_switch_to_poll(e) => {
-            warn!("System notification limit is too small, \
-                falling back to polling mode.");
-            if cfg!(target_os="linux") {
-                warn!("For better performance increase system limit: \n   \
-                       sysctl fs.inotify.max_user_watches=524288");
+            warn!(
+                "System notification limit is too small, \
+                 falling back to polling mode."
+            );
+            if cfg!(target_os = "linux") {
+                warn!(
+                    "For better performance increase system limit: \n   \
+                     sysctl fs.inotify.max_user_watches=524288"
+                );
             }
             Watcher::new(tx, &paths, true, args.poll_interval)
                 .expect("polling watcher should always work")
