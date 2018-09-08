@@ -32,7 +32,7 @@ fn init_logger(debug: bool) {
         .init();
 }
 
-#[cfg(target_os="linux")]
+#[cfg(target_os = "linux")]
 fn should_switch_to_poll(e: &Error) -> bool {
     use nix::libc;
 
@@ -42,9 +42,8 @@ fn should_switch_to_poll(e: &Error) -> bool {
     }
 }
 
-#[cfg(not(target_os="linux"))]
+#[cfg(not(target_os = "linux"))]
 fn should_switch_to_poll(_: &Error) -> bool {
-    // not known conditions to switch
     false
 }
 

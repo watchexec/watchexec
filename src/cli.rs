@@ -5,7 +5,7 @@ use clap::{App, Arg, Error};
 
 #[derive(Debug)]
 pub struct Args {
-    pub cmd: String,
+    pub cmd: Vec<String>,
     pub paths: Vec<String>,
     pub filters: Vec<String>,
     pub ignores: Vec<String>,
@@ -120,9 +120,7 @@ pub fn get_args() -> Args {
         .arg(Arg::with_name("once").short("1").hidden(true))
         .get_matches();
 
-    let cmd = values_t!(args.values_of("command"), String)
-        .unwrap()
-        .join(" ");
+    let cmd: Vec<String> = values_t!(args.values_of("command"), String).unwrap();
     let paths = values_t!(args.values_of("path"), String).unwrap_or(vec![String::from(".")]);
 
     // Treat --kill as --signal SIGKILL (for compatibility with older syntax)
