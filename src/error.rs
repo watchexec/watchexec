@@ -11,7 +11,13 @@ pub enum Error {
     Notify(notify::Error),
 }
 
-impl StdError for Error {}
+impl StdError for Error {
+    fn description (&self) -> &str {
+        // This method is soft-deprecated and shouldn't be used,
+        // see Display for the actual description.
+        "a watchexec error"
+    }
+}
 
 impl From<globset::Error> for Error {
     fn from(err: globset::Error) -> Self {
