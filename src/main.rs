@@ -1,6 +1,6 @@
 extern crate watchexec;
-use watchexec::{cli, run};
+use watchexec::{cli, error, run};
 
-fn main() -> run::Result<()> {
+fn main() -> error::Result<()> {
     run(cli::get_args())
 }

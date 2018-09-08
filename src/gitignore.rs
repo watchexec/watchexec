@@ -113,9 +113,9 @@ impl Gitignore {
 
 impl GitignoreFile {
     pub fn new(path: &Path) -> Result<GitignoreFile, Error> {
-        let mut file = try!(fs::File::open(path));
+        let mut file = fs::File::open(path)?;
         let mut contents = String::new();
-        try!(file.read_to_string(&mut contents));
+        file.read_to_string(&mut contents)?;
 
         let lines = contents.lines().collect();
         let root = path.parent().unwrap();
@@ -138,14 +138,14 @@ impl GitignoreFile {
                 pat = pat + "/**";
             }
 
-            let glob = try!(GlobBuilder::new(&pat).literal_separator(true).build());
+            let glob = GlobBuilder::new(&pat).literal_separator(true).build()?;
 
             builder.add(glob);
             patterns.push(p);
         }
 
         Ok(GitignoreFile {
-            set: try!(builder.build()),
+            set: builder.build()?,
             patterns: patterns,
             root: root.to_owned(),
         })

@@ -31,17 +31,17 @@ impl Watcher {
         use notify::Watcher;
 
         let imp = if poll {
-            let mut watcher = try!(PollWatcher::with_delay_ms(tx, interval_ms));
+            let mut watcher = PollWatcher::with_delay_ms(tx, interval_ms)?;
             for path in paths {
-                try!(watcher.watch(path, RecursiveMode::Recursive));
+                watcher.watch(path, RecursiveMode::Recursive)?;
                 debug!("Watching {:?}", path);
             }
 
             WatcherImpl::Poll(watcher)
         } else {
-            let mut watcher = try!(raw_watcher(tx));
+            let mut watcher = raw_watcher(tx)?;
             for path in paths {
-                try!(watcher.watch(path, RecursiveMode::Recursive));
+                watcher.watch(path, RecursiveMode::Recursive)?;
                 debug!("Watching {:?}", path);
             }
 

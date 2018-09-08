@@ -19,6 +19,7 @@ extern crate winapi;
 extern crate mktemp;
 
 pub mod cli;
+pub mod error;
 mod gitignore;
 mod notification_filter;
 mod pathop;

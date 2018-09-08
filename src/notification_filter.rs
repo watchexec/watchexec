@@ -1,36 +1,26 @@
 extern crate glob;
 
-use std::io;
-use std::path::Path;
-
-use globset;
+use error;
+use gitignore::Gitignore;
 use globset::{Glob, GlobSet, GlobSetBuilder};
-
-use gitignore;
+use std::path::Path;
 
 pub struct NotificationFilter {
     filters: GlobSet,
     filter_count: usize,
     ignores: GlobSet,
-    ignore_files: gitignore::Gitignore,
-}
-
-#[derive(Debug)]
-pub enum Error {
-    Glob(globset::Error),
-    Io(io::Error),
+    ignore_files: Gitignore,
 }
 
 impl NotificationFilter {
     pub fn new(
         filters: Vec<String>,
         ignores: Vec<String>,
-        ignore_files: gitignore::Gitignore,
-    ) -> Result<NotificationFilter, Error> {
+        ignore_files: Gitignore,
+    ) -> error::Result<NotificationFilter> {
         let mut filter_set_builder = GlobSetBuilder::new();
         for f in &filters {
-            filter_set_builder.add(try!(Glob::new(f)));
-
+            filter_set_builder.add(Glob::new(f)?);
             debug!("Adding filter: \"{}\"", f);
         }
 
@@ -41,18 +31,14 @@ impl NotificationFilter {
                 ignore_path = Path::new("**").join(&ignore_path);
             }
             let pattern = ignore_path.to_str().unwrap();
-            ignore_set_builder.add(try!(Glob::new(pattern)));
-
+            ignore_set_builder.add(Glob::new(pattern)?);
             debug!("Adding ignore: \"{}\"", pattern);
         }
 
-        let filter_set = try!(filter_set_builder.build());
-        let ignore_set = try!(ignore_set_builder.build());
-
         Ok(NotificationFilter {
-            filters: filter_set,
+            filters: filter_set_builder.build()?,
             filter_count: filters.len(),
-            ignores: ignore_set,
+            ignores: ignore_set_builder.build()?,
             ignore_files: ignore_files,
         })
     }
@@ -77,18 +63,6 @@ impl NotificationFilter {
         }
 
         self.filter_count > 0
-    }
-}
-
-impl From<io::Error> for Error {
-    fn from(err: io::Error) -> Error {
-        Error::Io(err)
-    }
-}
-
-impl From<globset::Error> for Error {
-    fn from(err: globset::Error) -> Error {
-        Error::Glob(err)
     }
 }
 

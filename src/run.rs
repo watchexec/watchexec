@@ -1,22 +1,21 @@
 use std::collections::HashMap;
+use std::fs::canonicalize;
 use std::io::Write;
-use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Receiver};
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
 use cli;
 use env_logger;
+use error::{Error, Result};
 use gitignore;
 use log;
 use notification_filter::NotificationFilter;
-use notify::Error;
+use notify;
 use pathop::PathOp;
 use process::{self, Process};
 use signal::{self, Signal};
 use watcher::{Event, Watcher};
-
-pub type Result<T> = ::std::result::Result<T, Box<::std::error::Error>>;
 
 fn init_logger(debug: bool) {
     let mut log_builder = env_logger::Builder::new();
@@ -30,21 +29,6 @@ fn init_logger(debug: bool) {
         .format(|buf, r| writeln!(buf, "*** {}", r.args()))
         .filter(None, level)
         .init();
-}
-
-#[cfg(target_os = "linux")]
-fn should_switch_to_poll(e: &Error) -> bool {
-    use nix::libc;
-
-    match e {
-        &Error::Io(ref e) if e.raw_os_error() == Some(libc::ENOSPC) => true,
-        _ => false,
-    }
-}
-
-#[cfg(not(target_os = "linux"))]
-fn should_switch_to_poll(_: &Error) -> bool {
-    false
 }
 
 pub fn run(args: cli::Args) -> Result<()> {
@@ -68,48 +52,39 @@ pub fn run(args: cli::Args) -> Result<()> {
 
     init_logger(args.debug);
 
-    let paths: Result<Vec<PathBuf>> = args
-        .paths
-        .iter()
-        .map(|p| {
-            Ok(Path::new(&p)
-                .canonicalize()
-                .map_err(|e| format!("Unable to canonicalize path: \"{}\", {}", p, e))?
-                .to_owned())
-        })
-        .collect();
-    let paths = paths?;
+    let mut paths = vec![];
+    for path in args.paths {
+        paths.push(canonicalize(&path).map_err(|e| Error::Canonicalization(path, e))?);
+    }
 
-    let gitignore = if !args.no_vcs_ignore {
-        gitignore::load(&paths)
-    } else {
-        gitignore::load(&[])
-    };
-
-    let filter = NotificationFilter::new(args.filters, args.ignores, gitignore)
-        .expect("unable to create notification filter");
+    let gitignore = gitignore::load(if args.no_vcs_ignore { &[] } else { &paths });
+    let filter = NotificationFilter::new(args.filters, args.ignores, gitignore)?;
 
     let (tx, rx) = channel();
-    let watcher = match Watcher::new(tx.clone(), &paths, args.poll, args.poll_interval) {
-        Ok(watcher) => watcher,
-        Err(ref e) if !args.poll && should_switch_to_poll(e) => {
-            warn!(
-                "System notification limit is too small, \
-                 falling back to polling mode."
-            );
-            if cfg!(target_os = "linux") {
-                warn!(
-                    "For better performance increase system limit: \n   \
-                     sysctl fs.inotify.max_user_watches=524288"
-                );
+    let (poll, poll_interval) = (args.poll, args.poll_interval).clone();
+    let watcher = Watcher::new(tx.clone(), &paths, args.poll, args.poll_interval).or_else(|err| {
+        if poll {
+            return Err(err);
+        }
+
+        #[cfg(target_os = "linux")]
+        {
+            use nix::libc;
+            let mut fallback = false;
+            if let notify::Error::Io(ref e) = err {
+                if e.raw_os_error() == Some(libc::ENOSPC) {
+                    warn!("System notification limit is too small, falling back to polling mode. For better performance increase system limit:\n\tsysctl fs.inotify.max_user_watches=524288");
+                    fallback = true;
+                }
             }
-            Watcher::new(tx, &paths, true, args.poll_interval)
-                .expect("polling watcher should always work")
+
+            if fallback {
+                return Watcher::new(tx, &paths, true, poll_interval);
+            }
         }
-        Err(e) => {
-            panic!("Error setting up watcher: {}", e);
-        }
-    };
+
+        Err(err)
+    })?;
 
     if watcher.is_polling() {
         warn!("Polling for changes every {} ms", args.poll_interval);
@@ -205,6 +180,7 @@ pub fn run(args: cli::Args) -> Result<()> {
             break;
         }
     }
+
     Ok(())
 }
 
