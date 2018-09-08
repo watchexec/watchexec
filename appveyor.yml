@@ -27,6 +27,7 @@ before_deploy:
   - cargo build --release
   - mkdir staging
   - copy target\release\watchexec.exe staging
+  - copy LICENSE staging\LICENSE.txt
   - cd staging
   - 7z a ../%PROJECT_NAME%-%APPVEYOR_REPO_TAG_NAME%-%TARGET%.zip *
   - appveyor PushArtifact ../%PROJECT_NAME%-%APPVEYOR_REPO_TAG_NAME%-%TARGET%.zip
@@ -34,12 +35,10 @@ before_deploy:
 deploy:
   description: 'Automatically deployed release'
   artifact: /.*\.zip/
-  auth_token:
-    secure: h1ufwX1COhKiHGgBY22L37kd1kPCTEpkiGlw4mx/7Ib5nS3SlxRvkuKwteh5sJkh
-  provider: GitHub
+  #auth_token:
+  #  secure: OkayPFKJ16PAH15rWQBdEQDgd3tlNP/ZcssaunpK9AHU+t9zZlO5qvUAok1JT3lR
+  #provider: GitHub
+  provider: Webhook
+  url: https://example.com/goes-nowhere
   on:
     appveyor_repo_tag: true
-
-branches:
-  only:
-    - master

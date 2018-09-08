@@ -1,3 +1,4 @@
-cargo clean --target $TARGET --verbose
+#!/usr/bin/env bash
+
 cargo build --target $TARGET --verbose
 cargo test --target $TARGET --verbose

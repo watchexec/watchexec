@@ -1,15 +1,19 @@
 [package]
 name = "watchexec"
-version = "1.8.6"
+version = "1.9.0"
 authors = ["Matt Green <mattgreenrocks@gmail.com>"]
 description = "Executes commands in response to file modifications"
-documentation = "https://github.com/mattgreen/watchexec"
-homepage = "https://github.com/mattgreen/watchexec"
-repository = "https://github.com/mattgreen/watchexec"
+documentation = "https://github.com/watchexec/watchexec"
+homepage = "https://github.com/watchexec/watchexec"
+repository = "https://github.com/watchexec/watchexec"
 readme = "README.md"
 keywords = ["watcher", "inotify", "fsevents", "kqueue"]
 categories = ["command-line-utilities"]
 license = "Apache-2.0"
+
+[badges]
+appveyor = { repository = "watchexec/watchexec" }
+travis-ci = { repository = "watchexec/watchexec" }
 
 [profile.dev]
 panic = "abort"
@@ -20,9 +24,9 @@ panic = "abort"
 
 [dependencies]
 glob = "0.2.11"
-globset = "0.2"
-lazy_static = "0.2.8"
-log = "0.3.8"
+globset = "0.4.1"
+lazy_static = "1.1.0"
+log = "0.4.4"
 notify = "4.0"
 
 [dev-dependencies]
@@ -34,12 +38,12 @@ default-features = false
 features = ["wrap_help"]
 
 [dependencies.env_logger]
-version = "0.4"
+version = "0.5.12"
 default-features = false
 features = []
 
 [target.'cfg(unix)'.dependencies]
-nix = "0.9"
+nix = "0.11.0"
 
 [target.'cfg(windows)'.dependencies]
 winapi = "0.2.8"
