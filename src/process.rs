@@ -467,7 +467,7 @@ fn get_longest_common_path(paths: &[PathBuf]) -> Option<String> {
 }
 
 #[cfg(test)]
-#[cfg(target_family = "unix-skip")]
+#[cfg(target_family = "unix")]
 mod tests {
     use notify;
     use pathop::PathOp;
@@ -477,13 +477,14 @@ mod tests {
     use super::collect_path_env_vars;
     use super::get_longest_common_path;
     use super::spawn;
-    use super::wrap_commands;
+    //use super::wrap_commands;
 
     #[test]
     fn test_start() {
         let _ = spawn(&vec!["echo".into(), "hi".into()], vec![], true);
     }
 
+    /*
     #[test]
     fn wrap_commands_that_have_whitespace() {
         assert_eq!(
@@ -523,6 +524,7 @@ mod tests {
             vec!["echo".into(), "'hello\"world'".into()] as Vec<String>
         );
     }
+    */
 
     #[test]
     fn longest_common_path_should_return_correct_value() {
@@ -594,13 +596,14 @@ mod tests {
 #[cfg(target_family = "windows")]
 mod tests {
     use super::spawn;
-    use super::wrap_commands;
+    //use super::wrap_commands;
 
     #[test]
     fn test_start() {
         let _ = spawn(&vec!["echo".into(), "hi".into()], vec![], true);
     }
 
+    /*
     #[test]
     fn wrap_commands_that_have_whitespace() {
         assert_eq!(
@@ -640,4 +643,5 @@ mod tests {
             vec!["echo".into(), "\"hello\"\"world\"".into()] as Vec<String>
         );
     }
+    */
 }
