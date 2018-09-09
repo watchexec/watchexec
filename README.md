@@ -90,17 +90,25 @@ watchexec requires Rust 1.26 or later. You can install it using cargo:
 
 ### Linux
 
-For now, use the GitHub Releases tab to obtain the binary. PRs for packaging in various distros are welcomed.
+For now, use the GitHub Releases tab to obtain the binary. PRs for packaging in unsupported distros are welcomed.
+
+#### Debian
+
+A deb package is available for amd64 architectures in the GitHub Releases.
 
 #### Arch Linux
 
-watchexec is available on the AUR as [`watchexec`](https://aur.archlinux.org/packages/watchexec/). Example of installation using the `yay` AUR helper:
+Available [on the AUR](https://aur.archlinux.org/packages/watchexec/):
 
     $ yay -S watchexec
 
 ### Windows
 
-You can use [scoop](https://scoop.sh/) to install watchexec by typing `scoop install watchexec`. Or you can use the GitHub Releases tab to obtain the binary. In the future, I'll look at adding it to Chocolatey.
+Available [using scoop](https://scoop.sh/):
+
+    #> scoop install watchexec
+
+Or just unzip the binary from the GitHub Releases.
 
 ## Building
 

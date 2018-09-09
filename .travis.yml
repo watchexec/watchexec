@@ -3,6 +3,11 @@ cache: cargo
 dist: trusty
 sudo: false
 
+addons:
+  apt:
+    packages:
+      - fakeroot
+
 env:
   global:
   - PROJECT_NAME=watchexec
