@@ -8,6 +8,7 @@ pub fn spawn(cmd: &Vec<String>, updated_paths: Vec<PathOp>, no_shell: bool) -> P
 
 pub use self::imp::Process;
 
+/*
 fn needs_wrapping(s: &String) -> bool {
     s.contains(|ch| match ch {
         ' ' | '\t' | '\'' | '"' => true,
@@ -50,10 +51,11 @@ fn wrap_commands(cmd: &Vec<String>) -> Vec<String> {
         })
         .collect()
 }
+*/
 
 #[cfg(target_family = "unix")]
 mod imp {
-    use super::wrap_commands;
+    //use super::wrap_commands;
     use nix::libc::*;
     use nix::{self, Error};
     use pathop::PathOp;
@@ -99,7 +101,8 @@ mod imp {
                 command
             } else {
                 let mut command = Command::new("sh");
-                command.arg("-c").arg(wrap_commands(cmd).join(" "));
+                //command.arg("-c").arg(wrap_commands(cmd).join(" "));
+                command.arg("-c").arg(cmd.join(" "));
                 command
             };
 
@@ -176,7 +179,7 @@ mod imp {
 
 #[cfg(target_family = "windows")]
 mod imp {
-    use super::wrap_commands;
+    //use super::wrap_commands;
     use kernel32::*;
     use pathop::PathOp;
     use signal::Signal;
@@ -266,7 +269,8 @@ mod imp {
             } else {
                 command = Command::new("cmd.exe");
                 command.arg("/C");
-                command.arg(wrap_commands(cmd).join(" "));
+                //command.arg(wrap_commands(cmd).join(" "));
+                command.arg(cmd.join(" "));
             }
 
             command.creation_flags(CREATE_SUSPENDED);
@@ -463,7 +467,7 @@ fn get_longest_common_path(paths: &[PathBuf]) -> Option<String> {
 }
 
 #[cfg(test)]
-#[cfg(target_family = "unix")]
+#[cfg(target_family = "unix-skip")]
 mod tests {
     use notify;
     use pathop::PathOp;
