@@ -22,7 +22,7 @@ Example use cases:
 * Coalesces multiple filesystem events into one, for editors that use swap/backup files during saving
 * By default, uses `.gitignore` to determine which files to ignore notifications for
 * Support for watching files with a specific extension
-* Support for filtering/ignoring events based on glob patterns
+* Support for filtering/ignoring events based on [glob patterns](https://docs.rs/globset/*/globset/#syntax)
 * Launches child processes in a new process group
 * Sets the following environment variables in the child process:
     * If a single file changed (depending on the event type):
