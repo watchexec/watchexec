@@ -12,7 +12,7 @@ pub enum Error {
 }
 
 impl StdError for Error {
-    fn description (&self) -> &str {
+    fn description(&self) -> &str {
         // This method is soft-deprecated and shouldn't be used,
         // see Display for the actual description.
         "a watchexec error"

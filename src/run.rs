@@ -11,6 +11,7 @@ use error::{Error, Result};
 use gitignore;
 use log;
 use notification_filter::NotificationFilter;
+#[cfg(target_os = "linux")]
 use notify;
 use pathop::PathOp;
 use process::{self, Process};
@@ -61,7 +62,9 @@ pub fn run(args: cli::Args) -> Result<()> {
     let filter = NotificationFilter::new(args.filters, args.ignores, gitignore)?;
 
     let (tx, rx) = channel();
-    let (poll, poll_interval) = (args.poll, args.poll_interval).clone();
+    let poll = args.poll.clone();
+    #[cfg(target_os = "linux")]
+    let poll_interval = args.poll_interval.clone();
     let watcher = Watcher::new(tx.clone(), &paths, args.poll, args.poll_interval).or_else(|err| {
         if poll {
             return Err(err);
