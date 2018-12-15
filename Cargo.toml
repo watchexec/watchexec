@@ -33,7 +33,7 @@ notify = "4.0"
 mktemp = "0.3.1"
 
 [dependencies.clap]
-version = "2.26"
+version = "2.32.0"
 default-features = false
 features = ["wrap_help"]
 
