@@ -114,7 +114,7 @@ mod imp {
             }
 
             command
-                .before_exec(|| setpgid(Pid::from_raw(0), Pid::from_raw(0)).map_err(from_nix_error))
+                .before_exec(|| setsid().map_err(from_nix_error).map(|_|()))
                 .spawn()
                 .and_then(|p| {
                     Ok(Process {
