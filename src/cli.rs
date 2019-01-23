@@ -1,7 +1,7 @@
 use std::path::MAIN_SEPARATOR;
 use std::process::Command;
 
-use clap::{App, Arg, Error};
+use clap::{App, Arg, Error, ArgMatches};
 
 #[derive(Debug)]
 pub struct Args {
@@ -32,10 +32,8 @@ pub fn clear_screen() {
     let _ = Command::new("tput").arg("reset").status();
 }
 
-#[allow(unknown_lints)]
-#[allow(or_fun_call)]
-pub fn get_args() -> Args {
-    let args = App::new("watchexec")
+pub fn init_app<'a, 'b>() -> App<'a, 'b> {
+    let app = App::new("watchexec")
         .version(crate_version!())
         .about("Execute commands when watched files change")
         .arg(Arg::with_name("command")
@@ -117,9 +115,11 @@ pub fn get_args() -> Args {
                  .help("Do not wrap command in 'sh -c' resp. 'cmd.exe /C'")
                  .short("n")
                  .long("no-shell"))
-        .arg(Arg::with_name("once").short("1").hidden(true))
-        .get_matches();
+        .arg(Arg::with_name("once").short("1").hidden(true));
+    app
+}
 
+pub fn process_args(args: ArgMatches) -> Args{
     let cmd: Vec<String> = values_t!(args.values_of("command"), String).unwrap();
     let paths = values_t!(args.values_of("path"), String).unwrap_or(vec![String::from(".")]);
 
@@ -202,4 +202,11 @@ pub fn get_args() -> Args {
         poll: args.occurrences_of("poll") > 0,
         poll_interval: poll_interval,
     }
+}
+
+#[allow(unknown_lints)]
+#[allow(or_fun_call)]
+pub fn get_args() -> Args {
+    let args = init_app().get_matches();
+    process_args(args)
 }

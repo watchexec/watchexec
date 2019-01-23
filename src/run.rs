@@ -32,7 +32,7 @@ fn init_logger(debug: bool) {
         .init();
 }
 
-pub fn run(args: cli::Args) -> Result<()> {
+pub fn run<F>(args: cli::Args, cb: Option<F>) -> Result<()> where F: Fn(Vec<PathOp>) {
     let child_process: Arc<RwLock<Option<Process>>> = Arc::new(RwLock::new(None));
     let weak_child = Arc::downgrade(&child_process);
 
@@ -103,87 +103,101 @@ pub fn run(args: cli::Args) -> Result<()> {
         *guard = Some(process::spawn(&args.cmd, vec![], args.no_shell));
     }
 
-    loop {
-        debug!("Waiting for filesystem activity");
-        let paths = wait_fs(&rx, &filter, args.debounce);
-        if let Some(path) = paths.get(0) {
-            debug!("Path updated: {:?}", path);
+    //Decide if callback cb function or direct execution should be used
+    let has_cb: bool = cb.is_some();
+    if has_cb {
+        let fcb = cb.unwrap();
+        loop {
+            debug!("Waiting for filesystem activity");
+            let paths = wait_fs(&rx, &filter, args.debounce);
+            if let Some(path) = paths.get(0) {
+                debug!("Path updated: {:?}", path);
+            }
+            //Execute callback
+            fcb(paths);
         }
+    }else{  
+        loop {
+            debug!("Waiting for filesystem activity");
+            let paths = wait_fs(&rx, &filter, args.debounce);
+            if let Some(path) = paths.get(0) {
+                debug!("Path updated: {:?}", path);
+            }
 
-        // We have three scenarios here:
-        //
-        // 1. Make sure the previous run was ended, then run the command again
-        // 2. Just send a specified signal to the child, do nothing more
-        // 3. Send SIGTERM to the child, wait for it to exit, then run the command again
-        // 4. Send a specified signal to the child, wait for it to exit, then run the command again
-        //
-        let scenario = (args.restart, signal.is_some());
+            // We have three scenarios here:
+            //
+            // 1. Make sure the previous run was ended, then run the command again
+            // 2. Just send a specified signal to the child, do nothing more
+            // 3. Send SIGTERM to the child, wait for it to exit, then run the command again
+            // 4. Send a specified signal to the child, wait for it to exit, then run the command again
+            //
+            let scenario = (args.restart, signal.is_some());
 
-        match scenario {
-            // Custom restart behaviour (--restart was given, and --signal specified):
-            // Send specified signal to the child, wait for it to exit, then run the command again
-            (true, true) => {
-                signal_process(&child_process, signal, true);
+            match scenario {
+                // Custom restart behaviour (--restart was given, and --signal specified):
+                // Send specified signal to the child, wait for it to exit, then run the command again
+                (true, true) => {
+                    signal_process(&child_process, signal, true);
 
-                // Launch child process
-                if args.clear_screen {
-                    cli::clear_screen();
+                    // Launch child process
+                    if args.clear_screen {
+                        cli::clear_screen();
+                    }
+
+                    debug!("Launching child process");
+                    {
+                        let mut guard = child_process.write().unwrap();
+                        *guard = Some(process::spawn(&args.cmd, paths, args.no_shell));
+                    }
                 }
 
-                debug!("Launching child process");
-                {
-                    let mut guard = child_process.write().unwrap();
-                    *guard = Some(process::spawn(&args.cmd, paths, args.no_shell));
+                // Default restart behaviour (--restart was given, but --signal wasn't specified):
+                // Send SIGTERM to the child, wait for it to exit, then run the command again
+                (true, false) => {
+                    let sigterm = signal::new(Some("SIGTERM".to_owned()));
+                    signal_process(&child_process, sigterm, true);
+
+                    // Launch child process
+                    if args.clear_screen {
+                        cli::clear_screen();
+                    }
+
+                    debug!("Launching child process");
+                    {
+                        let mut guard = child_process.write().unwrap();
+                        *guard = Some(process::spawn(&args.cmd, paths, args.no_shell));
+                    }
+                }
+
+                // SIGHUP scenario: --signal was given, but --restart was not
+                // Just send a signal (e.g. SIGHUP) to the child, do nothing more
+                (false, true) => signal_process(&child_process, signal, false),
+
+                // Default behaviour (neither --signal nor --restart specified):
+                // Make sure the previous run was ended, then run the command again
+                (false, false) => {
+                    signal_process(&child_process, None, true);
+
+                    // Launch child process
+                    if args.clear_screen {
+                        cli::clear_screen();
+                    }
+
+                    debug!("Launching child process");
+                    {
+                        let mut guard = child_process.write().unwrap();
+                        *guard = Some(process::spawn(&args.cmd, paths, args.no_shell));
+                    }
                 }
             }
 
-            // Default restart behaviour (--restart was given, but --signal wasn't specified):
-            // Send SIGTERM to the child, wait for it to exit, then run the command again
-            (true, false) => {
-                let sigterm = signal::new(Some("SIGTERM".to_owned()));
-                signal_process(&child_process, sigterm, true);
-
-                // Launch child process
-                if args.clear_screen {
-                    cli::clear_screen();
-                }
-
-                debug!("Launching child process");
-                {
-                    let mut guard = child_process.write().unwrap();
-                    *guard = Some(process::spawn(&args.cmd, paths, args.no_shell));
-                }
+            // Handle once option for integration testing
+            if args.once {
+                signal_process(&child_process, signal, false);
+                break;
             }
-
-            // SIGHUP scenario: --signal was given, but --restart was not
-            // Just send a signal (e.g. SIGHUP) to the child, do nothing more
-            (false, true) => signal_process(&child_process, signal, false),
-
-            // Default behaviour (neither --signal nor --restart specified):
-            // Make sure the previous run was ended, then run the command again
-            (false, false) => {
-                signal_process(&child_process, None, true);
-
-                // Launch child process
-                if args.clear_screen {
-                    cli::clear_screen();
-                }
-
-                debug!("Launching child process");
-                {
-                    let mut guard = child_process.write().unwrap();
-                    *guard = Some(process::spawn(&args.cmd, paths, args.no_shell));
-                }
-            }
-        }
-
-        // Handle once option for integration testing
-        if args.once {
-            signal_process(&child_process, signal, false);
-            break;
-        }
+        }     
     }
-
     Ok(())
 }
 
