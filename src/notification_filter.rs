@@ -81,11 +81,8 @@ mod tests {
 
     #[test]
     fn test_filename() {
-        let filter = NotificationFilter::new(
-            &[],
-            &["test.json".into()],
-            gitignore::load(&[]),
-        ).unwrap();
+        let filter =
+            NotificationFilter::new(&[], &["test.json".into()], gitignore::load(&[])).unwrap();
 
         assert!(filter.is_excluded(&Path::new("/path/to/test.json")));
         assert!(filter.is_excluded(&Path::new("test.json")));
@@ -104,7 +101,7 @@ mod tests {
     #[test]
     fn test_multiple_ignores() {
         let ignores = &["*.rs".into(), "*.toml".into()];
-        let filter = NotificationFilter::new(&[], ignores, gitignore::load(&vec![])).unwrap();
+        let filter = NotificationFilter::new(&[], ignores, gitignore::load(&[])).unwrap();
 
         assert!(filter.is_excluded(&Path::new("hello.rs")));
         assert!(filter.is_excluded(&Path::new("Cargo.toml")));
@@ -114,8 +111,7 @@ mod tests {
     #[test]
     fn test_ignores_take_precedence() {
         let ignores = &["*.rs".into(), "*.toml".into()];
-        let filter =
-            NotificationFilter::new(ignores, ignores, gitignore::load(&[])).unwrap();
+        let filter = NotificationFilter::new(ignores, ignores, gitignore::load(&[])).unwrap();
 
         assert!(filter.is_excluded(&Path::new("hello.rs")));
         assert!(filter.is_excluded(&Path::new("Cargo.toml")));

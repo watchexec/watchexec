@@ -1,13 +1,6 @@
-use std::collections::HashMap;
-use std::fs::canonicalize;
-use std::io::Write;
-use std::sync::mpsc::{channel, Receiver};
-use std::sync::{Arc, RwLock};
-use std::time::Duration;
-
-use cli::{Args, clear_screen};
+use cli::{clear_screen, Args};
 use env_logger;
-use error::{Error, Result};
+use error::Result;
 use gitignore;
 use log;
 use notification_filter::NotificationFilter;
@@ -16,6 +9,15 @@ use notify;
 use pathop::PathOp;
 use process::{self, Process};
 use signal::{self, Signal};
+use std::{
+    collections::HashMap,
+    io::Write,
+    sync::{
+        mpsc::{channel, Receiver},
+        Arc, RwLock,
+    },
+    time::Duration,
+};
 use watcher::{Event, Watcher};
 
 fn init_logger(debug: bool) {
@@ -34,7 +36,9 @@ fn init_logger(debug: bool) {
 
 pub trait Handler {
     /// Initialises the `Handler` with a copy of the arguments.
-    fn new(args: Args) -> Result<Self> where Self: Sized;
+    fn new(args: Args) -> Result<Self>
+    where
+        Self: Sized;
 
     /// Called through a manual request, such as an initial run.
     ///
@@ -67,7 +71,10 @@ pub trait Handler {
 ///
 /// Given an argument structure and a `Handler` type, starts the watcher
 /// loop (blocking until done).
-pub fn watch<H>(args: Args) -> Result<()> where H: Handler {
+pub fn watch<H>(args: Args) -> Result<()>
+where
+    H: Handler,
+{
     init_logger(args.debug);
     let mut handler = H::new(args.clone())?;
 
@@ -160,12 +167,20 @@ impl Handler for ExecHandler {
             }
         });
 
-        Ok(Self { args, signal, child_process })
+        Ok(Self {
+            args,
+            signal,
+            child_process,
+        })
     }
 
     fn on_manual(&mut self) -> Result<bool> {
         let mut guard = self.child_process.write()?;
-        *guard = Some(process::spawn(&self.args.cmd, Vec::new(), self.args.no_shell));
+        *guard = Some(process::spawn(
+            &self.args.cmd,
+            Vec::new(),
+            self.args.no_shell,
+        ));
 
         Ok(true)
     }

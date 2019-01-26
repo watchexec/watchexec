@@ -1,6 +1,11 @@
 use clap::{App, Arg, Error};
 use error;
-use std::{ffi::OsString, fs::canonicalize, path::{MAIN_SEPARATOR, PathBuf}, process::Command};
+use std::{
+    ffi::OsString,
+    fs::canonicalize,
+    path::{PathBuf, MAIN_SEPARATOR},
+    process::Command,
+};
 
 #[derive(Clone, Debug)]
 pub struct Args {
@@ -36,13 +41,17 @@ pub fn get_args() -> error::Result<Args> {
 }
 
 pub fn get_args_from<I, T>(from: I) -> error::Result<Args>
-where I: IntoIterator<Item=T>, T: Into<OsString> + Clone
+where
+    I: IntoIterator<Item = T>,
+    T: Into<OsString> + Clone,
 {
     get_args_impl(Some(from))
 }
 
 fn get_args_impl<I, T>(from: Option<I>) -> error::Result<Args>
-where I: IntoIterator<Item=T>, T: Into<OsString> + Clone
+where
+    I: IntoIterator<Item = T>,
+    T: Into<OsString> + Clone,
 {
     let app = App::new("watchexec")
         .version(crate_version!())
@@ -130,7 +139,7 @@ where I: IntoIterator<Item=T>, T: Into<OsString> + Clone
 
     let args = match from {
         None => app.get_matches(),
-        Some(i) => app.get_matches_from(i)
+        Some(i) => app.get_matches_from(i),
     };
 
     let cmd: Vec<String> = values_t!(args.values_of("command"), String)?;

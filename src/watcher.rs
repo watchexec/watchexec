@@ -1,7 +1,6 @@
+use notify::{raw_watcher, PollWatcher, RecommendedWatcher, RecursiveMode};
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
-
-use notify::{raw_watcher, PollWatcher, RecommendedWatcher, RecursiveMode};
 
 /// Thin wrapper over the notify crate
 ///
