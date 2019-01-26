@@ -147,6 +147,19 @@ pub struct ExecHandler {
     child_process: Arc<RwLock<Option<Process>>>,
 }
 
+impl ExecHandler {
+    fn spawn(&mut self, ops: Vec<PathOp>) -> Result<()> {
+        let mut guard = self.child_process.write()?;
+        *guard = Some(process::spawn(
+            &self.args.cmd,
+            ops,
+            self.args.no_shell,
+        ));
+
+        Ok(())
+    }
+}
+
 impl Handler for ExecHandler {
     fn new(args: Args) -> Result<Self> {
         let child_process: Arc<RwLock<Option<Process>>> = Arc::new(RwLock::new(None));
@@ -174,17 +187,12 @@ impl Handler for ExecHandler {
         })
     }
 
+    // Only returns Err() on lock poisoning.
     fn on_manual(&mut self) -> Result<bool> {
-        let mut guard = self.child_process.write()?;
-        *guard = Some(process::spawn(
-            &self.args.cmd,
-            Vec::new(),
-            self.args.no_shell,
-        ));
-
-        Ok(true)
+        self.spawn(Vec::new()).and(Ok(true))
     }
 
+    // Only returns Err() on lock poisoning.
     fn on_update(&mut self, ops: Vec<PathOp>) -> Result<bool> {
         // We have three scenarios here:
         //
@@ -207,10 +215,7 @@ impl Handler for ExecHandler {
                 }
 
                 debug!("Launching child process");
-                {
-                    let mut guard = self.child_process.write()?;
-                    *guard = Some(process::spawn(&self.args.cmd, ops, self.args.no_shell));
-                }
+                self.spawn(ops)?;
             }
 
             // Default restart behaviour (--restart was given, but --signal wasn't specified):
@@ -225,10 +230,7 @@ impl Handler for ExecHandler {
                 }
 
                 debug!("Launching child process");
-                {
-                    let mut guard = self.child_process.write()?;
-                    *guard = Some(process::spawn(&self.args.cmd, ops, self.args.no_shell));
-                }
+                self.spawn(ops)?;
             }
 
             // SIGHUP scenario: --signal was given, but --restart was not
@@ -246,10 +248,7 @@ impl Handler for ExecHandler {
                 }
 
                 debug!("Launching child process");
-                {
-                    let mut guard = self.child_process.write()?;
-                    *guard = Some(process::spawn(&self.args.cmd, ops, self.args.no_shell));
-                }
+                self.spawn(ops)?;
             }
         }
 
