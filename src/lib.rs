@@ -22,7 +22,7 @@ pub mod cli;
 pub mod error;
 mod gitignore;
 mod notification_filter;
-mod pathop;
+pub mod pathop;
 mod process;
 pub mod run;
 mod signal;

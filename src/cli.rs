@@ -1,12 +1,11 @@
-use std::path::MAIN_SEPARATOR;
-use std::process::Command;
-
 use clap::{App, Arg, Error};
+use error;
+use std::{ffi::OsString, fs::canonicalize, path::{MAIN_SEPARATOR, PathBuf}, process::Command};
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Args {
     pub cmd: Vec<String>,
-    pub paths: Vec<String>,
+    pub paths: Vec<PathBuf>,
     pub filters: Vec<String>,
     pub ignores: Vec<String>,
     pub clear_screen: bool,
@@ -32,10 +31,20 @@ pub fn clear_screen() {
     let _ = Command::new("tput").arg("reset").status();
 }
 
-#[allow(unknown_lints)]
-#[allow(or_fun_call)]
-pub fn get_args() -> Args {
-    let args = App::new("watchexec")
+pub fn get_args() -> error::Result<Args> {
+    get_args_impl(None::<&[&str]>)
+}
+
+pub fn get_args_from<I, T>(from: I) -> error::Result<Args>
+where I: IntoIterator<Item=T>, T: Into<OsString> + Clone
+{
+    get_args_impl(Some(from))
+}
+
+fn get_args_impl<I, T>(from: Option<I>) -> error::Result<Args>
+where I: IntoIterator<Item=T>, T: Into<OsString> + Clone
+{
+    let app = App::new("watchexec")
         .version(crate_version!())
         .about("Execute commands when watched files change")
         .arg(Arg::with_name("command")
@@ -117,11 +126,19 @@ pub fn get_args() -> Args {
                  .help("Do not wrap command in 'sh -c' resp. 'cmd.exe /C'")
                  .short("n")
                  .long("no-shell"))
-        .arg(Arg::with_name("once").short("1").hidden(true))
-        .get_matches();
+        .arg(Arg::with_name("once").short("1").hidden(true));
 
-    let cmd: Vec<String> = values_t!(args.values_of("command"), String).unwrap();
-    let paths = values_t!(args.values_of("path"), String).unwrap_or(vec![String::from(".")]);
+    let args = match from {
+        None => app.get_matches(),
+        Some(i) => app.get_matches_from(i)
+    };
+
+    let cmd: Vec<String> = values_t!(args.values_of("command"), String)?;
+    let str_paths = values_t!(args.values_of("path"), String).unwrap_or(vec![".".into()]);
+    let mut paths = vec![];
+    for path in str_paths {
+        paths.push(canonicalize(&path).map_err(|e| error::Error::Canonicalization(path, e))?);
+    }
 
     // Treat --kill as --signal SIGKILL (for compatibility with older syntax)
     let signal = if args.is_present("kill") {
@@ -131,7 +148,7 @@ pub fn get_args() -> Args {
         args.value_of("signal").map(str::to_string)
     };
 
-    let mut filters = values_t!(args.values_of("filter"), String).unwrap_or(vec![]);
+    let mut filters = values_t!(args.values_of("filter"), String).unwrap_or(Vec::new());
 
     if let Some(extensions) = args.values_of("extensions") {
         for exts in extensions {
@@ -159,7 +176,7 @@ pub fn get_args() -> Args {
     if args.occurrences_of("no-default-ignore") == 0 {
         ignores.extend(default_ignores)
     };
-    ignores.extend(values_t!(args.values_of("ignore"), String).unwrap_or(vec![]));
+    ignores.extend(values_t!(args.values_of("ignore"), String).unwrap_or(Vec::new()));
 
     let poll_interval = if args.occurrences_of("poll") > 0 {
         value_t!(args.value_of("poll"), u32).unwrap_or_else(|e| e.exit())
@@ -185,7 +202,7 @@ pub fn get_args() -> Args {
             .exit();
     }
 
-    Args {
+    Ok(Args {
         cmd: cmd,
         paths: paths,
         filters: filters,
@@ -201,5 +218,5 @@ pub fn get_args() -> Args {
         once: args.is_present("once"),
         poll: args.occurrences_of("poll") > 0,
         poll_interval: poll_interval,
-    }
+    })
 }
