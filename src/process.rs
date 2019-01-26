@@ -1,9 +1,10 @@
+use error::Result;
 use pathop::PathOp;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
-pub fn spawn(cmd: &Vec<String>, updated_paths: &[PathOp], no_shell: bool) -> Process {
-    self::imp::Process::new(cmd, updated_paths, no_shell).expect("unable to spawn process")
+pub fn spawn(cmd: &Vec<String>, updated_paths: &[PathOp], no_shell: bool) -> Result<Process> {
+    self::imp::Process::new(cmd, updated_paths, no_shell).map_err(|e| e.into())
 }
 
 pub use self::imp::Process;
@@ -398,7 +399,7 @@ fn collect_path_env_vars(pathops: &[PathOp]) -> Vec<(String, String)> {
         }
     }
 
-    let mut vars = vec![];
+    let mut vars = Vec::new();
     // Only break off a common path if we have more than one unique path,
     // otherwise we end up with a `COMMON_PATH` being set and other vars
     // being present but empty.
@@ -481,7 +482,7 @@ mod tests {
 
     #[test]
     fn test_start() {
-        let _ = spawn(&vec!["echo".into(), "hi".into()], vec![], true);
+        let _ = spawn(&vec!["echo".into(), "hi".into()], &[], true);
     }
 
     /*
@@ -600,7 +601,7 @@ mod tests {
 
     #[test]
     fn test_start() {
-        let _ = spawn(&vec!["echo".into(), "hi".into()], vec![], true);
+        let _ = spawn(&vec!["echo".into(), "hi".into()], &[], true);
     }
 
     /*

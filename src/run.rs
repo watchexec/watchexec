@@ -154,7 +154,7 @@ impl ExecHandler {
             &self.args.cmd,
             ops,
             self.args.no_shell,
-        ));
+        )?);
 
         Ok(())
     }
