@@ -1,6 +1,5 @@
 use notify::op;
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime};
 
 /// Info about a path and its corresponding `notify` event
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
@@ -8,7 +7,6 @@ pub struct PathOp {
     pub path: PathBuf,
     pub op: Option<op::Op>,
     pub cookie: Option<u32>,
-    pub time: SystemTime,
 }
 
 impl PathOp {
@@ -17,7 +15,6 @@ impl PathOp {
             path: path.to_path_buf(),
             op: op,
             cookie: cookie,
-            time: SystemTime::now(),
         }
     }
 
