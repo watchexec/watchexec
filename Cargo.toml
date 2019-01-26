@@ -27,7 +27,7 @@ glob = "0.2.11"
 globset = "0.4.1"
 lazy_static = "1.1.0"
 log = "0.4.4"
-notify = "4.0"
+notify = "4.0.7"
 
 [dev-dependencies]
 mktemp = "0.3.1"
