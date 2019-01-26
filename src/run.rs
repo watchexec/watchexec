@@ -149,12 +149,13 @@ pub struct ExecHandler {
 
 impl ExecHandler {
     fn spawn(&mut self, ops: &[PathOp]) -> Result<()> {
+        if self.args.clear_screen {
+            clear_screen();
+        }
+
+        debug!("Launching child process");
         let mut guard = self.child_process.write()?;
-        *guard = Some(process::spawn(
-            &self.args.cmd,
-            ops,
-            self.args.no_shell,
-        )?);
+        *guard = Some(process::spawn(&self.args.cmd, ops, self.args.no_shell)?);
 
         Ok(())
     }
@@ -189,7 +190,11 @@ impl Handler for ExecHandler {
 
     // Only returns Err() on lock poisoning.
     fn on_manual(&mut self) -> Result<bool> {
-        self.spawn(&[]).and(Ok(true))
+        let cls = self.args.clear_screen;
+        self.args.clear_screen = false;
+        self.spawn(&[])?;
+        self.args.clear_screen = cls;
+        Ok(true)
     }
 
     // Only returns Err() on lock poisoning.
@@ -208,13 +213,6 @@ impl Handler for ExecHandler {
             // Send specified signal to the child, wait for it to exit, then run the command again
             (true, true) => {
                 signal_process(&self.child_process, self.signal, true);
-
-                // Launch child process
-                if self.args.clear_screen {
-                    clear_screen();
-                }
-
-                debug!("Launching child process");
                 self.spawn(ops)?;
             }
 
@@ -223,13 +221,6 @@ impl Handler for ExecHandler {
             (true, false) => {
                 let sigterm = signal::new(Some("SIGTERM".into()));
                 signal_process(&self.child_process, sigterm, true);
-
-                // Launch child process
-                if self.args.clear_screen {
-                    clear_screen();
-                }
-
-                debug!("Launching child process");
                 self.spawn(ops)?;
             }
 
@@ -241,13 +232,6 @@ impl Handler for ExecHandler {
             // Make sure the previous run was ended, then run the command again
             (false, false) => {
                 signal_process(&self.child_process, None, true);
-
-                // Launch child process
-                if self.args.clear_screen {
-                    clear_screen();
-                }
-
-                debug!("Launching child process");
                 self.spawn(ops)?;
             }
         }

@@ -82,11 +82,7 @@ mod imp {
     #[allow(unknown_lints)]
     #[allow(mutex_atomic)]
     impl Process {
-        pub fn new(
-            cmd: &Vec<String>,
-            updated_paths: &[PathOp],
-            no_shell: bool,
-        ) -> Result<Process> {
+        pub fn new(cmd: &Vec<String>, updated_paths: &[PathOp], no_shell: bool) -> Result<Process> {
             use nix::unistd::*;
             use std::os::unix::process::CommandExt;
 
@@ -203,11 +199,7 @@ mod imp {
     }
 
     impl Process {
-        pub fn new(
-            cmd: &Vec<String>,
-            updated_paths: &[PathOp],
-            no_shell: bool,
-        ) -> Result<Process> {
+        pub fn new(cmd: &Vec<String>, updated_paths: &[PathOp], no_shell: bool) -> Result<Process> {
             use std::os::windows::io::IntoRawHandle;
             use std::os::windows::process::CommandExt;
 
