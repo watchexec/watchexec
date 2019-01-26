@@ -64,7 +64,7 @@ pub trait Handler {
     /// - `Err`: an error has occurred while processing, quit.
     /// - `Ok(true)`: everything is fine and the loop can continue.
     /// - `Ok(false)`: everything is fine but we should gracefully stop.
-    fn on_update(&mut self, ops: Vec<PathOp>) -> Result<bool>;
+    fn on_update(&mut self, ops: &[PathOp]) -> Result<bool>;
 }
 
 /// Starts watching, and calls a handler when something happens.
@@ -133,7 +133,7 @@ where
             clear_screen();
         }
 
-        if !handler.on_update(paths)? {
+        if !handler.on_update(&paths)? {
             break;
         }
     }
@@ -148,7 +148,7 @@ pub struct ExecHandler {
 }
 
 impl ExecHandler {
-    fn spawn(&mut self, ops: Vec<PathOp>) -> Result<()> {
+    fn spawn(&mut self, ops: &[PathOp]) -> Result<()> {
         let mut guard = self.child_process.write()?;
         *guard = Some(process::spawn(
             &self.args.cmd,
@@ -189,11 +189,11 @@ impl Handler for ExecHandler {
 
     // Only returns Err() on lock poisoning.
     fn on_manual(&mut self) -> Result<bool> {
-        self.spawn(Vec::new()).and(Ok(true))
+        self.spawn(&[]).and(Ok(true))
     }
 
     // Only returns Err() on lock poisoning.
-    fn on_update(&mut self, ops: Vec<PathOp>) -> Result<bool> {
+    fn on_update(&mut self, ops: &[PathOp]) -> Result<bool> {
         // We have three scenarios here:
         //
         // 1. Make sure the previous run was ended, then run the command again

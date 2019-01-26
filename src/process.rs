@@ -2,7 +2,7 @@ use pathop::PathOp;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
-pub fn spawn(cmd: &Vec<String>, updated_paths: Vec<PathOp>, no_shell: bool) -> Process {
+pub fn spawn(cmd: &Vec<String>, updated_paths: &[PathOp], no_shell: bool) -> Process {
     self::imp::Process::new(cmd, updated_paths, no_shell).expect("unable to spawn process")
 }
 
@@ -83,7 +83,7 @@ mod imp {
     impl Process {
         pub fn new(
             cmd: &Vec<String>,
-            updated_paths: Vec<PathOp>,
+            updated_paths: &[PathOp],
             no_shell: bool,
         ) -> Result<Process> {
             use nix::unistd::*;
@@ -108,7 +108,7 @@ mod imp {
 
             debug!("Assembled command {:?}", command);
 
-            let command_envs = super::collect_path_env_vars(&updated_paths);
+            let command_envs = super::collect_path_env_vars(updated_paths);
             for &(ref name, ref val) in &command_envs {
                 command.env(name, val);
             }
@@ -204,7 +204,7 @@ mod imp {
     impl Process {
         pub fn new(
             cmd: &Vec<String>,
-            updated_paths: Vec<PathOp>,
+            updated_paths: &[PathOp],
             no_shell: bool,
         ) -> Result<Process> {
             use std::os::windows::io::IntoRawHandle;
@@ -276,7 +276,7 @@ mod imp {
             command.creation_flags(CREATE_SUSPENDED);
             debug!("Assembled command {:?}", command);
 
-            let command_envs = super::collect_path_env_vars(&updated_paths);
+            let command_envs = super::collect_path_env_vars(updated_paths);
             for &(ref name, ref val) in &command_envs {
                 command.env(name, val);
             }
