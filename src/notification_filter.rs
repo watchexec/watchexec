@@ -14,18 +14,18 @@ pub struct NotificationFilter {
 
 impl NotificationFilter {
     pub fn new(
-        filters: Vec<String>,
-        ignores: Vec<String>,
+        filters: &[String],
+        ignores: &[String],
         ignore_files: Gitignore,
     ) -> error::Result<NotificationFilter> {
         let mut filter_set_builder = GlobSetBuilder::new();
-        for f in &filters {
+        for f in filters {
             filter_set_builder.add(Glob::new(f)?);
             debug!("Adding filter: \"{}\"", f);
         }
 
         let mut ignore_set_builder = GlobSetBuilder::new();
-        for i in &ignores {
+        for i in ignores {
             let mut ignore_path = Path::new(i).to_path_buf();
             if ignore_path.is_relative() && !i.starts_with("*") {
                 ignore_path = Path::new("**").join(&ignore_path);
@@ -74,7 +74,7 @@ mod tests {
 
     #[test]
     fn test_allows_everything_by_default() {
-        let filter = NotificationFilter::new(vec![], vec![], gitignore::load(&vec![])).unwrap();
+        let filter = NotificationFilter::new(&[], &[], gitignore::load(&[])).unwrap();
 
         assert!(!filter.is_excluded(&Path::new("foo")));
     }
@@ -82,9 +82,9 @@ mod tests {
     #[test]
     fn test_filename() {
         let filter = NotificationFilter::new(
-            vec![],
-            vec![String::from("test.json")],
-            gitignore::load(&vec![]),
+            &[],
+            &["test.json".into()],
+            gitignore::load(&[]),
         ).unwrap();
 
         assert!(filter.is_excluded(&Path::new("/path/to/test.json")));
@@ -93,8 +93,8 @@ mod tests {
 
     #[test]
     fn test_multiple_filters() {
-        let filters = vec![String::from("*.rs"), String::from("*.toml")];
-        let filter = NotificationFilter::new(filters, vec![], gitignore::load(&vec![])).unwrap();
+        let filters = &["*.rs".into(), "*.toml".into()];
+        let filter = NotificationFilter::new(filters, &[], gitignore::load(&[])).unwrap();
 
         assert!(!filter.is_excluded(&Path::new("hello.rs")));
         assert!(!filter.is_excluded(&Path::new("Cargo.toml")));
@@ -103,8 +103,8 @@ mod tests {
 
     #[test]
     fn test_multiple_ignores() {
-        let ignores = vec![String::from("*.rs"), String::from("*.toml")];
-        let filter = NotificationFilter::new(vec![], ignores, gitignore::load(&vec![])).unwrap();
+        let ignores = &["*.rs".into(), "*.toml".into()];
+        let filter = NotificationFilter::new(&[], ignores, gitignore::load(&vec![])).unwrap();
 
         assert!(filter.is_excluded(&Path::new("hello.rs")));
         assert!(filter.is_excluded(&Path::new("Cargo.toml")));
@@ -113,9 +113,9 @@ mod tests {
 
     #[test]
     fn test_ignores_take_precedence() {
-        let ignores = vec![String::from("*.rs"), String::from("*.toml")];
+        let ignores = &["*.rs".into(), "*.toml".into()];
         let filter =
-            NotificationFilter::new(ignores.clone(), ignores, gitignore::load(&vec![])).unwrap();
+            NotificationFilter::new(ignores, ignores, gitignore::load(&[])).unwrap();
 
         assert!(filter.is_excluded(&Path::new("hello.rs")));
         assert!(filter.is_excluded(&Path::new("Cargo.toml")));
