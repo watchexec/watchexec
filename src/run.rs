@@ -115,10 +115,6 @@ where
 
     // Call handler initially, if necessary
     if args.run_initially && !args.once {
-        if args.clear_screen {
-            clear_screen();
-        }
-
         if !handler.on_manual()? {
             return Ok(());
         }
@@ -128,10 +124,6 @@ where
         debug!("Waiting for filesystem activity");
         let paths = wait_fs(&rx, &filter, args.debounce);
         debug!("Paths updated: {:?}", paths);
-
-        if args.clear_screen {
-            clear_screen();
-        }
 
         if !handler.on_update(&paths)? {
             break;
@@ -199,12 +191,12 @@ impl Handler for ExecHandler {
 
     // Only returns Err() on lock poisoning.
     fn on_update(&mut self, ops: &[PathOp]) -> Result<bool> {
-        // We have three scenarios here:
+        // We have four scenarios here:
         //
-        // 1. Make sure the previous run was ended, then run the command again
-        // 2. Just send a specified signal to the child, do nothing more
-        // 3. Send SIGTERM to the child, wait for it to exit, then run the command again
-        // 4. Send a specified signal to the child, wait for it to exit, then run the command again
+        // 1. Send a specified signal to the child, wait for it to exit, then run the command again
+        // 2. Send SIGTERM to the child, wait for it to exit, then run the command again
+        // 3. Just send a specified signal to the child, do nothing more
+        // 4. Make sure the previous run was ended, then run the command again
         //
         let scenario = (self.args.restart, self.signal.is_some());
 
@@ -251,7 +243,7 @@ pub fn run(args: Args) -> Result<()> {
 }
 
 fn wait_fs(rx: &Receiver<Event>, filter: &NotificationFilter, debounce: u64) -> Vec<PathOp> {
-    let mut paths = vec![];
+    let mut paths = Vec::new();
     let mut cache = HashMap::new();
 
     loop {
