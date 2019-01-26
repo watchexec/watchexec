@@ -47,8 +47,8 @@ pub trait Handler {
     /// A `Result` which means:
     ///
     /// - `Err`: an error has occurred while processing, quit.
-    /// - `Ok(false)`: everything is fine and the loop can continue.
-    /// - `Ok(true)`: everything is fine but we should gracefully stop.
+    /// - `Ok(true)`: everything is fine and the loop can continue.
+    /// - `Ok(false)`: everything is fine but we should gracefully stop.
     fn on_manual(&mut self) -> Result<bool>;
 
     /// Called through a file-update request.
