@@ -114,7 +114,7 @@ where
     }
 
     // Call handler initially, if necessary
-    if args.run_initially && !args.once {
+    if args.run_initially {
         if !handler.on_manual()? {
             return Ok(());
         }
@@ -182,6 +182,10 @@ impl Handler for ExecHandler {
 
     // Only returns Err() on lock poisoning.
     fn on_manual(&mut self) -> Result<bool> {
+        if self.args.once {
+            return Ok(true);
+        }
+
         let cls = self.args.clear_screen;
         self.args.clear_screen = false;
         self.spawn(&[])?;
