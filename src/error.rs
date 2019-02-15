@@ -57,24 +57,18 @@ impl<'a, T> From<PoisonError<T>> for Error {
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{} error: {}",
-            match self {
-                Error::Canonicalization(_, _) => "Path",
-                Error::Clap(_) => "Argument",
-                Error::Glob(_) => "Globset",
-                Error::Io(_) => "I/O",
-                Error::Notify(_) => "Notify",
-                Error::PoisonedLock => "Internal",
-            },
-            match self {
-                Error::Canonicalization(path, err) => {
-                    format!("couldn't canonicalize '{}':\n{}", path, err)
-                }
-                err => format!("{}", err),
+        let (error_type, error) = match self {
+            Error::Canonicalization(path, err) => {
+                ("Path", format!("couldn't canonicalize '{}':\n{}", path, err))
             }
-        )
+            Error::Clap(err) => ("Argument", err.to_string()),
+            Error::Glob(err) => ("Globset", err.to_string()),
+            Error::Io(err) => ("I/O", err.to_string()),
+            Error::Notify(err) => ("Notify", err.to_string()),
+            Error::PoisonedLock => ("Internal", "poisoned lock".to_string()),
+        };
+
+        write!(f, "{} error: {}", error_type, error)
     }
 }
 
