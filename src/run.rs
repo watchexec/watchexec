@@ -186,10 +186,7 @@ impl Handler for ExecHandler {
             return Ok(true);
         }
 
-        let cls = self.args.clear_screen;
-        self.args.clear_screen = false;
         self.spawn(&[])?;
-        self.args.clear_screen = cls;
         Ok(true)
     }
 
