@@ -145,7 +145,11 @@ where
     };
 
     let cmd: Vec<String> = values_t!(args.values_of("command"), String)?;
-    let paths = values_t!(args.values_of("path"), PathBuf).unwrap_or(vec![".".into()]);
+    let paths = values_t!(args.values_of("path"), String)
+        .unwrap_or(vec![".".into()])
+        .iter()
+        .map(|string_path| string_path.into())
+        .collect();
 
     // Treat --kill as --signal SIGKILL (for compatibility with older syntax)
     let signal = if args.is_present("kill") {
