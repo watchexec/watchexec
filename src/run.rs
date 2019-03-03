@@ -1,6 +1,6 @@
 use cli::{clear_screen, Args};
 use env_logger;
-use error::Result;
+use error::{Error, Result};
 use gitignore;
 use log;
 use notification_filter::NotificationFilter;
@@ -11,6 +11,7 @@ use process::{self, Process};
 use signal::{self, Signal};
 use std::{
     collections::HashMap,
+    fs::canonicalize,
     io::Write,
     sync::{
         mpsc::{channel, Receiver},
@@ -78,14 +79,22 @@ where
     init_logger(args.debug);
     let mut handler = H::new(args.clone())?;
 
-    let gitignore = gitignore::load(if args.no_vcs_ignore { &[] } else { &args.paths });
+    let mut paths = vec![];
+    for path in args.paths {
+        paths.push(
+            canonicalize(&path)
+                .map_err(|e| Error::Canonicalization(path.to_string_lossy().into_owned(), e))?,
+        );
+    }
+
+    let gitignore = gitignore::load(if args.no_vcs_ignore { &[] } else { &paths });
     let filter = NotificationFilter::new(&args.filters, &args.ignores, gitignore)?;
 
     let (tx, rx) = channel();
     let poll = args.poll.clone();
     #[cfg(target_os = "linux")]
     let poll_interval = args.poll_interval.clone();
-    let watcher = Watcher::new(tx.clone(), &args.paths, args.poll, args.poll_interval).or_else(|err| {
+    let watcher = Watcher::new(tx.clone(), &paths, args.poll, args.poll_interval).or_else(|err| {
         if poll {
             return Err(err);
         }
@@ -102,7 +111,7 @@ where
             }
 
             if fallback {
-                return Watcher::new(tx, &args.paths, true, poll_interval);
+                return Watcher::new(tx, &paths, true, poll_interval);
             }
         }
 

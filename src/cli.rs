@@ -2,7 +2,6 @@ use clap::{App, Arg, Error};
 use error;
 use std::{
     ffi::OsString,
-    fs::canonicalize,
     path::{PathBuf, MAIN_SEPARATOR},
     process::Command,
 };
@@ -146,11 +145,11 @@ where
     };
 
     let cmd: Vec<String> = values_t!(args.values_of("command"), String)?;
-    let str_paths = values_t!(args.values_of("path"), String).unwrap_or(vec![".".into()]);
-    let mut paths = vec![];
-    for path in str_paths {
-        paths.push(canonicalize(&path).map_err(|e| error::Error::Canonicalization(path, e))?);
-    }
+    let paths = values_t!(args.values_of("path"), String)
+        .unwrap_or(vec![".".into()])
+        .iter()
+        .map(|string_path| string_path.into())
+        .collect();
 
     // Treat --kill as --signal SIGKILL (for compatibility with older syntax)
     let signal = if args.is_present("kill") {
