@@ -15,9 +15,6 @@ extern crate nix;
 #[cfg(windows)]
 extern crate winapi;
 
-#[cfg(test)]
-extern crate mktemp;
-
 pub mod cli;
 pub mod error;
 mod gitignore;
