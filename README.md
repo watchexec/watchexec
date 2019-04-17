@@ -110,6 +110,10 @@ Available [using scoop](https://scoop.sh/):
 
 Or just unzip the binary from the GitHub Releases.
 
+## Extras
+
+- [A zsh completion](https://github.com/watchexec/watchexec/wiki/ZSH-completion)
+
 ## Building
 
 Rust 1.26 or later is required.
