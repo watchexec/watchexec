@@ -417,7 +417,7 @@ fn collect_path_env_vars(pathops: &[PathOp]) -> Vec<(String, String)> {
         let paths = if let Some(ref common_path) = common_path {
             paths
                 .iter()
-                .map(|path_str| path_str.trim_left_matches(common_path).to_string())
+                .map(|path_str| path_str.trim_start_matches(common_path).to_string())
                 .collect::<Vec<_>>()
         } else {
             paths
