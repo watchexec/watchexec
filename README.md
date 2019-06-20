@@ -98,9 +98,9 @@ A deb package is available for amd64 architectures in the GitHub Releases.
 
 #### Arch Linux
 
-Available [on the AUR](https://aur.archlinux.org/packages/watchexec/):
+Available in the **community** repository:
 
-    $ yay -S watchexec
+    $ pacman -S watchexec
 
 ### Windows
 
