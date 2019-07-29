@@ -3,7 +3,7 @@ watchexec(1) -- execute commands when watched files change
 
 ## SYNOPSIS
 
-watchexec [`--exts` | `-e` <extensions>]... [`--filter` | `-f` <pattern>]... [`--ignore` | `-i` <pattern>]... [`--watch` | `-w` <path>]... [`--restart` | `-r`] [`--clear` | `-c`] [`--postpone` | `-p`] [`--force-poll` <interval>] [`--debug` | `-d`] [`--no-vcs-ignore`] [`--no-default-ignore`] <command> [<argument>...]
+watchexec [`--exts` | `-e` <extensions>]... [`--filter` | `-f` <pattern>]... [`--ignore` | `-i` <pattern>]... [`--watch` | `-w` <path>]... [`--restart` | `-r`] [`--clear` | `-c`] [`--postpone` | `-p`] [`--force-poll` <interval>] [`--debounce` | `-d` <interval>] [`--no-vcs-ignore`] [`--no-default-ignore`] [`--verbose` | `-v`] [`--version` | `-V`] [--] <command> [<argument>...]
 
 ## DESCRIPTION
 
@@ -14,7 +14,7 @@ At startup, the specified <command> (passing any supplied <argument>s) is run on
 ## OPTIONS
 
 * <command>:
-Command to run when watched files are modified, and at startup, unless `--postpone` is specified. All <argument>s are passed to <command>.
+Command to run when watched files are modified, and at startup, unless `--postpone` is specified. All <argument>s are passed to <command>. If you pass flags to the command, you should separate it with `--`, for example: `watchexec -w src -- rsync -a src dest`.
 
 * `-e`, `--exts` <extensions>:
 Comma-separated list of file extensions to filter by. Leading dots are allowed (.rs) are allowed. (This is a shorthand for `-f`).
@@ -43,17 +43,26 @@ Clears the screen before executing <command>.
 * `-p`, `--postpone`:
 Postpone execution of <command> until the first file modification is detected.
 
-* `-d`, `--debug`:
-Prints diagnostic messages to STDERR
-
 * `--force-poll` <interval>:
 Poll for changes every <interval> ms instead of using system-specific notification mechanisms (such as inotify). This is useful when you are monitoring NFS shares.
+
+* `-d`, `--debounce`:
+Set the timeout between detected change and command execution, to avoid restarting too frequently when there are many events; defaults to 500ms.
 
 * `--no-vcs-ignore`:
 Skip loading of version control system (VCS) ignore files. By default, watchexec loads .gitignore files in the current directory (or parent directories) and uses them to populate the ignore list.
 
 * `--no-default-ignore`:
 Skip default ignore statements. By default, watchexec ignores common temporary files for you, for example `*.swp`, `*.pyc`, and `.DS_Store`.
+
+* `-v`, `--verbose`:
+Prints diagnostic messages to STDERR
+
+* `-V`, `--version`:
+Print the version of watchexec.
+
+* `-h`, `--help`:
+Print a help message.
 
 ## ENVIRONMENT
 

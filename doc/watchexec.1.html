@@ -74,7 +74,7 @@
 
 <h2 id="SYNOPSIS">SYNOPSIS</h2>
 
-<p>watchexec [<code>--exts</code> | <code>-e</code> <var>extensions</var>]... [<code>--filter</code> | <code>-f</code> <var>pattern</var>]... [<code>--ignore</code> | <code>-i</code> <var>pattern</var>]... [<code>--watch</code> | <code>-w</code> <var>path</var>]... [<code>--restart</code> | <code>-r</code>] [<code>--clear</code> | <code>-c</code>] [<code>--postpone</code> | <code>-p</code>] [<code>--force-poll</code> <var>interval</var>] [<code>--debug</code> | <code>-d</code>] [<code>--no-vcs-ignore</code>] [<code>--no-default-ignore</code>] <var>command</var> [<var>argument</var>...]</p>
+<p>watchexec [<code>--exts</code> | <code>-e</code> <var>extensions</var>]... [<code>--filter</code> | <code>-f</code> <var>pattern</var>]... [<code>--ignore</code> | <code>-i</code> <var>pattern</var>]... [<code>--watch</code> | <code>-w</code> <var>path</var>]... [<code>--restart</code> | <code>-r</code>] [<code>--clear</code> | <code>-c</code>] [<code>--postpone</code> | <code>-p</code>] [<code>--force-poll</code> <var>interval</var>] [<code>--debounce</code> | <code>-d</code> <var>interval</var>] [<code>--no-vcs-ignore</code>] [<code>--no-default-ignore</code>] [<code>--verbose</code> | <code>-v</code>] [<code>--version</code> | <code>-V</code>] [--] <var>command</var> [<var>argument</var>...]</p>
 
 <h2 id="DESCRIPTION">DESCRIPTION</h2>
 
@@ -85,7 +85,7 @@
 <h2 id="OPTIONS">OPTIONS</h2>
 
 <dl>
-<dt class="flush"><var>command</var></dt><dd><p>Command to run when watched files are modified, and at startup, unless <code>--postpone</code> is specified. All <var>argument</var>s are passed to <var>command</var>.</p></dd>
+<dt class="flush"><var>command</var></dt><dd><p>Command to run when watched files are modified, and at startup, unless <code>--postpone</code> is specified. All <var>argument</var>s are passed to <var>command</var>. If you pass flags to the command, you should separate it with <code>--</code>, for example: <code>watchexec -w src -- rsync -a src dest</code>.</p></dd>
 <dt><code>-e</code>, <code>--exts</code> <var>extensions</var></dt><dd><p>Comma-separated list of file extensions to filter by. Leading dots are allowed (.rs) are allowed. (This is a shorthand for <code>-f</code>).</p></dd>
 <dt><code>-f</code>, <code>--filter</code> <var>pattern</var></dt><dd><p>Ignores modifications from paths that do not match <var>pattern</var>. This option can be specified multiple times, where a match on any given pattern causes the path to trigger <var>command</var>.</p></dd>
 <dt><code>-s</code>, <code>--signal</code></dt><dd><p>Sends the specified signal (e.g. <code>SIGKILL</code>) to the child process. Defaults to <code>SIGTERM</code>.</p></dd>
@@ -95,10 +95,13 @@
 <dt><code>-r</code>, <code>--restart</code></dt><dd><p>Terminates the child process group if it is still running when subsequent file modifications are detected. By default, sends <code>SIGTERM</code>; use <code>--kill</code> to send <code>SIGKILL</code>.</p></dd>
 <dt><code>-c</code>, <code>--clear</code></dt><dd><p>Clears the screen before executing <var>command</var>.</p></dd>
 <dt><code>-p</code>, <code>--postpone</code></dt><dd><p>Postpone execution of <var>command</var> until the first file modification is detected.</p></dd>
-<dt><code>-d</code>, <code>--debug</code></dt><dd><p>Prints diagnostic messages to STDERR</p></dd>
 <dt><code>--force-poll</code> <var>interval</var></dt><dd><p>Poll for changes every <var>interval</var> ms instead of using system-specific notification mechanisms (such as inotify). This is useful when you are monitoring NFS shares.</p></dd>
+<dt><code>-d</code>, <code>--debounce</code></dt><dd><p>Set the timeout between detected change and command execution, to avoid restarting too frequently when there are many events; defaults to 500ms.</p></dd>
 <dt><code>--no-vcs-ignore</code></dt><dd><p>Skip loading of version control system (VCS) ignore files. By default, watchexec loads .gitignore files in the current directory (or parent directories) and uses them to populate the ignore list.</p></dd>
 <dt><code>--no-default-ignore</code></dt><dd><p>Skip default ignore statements. By default, watchexec ignores common temporary files for you, for example <code>*.swp</code>, <code>*.pyc</code>, and <code>.DS_Store</code>.</p></dd>
+<dt><code>-v</code>, <code>--verbose</code></dt><dd><p>Prints diagnostic messages to STDERR</p></dd>
+<dt><code>-V</code>, <code>--version</code></dt><dd><p>Print the version of watchexec.</p></dd>
+<dt><code>-h</code>, <code>--help</code></dt><dd><p>Print a help message.</p></dd>
 </dl>
 
 
@@ -154,7 +157,7 @@
 
   <ol class='man-decor man-foot man foot'>
     <li class='tl'></li>
-    <li class='tc'>August 2018</li>
+    <li class='tc'>July 2019</li>
     <li class='tr'>watchexec(1)</li>
   </ol>
 
