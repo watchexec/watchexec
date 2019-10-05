@@ -3,20 +3,23 @@ extern crate glob;
 use error;
 use gitignore::Gitignore;
 use globset::{Glob, GlobSet, GlobSetBuilder};
+use ignore::Ignore;
 use std::path::Path;
 
 pub struct NotificationFilter {
     filters: GlobSet,
     filter_count: usize,
     ignores: GlobSet,
-    ignore_files: Gitignore,
+    gitignore_files: Gitignore,
+    ignore_files: Ignore,
 }
 
 impl NotificationFilter {
     pub fn new(
         filters: &[String],
         ignores: &[String],
-        ignore_files: Gitignore,
+        gitignore_files: Gitignore,
+        ignore_files: Ignore,
     ) -> error::Result<NotificationFilter> {
         let mut filter_set_builder = GlobSetBuilder::new();
         for f in filters {
@@ -39,6 +42,7 @@ impl NotificationFilter {
             filters: filter_set_builder.build()?,
             filter_count: filters.len(),
             ignores: ignore_set_builder.build()?,
+            gitignore_files: gitignore_files,
             ignore_files: ignore_files,
         })
     }
@@ -54,6 +58,11 @@ impl NotificationFilter {
         }
 
         if self.ignore_files.is_excluded(path) {
+            debug!("Ignoring {:?}: matched ignore file", path);
+            return true;
+        }
+
+        if self.gitignore_files.is_excluded(path) {
             debug!("Ignoring {:?}: matched gitignore file", path);
             return true;
         }
@@ -70,19 +79,26 @@ impl NotificationFilter {
 mod tests {
     use super::NotificationFilter;
     use gitignore;
+    use ignore;
     use std::path::Path;
 
     #[test]
     fn test_allows_everything_by_default() {
-        let filter = NotificationFilter::new(&[], &[], gitignore::load(&[])).unwrap();
+        let filter =
+            NotificationFilter::new(&[], &[], gitignore::load(&[]), ignore::load(&[])).unwrap();
 
         assert!(!filter.is_excluded(&Path::new("foo")));
     }
 
     #[test]
     fn test_filename() {
-        let filter =
-            NotificationFilter::new(&[], &["test.json".into()], gitignore::load(&[])).unwrap();
+        let filter = NotificationFilter::new(
+            &[],
+            &["test.json".into()],
+            gitignore::load(&[]),
+            ignore::load(&[]),
+        )
+        .unwrap();
 
         assert!(filter.is_excluded(&Path::new("/path/to/test.json")));
         assert!(filter.is_excluded(&Path::new("test.json")));
@@ -91,7 +107,8 @@ mod tests {
     #[test]
     fn test_multiple_filters() {
         let filters = &["*.rs".into(), "*.toml".into()];
-        let filter = NotificationFilter::new(filters, &[], gitignore::load(&[])).unwrap();
+        let filter =
+            NotificationFilter::new(filters, &[], gitignore::load(&[]), ignore::load(&[])).unwrap();
 
         assert!(!filter.is_excluded(&Path::new("hello.rs")));
         assert!(!filter.is_excluded(&Path::new("Cargo.toml")));
@@ -101,7 +118,8 @@ mod tests {
     #[test]
     fn test_multiple_ignores() {
         let ignores = &["*.rs".into(), "*.toml".into()];
-        let filter = NotificationFilter::new(&[], ignores, gitignore::load(&[])).unwrap();
+        let filter =
+            NotificationFilter::new(&[], ignores, gitignore::load(&[]), ignore::load(&[])).unwrap();
 
         assert!(filter.is_excluded(&Path::new("hello.rs")));
         assert!(filter.is_excluded(&Path::new("Cargo.toml")));
@@ -111,7 +129,9 @@ mod tests {
     #[test]
     fn test_ignores_take_precedence() {
         let ignores = &["*.rs".into(), "*.toml".into()];
-        let filter = NotificationFilter::new(ignores, ignores, gitignore::load(&[])).unwrap();
+        let filter =
+            NotificationFilter::new(ignores, ignores, gitignore::load(&[]), ignore::load(&[]))
+                .unwrap();
 
         assert!(filter.is_excluded(&Path::new("hello.rs")));
         assert!(filter.is_excluded(&Path::new("Cargo.toml")));

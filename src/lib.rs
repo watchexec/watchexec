@@ -18,6 +18,7 @@ extern crate winapi;
 pub mod cli;
 pub mod error;
 mod gitignore;
+mod ignore;
 mod notification_filter;
 pub mod pathop;
 mod process;
