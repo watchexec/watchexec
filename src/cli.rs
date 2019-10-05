@@ -20,6 +20,7 @@ pub struct Args {
     pub run_initially: bool,
     pub no_shell: bool,
     pub no_vcs_ignore: bool,
+    pub no_ignore: bool,
     pub once: bool,
     pub poll: bool,
     pub poll_interval: u32,
@@ -122,6 +123,9 @@ where
         .arg(Arg::with_name("no-vcs-ignore")
                  .help("Skip auto-loading of .gitignore files for filtering")
                  .long("no-vcs-ignore"))
+        .arg(Arg::with_name("no-ignore")
+                 .help("Skip auto-loading of ignore files (.gitignore, .ignore, etc.) for filtering")
+                 .long("no-ignore"))
         .arg(Arg::with_name("no-default-ignore")
                  .help("Skip auto-ignoring of commonly ignored globs")
                  .long("no-default-ignore"))
@@ -226,6 +230,7 @@ where
         run_initially: !args.is_present("postpone"),
         no_shell: args.is_present("no-shell"),
         no_vcs_ignore: args.is_present("no-vcs-ignore"),
+        no_ignore: args.is_present("no-ignore"),
         once: args.is_present("once"),
         poll: args.occurrences_of("poll") > 0,
         poll_interval: poll_interval,

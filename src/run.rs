@@ -2,6 +2,7 @@ use cli::{clear_screen, Args};
 use env_logger;
 use error::{Error, Result};
 use gitignore;
+use ignore;
 use log;
 use notification_filter::NotificationFilter;
 #[cfg(target_os = "linux")]
@@ -87,8 +88,13 @@ where
         );
     }
 
-    let gitignore = gitignore::load(if args.no_vcs_ignore { &[] } else { &paths });
-    let filter = NotificationFilter::new(&args.filters, &args.ignores, gitignore)?;
+    let ignore = ignore::load(if args.no_ignore { &[] } else { &paths });
+    let gitignore = gitignore::load(if args.no_vcs_ignore || args.no_ignore {
+        &[]
+    } else {
+        &paths
+    });
+    let filter = NotificationFilter::new(&args.filters, &args.ignores, gitignore, ignore)?;
 
     let (tx, rx) = channel();
     let poll = args.poll.clone();
