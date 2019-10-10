@@ -17,7 +17,7 @@ At startup, the specified <command> (passing any supplied <argument>s) is run on
 Command to run when watched files are modified, and at startup, unless `--postpone` is specified. All <argument>s are passed to <command>. If you pass flags to the command, you should separate it with `--`, for example: `watchexec -w src -- rsync -a src dest`.
 
 * `-e`, `--exts` <extensions>:
-Comma-separated list of file extensions to filter by. Leading dots are allowed (.rs) are allowed. (This is a shorthand for `-f`).
+Comma-separated list of file extensions to filter by. Leading dots (.rs) are allowed. (This is a shorthand for `-f`).
 
 * `-f`, `--filter` <pattern>:
 Ignores modifications from paths that do not match <pattern>. This option can be specified multiple times, where a match on any given pattern causes the path to trigger <command>.
