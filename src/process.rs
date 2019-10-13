@@ -88,7 +88,7 @@ mod imp {
 
             // Assemble command to run.
             // This is either the first argument from cmd (if no_shell was given) or "sh".
-            // Using "sh -c" gives us features like supportin pipes and redirects,
+            // Using "sh -c" gives us features like supporting pipes and redirects,
             // but is a little less performant and can cause trouble when using custom signals
             // (e.g. --signal SIGHUP)
             let mut command = if no_shell {
