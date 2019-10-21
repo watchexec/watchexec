@@ -110,9 +110,11 @@ Available [using scoop](https://scoop.sh/):
 
 Or just unzip the binary from the GitHub Releases.
 
-## Extras
+## Shell completions
 
-- [A zsh completion](https://github.com/watchexec/watchexec/wiki/ZSH-completion)
+Currently available shell completions:
+
+- zsh: `completions/zsh` should be installed to `/usr/share/zsh/site-functions/_watchexec`
 
 ## Building
 
