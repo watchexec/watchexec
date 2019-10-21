@@ -1,0 +1,33 @@
+#compdef watchexec
+
+setopt localoptions extended_glob
+
+local cmd
+local -a args
+local -a _comp_priv_prefix
+
+cmd="$words[1]"
+
+args=(
+  '(-c --clear)'{-c,--clear}'[Clear screen before executing command]'
+  '(-h --help)'{-h,--help}'[Prints help information]'
+  '(-k --kill)'{-k,--kill}'[Send SIGKILL to child processes (deprecated, use -s SIGKILL instead)]'
+  '(-n --no-shell)'{-n,--no-shell}'[Do not wrap command in ''sh -c'' resp. ''cmd.exe /C'']'
+  '(-p --postpone)'{-p,--postpone}'[Wait until first change to execute command]'
+  '(-r --restart)'{-r,--restart}'[Restart the process if it''s still running]'
+  '(-V --version)'{-V,--version}'[Prints version information]'
+  '(-v --verbose)'{-v,--verbose}'[Print debugging messages to stderr]'
+  '(-d --debounce)'{-d+,--debounce=}'[Set the timeout between detected change and command execution, defaults to 500ms]:milliseconds'
+  '(-e --exts)'{-e+,--exts=}'[Comma-separated list of file extensions to watch (js,css,html)]:extensions'
+  '(-f --filter)'{-f+,--filter=}'[Ignore all modifications except those matching the pattern]:pattern'
+  '(-i --ignore)'{-i+,--ignore=}'[Ignore modifications to paths matching the pattern]:pattern'
+  '(-w --watch)'{-w+,--watch=}'[Watch a specific directory]:path:_path_files -/'
+  '(-s --signal)'{-s+,--signal=}'[Send signal to process upon changes, e.g. SIGHUP]:signal'
+  '--force-poll=[Forces polling mode]:interval'
+  '--no-default-ignore[Skip auto-ignoring of commonly ignored globs]'
+  '--no-vcs-ignore[Skip auto-loading of .gitignore files for filtering]'
+  '(-)1:command: _command_names -e'
+  '*::arguments:{ _comp_priv_prefix=( $cmd -n ${(kv)opt_args[-u]} ) ; _normal }'
+)
+
+_arguments -s -S $args
