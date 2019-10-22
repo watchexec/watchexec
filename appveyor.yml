@@ -24,7 +24,7 @@ test_script:
 
 before_deploy:
   # Generate artifacts for release
-  - cargo build --release
+  - cargo build --release --locked
   - mkdir staging
   - copy target\release\watchexec.exe staging
   - copy LICENSE staging\LICENSE.txt
