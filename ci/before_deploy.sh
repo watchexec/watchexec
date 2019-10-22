@@ -2,7 +2,7 @@
 
 # Build script shamelessly stolen from ripgrep :)
 
-cargo build --target $TARGET --release
+cargo build --target $TARGET --release --locked
 
 build_dir=$(mktemp -d 2>/dev/null || mktemp -d -t tmp)
 out_dir=$(pwd)
