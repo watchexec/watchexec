@@ -10,7 +10,7 @@ name="${PROJECT_NAME}-${TRAVIS_TAG}-${TARGET}"
 mkdir "$build_dir/$name"
 
 cp target/$TARGET/release/watchexec "$build_dir/$name/"
-cp {doc/watchexec.1,LICENSE} "$build_dir/$name/"
+cp {doc/watchexec.1,LICENSE,completions/zsh} "$build_dir/$name/"
 
 pushd $build_dir
 tar cvf "$out_dir/$name.tar" *
@@ -22,9 +22,10 @@ if [[ "$TARGET" == "x86_64-unknown-linux-gnu" ]]; then
     mkdir -p "$build_dir/deb/$name"
     pushd "$build_dir/deb/$name"
 
-    mkdir -p DEBIAN usr/bin usr/share/man/man1
+    mkdir -p DEBIAN usr/bin usr/share/man/man1 usr/share/zsh/site-functions
     cp "../../$name/watchexec" usr/bin/
     cp "../../$name/watchexec.1" usr/share/man/man1/
+    cp "../../$name/zsh" usr/share/zsh/site-functions/_watchexec
     cat <<CONTROL > DEBIAN/control
 Package: watchexec
 Version: ${TRAVIS_TAG}
