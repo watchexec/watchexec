@@ -37,11 +37,6 @@ fn init_logger(debug: bool) {
 }
 
 pub trait Handler {
-    /// Initialises the `Handler` with a copy of the arguments.
-    fn new(args: Args) -> Result<Self>
-    where
-        Self: Sized;
-
     /// Called through a manual request, such as an initial run.
     ///
     /// # Returns
@@ -51,7 +46,7 @@ pub trait Handler {
     /// - `Err`: an error has occurred while processing, quit.
     /// - `Ok(true)`: everything is fine and the loop can continue.
     /// - `Ok(false)`: everything is fine but we should gracefully stop.
-    fn on_manual(&mut self) -> Result<bool>;
+    fn on_manual(&self) -> Result<bool>;
 
     /// Called through a file-update request.
     ///
@@ -66,22 +61,26 @@ pub trait Handler {
     /// - `Err`: an error has occurred while processing, quit.
     /// - `Ok(true)`: everything is fine and the loop can continue.
     /// - `Ok(false)`: everything is fine but we should gracefully stop.
-    fn on_update(&mut self, ops: &[PathOp]) -> Result<bool>;
+    fn on_update(&self, ops: &[PathOp]) -> Result<bool>;
+
+    /// Handler implementations must return a customized watchexec Args reference for use in the
+    /// calling watcher.
+    fn args(&self) -> &Args;
 }
 
 /// Starts watching, and calls a handler when something happens.
 ///
 /// Given an argument structure and a `Handler` type, starts the watcher
 /// loop (blocking until done).
-pub fn watch<H>(args: Args) -> Result<()>
+pub fn watch<H>(handler: &H) -> Result<()>
 where
     H: Handler,
 {
+    let args = handler.args();
     init_logger(args.debug);
-    let mut handler = H::new(args.clone())?;
 
     let mut paths = vec![];
-    for path in args.paths {
+    for path in &args.paths {
         paths.push(
             canonicalize(&path)
                 .map_err(|e| Error::Canonicalization(path.to_string_lossy().into_owned(), e))?,
@@ -148,28 +147,14 @@ where
     Ok(())
 }
 
-pub struct ExecHandler {
-    args: Args,
+pub struct ExecHandler<'a> {
+    args: &'a Args,
     signal: Option<Signal>,
     child_process: Arc<RwLock<Option<Process>>>,
 }
 
-impl ExecHandler {
-    fn spawn(&mut self, ops: &[PathOp]) -> Result<()> {
-        if self.args.clear_screen {
-            clear_screen();
-        }
-
-        debug!("Launching child process");
-        let mut guard = self.child_process.write()?;
-        *guard = Some(process::spawn(&self.args.cmd, ops, self.args.no_shell)?);
-
-        Ok(())
-    }
-}
-
-impl Handler for ExecHandler {
-    fn new(args: Args) -> Result<Self> {
+impl<'a> ExecHandler<'a> {
+    pub fn new(args: &'a Args) -> Result<Self> {
         let child_process: Arc<RwLock<Option<Process>>> = Arc::new(RwLock::new(None));
         let weak_child = Arc::downgrade(&child_process);
 
@@ -195,8 +180,26 @@ impl Handler for ExecHandler {
         })
     }
 
+    fn spawn(&self, ops: &[PathOp]) -> Result<()> {
+        if self.args.clear_screen {
+            clear_screen();
+        }
+
+        debug!("Launching child process");
+        let mut guard = self.child_process.write()?;
+        *guard = Some(process::spawn(&self.args.cmd, ops, self.args.no_shell)?);
+
+        Ok(())
+    }
+}
+
+impl<'a> Handler for ExecHandler<'a> {
+    fn args(&self) -> &Args {
+        &self.args
+    }
+
     // Only returns Err() on lock poisoning.
-    fn on_manual(&mut self) -> Result<bool> {
+    fn on_manual(&self) -> Result<bool> {
         if self.args.once {
             return Ok(true);
         }
@@ -206,7 +209,7 @@ impl Handler for ExecHandler {
     }
 
     // Only returns Err() on lock poisoning.
-    fn on_update(&mut self, ops: &[PathOp]) -> Result<bool> {
+    fn on_update(&self, ops: &[PathOp]) -> Result<bool> {
         // We have four scenarios here:
         //
         // 1. Send a specified signal to the child, wait for it to exit, then run the command again
@@ -255,7 +258,8 @@ impl Handler for ExecHandler {
 }
 
 pub fn run(args: Args) -> Result<()> {
-    watch::<ExecHandler>(args)
+    let handler = ExecHandler::new(&args)?;
+    watch(&handler)
 }
 
 fn wait_fs(rx: &Receiver<Event>, filter: &NotificationFilter, debounce: u64) -> Vec<PathOp> {
