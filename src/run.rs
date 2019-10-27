@@ -6,6 +6,7 @@ use crate::notification_filter::NotificationFilter;
 use crate::pathop::PathOp;
 use crate::process::{self, Process};
 use crate::signal::{self, Signal};
+use crate::watcher::{Event, Watcher};
 use std::{
     collections::HashMap,
     fs::canonicalize,
@@ -16,7 +17,6 @@ use std::{
     },
     time::Duration,
 };
-use crate::watcher::{Event, Watcher};
 
 fn init_logger(debug: bool) {
     let mut log_builder = env_logger::Builder::new();

@@ -100,7 +100,7 @@ where
 
     set_handler(handler);
 
-	#[allow(unsafe_code)]
+    #[allow(unsafe_code)]
     unsafe {
         let _ = sigaction(
             SIGCHLD,
@@ -126,7 +126,7 @@ where
                 let default_action =
                     SigAction::new(SigHandler::SigDfl, SaFlags::empty(), SigSet::empty());
 
-				#[allow(unsafe_code)]
+                #[allow(unsafe_code)]
                 unsafe {
                     let _ = sigaction(signal, &default_action);
                 }

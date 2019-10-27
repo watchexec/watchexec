@@ -59,10 +59,10 @@ fn wrap_commands(cmd: &Vec<String>) -> Vec<String> {
 #[cfg(target_family = "unix")]
 mod imp {
     //use super::wrap_commands;
-    use nix::libc::*;
-    use nix::{self, Error};
     use crate::pathop::PathOp;
     use crate::signal::Signal;
+    use nix::libc::*;
+    use nix::{self, Error};
     use std::io::{self, Result};
     use std::process::Command;
     use std::sync::*;
@@ -85,8 +85,8 @@ mod imp {
     impl Process {
         pub fn new(cmd: &[String], updated_paths: &[PathOp], no_shell: bool) -> Result<Self> {
             use nix::unistd::*;
+            use std::convert::TryInto;
             use std::os::unix::process::CommandExt;
-			use std::convert::TryInto;
 
             // Assemble command to run.
             // This is either the first argument from cmd (if no_shell was given) or "sh".
@@ -112,16 +112,16 @@ mod imp {
                 command.env(name, val);
             }
 
-            unsafe { command.pre_exec(|| setsid().map_err(from_nix_error).map(|_| ())); }
-            command
-                .spawn()
-                .and_then(|p| {
-                    Ok(Self {
-                        pgid: p.id().try_into().unwrap(),
-                        lock: Mutex::new(false),
-                        cvar: Condvar::new(),
-                    })
+            unsafe {
+                command.pre_exec(|| setsid().map_err(from_nix_error).map(|_| ()));
+            }
+            command.spawn().and_then(|p| {
+                Ok(Self {
+                    pgid: p.id().try_into().unwrap(),
+                    lock: Mutex::new(false),
+                    cvar: Condvar::new(),
                 })
+            })
         }
 
         pub fn reap(&self) {
@@ -131,8 +131,7 @@ mod imp {
             let mut finished = true;
             loop {
                 match waitpid(Pid::from_raw(-self.pgid), Some(WaitPidFlag::WNOHANG)) {
-                    Ok(WaitStatus::Exited(_, _)) | Ok(WaitStatus::Signaled(_, _, _)) => {
-                    }
+                    Ok(WaitStatus::Exited(_, _)) | Ok(WaitStatus::Signaled(_, _, _)) => {}
                     Ok(_) => {
                         finished = false;
                         break;
@@ -178,9 +177,9 @@ mod imp {
 #[cfg(target_family = "windows")]
 mod imp {
     //use super::wrap_commands;
-    use kernel32::*;
     use crate::pathop::PathOp;
     use crate::signal::Signal;
+    use kernel32::*;
     use std::io;
     use std::io::Result;
     use std::mem;

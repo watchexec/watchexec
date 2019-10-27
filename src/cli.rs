@@ -14,8 +14,8 @@
 //!     .unwrap();
 //! ```
 
-use clap::{App, Arg, Error};
 use crate::error;
+use clap::{App, Arg, Error};
 use std::{
     ffi::OsString,
     path::{PathBuf, MAIN_SEPARATOR},
@@ -216,11 +216,13 @@ where
 
     if let Some(extensions) = args.values_of("extensions") {
         for exts in extensions {
-            filters.extend(
-                exts.split(',')
-                    .filter_map(|ext| if ext.is_empty() { None } else {
-                    Some(format!("*.{}", ext.replace(".", ""))) }),
-            );
+            filters.extend(exts.split(',').filter_map(|ext| {
+                if ext.is_empty() {
+                    None
+                } else {
+                    Some(format!("*.{}", ext.replace(".", "")))
+                }
+            }));
         }
     }
 

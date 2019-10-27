@@ -55,10 +55,10 @@ pub fn load(paths: &[PathBuf]) -> Ignore {
                 let ignore_path = p.join(".ignore");
                 if ignore_path.exists() {
                     if let Ok(f) = IgnoreFile::new(&ignore_path) {
-                            debug!("Loaded {:?}", ignore_path);
-                            files.push(f);
-                        } else {
-							debug!("Unable to load {:?}", ignore_path);
+                        debug!("Loaded {:?}", ignore_path);
+                        files.push(f);
+                    } else {
+                        debug!("Unable to load {:?}", ignore_path);
                     }
                 }
             }
@@ -174,7 +174,13 @@ impl IgnoreFile {
     fn parse(contents: &[&str]) -> Vec<Pattern> {
         contents
             .iter()
-            .filter_map(|l| if !l.is_empty() && !l.starts_with('#') { Some(Pattern::parse(l)) } else { None })
+            .filter_map(|l| {
+                if !l.is_empty() && !l.starts_with('#') {
+                    Some(Pattern::parse(l))
+                } else {
+                    None
+                }
+            })
             .collect()
     }
 }

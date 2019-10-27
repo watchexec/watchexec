@@ -55,9 +55,10 @@ impl<'a, T> From<PoisonError<T>> for Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (error_type, error) = match self {
-            Self::Canonicalization(path, err) => {
-                ("Path", format!("couldn't canonicalize '{}':\n{}", path, err))
-            }
+            Self::Canonicalization(path, err) => (
+                "Path",
+                format!("couldn't canonicalize '{}':\n{}", path, err),
+            ),
             Self::Clap(err) => ("Argument", err.to_string()),
             Self::Glob(err) => ("Globset", err.to_string()),
             Self::Io(err) => ("I/O", err.to_string()),

@@ -55,9 +55,9 @@ pub fn load(paths: &[PathBuf]) -> Gitignore {
                 let gitignore_path = p.join(".gitignore");
                 if gitignore_path.exists() {
                     if let Ok(f) = GitignoreFile::new(&gitignore_path) {
-                            debug!("Loaded {:?}", gitignore_path);
-                            files.push(f);
-                        } else {
+                        debug!("Loaded {:?}", gitignore_path);
+                        files.push(f);
+                    } else {
                         debug!("Unable to load {:?}", gitignore_path);
                     }
                 }
@@ -82,8 +82,8 @@ pub fn load(paths: &[PathBuf]) -> Gitignore {
 }
 
 impl Gitignore {
-    const fn new(files: Vec<GitignoreFile>) -> Self{
-        Self{ files }
+    const fn new(files: Vec<GitignoreFile>) -> Self {
+        Self { files }
     }
 
     pub fn is_excluded(&self, path: &Path) -> bool {
@@ -143,7 +143,7 @@ impl GitignoreFile {
             patterns.push(p);
         }
 
-        Ok(Self{
+        Ok(Self {
             set: builder.build()?,
             patterns,
             root: root.to_owned(),
@@ -181,14 +181,19 @@ impl GitignoreFile {
     fn parse(contents: &[&str]) -> Vec<Pattern> {
         contents
             .iter()
-            .filter_map(|l| if !l.is_empty() && !l.starts_with('#') {
-            Some(Pattern::parse(l)) } else { None })
+            .filter_map(|l| {
+                if !l.is_empty() && !l.starts_with('#') {
+                    Some(Pattern::parse(l))
+                } else {
+                    None
+                }
+            })
             .collect()
     }
 }
 
 impl Pattern {
-    fn parse(pattern: &str) -> Self{
+    fn parse(pattern: &str) -> Self {
         let mut normalized = String::from(pattern);
 
         let pattern_type = if normalized.starts_with('!') {
@@ -213,7 +218,7 @@ impl Pattern {
             normalized.remove(0);
         }
 
-        Self{
+        Self {
             pattern: normalized,
             pattern_type,
             anchored,
@@ -222,13 +227,13 @@ impl Pattern {
 }
 
 impl From<globset::Error> for Error {
-    fn from(error: globset::Error) -> Self{
+    fn from(error: globset::Error) -> Self {
         Self::GlobSet(error)
     }
 }
 
 impl From<io::Error> for Error {
-    fn from(error: io::Error) -> Self{
+    fn from(error: io::Error) -> Self {
         Self::Io(error)
     }
 }

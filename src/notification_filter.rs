@@ -1,7 +1,7 @@
 use crate::error;
 use crate::gitignore::Gitignore;
-use globset::{Glob, GlobSet, GlobSetBuilder};
 use crate::ignore::Ignore;
+use globset::{Glob, GlobSet, GlobSetBuilder};
 use std::path::Path;
 
 pub struct NotificationFilter {
