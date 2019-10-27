@@ -462,8 +462,7 @@ fn get_longest_common_path(paths: &[PathBuf]) -> Option<String> {
 #[cfg(test)]
 #[cfg(target_family = "unix")]
 mod tests {
-    use notify;
-    use pathop::PathOp;
+    use crate::pathop::PathOp;
     use std::collections::HashSet;
     use std::path::PathBuf;
 
@@ -474,7 +473,7 @@ mod tests {
 
     #[test]
     fn test_start() {
-        let _ = spawn(&vec!["echo".into(), "hi".into()], &[], true);
+        let _ = spawn(&["echo".into(), "hi".into()], &[], true);
     }
 
     /*

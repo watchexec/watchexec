@@ -76,8 +76,8 @@ impl NotificationFilter {
 #[cfg(test)]
 mod tests {
     use super::NotificationFilter;
-    use gitignore;
-    use ignore;
+    use crate::gitignore;
+    use crate::ignore;
     use std::path::Path;
 
     #[test]
@@ -85,7 +85,7 @@ mod tests {
         let filter =
             NotificationFilter::new(&[], &[], gitignore::load(&[]), ignore::load(&[])).unwrap();
 
-        assert!(!filter.is_excluded(&Path::new("foo")));
+        assert!(!filter.is_excluded(Path::new("foo")));
     }
 
     #[test]
@@ -98,8 +98,8 @@ mod tests {
         )
         .unwrap();
 
-        assert!(filter.is_excluded(&Path::new("/path/to/test.json")));
-        assert!(filter.is_excluded(&Path::new("test.json")));
+        assert!(filter.is_excluded(Path::new("/path/to/test.json")));
+        assert!(filter.is_excluded(Path::new("test.json")));
     }
 
     #[test]
@@ -108,9 +108,9 @@ mod tests {
         let filter =
             NotificationFilter::new(filters, &[], gitignore::load(&[]), ignore::load(&[])).unwrap();
 
-        assert!(!filter.is_excluded(&Path::new("hello.rs")));
-        assert!(!filter.is_excluded(&Path::new("Cargo.toml")));
-        assert!(filter.is_excluded(&Path::new("README.md")));
+        assert!(!filter.is_excluded(Path::new("hello.rs")));
+        assert!(!filter.is_excluded(Path::new("Cargo.toml")));
+        assert!(filter.is_excluded(Path::new("README.md")));
     }
 
     #[test]
@@ -119,9 +119,9 @@ mod tests {
         let filter =
             NotificationFilter::new(&[], ignores, gitignore::load(&[]), ignore::load(&[])).unwrap();
 
-        assert!(filter.is_excluded(&Path::new("hello.rs")));
-        assert!(filter.is_excluded(&Path::new("Cargo.toml")));
-        assert!(!filter.is_excluded(&Path::new("README.md")));
+        assert!(filter.is_excluded(Path::new("hello.rs")));
+        assert!(filter.is_excluded(Path::new("Cargo.toml")));
+        assert!(!filter.is_excluded(Path::new("README.md")));
     }
 
     #[test]
@@ -131,8 +131,8 @@ mod tests {
             NotificationFilter::new(ignores, ignores, gitignore::load(&[]), ignore::load(&[]))
                 .unwrap();
 
-        assert!(filter.is_excluded(&Path::new("hello.rs")));
-        assert!(filter.is_excluded(&Path::new("Cargo.toml")));
-        assert!(filter.is_excluded(&Path::new("README.md")));
+        assert!(filter.is_excluded(Path::new("hello.rs")));
+        assert!(filter.is_excluded(Path::new("Cargo.toml")));
+        assert!(filter.is_excluded(Path::new("README.md")));
     }
 }
