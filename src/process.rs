@@ -117,7 +117,10 @@ mod imp {
             }
             command.spawn().and_then(|p| {
                 Ok(Self {
-                    pgid: p.id().try_into().expect("u32 -> i32 failed in process::new"),
+                    pgid: p
+                        .id()
+                        .try_into()
+                        .expect("u32 -> i32 failed in process::new"),
                     lock: Mutex::new(false),
                     cvar: Condvar::new(),
                 })
@@ -168,7 +171,10 @@ mod imp {
         pub fn wait(&self) {
             let mut done = self.lock.lock().expect("poisoned lock in process::wait");
             while !*done {
-                done = self.cvar.wait(done).expect("poisoned cvar in process::wait");
+                done = self
+                    .cvar
+                    .wait(done)
+                    .expect("poisoned cvar in process::wait");
             }
         }
     }
@@ -179,13 +185,37 @@ mod imp {
     //use super::wrap_commands;
     use crate::pathop::PathOp;
     use crate::signal::Signal;
-    use kernel32::*;
     use std::io;
     use std::io::Result;
     use std::mem;
     use std::process::Command;
     use std::ptr;
-    use winapi::*;
+    use winapi::{
+        shared::{
+            basetsd::ULONG_PTR,
+            minwindef::{DWORD, LPVOID},
+        },
+        um::{
+            handleapi::{CloseHandle, INVALID_HANDLE_VALUE},
+            ioapiset::{CreateIoCompletionPort, GetQueuedCompletionStatus},
+            jobapi2::{
+                AssignProcessToJobObject, CreateJobObjectW, SetInformationJobObject,
+                TerminateJobObject,
+            },
+            minwinbase::LPOVERLAPPED,
+            processthreadsapi::{GetProcessId, OpenThread, ResumeThread},
+            tlhelp32::{
+                CreateToolhelp32Snapshot, Thread32First, Thread32Next, TH32CS_SNAPTHREAD,
+                THREADENTRY32,
+            },
+            winbase::{CREATE_SUSPENDED, INFINITE},
+            winnt::{
+                JobObjectAssociateCompletionPortInformation, JobObjectExtendedLimitInformation,
+                HANDLE, JOBOBJECT_EXTENDED_LIMIT_INFORMATION, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
+                JOB_OBJECT_MSG_ACTIVE_PROCESS_ZERO, PVOID,
+            },
+        },
+    };
 
     pub struct Process {
         job: HANDLE,
@@ -199,7 +229,8 @@ mod imp {
     }
 
     impl Process {
-        pub fn new(cmd: &Vec<String>, updated_paths: &[PathOp], no_shell: bool) -> Result<Process> {
+        pub fn new(cmd: &[String], updated_paths: &[PathOp], no_shell: bool) -> Result<Self> {
+            use std::convert::TryInto;
             use std::os::windows::io::IntoRawHandle;
             use std::os::windows::process::CommandExt;
 
@@ -207,7 +238,7 @@ mod imp {
                 io::Error::last_os_error()
             }
 
-            let job = unsafe { CreateJobObjectW(0 as *mut _, 0 as *const _) };
+            let job = unsafe { CreateJobObjectW(ptr::null_mut(), ptr::null()) };
             if job.is_null() {
                 panic!("failed to create job object: {}", last_err());
             }
@@ -230,7 +261,9 @@ mod imp {
                     job,
                     JobObjectAssociateCompletionPortInformation,
                     &mut associate_completion as *mut _ as LPVOID,
-                    mem::size_of_val(&associate_completion) as DWORD,
+                    mem::size_of_val(&associate_completion)
+                        .try_into()
+                        .expect("cannot safely cast to DWORD"),
                 );
                 if r == 0 {
                     panic!(
@@ -247,7 +280,9 @@ mod imp {
                     job,
                     JobObjectExtendedLimitInformation,
                     &mut info as *mut _ as LPVOID,
-                    mem::size_of_val(&info) as DWORD,
+                    mem::size_of_val(&info)
+                        .try_into()
+                        .expect("cannot safely cast to DWORD"),
                 )
             };
             if r == 0 {
@@ -283,14 +318,14 @@ mod imp {
 
                 resume_threads(handle);
 
-                Ok(Process {
+                Ok(Self {
                     job,
                     completion_port,
                 })
             })
         }
 
-        pub fn reap(&self) {}
+        pub const fn reap(&self) {}
 
         pub fn signal(&self, _signal: Signal) {
             unsafe {
@@ -521,7 +556,8 @@ mod tests {
     #[test]
     fn longest_common_path_should_return_correct_value() {
         let single_path = vec![PathBuf::from("/tmp/random/")];
-        let single_result = get_longest_common_path(&single_path).expect("failed to get longest common path");
+        let single_result =
+            get_longest_common_path(&single_path).expect("failed to get longest common path");
         assert_eq!(single_result, "/tmp/random/");
 
         let common_paths = vec![
@@ -531,12 +567,14 @@ mod tests {
             PathBuf::from("/tmp/logs/fly"),
         ];
 
-        let common_result = get_longest_common_path(&common_paths).expect("failed to get longest common path");
+        let common_result =
+            get_longest_common_path(&common_paths).expect("failed to get longest common path");
         assert_eq!(common_result, "/tmp/logs");
 
         let diverging_paths = vec![PathBuf::from("/tmp/logs/hi"), PathBuf::from("/var/logs/hi")];
 
-        let diverging_result = get_longest_common_path(&diverging_paths).expect("failed to get longest common path");
+        let diverging_result =
+            get_longest_common_path(&diverging_paths).expect("failed to get longest common path");
         assert_eq!(diverging_result, "/");
 
         let uneven_paths = vec![
@@ -545,7 +583,8 @@ mod tests {
             PathBuf::from("/tmp/logs/bye"),
         ];
 
-        let uneven_result = get_longest_common_path(&uneven_paths).expect("failed to get longest common path");
+        let uneven_result =
+            get_longest_common_path(&uneven_paths).expect("failed to get longest common path");
         assert_eq!(uneven_result, "/tmp/logs");
     }
 
@@ -592,7 +631,7 @@ mod tests {
 
     #[test]
     fn test_start() {
-        let _ = spawn(&vec!["echo".into(), "hi".into()], &[], true);
+        let _ = spawn(&["echo".into(), "hi".into()], &[], true);
     }
 
     /*

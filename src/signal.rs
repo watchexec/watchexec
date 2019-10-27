@@ -144,12 +144,13 @@ where
 }
 
 #[cfg(windows)]
+#[allow(unsafe_code)]
 pub fn install_handler<F>(handler: F)
 where
     F: Fn(self::Signal) + 'static + Send + Sync,
 {
-    use kernel32::SetConsoleCtrlHandler;
-    use winapi::{BOOL, DWORD, FALSE, TRUE};
+    use winapi::shared::minwindef::{BOOL, DWORD, FALSE, TRUE};
+    use winapi::um::consoleapi::SetConsoleCtrlHandler;
 
     pub unsafe extern "system" fn ctrl_handler(_: DWORD) -> BOOL {
         invoke(self::Signal::SIGTERM);
@@ -174,5 +175,7 @@ fn set_handler<F>(handler: F)
 where
     F: Fn(self::Signal) + 'static + Send + Sync,
 {
-    *CLEANUP.lock().expect("poisoned lock in signal::set_handler") = Some(Box::new(handler));
+    *CLEANUP
+        .lock()
+        .expect("poisoned lock in signal::set_handler") = Some(Box::new(handler));
 }

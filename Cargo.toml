@@ -29,7 +29,7 @@ glob = "0.2.11"
 globset = "0.4.1"
 lazy_static = "1.1.0"
 log = "0.4.4"
-notify = "4.0.12"
+notify = "4.0.13"
 derive_builder = "0.8.0"
 
 [dependencies.clap]
@@ -45,9 +45,9 @@ features = []
 [target.'cfg(unix)'.dependencies]
 nix = "0.13.0"
 
-[target.'cfg(windows)'.dependencies]
-winapi = "0.2.8"
-kernel32-sys = "0.2.2"
+[target.'cfg(windows)'.dependencies.winapi]
+version = "0.3.8"
+features = ["ioapiset", "jobapi2", "tlhelp32"]
 
 [[bin]]
 name = "watchexec"

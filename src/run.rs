@@ -96,6 +96,7 @@ where
     let poll = args.poll;
     #[cfg(target_os = "linux")]
     let poll_interval = args.poll_interval;
+    #[allow(clippy::redundant_clone)]
     let watcher = Watcher::new(tx.clone(), &paths, args.poll, args.poll_interval).or_else(|err| {
         if poll {
             return Err(err);

@@ -77,17 +77,17 @@ pub struct Args {
 }
 
 impl ArgsBuilder {
-	fn validate(&self) -> Result<(), String> {
-		if self.cmd.as_ref().map_or(true, Vec::is_empty) {
-			return Err("cmd must not be empty".into());
-		}
+    fn validate(&self) -> Result<(), String> {
+        if self.cmd.as_ref().map_or(true, Vec::is_empty) {
+            return Err("cmd must not be empty".into());
+        }
 
-		if self.paths.as_ref().map_or(true, Vec::is_empty) {
-			return Err("paths must not be empty".into());
-		}
+        if self.paths.as_ref().map_or(true, Vec::is_empty) {
+            return Err("paths must not be empty".into());
+        }
 
-		Ok(())
-	}
+        Ok(())
+    }
 }
 
 #[cfg(target_family = "windows")]

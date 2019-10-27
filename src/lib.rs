@@ -5,7 +5,7 @@
 //! to deliver the CLI tool, instead of focusing on the library interface first
 //! and foremost. **For this reason, semver guarantees do _not_ apply to this
 //! library.** Please use exact version matching, as this API may break even
-//! between patch point releases.
+//! between patch point releases. This policy may change in the future.
 //!
 //! [watchexec]: https://github.com/watchexec/watchexec
 
@@ -14,11 +14,10 @@
     clippy::nursery,
     deprecated,
     intra_doc_link_resolution_failure,
-//    missing_docs,
     clippy::option_unwrap_used,
-    clippy::result_unwrap_used,
+    clippy::result_unwrap_used
 )]
-#![deny(unsafe_code, clippy::missing_const_for_fn)]
+#![deny(unsafe_code, clippy::missing_const_for_fn, clippy::redundant_clone)]
 #![allow(clippy::default_trait_access, clippy::cognitive_complexity)]
 
 #[macro_use]

@@ -150,17 +150,17 @@ impl IgnoreFile {
 
     fn matches(&self, path: &Path) -> MatchResult {
         if let Ok(stripped) = path.strip_prefix(&self.root) {
-			let matches = self.set.matches(stripped);
-			if let Some(i) = matches.iter().rev().next() {
-				let pattern = &self.patterns[*i];
-				return match pattern.pattern_type {
-					PatternType::Whitelist => MatchResult::Whitelist,
-					PatternType::Ignore => MatchResult::Ignore,
-				};
-			}
+            let matches = self.set.matches(stripped);
+            if let Some(i) = matches.iter().rev().next() {
+                let pattern = &self.patterns[*i];
+                return match pattern.pattern_type {
+                    PatternType::Whitelist => MatchResult::Whitelist,
+                    PatternType::Ignore => MatchResult::Ignore,
+                };
+            }
         }
 
-		MatchResult::None
+        MatchResult::None
     }
 
     pub fn root_len(&self) -> usize {
@@ -237,8 +237,7 @@ mod tests {
     }
 
     fn build_ignore(pattern: &str) -> IgnoreFile {
-        IgnoreFile::from_strings(&[pattern], &base_dir())
-			.expect("test ignore file invalid")
+        IgnoreFile::from_strings(&[pattern], &base_dir()).expect("test ignore file invalid")
     }
 
     #[test]
@@ -322,8 +321,7 @@ mod tests {
 
     #[test]
     fn test_empty_file_never_excludes() {
-        let file = IgnoreFile::from_strings(&[], &base_dir())
-			.expect("test ignore file invalid");
+        let file = IgnoreFile::from_strings(&[], &base_dir()).expect("test ignore file invalid");
 
         assert!(!file.is_excluded(&base_dir().join("target")));
     }
@@ -331,8 +329,8 @@ mod tests {
     #[test]
     fn test_checks_all_patterns() {
         let patterns = vec!["target", "target2"];
-        let file = IgnoreFile::from_strings(&patterns, &base_dir())
-			.expect("test ignore file invalid");
+        let file =
+            IgnoreFile::from_strings(&patterns, &base_dir()).expect("test ignore file invalid");
 
         assert!(file.is_excluded(&base_dir().join("target").join("foo.txt")));
         assert!(file.is_excluded(&base_dir().join("target2").join("bar.txt")));
@@ -341,8 +339,8 @@ mod tests {
     #[test]
     fn test_handles_whitelisting() {
         let patterns = vec!["target", "!target/foo.txt"];
-        let file = IgnoreFile::from_strings(&patterns, &base_dir())
-			.expect("test ignore file invalid");
+        let file =
+            IgnoreFile::from_strings(&patterns, &base_dir()).expect("test ignore file invalid");
 
         assert!(!file.is_excluded(&base_dir().join("target").join("foo.txt")));
         assert!(file.is_excluded(&base_dir().join("target").join("blah.txt")));
