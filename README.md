@@ -80,7 +80,7 @@ Run `make` when any file in `lib` or `src` changes:
 
 ### Cargo
 
-watchexec requires Rust 1.26 or later. You can install it using cargo:
+watchexec requires Rust 1.38 or later. You can install it using cargo:
 
     $ cargo install watchexec
 
@@ -118,7 +118,7 @@ Currently available shell completions:
 
 ## Building
 
-Rust 1.26 or later is required.
+Rust 1.38 or later is required.
 
 ## Credits
 

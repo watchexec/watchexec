@@ -32,22 +32,11 @@ matrix:
 
     # Minimum version advertised in readme
     - os: linux
-      rust: 1.26.0
+      rust: 1.38.0
       env: TARGET=x86_64-unknown-linux-gnu
     - os: osx
-      rust: 1.26.0
+      rust: 1.38.0
       env: TARGET=x86_64-apple-darwin
-
-    # Non-critical but interesting for upcoming Rust changes
-    - os: linux
-      rust: nightly
-      env: TARGET=x86_64-unknown-linux-gnu
-    - os: osx
-      rust: nightly
-      env: TARGET=x86_64-apple-darwin
-
-  allow_failures:
-    - rust: nightly
   fast_finish: true
 
 before_script: ci/before_script.sh
