@@ -172,7 +172,7 @@ impl Handler for ExecHandler {
 
         signal::install_handler(move |sig: Signal| {
             if let Some(lock) = weak_child.upgrade() {
-                let strong = lock.read().unwrap();
+                let strong = lock.read().expect("poisoned lock in install_handler");
                 if let Some(ref child) = *strong {
                     match sig {
                         Signal::SIGCHLD => child.reap(), // SIGCHLD is special, initiate reap()
@@ -299,7 +299,7 @@ fn wait_fs(rx: &Receiver<Event>, filter: &NotificationFilter, debounce: u64) -> 
 
 // signal_process sends signal to process. It waits for the process to exit if wait is true
 fn signal_process(process: &RwLock<Option<Process>>, signal: Option<Signal>, wait: bool) {
-    let guard = process.read().unwrap();
+    let guard = process.read().expect("poisoned lock in signal_process");
 
     if let Some(ref child) = *guard {
         if let Some(s) = signal {

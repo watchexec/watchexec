@@ -31,7 +31,7 @@ impl NotificationFilter {
             if ignore_path.is_relative() && !i.starts_with('*') {
                 ignore_path = Path::new("**").join(&ignore_path);
             }
-            let pattern = ignore_path.to_str().unwrap();
+            let pattern = ignore_path.to_str().expect("corrupted memory (string -> path -> string)");
             ignore_set_builder.add(Glob::new(pattern)?);
             debug!("Adding ignore: \"{}\"", pattern);
         }
@@ -83,7 +83,8 @@ mod tests {
     #[test]
     fn test_allows_everything_by_default() {
         let filter =
-            NotificationFilter::new(&[], &[], gitignore::load(&[]), ignore::load(&[])).unwrap();
+            NotificationFilter::new(&[], &[], gitignore::load(&[]), ignore::load(&[]))
+                .expect("test filter errors");
 
         assert!(!filter.is_excluded(Path::new("foo")));
     }
@@ -96,7 +97,7 @@ mod tests {
             gitignore::load(&[]),
             ignore::load(&[]),
         )
-        .unwrap();
+                .expect("test filter errors");
 
         assert!(filter.is_excluded(Path::new("/path/to/test.json")));
         assert!(filter.is_excluded(Path::new("test.json")));
@@ -106,7 +107,8 @@ mod tests {
     fn test_multiple_filters() {
         let filters = &["*.rs".into(), "*.toml".into()];
         let filter =
-            NotificationFilter::new(filters, &[], gitignore::load(&[]), ignore::load(&[])).unwrap();
+            NotificationFilter::new(filters, &[], gitignore::load(&[]), ignore::load(&[]))
+                .expect("test filter errors");
 
         assert!(!filter.is_excluded(Path::new("hello.rs")));
         assert!(!filter.is_excluded(Path::new("Cargo.toml")));
@@ -117,7 +119,8 @@ mod tests {
     fn test_multiple_ignores() {
         let ignores = &["*.rs".into(), "*.toml".into()];
         let filter =
-            NotificationFilter::new(&[], ignores, gitignore::load(&[]), ignore::load(&[])).unwrap();
+            NotificationFilter::new(&[], ignores, gitignore::load(&[]), ignore::load(&[]))
+                .expect("test filter errors");
 
         assert!(filter.is_excluded(Path::new("hello.rs")));
         assert!(filter.is_excluded(Path::new("Cargo.toml")));
@@ -129,7 +132,7 @@ mod tests {
         let ignores = &["*.rs".into(), "*.toml".into()];
         let filter =
             NotificationFilter::new(ignores, ignores, gitignore::load(&[]), ignore::load(&[]))
-                .unwrap();
+                .expect("test filter errors");
 
         assert!(filter.is_excluded(Path::new("hello.rs")));
         assert!(filter.is_excluded(Path::new("Cargo.toml")));

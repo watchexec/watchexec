@@ -94,7 +94,7 @@ mod imp {
             // but is a little less performant and can cause trouble when using custom signals
             // (e.g. --signal SIGHUP)
             let mut command = if no_shell {
-                let (head, tail) = cmd.split_first().unwrap();
+                let (head, tail) = cmd.split_first().expect("cmd was empty");
                 let mut command = Command::new(head);
                 command.args(tail);
                 command
@@ -117,7 +117,7 @@ mod imp {
             }
             command.spawn().and_then(|p| {
                 Ok(Self {
-                    pgid: p.id().try_into().unwrap(),
+                    pgid: p.id().try_into().expect("u32 -> i32 failed in process::new"),
                     lock: Mutex::new(false),
                     cvar: Condvar::new(),
                 })
@@ -141,7 +141,7 @@ mod imp {
             }
 
             if finished {
-                let mut done = self.lock.lock().unwrap();
+                let mut done = self.lock.lock().expect("poisoned lock in process::reap");
                 *done = true;
                 self.cvar.notify_one();
             }
@@ -166,9 +166,9 @@ mod imp {
         }
 
         pub fn wait(&self) {
-            let mut done = self.lock.lock().unwrap();
+            let mut done = self.lock.lock().expect("poisoned lock in process::wait");
             while !*done {
-                done = self.cvar.wait(done).unwrap();
+                done = self.cvar.wait(done).expect("poisoned cvar in process::wait");
             }
         }
     }
@@ -256,7 +256,7 @@ mod imp {
 
             let mut command;
             if no_shell {
-                let (first, rest) = cmd.split_first().unwrap();
+                let (first, rest) = cmd.split_first().expect("command is empty");
                 command = Command::new(first);
                 command.args(rest);
             } else {
@@ -521,7 +521,7 @@ mod tests {
     #[test]
     fn longest_common_path_should_return_correct_value() {
         let single_path = vec![PathBuf::from("/tmp/random/")];
-        let single_result = get_longest_common_path(&single_path).unwrap();
+        let single_result = get_longest_common_path(&single_path).expect("failed to get longest common path");
         assert_eq!(single_result, "/tmp/random/");
 
         let common_paths = vec![
@@ -531,12 +531,12 @@ mod tests {
             PathBuf::from("/tmp/logs/fly"),
         ];
 
-        let common_result = get_longest_common_path(&common_paths).unwrap();
+        let common_result = get_longest_common_path(&common_paths).expect("failed to get longest common path");
         assert_eq!(common_result, "/tmp/logs");
 
         let diverging_paths = vec![PathBuf::from("/tmp/logs/hi"), PathBuf::from("/var/logs/hi")];
 
-        let diverging_result = get_longest_common_path(&diverging_paths).unwrap();
+        let diverging_result = get_longest_common_path(&diverging_paths).expect("failed to get longest common path");
         assert_eq!(diverging_result, "/");
 
         let uneven_paths = vec![
@@ -545,7 +545,7 @@ mod tests {
             PathBuf::from("/tmp/logs/bye"),
         ];
 
-        let uneven_result = get_longest_common_path(&uneven_paths).unwrap();
+        let uneven_result = get_longest_common_path(&uneven_paths).expect("failed to get longest common path");
         assert_eq!(uneven_result, "/tmp/logs");
     }
 

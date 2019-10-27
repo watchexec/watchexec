@@ -11,7 +11,7 @@
 //!     .cmd(vec!["echo hello world".into()])
 //!     .paths(vec![".".into()])
 //!     .build()
-//!     .unwrap();
+//!     .expect("mission failed");
 //! ```
 
 use crate::error;
@@ -25,8 +25,9 @@ use std::{
 /// Arguments to the watcher
 #[derive(Builder, Clone, Debug)]
 #[builder(setter(into, strip_option))]
+#[builder(build_fn(validate = "Self::validate"))]
 pub struct Args {
-    /// List of commands to be executed on change. Will be joined with `&&`.
+    /// Command to execute in popen3 format (first program, rest arguments).
     pub cmd: Vec<String>,
     /// List of paths to watch for changes.
     pub paths: Vec<PathBuf>,
@@ -73,6 +74,20 @@ pub struct Args {
     /// Interval for polling. (seconds)
     #[builder(default = "2")]
     pub poll_interval: u32,
+}
+
+impl ArgsBuilder {
+	fn validate(&self) -> Result<(), String> {
+		if self.cmd.as_ref().map_or(true, Vec::is_empty) {
+			return Err("cmd must not be empty".into());
+		}
+
+		if self.paths.as_ref().map_or(true, Vec::is_empty) {
+			return Err("paths must not be empty".into());
+		}
+
+		Ok(())
+	}
 }
 
 #[cfg(target_family = "windows")]

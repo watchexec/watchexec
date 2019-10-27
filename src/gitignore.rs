@@ -117,7 +117,7 @@ impl GitignoreFile {
         file.read_to_string(&mut contents)?;
 
         let lines: Vec<_> = contents.lines().collect();
-        let root = path.parent().unwrap();
+        let root = path.parent().expect("gitignore file is at filesystem root");
 
         Self::from_strings(&lines, root)
     }
@@ -155,23 +155,19 @@ impl GitignoreFile {
         self.matches(path) == MatchResult::Ignore
     }
 
-    fn matches(&self, path: &Path) -> MatchResult {
-        let stripped = path.strip_prefix(&self.root);
-        if stripped.is_err() {
-            return MatchResult::None;
+	fn matches(&self, path: &Path) -> MatchResult {
+        if let Ok(stripped) = path.strip_prefix(&self.root) {
+			let matches = self.set.matches(stripped);
+			if let Some(i) = matches.iter().rev().next() {
+				let pattern = &self.patterns[*i];
+				return match pattern.pattern_type {
+					PatternType::Whitelist => MatchResult::Whitelist,
+					PatternType::Ignore => MatchResult::Ignore,
+				};
+			}
         }
 
-        let matches = self.set.matches(stripped.unwrap());
-
-        if let Some(i) = matches.iter().rev().next() {
-            let pattern = &self.patterns[*i];
-            return match pattern.pattern_type {
-                PatternType::Whitelist => MatchResult::Whitelist,
-                PatternType::Ignore => MatchResult::Ignore,
-            };
-        }
-
-        MatchResult::None
+		MatchResult::None
     }
 
     pub fn root_len(&self) -> usize {
@@ -248,7 +244,8 @@ mod tests {
     }
 
     fn build_gitignore(pattern: &str) -> GitignoreFile {
-        GitignoreFile::from_strings(&[pattern], &base_dir()).unwrap()
+        GitignoreFile::from_strings(&[pattern], &base_dir())
+			.expect("test gitignore file invalid")
     }
 
     #[test]
@@ -332,7 +329,8 @@ mod tests {
 
     #[test]
     fn test_empty_file_never_excludes() {
-        let file = GitignoreFile::from_strings(&[], &base_dir()).unwrap();
+        let file = GitignoreFile::from_strings(&[], &base_dir())
+			.expect("test gitignore file invalid");
 
         assert!(!file.is_excluded(&base_dir().join("target")));
     }
@@ -340,7 +338,8 @@ mod tests {
     #[test]
     fn test_checks_all_patterns() {
         let patterns = vec!["target", "target2"];
-        let file = GitignoreFile::from_strings(&patterns, &base_dir()).unwrap();
+        let file = GitignoreFile::from_strings(&patterns, &base_dir())
+			.expect("test gitignore file invalid");
 
         assert!(file.is_excluded(&base_dir().join("target").join("foo.txt")));
         assert!(file.is_excluded(&base_dir().join("target2").join("bar.txt")));
@@ -349,7 +348,8 @@ mod tests {
     #[test]
     fn test_handles_whitelisting() {
         let patterns = vec!["target", "!target/foo.txt"];
-        let file = GitignoreFile::from_strings(&patterns, &base_dir()).unwrap();
+        let file = GitignoreFile::from_strings(&patterns, &base_dir())
+			.expect("test gitignore file invalid");
 
         assert!(!file.is_excluded(&base_dir().join("target").join("foo.txt")));
         assert!(file.is_excluded(&base_dir().join("target").join("blah.txt")));

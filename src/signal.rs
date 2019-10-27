@@ -165,7 +165,7 @@ where
 }
 
 fn invoke(sig: self::Signal) {
-    if let Some(ref handler) = *CLEANUP.lock().unwrap() {
+    if let Some(ref handler) = *CLEANUP.lock().expect("poisoned lock in signal::invoke") {
         handler(sig)
     }
 }
@@ -174,5 +174,5 @@ fn set_handler<F>(handler: F)
 where
     F: Fn(self::Signal) + 'static + Send + Sync,
 {
-    *CLEANUP.lock().unwrap() = Some(Box::new(handler));
+    *CLEANUP.lock().expect("poisoned lock in signal::set_handler") = Some(Box::new(handler));
 }

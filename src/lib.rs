@@ -15,8 +15,8 @@
     deprecated,
     intra_doc_link_resolution_failure,
 //    missing_docs,
-//    clippy::option_unwrap_used,
-//    clippy::result_unwrap_used,
+    clippy::option_unwrap_used,
+    clippy::result_unwrap_used,
 )]
 #![deny(unsafe_code, clippy::missing_const_for_fn)]
 #![allow(clippy::default_trait_access, clippy::cognitive_complexity)]
