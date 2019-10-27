@@ -1,3 +1,5 @@
+#![allow(unsafe_code)]
+
 use crate::error::Result;
 use crate::pathop::PathOp;
 use std::collections::{HashMap, HashSet};
@@ -81,9 +83,10 @@ mod imp {
 
     #[allow(clippy::mutex_atomic)]
     impl Process {
-        pub fn new(cmd: &[String], updated_paths: &[PathOp], no_shell: bool) -> Result<Process> {
+        pub fn new(cmd: &[String], updated_paths: &[PathOp], no_shell: bool) -> Result<Self> {
             use nix::unistd::*;
             use std::os::unix::process::CommandExt;
+			use std::convert::TryInto;
 
             // Assemble command to run.
             // This is either the first argument from cmd (if no_shell was given) or "sh".
@@ -113,8 +116,8 @@ mod imp {
             command
                 .spawn()
                 .and_then(|p| {
-                    Ok(Process {
-                        pgid: p.id() as i32,
+                    Ok(Self {
+                        pgid: p.id().try_into().unwrap(),
                         lock: Mutex::new(false),
                         cvar: Condvar::new(),
                     })
@@ -254,9 +257,9 @@ mod imp {
 
             let mut command;
             if no_shell {
-                let (arg0, args) = cmd.split_first().unwrap();
-                command = Command::new(arg0);
-                command.args(args);
+                let (first, rest) = cmd.split_first().unwrap();
+                command = Command::new(first);
+                command.args(rest);
             } else {
                 command = Command::new("cmd.exe");
                 command.arg("/C");
@@ -364,11 +367,11 @@ mod imp {
 
 /// Collect `PathOp` details into op-categories to pass onto the exec'd command as env-vars
 ///
-/// WRITTEN -> `notify::ops::WRITE`, `notify::ops::CLOSE_WRITE`
-/// META_CHANGED -> `notify::ops::CHMOD`
-/// REMOVED -> `notify::ops::REMOVE`
-/// CREATED -> `notify::ops::CREATE`
-/// RENAMED -> `notify::ops::RENAME`
+/// `WRITTEN` -> `notify::ops::WRITE`, `notify::ops::CLOSE_WRITE`
+/// `META_CHANGED` -> `notify::ops::CHMOD`
+/// `REMOVED` -> `notify::ops::REMOVE`
+/// `CREATED` -> `notify::ops::CREATE`
+/// `RENAMED` -> `notify::ops::RENAME`
 fn collect_path_env_vars(pathops: &[PathOp]) -> Vec<(String, String)> {
     #[cfg(target_family = "unix")]
     const ENV_SEP: &str = ":";
@@ -428,7 +431,7 @@ fn collect_path_env_vars(pathops: &[PathOp]) -> Vec<(String, String)> {
 fn get_longest_common_path(paths: &[PathBuf]) -> Option<String> {
     match paths.len() {
         0 => return None,
-        1 => return paths[0].to_str().map(|ref_val| ref_val.to_string()),
+        1 => return paths[0].to_str().map(ToString::to_string),
         _ => {}
     };
 
@@ -454,7 +457,7 @@ fn get_longest_common_path(paths: &[PathBuf]) -> Option<String> {
         result.push(component.as_os_str());
     }
 
-    result.to_str().map(|ref_val| ref_val.to_string())
+    result.to_str().map(ToString::to_string)
 }
 
 #[cfg(test)]

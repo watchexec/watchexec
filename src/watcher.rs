@@ -26,7 +26,7 @@ impl Watcher {
         paths: &[PathBuf],
         poll: bool,
         interval_ms: u32,
-    ) -> Result<Watcher, Error> {
+    ) -> Result<Self, Error> {
         use notify::Watcher;
 
         let imp = if poll {
@@ -47,7 +47,7 @@ impl Watcher {
             WatcherImpl::Recommended(watcher)
         };
 
-        Ok(self::Watcher { watcher_impl: imp })
+        Ok(Self { watcher_impl: imp })
     }
 
     pub fn is_polling(&self) -> bool {

@@ -218,8 +218,8 @@ where
         for exts in extensions {
             filters.extend(
                 exts.split(',')
-                    .filter(|ext| !ext.is_empty())
-                    .map(|ext| format!("*.{}", ext.replace(".", ""))),
+                    .filter_map(|ext| if ext.is_empty() { None } else {
+                    Some(format!("*.{}", ext.replace(".", ""))) }),
             );
         }
     }

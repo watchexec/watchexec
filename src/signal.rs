@@ -1,8 +1,14 @@
 use std::sync::Mutex;
 
+type CleanupFn = Box<dyn Fn(self::Signal) + Send>;
 lazy_static! {
-    static ref CLEANUP: Mutex<Option<Box<dyn Fn(self::Signal) + Send>>> = Mutex::new(None);
+    static ref CLEANUP: Mutex<Option<CleanupFn>> = Mutex::new(None);
 }
+
+// Indicate interest in SIGCHLD by setting a dummy handler
+#[cfg(unix)]
+#[allow(clippy::missing_const_for_fn)]
+pub extern "C" fn sigchld_handler(_: c_int) {}
 
 #[cfg(unix)]
 pub use nix::sys::signal::Signal;
@@ -35,15 +41,15 @@ impl ConvertToLibc for Signal {
     fn convert_to_libc(self) -> c_int {
         // Convert from signal::Signal enum to libc::* c_int constants
         match self {
-            Signal::SIGKILL => SIGKILL,
-            Signal::SIGTERM => SIGTERM,
-            Signal::SIGINT => SIGINT,
-            Signal::SIGHUP => SIGHUP,
-            Signal::SIGSTOP => SIGSTOP,
-            Signal::SIGCONT => SIGCONT,
-            Signal::SIGCHLD => SIGCHLD,
-            Signal::SIGUSR1 => SIGUSR1,
-            Signal::SIGUSR2 => SIGUSR2,
+            Self::SIGKILL => SIGKILL,
+            Self::SIGTERM => SIGTERM,
+            Self::SIGINT => SIGINT,
+            Self::SIGHUP => SIGHUP,
+            Self::SIGSTOP => SIGSTOP,
+            Self::SIGCONT => SIGCONT,
+            Self::SIGCHLD => SIGCHLD,
+            Self::SIGUSR1 => SIGUSR1,
+            Self::SIGUSR2 => SIGUSR2,
             _ => panic!("unsupported signal: {:?}", self),
         }
     }
@@ -94,9 +100,7 @@ where
 
     set_handler(handler);
 
-    // Indicate interest in SIGCHLD by setting a dummy handler
-    pub extern "C" fn sigchld_handler(_: c_int) {}
-
+	#[allow(unsafe_code)]
     unsafe {
         let _ = sigaction(
             SIGCHLD,
@@ -122,6 +126,7 @@ where
                 let default_action =
                     SigAction::new(SigHandler::SigDfl, SaFlags::empty(), SigSet::empty());
 
+				#[allow(unsafe_code)]
                 unsafe {
                     let _ = sigaction(signal, &default_action);
                 }

@@ -18,7 +18,7 @@ impl NotificationFilter {
         ignores: &[String],
         gitignore_files: Gitignore,
         ignore_files: Ignore,
-    ) -> error::Result<NotificationFilter> {
+    ) -> error::Result<Self> {
         let mut filter_set_builder = GlobSetBuilder::new();
         for f in filters {
             filter_set_builder.add(Glob::new(f)?);
@@ -36,7 +36,7 @@ impl NotificationFilter {
             debug!("Adding ignore: \"{}\"", pattern);
         }
 
-        Ok(NotificationFilter {
+        Ok(Self {
             filters: filter_set_builder.build()?,
             filter_count: filters.len(),
             ignores: ignore_set_builder.build()?,

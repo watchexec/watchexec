@@ -54,12 +54,11 @@ pub fn load(paths: &[PathBuf]) -> Ignore {
 
                 let ignore_path = p.join(".ignore");
                 if ignore_path.exists() {
-                    match IgnoreFile::new(&ignore_path) {
-                        Ok(f) => {
+                    if let Ok(f) = IgnoreFile::new(&ignore_path) {
                             debug!("Loaded {:?}", ignore_path);
                             files.push(f);
-                        }
-                        Err(_) => debug!("Unable to load {:?}", ignore_path),
+                        } else {
+							debug!("Unable to load {:?}", ignore_path);
                     }
                 }
             }
@@ -76,8 +75,8 @@ pub fn load(paths: &[PathBuf]) -> Ignore {
 }
 
 impl Ignore {
-    fn new(files: Vec<IgnoreFile>) -> Ignore {
-        Ignore { files }
+    const fn new(files: Vec<IgnoreFile>) -> Self {
+        Self { files }
     }
 
     pub fn is_excluded(&self, path: &Path) -> bool {
@@ -105,22 +104,22 @@ impl Ignore {
 }
 
 impl IgnoreFile {
-    pub fn new(path: &Path) -> Result<IgnoreFile, Error> {
+    pub fn new(path: &Path) -> Result<Self, Error> {
         let mut file = fs::File::open(path)?;
         let mut contents = String::new();
         file.read_to_string(&mut contents)?;
 
-        let lines = contents.lines().collect();
+        let lines: Vec<_> = contents.lines().collect();
         let root = path.parent().unwrap();
 
-        IgnoreFile::from_strings(lines, root)
+        Self::from_strings(&lines, root)
     }
 
-    pub fn from_strings(strs: Vec<&str>, root: &Path) -> Result<IgnoreFile, Error> {
+    pub fn from_strings(strs: &[&str], root: &Path) -> Result<Self, Error> {
         let mut builder = GlobSetBuilder::new();
         let mut patterns = vec![];
 
-        let parsed_patterns = IgnoreFile::parse(strs);
+        let parsed_patterns = Self::parse(strs);
         for p in parsed_patterns {
             let mut pat = p.pattern.clone();
             if !p.anchored && !pat.starts_with("**/") {
@@ -137,7 +136,7 @@ impl IgnoreFile {
             patterns.push(p);
         }
 
-        Ok(IgnoreFile {
+        Ok(Self {
             set: builder.build()?,
             patterns,
             root: root.to_owned(),
@@ -172,18 +171,16 @@ impl IgnoreFile {
         self.root.as_os_str().len()
     }
 
-    fn parse(contents: Vec<&str>) -> Vec<Pattern> {
+    fn parse(contents: &[&str]) -> Vec<Pattern> {
         contents
             .iter()
-            .filter(|l| !l.is_empty())
-            .filter(|l| !l.starts_with('#'))
-            .map(|l| Pattern::parse(l))
+            .filter_map(|l| if !l.is_empty() && !l.starts_with('#') { Some(Pattern::parse(l)) } else { None })
             .collect()
     }
 }
 
 impl Pattern {
-    fn parse(pattern: &str) -> Pattern {
+    fn parse(pattern: &str) -> Self {
         let mut normalized = String::from(pattern);
 
         let pattern_type = if normalized.starts_with('!') {
@@ -208,7 +205,7 @@ impl Pattern {
             normalized.remove(0);
         }
 
-        Pattern {
+        Self {
             pattern: normalized,
             pattern_type,
             anchored,
@@ -217,14 +214,14 @@ impl Pattern {
 }
 
 impl From<globset::Error> for Error {
-    fn from(error: globset::Error) -> Error {
-        Error::GlobSet(error)
+    fn from(error: globset::Error) -> Self {
+        Self::GlobSet(error)
     }
 }
 
 impl From<io::Error> for Error {
-    fn from(error: io::Error) -> Error {
-        Error::Io(error)
+    fn from(error: io::Error) -> Self {
+        Self::Io(error)
     }
 }
 

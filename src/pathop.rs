@@ -10,8 +10,8 @@ pub struct PathOp {
 }
 
 impl PathOp {
-    pub fn new(path: &Path, op: Option<op::Op>, cookie: Option<u32>) -> PathOp {
-        PathOp {
+    pub fn new(path: &Path, op: Option<op::Op>, cookie: Option<u32>) -> Self {
+        Self {
             path: path.to_path_buf(),
             op,
             cookie,
