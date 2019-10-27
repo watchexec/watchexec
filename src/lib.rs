@@ -1,3 +1,12 @@
+//! Watchexec: the library
+//!
+//! This is the library version of the CLI tool [watchexec]. The tool is
+//! implemented with this library, but the purpose of the watchexec project is
+//! to deliver the CLI tool, instead of focusing on the library interface first
+//! and foremost. **For this reason, semver guarantees do _not_ apply to this
+//! library.** Please use exact version matching, as this API may break even
+//! between patch point releases.
+
 #[macro_use]
 extern crate clap;
 extern crate env_logger;
