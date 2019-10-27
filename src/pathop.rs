@@ -13,8 +13,8 @@ impl PathOp {
     pub fn new(path: &Path, op: Option<op::Op>, cookie: Option<u32>) -> PathOp {
         PathOp {
             path: path.to_path_buf(),
-            op: op,
-            cookie: cookie,
+            op,
+            cookie,
         }
     }
 

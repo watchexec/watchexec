@@ -3,7 +3,7 @@ use pathop::PathOp;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
-pub fn spawn(cmd: &Vec<String>, updated_paths: &[PathOp], no_shell: bool) -> Result<Process> {
+pub fn spawn(cmd: &[String], updated_paths: &[PathOp], no_shell: bool) -> Result<Process> {
     self::imp::Process::new(cmd, updated_paths, no_shell).map_err(|e| e.into())
 }
 
@@ -79,10 +79,9 @@ mod imp {
         }
     }
 
-    #[allow(unknown_lints)]
-    #[allow(mutex_atomic)]
+    #[allow(clippy::mutex_atomic)]
     impl Process {
-        pub fn new(cmd: &Vec<String>, updated_paths: &[PathOp], no_shell: bool) -> Result<Process> {
+        pub fn new(cmd: &[String], updated_paths: &[PathOp], no_shell: bool) -> Result<Process> {
             use nix::unistd::*;
             use std::os::unix::process::CommandExt;
 
@@ -110,8 +109,8 @@ mod imp {
                 command.env(name, val);
             }
 
+            unsafe { command.pre_exec(|| setsid().map_err(from_nix_error).map(|_| ())); }
             command
-                .before_exec(|| setsid().map_err(from_nix_error).map(|_| ()))
                 .spawn()
                 .and_then(|p| {
                     Ok(Process {
@@ -130,7 +129,6 @@ mod imp {
             loop {
                 match waitpid(Pid::from_raw(-self.pgid), Some(WaitPidFlag::WNOHANG)) {
                     Ok(WaitStatus::Exited(_, _)) | Ok(WaitStatus::Signaled(_, _, _)) => {
-                        finished = finished && true
                     }
                     Ok(_) => {
                         finished = false;
@@ -284,8 +282,8 @@ mod imp {
                 resume_threads(handle);
 
                 Ok(Process {
-                    job: job,
-                    completion_port: completion_port,
+                    job,
+                    completion_port,
                 })
             })
         }
@@ -373,9 +371,9 @@ mod imp {
 /// RENAMED -> `notify::ops::RENAME`
 fn collect_path_env_vars(pathops: &[PathOp]) -> Vec<(String, String)> {
     #[cfg(target_family = "unix")]
-    const ENV_SEP: &'static str = ":";
+    const ENV_SEP: &str = ":";
     #[cfg(not(target_family = "unix"))]
-    const ENV_SEP: &'static str = ";";
+    const ENV_SEP: &str = ";";
 
     let mut by_op = HashMap::new(); // Paths as `String`s collected by `notify::op`
     let mut all_pathbufs = HashSet::new(); // All unique `PathBuf`s
@@ -417,7 +415,7 @@ fn collect_path_env_vars(pathops: &[PathOp]) -> Vec<(String, String)> {
         let paths = if let Some(ref common_path) = common_path {
             paths
                 .iter()
-                .map(|path_str| path_str.trim_left_matches(common_path).to_string())
+                .map(|path_str| path_str.trim_start_matches(common_path).to_string())
                 .collect::<Vec<_>>()
         } else {
             paths

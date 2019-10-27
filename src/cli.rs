@@ -199,7 +199,7 @@ where
 
     let cmd: Vec<String> = values_t!(args.values_of("command"), String)?;
     let paths = values_t!(args.values_of("path"), String)
-        .unwrap_or(vec![".".into()])
+        .unwrap_or_else(|_| vec![".".into()])
         .iter()
         .map(|string_path| string_path.into())
         .collect();
@@ -212,7 +212,7 @@ where
         args.value_of("signal").map(str::to_string)
     };
 
-    let mut filters = values_t!(args.values_of("filter"), String).unwrap_or(Vec::new());
+    let mut filters = values_t!(args.values_of("filter"), String).unwrap_or_else(|_| Vec::new());
 
     if let Some(extensions) = args.values_of("extensions") {
         for exts in extensions {
@@ -240,7 +240,7 @@ where
     if args.occurrences_of("no-default-ignore") == 0 {
         ignores.extend(default_ignores)
     };
-    ignores.extend(values_t!(args.values_of("ignore"), String).unwrap_or(Vec::new()));
+    ignores.extend(values_t!(args.values_of("ignore"), String).unwrap_or_else(|_| Vec::new()));
 
     let poll_interval = if args.occurrences_of("poll") > 0 {
         value_t!(args.value_of("poll"), u32).unwrap_or_else(|e| e.exit())
@@ -267,14 +267,14 @@ where
     }
 
     Ok(Args {
-        cmd: cmd,
-        paths: paths,
-        filters: filters,
-        ignores: ignores,
-        signal: signal,
+        cmd,
+        paths,
+        filters,
+        ignores,
+        signal,
         clear_screen: args.is_present("clear"),
         restart: args.is_present("restart"),
-        debounce: debounce,
+        debounce,
         debug: args.is_present("verbose"),
         run_initially: !args.is_present("postpone"),
         no_shell: args.is_present("no-shell"),
@@ -282,6 +282,6 @@ where
         no_ignore: args.is_present("no-ignore"),
         once: args.is_present("once"),
         poll: args.occurrences_of("poll") > 0,
-        poll_interval: poll_interval,
+        poll_interval,
     })
 }

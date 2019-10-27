@@ -77,7 +77,7 @@ pub fn load(paths: &[PathBuf]) -> Ignore {
 
 impl Ignore {
     fn new(files: Vec<IgnoreFile>) -> Ignore {
-        Ignore { files: files }
+        Ignore { files }
     }
 
     pub fn is_excluded(&self, path: &Path) -> bool {
@@ -122,13 +122,13 @@ impl IgnoreFile {
 
         let parsed_patterns = IgnoreFile::parse(strs);
         for p in parsed_patterns {
-            let mut pat = String::from(p.pattern.clone());
+            let mut pat = p.pattern.clone();
             if !p.anchored && !pat.starts_with("**/") {
                 pat = "**/".to_string() + &pat;
             }
 
             if !pat.ends_with("/**") {
-                pat = pat + "/**";
+                pat += "/**";
             }
 
             let glob = GlobBuilder::new(&pat).literal_separator(true).build()?;
@@ -139,7 +139,7 @@ impl IgnoreFile {
 
         Ok(IgnoreFile {
             set: builder.build()?,
-            patterns: patterns,
+            patterns,
             root: root.to_owned(),
         })
     }
@@ -151,14 +151,14 @@ impl IgnoreFile {
 
     fn matches(&self, path: &Path) -> MatchResult {
         let stripped = path.strip_prefix(&self.root);
-        if !stripped.is_ok() {
+        if stripped.is_err() {
             return MatchResult::None;
         }
 
         let matches = self.set.matches(stripped.unwrap());
 
-        for &i in matches.iter().rev() {
-            let pattern = &self.patterns[i];
+        if let Some(i) = matches.iter().rev().next() {
+            let pattern = &self.patterns[*i];
             return match pattern.pattern_type {
                 PatternType::Whitelist => MatchResult::Whitelist,
                 PatternType::Ignore => MatchResult::Ignore,
@@ -210,8 +210,8 @@ impl Pattern {
 
         Pattern {
             pattern: normalized,
-            pattern_type: pattern_type,
-            anchored: anchored,
+            pattern_type,
+            anchored,
         }
     }
 }

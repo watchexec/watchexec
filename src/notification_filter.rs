@@ -30,7 +30,7 @@ impl NotificationFilter {
         let mut ignore_set_builder = GlobSetBuilder::new();
         for i in ignores {
             let mut ignore_path = Path::new(i).to_path_buf();
-            if ignore_path.is_relative() && !i.starts_with("*") {
+            if ignore_path.is_relative() && !i.starts_with('*') {
                 ignore_path = Path::new("**").join(&ignore_path);
             }
             let pattern = ignore_path.to_str().unwrap();
@@ -42,8 +42,8 @@ impl NotificationFilter {
             filters: filter_set_builder.build()?,
             filter_count: filters.len(),
             ignores: ignore_set_builder.build()?,
-            gitignore_files: gitignore_files,
-            ignore_files: ignore_files,
+            gitignore_files,
+            ignore_files,
         })
     }
 

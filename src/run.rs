@@ -97,9 +97,9 @@ where
     let filter = NotificationFilter::new(&args.filters, &args.ignores, gitignore, ignore)?;
 
     let (tx, rx) = channel();
-    let poll = args.poll.clone();
+    let poll = args.poll;
     #[cfg(target_os = "linux")]
-    let poll_interval = args.poll_interval.clone();
+    let poll_interval = args.poll_interval;
     let watcher = Watcher::new(tx.clone(), &paths, args.poll, args.poll_interval).or_else(|err| {
         if poll {
             return Err(err);
@@ -129,10 +129,8 @@ where
     }
 
     // Call handler initially, if necessary
-    if args.run_initially {
-        if !handler.on_manual()? {
-            return Ok(());
-        }
+    if args.run_initially && !handler.on_manual()? {
+        return Ok(());
     }
 
     loop {

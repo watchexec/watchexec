@@ -1,7 +1,7 @@
 use std::sync::Mutex;
 
 lazy_static! {
-    static ref CLEANUP: Mutex<Option<Box<Fn(self::Signal) + Send>>> = Mutex::new(None);
+    static ref CLEANUP: Mutex<Option<Box<dyn Fn(self::Signal) + Send>>> = Mutex::new(None);
 }
 
 #[cfg(unix)]
@@ -75,7 +75,6 @@ pub fn install_handler<F>(handler: F)
 where
     F: Fn(self::Signal) + 'static + Send + Sync,
 {
-    use nix::libc::c_int;
     use nix::sys::signal::*;
     use std::thread;
 
