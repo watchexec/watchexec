@@ -1,3 +1,19 @@
+//! CLI arguments and library Args struct
+//!
+//! Use `ArgsBuilder` preferentially as that will shield you from breaking changes resulting from
+//! added fields and some field type changes.
+//!
+//! # Examples
+//!
+//! ```
+//! # use watchexec::cli::ArgsBuilder;
+//! ArgsBuilder::default()
+//!     .cmd(vec!["echo hello world".into()])
+//!     .paths(vec![".".into()])
+//!     .build()
+//!     .unwrap();
+//! ```
+
 use clap::{App, Arg, Error};
 use error;
 use std::{
@@ -6,23 +22,56 @@ use std::{
     process::Command,
 };
 
-#[derive(Clone, Debug)]
+/// Arguments to the watcher
+#[derive(Builder, Clone, Debug)]
+#[builder(setter(into, strip_option))]
 pub struct Args {
+    /// List of commands to be executed on change. Will be joined with `&&`.
     pub cmd: Vec<String>,
+    /// List of paths to watch for changes.
     pub paths: Vec<PathBuf>,
+    /// Positive filters (trigger only on matching changes). Glob format.
+    #[builder(default)]
     pub filters: Vec<String>,
+    /// Negative filters (do not trigger on matching changes). Glob format.
+    #[builder(default)]
     pub ignores: Vec<String>,
+    /// Clear the screen before each run.
+    #[builder(default)]
     pub clear_screen: bool,
+    /// If Some, send that signal (e.g. SIGHUP) to the child on change.
+    #[builder(default)]
     pub signal: Option<String>,
+    /// If true, kill the child if it's still running when a change comes in.
+    #[builder(default)]
     pub restart: bool,
+    /// Interval to debounce the changes. (milliseconds)
+    #[builder(default = "500")]
     pub debounce: u64,
+    /// Enable debug/verbose logging.
+    #[builder(default)]
     pub debug: bool,
+    /// Run the commands right after starting.
+    #[builder(default = "true")]
     pub run_initially: bool,
+    /// Do not wrap the commands in a shell.
+    #[builder(default)]
     pub no_shell: bool,
+    /// Skip auto-loading .gitignore files
+    #[builder(default)]
     pub no_vcs_ignore: bool,
+    /// Skip auto-loading .ignore files
+    #[builder(default)]
     pub no_ignore: bool,
+    /// For testing only, always set to false.
+    #[builder(setter(skip))]
+    #[builder(default)]
     pub once: bool,
+    /// Force using the polling backend.
+    #[builder(default)]
     pub poll: bool,
+    /// Interval for polling. (seconds)
+    #[builder(default = "2")]
     pub poll_interval: u32,
 }
 

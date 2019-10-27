@@ -29,6 +29,7 @@ globset = "0.4.1"
 lazy_static = "1.1.0"
 log = "0.4.4"
 notify = "4.0.12"
+derive_builder = "0.8.0"
 
 [dependencies.clap]
 version = "2.32.0"

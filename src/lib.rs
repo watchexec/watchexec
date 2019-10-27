@@ -6,9 +6,13 @@
 //! and foremost. **For this reason, semver guarantees do _not_ apply to this
 //! library.** Please use exact version matching, as this API may break even
 //! between patch point releases.
+//!
+//! [watchexec]: https://github.com/watchexec/watchexec
 
 #[macro_use]
 extern crate clap;
+#[macro_use]
+extern crate derive_builder;
 extern crate env_logger;
 extern crate globset;
 #[macro_use]
