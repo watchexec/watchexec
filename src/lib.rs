@@ -13,20 +13,10 @@
 extern crate clap;
 #[macro_use]
 extern crate derive_builder;
-extern crate env_logger;
-extern crate globset;
 #[macro_use]
 extern crate log;
 #[macro_use]
 extern crate lazy_static;
-extern crate notify;
-
-#[cfg(windows)]
-extern crate kernel32;
-#[cfg(unix)]
-extern crate nix;
-#[cfg(windows)]
-extern crate winapi;
 
 pub mod cli;
 pub mod error;

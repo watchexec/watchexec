@@ -11,6 +11,7 @@ keywords = ["watcher", "inotify", "fsevents", "kqueue"]
 categories = ["command-line-utilities"]
 license = "Apache-2.0"
 exclude = ["/ci/*", "/pkg/*", "/.travis.yml", "/Makefile", "/appveyor.yml"]
+edition = "2018"
 
 [badges]
 appveyor = { repository = "watchexec/watchexec" }

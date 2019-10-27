@@ -1,6 +1,3 @@
-use clap;
-use globset;
-use notify;
 use std::{error::Error as StdError, fmt, io, sync::PoisonError};
 
 pub type Result<T> = ::std::result::Result<T, Error>;

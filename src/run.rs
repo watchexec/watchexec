@@ -1,15 +1,11 @@
-use cli::{clear_screen, Args};
-use env_logger;
-use error::{Error, Result};
-use gitignore;
-use ignore;
-use log;
-use notification_filter::NotificationFilter;
-#[cfg(target_os = "linux")]
-use notify;
-use pathop::PathOp;
-use process::{self, Process};
-use signal::{self, Signal};
+use crate::cli::{clear_screen, Args};
+use crate::error::{Error, Result};
+use crate::gitignore;
+use crate::ignore;
+use crate::notification_filter::NotificationFilter;
+use crate::pathop::PathOp;
+use crate::process::{self, Process};
+use crate::signal::{self, Signal};
 use std::{
     collections::HashMap,
     fs::canonicalize,
@@ -20,7 +16,7 @@ use std::{
     },
     time::Duration,
 };
-use watcher::{Event, Watcher};
+use crate::watcher::{Event, Watcher};
 
 fn init_logger(debug: bool) {
     let mut log_builder = env_logger::Builder::new();

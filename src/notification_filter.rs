@@ -1,9 +1,7 @@
-extern crate glob;
-
-use error;
-use gitignore::Gitignore;
+use crate::error;
+use crate::gitignore::Gitignore;
 use globset::{Glob, GlobSet, GlobSetBuilder};
-use ignore::Ignore;
+use crate::ignore::Ignore;
 use std::path::Path;
 
 pub struct NotificationFilter {

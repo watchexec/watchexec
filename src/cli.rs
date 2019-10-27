@@ -15,7 +15,7 @@
 //! ```
 
 use clap::{App, Arg, Error};
-use error;
+use crate::error;
 use std::{
     ffi::OsString,
     path::{PathBuf, MAIN_SEPARATOR},

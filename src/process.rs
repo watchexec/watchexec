@@ -1,5 +1,5 @@
-use error::Result;
-use pathop::PathOp;
+use crate::error::Result;
+use crate::pathop::PathOp;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
@@ -59,8 +59,8 @@ mod imp {
     //use super::wrap_commands;
     use nix::libc::*;
     use nix::{self, Error};
-    use pathop::PathOp;
-    use signal::Signal;
+    use crate::pathop::PathOp;
+    use crate::signal::Signal;
     use std::io::{self, Result};
     use std::process::Command;
     use std::sync::*;
@@ -146,7 +146,7 @@ mod imp {
         }
 
         pub fn signal(&self, signal: Signal) {
-            use signal::ConvertToLibc;
+            use crate::signal::ConvertToLibc;
 
             let signo = signal.convert_to_libc();
             debug!("Sending {:?} (int: {}) to child process", signal, signo);
@@ -176,8 +176,8 @@ mod imp {
 mod imp {
     //use super::wrap_commands;
     use kernel32::*;
-    use pathop::PathOp;
-    use signal::Signal;
+    use crate::pathop::PathOp;
+    use crate::signal::Signal;
     use std::io;
     use std::io::Result;
     use std::mem;
