@@ -18,15 +18,15 @@ impl PathOp {
         }
     }
 
-    pub fn is_create(op_: op::Op) -> bool {
+    pub const fn is_create(op_: op::Op) -> bool {
         op_.contains(op::CREATE)
     }
 
-    pub fn is_remove(op_: op::Op) -> bool {
+    pub const fn is_remove(op_: op::Op) -> bool {
         op_.contains(op::REMOVE)
     }
 
-    pub fn is_rename(op_: op::Op) -> bool {
+    pub const fn is_rename(op_: op::Op) -> bool {
         op_.contains(op::RENAME)
     }
 
@@ -36,7 +36,7 @@ impl PathOp {
         op_.intersects(write_or_close_write)
     }
 
-    pub fn is_meta(op_: op::Op) -> bool {
+    pub const fn is_meta(op_: op::Op) -> bool {
         op_.contains(op::CHMOD)
     }
 }
