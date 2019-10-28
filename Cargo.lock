@@ -435,7 +435,7 @@ dependencies = [
 
 [[package]]
 name = "watchexec"
-version = "1.11.0"
+version = "1.11.1"
 dependencies = [
  "clap 2.33.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "derive_builder 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
