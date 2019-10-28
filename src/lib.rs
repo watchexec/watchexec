@@ -40,4 +40,5 @@ pub mod run;
 mod signal;
 mod watcher;
 
-pub use run::run;
+pub use cli::{Args, ArgsBuilder};
+pub use run::{run, watch, Handler};
