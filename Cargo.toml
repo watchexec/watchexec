@@ -25,7 +25,7 @@ lto = true
 panic = "abort"
 
 [dependencies]
-glob = "0.2.11"
+glob = "0.3.0"
 globset = "0.4.1"
 lazy_static = "1.1.0"
 log = "0.4.4"
@@ -38,12 +38,12 @@ default-features = false
 features = ["wrap_help"]
 
 [dependencies.env_logger]
-version = "0.5.12"
+version = "0.7.1"
 default-features = false
 features = []
 
 [target.'cfg(unix)'.dependencies]
-nix = "0.13.0"
+nix = "0.15.0"
 
 [target.'cfg(windows)'.dependencies.winapi]
 version = "0.3.8"
