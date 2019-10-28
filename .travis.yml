@@ -60,7 +60,7 @@ jobs:
       env: TARGET=x86_64-unknown-linux-gnu
 
     # Clippy only
-    - env: CARGO_CLIPPY=1
+    - env: CARGO_CLIPPY=1 TARGET=x86_64-unknown-linux-gnu
 
 before_install: ci/before.sh
 script: ci/script.sh
