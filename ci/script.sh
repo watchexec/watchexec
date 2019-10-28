@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
 
-cargo build --target $TARGET --verbose
-cargo test --target $TARGET --verbose
+if [[ ! -z "$CARGO_AUDIT" ]]; then
+	cargo check --target $TARGET
+	cargo audit
+elif [[ ! -z "$CARGO_CLIPPY" ]]; then
+	cargo clippy --target $TARGET
+else
+	cargo test --target $TARGET
+fi
