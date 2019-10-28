@@ -14,7 +14,7 @@ addons:
   apt:
     packages:
       - fakeroot
-			- musl-dev
+      - musl-dev
       - musl-tools
 
 env:
@@ -27,11 +27,11 @@ matrix:
     - env: CARGO_CLIPPY=1
     - env: TARGET=i686-unknown-linux-musl
     - env: TARGET=x86_64-unknown-linux-musl
-		- env: TARGET=x86_64-pc-windows-gnu
+    - env: TARGET=x86_64-pc-windows-gnu
   include:
     # Default test+release versions
-		- os: windows
-			rust: stable
+    - os: windows
+      rust: stable
       env: TARGET=x86_64-pc-windows-msvc
     - os: osx
       rust: stable
@@ -47,7 +47,7 @@ matrix:
     - os: linux
       rust: stable
       env: TARGET=x86_64-unknown-linux-musl
-		- os: windows
+    - os: windows
       rust: stable
       env: TARGET=x86_64-pc-windows-gnu
 

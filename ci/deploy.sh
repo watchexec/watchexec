@@ -74,10 +74,10 @@ Description: Executes commands in response to file modifications.
  Software development often involves running the same commands over and over. Boring!
  Watchexec is a simple, standalone tool that watches a path and runs a command whenever it detects modifications.
 CONTROL
-	cd ..
-	fakeroot dpkg -b "$name"
-	mv "$name.deb" "$out_dir/"
-	popd
+    cd ..
+    fakeroot dpkg -b "$name"
+    mv "$name.deb" "$out_dir/"
+    popd
 fi
 
 ls -shal "$out_dir/"
