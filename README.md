@@ -1,8 +1,8 @@
 # watchexec
 
-[![Build Status](https://badgen.net/travis/watchexec/watchexec/master)](https://travis-ci.org/watchexec/watchexec)
-[![Build status](https://badgen.net/appveyor/ci/watchexec/watchexec/master)](https://ci.appveyor.com/project/watchexec/watchexec)
+[![Build status](https://badgen.net/travis/watchexec/watchexec/master)](https://travis-ci.org/watchexec/watchexec)
 [![Crates.io status](https://badgen.net/crates/v/watchexec)](https://crates.io/crates/watchexec)
+[![Docs status](https://docs.rs/watchexec/badge.svg)](https://docs.rs/watchexec)
 
 Software development often involves running the same commands over and over. Boring!
 
