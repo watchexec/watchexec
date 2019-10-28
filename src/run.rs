@@ -145,14 +145,14 @@ where
     Ok(())
 }
 
-pub struct ExecHandler<'a> {
-    args: &'a Args,
+pub struct ExecHandler {
+    args: Args,
     signal: Option<Signal>,
     child_process: Arc<RwLock<Option<Process>>>,
 }
 
-impl<'a> ExecHandler<'a> {
-    pub fn new(args: &'a Args) -> Result<Self> {
+impl ExecHandler {
+    pub fn new(args: Args) -> Result<Self> {
         let child_process: Arc<RwLock<Option<Process>>> = Arc::new(RwLock::new(None));
         let weak_child = Arc::downgrade(&child_process);
 
@@ -191,7 +191,7 @@ impl<'a> ExecHandler<'a> {
     }
 }
 
-impl<'a> Handler for ExecHandler<'a> {
+impl Handler for ExecHandler {
     fn args(&self) -> Args {
         self.args.clone()
     }
@@ -255,7 +255,7 @@ impl<'a> Handler for ExecHandler<'a> {
     }
 }
 
-pub fn run(args: &Args) -> Result<()> {
+pub fn run(args: Args) -> Result<()> {
     watch(&ExecHandler::new(args)?)
 }
 
