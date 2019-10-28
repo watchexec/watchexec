@@ -59,15 +59,18 @@ pub trait Handler {
     /// - `Ok(false)`: everything is fine but we should gracefully stop.
     fn on_update(&self, ops: &[PathOp]) -> Result<bool>;
 
-    /// Handler implementations must return a customized watchexec Args reference for use in the
-    /// calling watcher.
-    fn args(&self) -> &Args;
+    /// Called once by `watch` at the very start.
+    ///
+    /// Not called again; any changes will never be picked up.
+    ///
+    /// The `Args` instance should be created using `ArgsBuilder` rather than direct initialisation
+    /// to resist potential breaking changes (see semver policy on crate root).
+    fn args(&self) -> Args;
 }
 
 /// Starts watching, and calls a handler when something happens.
 ///
-/// Given an argument structure and a `Handler` type, starts the watcher
-/// loop (blocking until done).
+/// Given an argument structure and a `Handler` type, starts the watcher loop, blocking until done.
 pub fn watch<H>(handler: &H) -> Result<()>
 where
     H: Handler,
@@ -189,8 +192,8 @@ impl<'a> ExecHandler<'a> {
 }
 
 impl<'a> Handler for ExecHandler<'a> {
-    fn args(&self) -> &Args {
-        &self.args
+    fn args(&self) -> Args {
+        self.args.clone()
     }
 
     // Only returns Err() on lock poisoning.
@@ -252,9 +255,8 @@ impl<'a> Handler for ExecHandler<'a> {
     }
 }
 
-pub fn run(args: Args) -> Result<()> {
-    let handler = ExecHandler::new(&args)?;
-    watch(&handler)
+pub fn run(args: &Args) -> Result<()> {
+    watch(&ExecHandler::new(args)?)
 }
 
 fn wait_fs(rx: &Receiver<Event>, filter: &NotificationFilter, debounce: u64) -> Vec<PathOp> {
