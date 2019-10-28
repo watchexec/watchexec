@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+if [[ ! -z "$CARGO_CLIPPY" ]]; then
+    echo Clippy says: I shan’t deploy
+    exit 1
+fi
+
 ### Vars
 
 project="$PROJECT_NAME"
@@ -18,7 +23,6 @@ if [[ "$target" == *"windows"* ]]; then
     windows="1"
 fi
 
-project="cargo-watch"
 build_dir=$(mktemp -d 2>/dev/null || mktemp -d -t tmp)
 out_dir=$(pwd)
 name="$project-$tag-$target"
