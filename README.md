@@ -108,6 +108,10 @@ Available [using scoop](https://scoop.sh/):
 
     #> scoop install watchexec
 
+Or [chocolatey](https://chocolatey.org/packages/watchexec):
+
+    #> choco install watchexec
+
 Or just unzip the binary from the GitHub Releases.
 
 ## Shell completions
