@@ -21,7 +21,7 @@ env:
   global:
   - PROJECT_NAME=watchexec
 
-matrix:
+jobs:
   fast_finish: true
   allow_failures:
     - env: CARGO_CLIPPY=1
@@ -68,11 +68,11 @@ script: ci/script.sh
 before_deploy: ci/deploy.sh
 deploy:
   provider: releases
-  api_key:
+  token:
     secure: sbV2K4G2SA78U6d8SNZKExenWnuv1MsJ/9ovDDH4ucnzkpJEWDV2iwPklcu5oaRj3Sz4jYuYXToqcbJmSjL5eXjlk8rh2sG2LWT+8Up3X1vxte2XFXko15I/613rD8E/qWfS9FqzmuhMX+gb4P7OwWvVUwtw0IIuSGfBW/TEgUTFUZnUmgdm5ra8VnV3CvmTbn8botxbkdAUvk4C0g7yqHjlV7v9xU+DEXz2Y820cAH8ulu1ZU3JBm+XfVzZ09kByeQ7wnvyRuE4RhVtKK8nKUy+2JF7HX5N+0Du8z9ZHosV6+uoUz9i2OecYzAvL8xKiSkeHBqTxIDTeM4lnnDmnm5LsJ4aEU6pBSuWhglmflTbtAN7rBfYgZGJ6je6Gem5bOcCDtGI7+2qjf00Jo7vbmyK6D6Y6yxwf3W0QnOZcXrn9BWZLMMgochIBlVTTM1zFodcprpdHo8iHNVms3A++WqLnp1O0L/55id59VITGJNafy2vmXU/nlQi2MO03s3SF3jdHT7rchYjJRAcGR79QtCLiL3CbYnaQJsDNviyMm1VC6hkst0tXB8t12v2ht5NU7NEN8E31jnnRLRnwr7LUFRgOzFVF0M5jSqs3eCLnYyI7gCMKL2qOZ2yxJuD9bKsVZDpVvUqnaj5ifE+TMYoONPrc9W1hTyfcND9MhCsM+g=
   file_glob: true
   file: ${PROJECT_NAME}-${TRAVIS_TAG}-${TARGET}.*
-  skip_cleanup: true
+  cleanup: false
   on:
     repo: watchexec/watchexec
     tags: true
