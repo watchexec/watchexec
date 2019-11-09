@@ -74,6 +74,8 @@ pub struct Args {
     /// Interval for polling. (seconds)
     #[builder(default = "2")]
     pub poll_interval: u32,
+    #[builder(default)]
+    pub watch_idle: bool,
 }
 
 impl ArgsBuilder {
@@ -205,7 +207,11 @@ where
                  .help("Do not wrap command in 'sh -c' resp. 'cmd.exe /C'")
                  .short("n")
                  .long("no-shell"))
-        .arg(Arg::with_name("once").short("1").hidden(true));
+        .arg(Arg::with_name("once").short("1").hidden(true))
+        .arg(Arg::with_name("watch-idle")
+                 .help("Ignores commands while the process is still running")
+                 .short("W")
+                 .long("watch-idle"));
 
     let args = match from {
         None => app.get_matches(),
@@ -300,5 +306,6 @@ where
         once: args.is_present("once"),
         poll: args.occurrences_of("poll") > 0,
         poll_interval,
+        watch_idle: args.is_present("watch-idle"),
     })
 }

@@ -189,6 +189,19 @@ impl ExecHandler {
 
         Ok(())
     }
+
+    pub fn has_running_process(&self) -> bool {
+        let guard = self
+            .child_process
+            .read()
+            .expect("poisoned lock in signal_process");
+
+        if let Some(ref _child) = *guard {
+            return true;
+        }
+
+        false
+    }
 }
 
 impl Handler for ExecHandler {
@@ -217,20 +230,35 @@ impl Handler for ExecHandler {
         //
         let scenario = (self.args.restart, self.signal.is_some());
 
+        let running_process = self.has_running_process();
+
         match scenario {
             // Custom restart behaviour (--restart was given, and --signal specified):
             // Send specified signal to the child, wait for it to exit, then run the command again
             (true, true) => {
-                signal_process(&self.child_process, self.signal, true);
-                self.spawn(ops)?;
+                if self.args.watch_idle {
+                    if !running_process {
+                        self.spawn(ops)?;
+                    }
+                } else {
+                    signal_process(&self.child_process, self.signal, true);
+                    self.spawn(ops)?;
+                }
             }
 
             // Default restart behaviour (--restart was given, but --signal wasn't specified):
             // Send SIGTERM to the child, wait for it to exit, then run the command again
             (true, false) => {
                 let sigterm = signal::new(Some("SIGTERM".into()));
-                signal_process(&self.child_process, sigterm, true);
-                self.spawn(ops)?;
+
+                if self.args.watch_idle {
+                    if !running_process {
+                        self.spawn(ops)?;
+                    }
+                } else {
+                    signal_process(&self.child_process, sigterm, true);
+                    self.spawn(ops)?;
+                }
             }
 
             // SIGHUP scenario: --signal was given, but --restart was not
@@ -240,8 +268,14 @@ impl Handler for ExecHandler {
             // Default behaviour (neither --signal nor --restart specified):
             // Make sure the previous run was ended, then run the command again
             (false, false) => {
-                signal_process(&self.child_process, None, true);
-                self.spawn(ops)?;
+                if self.args.watch_idle {
+                    if !running_process {
+                        self.spawn(ops)?;
+                    }
+                } else {
+                    signal_process(&self.child_process, None, true);
+                    self.spawn(ops)?;
+                }
             }
         }
 
