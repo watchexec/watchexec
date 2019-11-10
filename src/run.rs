@@ -236,7 +236,7 @@ impl Handler for ExecHandler {
             // Custom restart behaviour (--restart was given, and --signal specified):
             // Send specified signal to the child, wait for it to exit, then run the command again
             (true, true) => {
-                if self.args.watch_idle {
+                if self.args.watch_when_idle {
                     if !running_process {
                         self.spawn(ops)?;
                     }
@@ -251,7 +251,7 @@ impl Handler for ExecHandler {
             (true, false) => {
                 let sigterm = signal::new(Some("SIGTERM".into()));
 
-                if self.args.watch_idle {
+                if self.args.watch_when_idle {
                     if !running_process {
                         self.spawn(ops)?;
                     }
@@ -268,7 +268,7 @@ impl Handler for ExecHandler {
             // Default behaviour (neither --signal nor --restart specified):
             // Make sure the previous run was ended, then run the command again
             (false, false) => {
-                if self.args.watch_idle {
+                if self.args.watch_when_idle {
                     if !running_process {
                         self.spawn(ops)?;
                     }
