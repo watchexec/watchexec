@@ -198,7 +198,7 @@ where
                  .short("p")
                  .long("postpone"))
         .arg(Arg::with_name("poll")
-                 .help("Forces polling mode")
+                 .help("Force polling mode")
                  .long("force-poll")
                  .value_name("interval"))
         .arg(Arg::with_name("no-shell")
