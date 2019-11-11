@@ -196,11 +196,7 @@ impl ExecHandler {
             .read()
             .expect("poisoned lock in has_running_process");
 
-        if let Some(ref _child) = *guard {
-            return true;
-        }
-
-        false
+        (*guard).is_some()
     }
 }
 
@@ -223,10 +219,11 @@ impl Handler for ExecHandler {
     fn on_update(&self, ops: &[PathOp]) -> Result<bool> {
         // We have four scenarios here:
         //
-        // 1. Send a specified signal to the child, wait for it to exit, then run the command again
-        // 2. Send SIGTERM to the child, wait for it to exit, then run the command again
-        // 3. Just send a specified signal to the child, do nothing more
-        // 4. Make sure the previous run was ended, then run the command again
+        // 1. Just send a specified signal to the child, do nothing more
+        // 2. Just spawn a process if there are no running processes in the background
+        // 3. Send a specified signal to the child, wait for it to exit, then run the command again
+        // 4. Send SIGTERM to the child, wait for it to exit, then run the command again
+        // 5. Make sure the previous run was ended, then run the command again
         //
         let scenario = (
             self.args.restart,
