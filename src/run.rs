@@ -194,7 +194,7 @@ impl ExecHandler {
         let guard = self
             .child_process
             .read()
-            .expect("poisoned lock in signal_process");
+            .expect("poisoned lock in has_running_process");
 
         if let Some(ref _child) = *guard {
             return true;
@@ -228,54 +228,46 @@ impl Handler for ExecHandler {
         // 3. Just send a specified signal to the child, do nothing more
         // 4. Make sure the previous run was ended, then run the command again
         //
-        let scenario = (self.args.restart, self.signal.is_some());
-
+        let scenario = (
+            self.args.restart,
+            self.signal.is_some(),
+            self.args.watch_when_idle,
+        );
         let running_process = self.has_running_process();
 
         match scenario {
-            // Custom restart behaviour (--restart was given, and --signal specified):
-            // Send specified signal to the child, wait for it to exit, then run the command again
-            (true, true) => {
-                if self.args.watch_when_idle {
-                    if !running_process {
-                        self.spawn(ops)?;
-                    }
-                } else {
-                    signal_process(&self.child_process, self.signal, true);
+            // SIGHUP scenario: --signal was given, but --restart was not
+            // Just send a signal (e.g. SIGHUP) to the child, do nothing more
+            (false, true, _) => signal_process(&self.child_process, self.signal, false),
+
+            // Spawn a process when there are no running processes in the background
+            (_, _, true) => {
+                if !running_process {
                     self.spawn(ops)?;
                 }
+            }
+
+            // Custom restart behaviour (--restart was given, and --signal specified):
+            // Send specified signal to the child, wait for it to exit, then run the command again
+            (true, true, false) => {
+                signal_process(&self.child_process, self.signal, true);
+                self.spawn(ops)?;
             }
 
             // Default restart behaviour (--restart was given, but --signal wasn't specified):
             // Send SIGTERM to the child, wait for it to exit, then run the command again
-            (true, false) => {
+            (true, false, false) => {
                 let sigterm = signal::new(Some("SIGTERM".into()));
 
-                if self.args.watch_when_idle {
-                    if !running_process {
-                        self.spawn(ops)?;
-                    }
-                } else {
-                    signal_process(&self.child_process, sigterm, true);
-                    self.spawn(ops)?;
-                }
+                signal_process(&self.child_process, sigterm, true);
+                self.spawn(ops)?;
             }
-
-            // SIGHUP scenario: --signal was given, but --restart was not
-            // Just send a signal (e.g. SIGHUP) to the child, do nothing more
-            (false, true) => signal_process(&self.child_process, self.signal, false),
 
             // Default behaviour (neither --signal nor --restart specified):
             // Make sure the previous run was ended, then run the command again
-            (false, false) => {
-                if self.args.watch_when_idle {
-                    if !running_process {
-                        self.spawn(ops)?;
-                    }
-                } else {
-                    signal_process(&self.child_process, None, true);
-                    self.spawn(ops)?;
-                }
+            (false, false, false) => {
+                signal_process(&self.child_process, None, true);
+                self.spawn(ops)?;
             }
         }
 

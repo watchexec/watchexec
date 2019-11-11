@@ -209,7 +209,7 @@ where
                  .long("no-shell"))
         .arg(Arg::with_name("once").short("1").hidden(true))
         .arg(Arg::with_name("watch-when-idle")
-                 .help("Ignores commands while the process is still running")
+                 .help("Ignore events while the process is still running")
                  .short("W")
                  .long("watch-when-idle"));
 
