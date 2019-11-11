@@ -31,6 +31,9 @@ impl NotificationFilter {
             if ignore_path.is_relative() && !i.starts_with('*') {
                 ignore_path = Path::new("**").join(&ignore_path);
             }
+            if !i.ends_with('*') {
+                ignore_path = ignore_path.join("**");
+            }
             let pattern = ignore_path
                 .to_str()
                 .expect("corrupted memory (string -> path -> string)");
@@ -136,5 +139,19 @@ mod tests {
         assert!(filter.is_excluded(Path::new("hello.rs")));
         assert!(filter.is_excluded(Path::new("Cargo.toml")));
         assert!(filter.is_excluded(Path::new("README.md")));
+    }
+
+    #[test]
+    fn test_recursive_directory_ignore() {
+        let ignores = &["target".into()];
+        let filter = NotificationFilter::new(&[], ignores, gitignore::load(&[]), ignore::load(&[]))
+            .expect("test filter errors");
+
+        assert!(filter.is_excluded(Path::new("target")));
+        // Make sure that sub-directories/-files are recursively ignored.
+        assert!(filter.is_excluded(Path::new("target/rls")));
+        assert!(filter.is_excluded(Path::new("target/rls/debug")));
+        assert!(!filter.is_excluded(Path::new("hello.rs")));
+        assert!(!filter.is_excluded(Path::new("Cargo.toml")));
     }
 }
