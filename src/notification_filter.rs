@@ -151,6 +151,8 @@ mod tests {
         // Make sure that sub-directories/-files are recursively ignored.
         assert!(filter.is_excluded(Path::new("target/rls")));
         assert!(filter.is_excluded(Path::new("target/rls/debug")));
+        // Assert that files containing subsets of the path are not ignored.
+        assert!(!filter.is_excluded(Path::new("target-file")));
         assert!(!filter.is_excluded(Path::new("hello.rs")));
         assert!(!filter.is_excluded(Path::new("Cargo.toml")));
     }
