@@ -334,22 +334,20 @@ mod imp {
         }
 
         pub fn wait(&self) {
-            unsafe {
-                loop {
-                    let mut code: DWORD = 0;
-                    let mut key: ULONG_PTR = 0;
-                    let mut overlapped: LPOVERLAPPED = mem::uninitialized();
-                    GetQueuedCompletionStatus(
-                        self.completion_port,
-                        &mut code,
-                        &mut key,
-                        &mut overlapped,
-                        INFINITE,
-                    );
+            loop {
+                let mut code: DWORD = 0;
+                let mut key: ULONG_PTR = 0;
+                let mut overlapped = mem::MaybeUninit::<LPOVERLAPPED>::uninit();
+                unsafe { GetQueuedCompletionStatus(
+                    self.completion_port,
+                    &mut code,
+                    &mut key,
+                    overlapped.as_mut_ptr(),
+                    INFINITE,
+                ); }
 
-                    if code == JOB_OBJECT_MSG_ACTIVE_PROCESS_ZERO && (key as HANDLE) == self.job {
-                        break;
-                    }
+                if code == JOB_OBJECT_MSG_ACTIVE_PROCESS_ZERO && (key as HANDLE) == self.job {
+                    break;
                 }
             }
         }
