@@ -18,7 +18,11 @@
     clippy::result_unwrap_used
 )]
 #![deny(unsafe_code, clippy::missing_const_for_fn, clippy::redundant_clone)]
-#![allow(clippy::default_trait_access, clippy::cognitive_complexity)]
+#![allow(
+    clippy::default_trait_access,
+    clippy::cognitive_complexity,
+    clippy::too_many_lines
+)]
 
 #[macro_use]
 extern crate clap;
