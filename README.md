@@ -1,6 +1,6 @@
 # watchexec
 
-[![Build status](https://badgen.net/travis/watchexec/watchexec/master)](https://travis-ci.org/watchexec/watchexec)
+[![Build status](https://badgen.net/travis/watchexec/watchexec/main)](https://travis-ci.org/watchexec/watchexec)
 [![Crates.io status](https://badgen.net/crates/v/watchexec)](https://crates.io/crates/watchexec)
 [![Docs status](https://docs.rs/watchexec/badge.svg)](https://docs.rs/watchexec)
 

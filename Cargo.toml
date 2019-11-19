@@ -1,6 +1,6 @@
 [package]
 name = "watchexec"
-version = "1.11.1"
+version = "1.12.0"
 authors = ["Matt Green <mattgreenrocks@gmail.com>"]
 description = "Executes commands in response to file modifications"
 documentation = "https://github.com/watchexec/watchexec"
@@ -30,7 +30,7 @@ globset = "0.4.1"
 lazy_static = "1.1.0"
 log = "0.4.4"
 notify = "4.0.13"
-derive_builder = "0.8.0"
+derive_builder = "0.9.0"
 
 [dependencies.clap]
 version = "2.32.0"
