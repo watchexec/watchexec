@@ -1,11 +1,13 @@
 extern crate globset;
+extern crate walkdir;
 
 use globset::{GlobBuilder, GlobSet, GlobSetBuilder};
-use std::collections::HashSet;
+
 use std::fs;
 use std::io;
 use std::io::Read;
 use std::path::{Path, PathBuf};
+use walkdir::WalkDir;
 
 pub struct Gitignore {
     files: Vec<GitignoreFile>,
@@ -43,39 +45,43 @@ enum MatchResult {
 
 pub fn load(paths: &[PathBuf]) -> Gitignore {
     let mut files = vec![];
-    let mut checked_dirs = HashSet::new();
 
     for path in paths {
         let mut p = path.to_owned();
 
-        loop {
-            if !checked_dirs.contains(&p) {
-                checked_dirs.insert(p.clone());
-
-                let gitignore_path = p.join(".gitignore");
-                if gitignore_path.exists() {
-                    if let Ok(f) = GitignoreFile::new(&gitignore_path) {
-                        debug!("Loaded {:?}", gitignore_path);
-                        files.push(f);
-                    } else {
-                        debug!("Unable to load {:?}", gitignore_path);
-                    }
-                }
-            }
-
+        // scan parent directories up to a root .git folder
+        let top_level_git_dir = loop {
             // Stop if we see a .git directory
             if let Ok(metadata) = p.join(".git").metadata() {
                 if metadata.is_dir() {
-                    break;
+                    break Some(path);
                 }
             }
 
             if p.parent().is_none() {
-                break;
+                break None;
             }
+        };
 
-            p.pop();
+        if let Some(root) = top_level_git_dir {
+            // scan in subdirectories
+            for entry in WalkDir::new(root)
+                .into_iter()
+                .filter_map(Result::ok)
+                .filter(|e| e.file_type().is_file())
+                .filter(|e| e.file_name() == ".gitignore")
+            {
+                let gitignore_path = entry.path();
+                if let Ok(f) = GitignoreFile::new(&gitignore_path) {
+                    debug!("Loaded {:?}", gitignore_path);
+                    files.push(f);
+                } else {
+                    debug!("Unable to load {:?}", gitignore_path);
+                }
+            }
         }
+
+        p.pop();
     }
 
     Gitignore::new(files)
