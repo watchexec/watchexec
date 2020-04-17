@@ -71,7 +71,7 @@ pub struct Args {
     /// Force using the polling backend.
     #[builder(default)]
     pub poll: bool,
-    /// Interval for polling. (seconds)
+    /// Interval for polling. (milliseconds)
     #[builder(default = "2")]
     pub poll_interval: u32,
     #[builder(default)]
@@ -200,7 +200,7 @@ where
                  .short("p")
                  .long("postpone"))
         .arg(Arg::with_name("poll")
-                 .help("Force polling mode")
+                 .help("Force polling mode (interval in milliseconds)")
                  .long("force-poll")
                  .value_name("interval"))
         .arg(Arg::with_name("no-shell")
