@@ -1,4 +1,5 @@
 extern crate globset;
+extern crate walkdir;
 
 use globset::{GlobBuilder, GlobSet, GlobSetBuilder};
 use std::collections::HashSet;
@@ -6,6 +7,7 @@ use std::fs;
 use std::io;
 use std::io::Read;
 use std::path::{Path, PathBuf};
+use walkdir::WalkDir;
 
 pub struct Ignore {
     files: Vec<IgnoreFile>,
@@ -48,6 +50,7 @@ pub fn load(paths: &[PathBuf]) -> Ignore {
     for path in paths {
         let mut p = path.to_owned();
 
+        // walk up to root
         loop {
             if !checked_dirs.contains(&p) {
                 checked_dirs.insert(p.clone());
@@ -68,6 +71,22 @@ pub fn load(paths: &[PathBuf]) -> Ignore {
             }
 
             p.pop();
+        }
+
+        //also look in subfolders
+        for entry in WalkDir::new(path)
+            .into_iter()
+            .filter_map(Result::ok)
+            .filter(|e| e.file_type().is_file())
+            .filter(|e| e.file_name() == ".ignore")
+        {
+            let ignore_path = entry.path();
+            if let Ok(f) = IgnoreFile::new(&ignore_path) {
+                debug!("Loaded {:?}", ignore_path);
+                files.push(f);
+            } else {
+                debug!("Unable to load {:?}", ignore_path);
+            }
         }
     }
 
