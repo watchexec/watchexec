@@ -1,6 +1,3 @@
-extern crate globset;
-extern crate walkdir;
-
 use globset::{GlobBuilder, GlobSet, GlobSetBuilder};
 use std::collections::HashSet;
 use std::fs;
@@ -51,6 +48,8 @@ pub fn load(paths: &[PathBuf]) -> Ignore {
         let mut p = path.to_owned();
 
         // walk up to root
+        // FIXME: this makes zero sense and should be removed
+        // but that would be a breaking change
         loop {
             if !checked_dirs.contains(&p) {
                 checked_dirs.insert(p.clone());

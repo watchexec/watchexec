@@ -1,6 +1,3 @@
-extern crate globset;
-extern crate walkdir;
-
 use globset::{GlobBuilder, GlobSet, GlobSetBuilder};
 
 use std::fs;
@@ -47,21 +44,22 @@ pub fn load(paths: &[PathBuf]) -> Gitignore {
     let mut files = vec![];
 
     for path in paths {
-        let mut p = path.to_owned();
+        let mut top_level_git_dir = None;
+        let mut p = Some(path.clone()); // FIXME: cow
 
-        // scan parent directories up to a root .git folder
-        let top_level_git_dir = loop {
+        while let Some(ref current) = p {
+            debug!("Looking in {:?} for a .git directory", current);
+
             // Stop if we see a .git directory
-            if let Ok(metadata) = p.join(".git").metadata() {
+            if let Ok(metadata) = current.join(".git").metadata() {
                 if metadata.is_dir() {
-                    break Some(path);
+                    top_level_git_dir = Some(path);
+                    break;
                 }
             }
 
-            if p.parent().is_none() {
-                break None;
-            }
-        };
+            p = current.parent().map(|p| p.to_owned());
+        }
 
         if let Some(root) = top_level_git_dir {
             // scan in subdirectories
@@ -81,7 +79,7 @@ pub fn load(paths: &[PathBuf]) -> Gitignore {
             }
         }
 
-        p.pop();
+        // p.pop();
     }
 
     Gitignore::new(files)
