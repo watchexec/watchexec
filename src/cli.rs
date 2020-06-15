@@ -253,6 +253,7 @@ where
         String::from("*.py[co]"),
         String::from("#*#"),
         String::from(".#*"),
+        String::from(".*.kate-swp"),
         String::from(".*.sw?"),
         String::from(".*.sw?x"),
         format!("**{}.git{}**", MAIN_SEPARATOR, MAIN_SEPARATOR),
