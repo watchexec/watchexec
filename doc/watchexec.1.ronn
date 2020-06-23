@@ -28,6 +28,9 @@ Sends the specified signal (e.g. `SIGKILL`) to the child process. Defaults to `S
 * `-n`, `--no-shell`:
 Execute command directly, do not wrap it in `sh -c` resp. `cmd.exe /C`. This is especially useful in combination with `--signal`, as the signal is then send directly to the specified command. While `--no-shell` is a little more performant than the default, it prevents using shell-features like pipes and redirects.
 
+* `--no-meta`:
+Ignore metadata changes.
+
 * `--no-environment`:
 Do not set WATCHEXEC_*_PATH environment variables for child process.
 
