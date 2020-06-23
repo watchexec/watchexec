@@ -518,7 +518,7 @@ mod tests {
 
     #[test]
     fn test_start() {
-        let _ = spawn(&["echo".into(), "hi".into()], &[], true);
+        let _ = spawn(&["echo".into(), "hi".into()], &[], true, false);
     }
 
     /*
@@ -641,7 +641,7 @@ mod tests {
 
     #[test]
     fn test_start() {
-        let _ = spawn(&["echo".into(), "hi".into()], &[], true);
+        let _ = spawn(&["echo".into(), "hi".into()], &[], true, false);
     }
 
     /*
