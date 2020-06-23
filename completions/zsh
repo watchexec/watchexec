@@ -13,6 +13,7 @@ args=(
   '(-h --help)'{-h,--help}'[Prints help information]'
   '(-k --kill)'{-k,--kill}'[Send SIGKILL to child processes (deprecated, use -s SIGKILL instead)]'
   '(-n --no-shell)'{-n,--no-shell}'[Do not wrap command in ''sh -c'' resp. ''cmd.exe /C'']'
+  '--no-environment[Do not set WATCHEXEC_*_PATH environment variables for child process]'
   '(-p --postpone)'{-p,--postpone}'[Wait until first change to execute command]'
   '(-r --restart)'{-r,--restart}'[Restart the process if it''s still running]'
   '(-V --version)'{-V,--version}'[Prints version information]'

@@ -185,7 +185,7 @@ impl ExecHandler {
 
         debug!("Launching child process");
         let mut guard = self.child_process.write()?;
-        *guard = Some(process::spawn(&self.args.cmd, ops, self.args.no_shell)?);
+        *guard = Some(process::spawn(&self.args.cmd, ops, self.args.no_shell, self.args.no_environment)?);
 
         Ok(())
     }
