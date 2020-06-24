@@ -4,6 +4,7 @@ use std::fs;
 use std::io;
 use std::io::Read;
 use std::path::{Path, PathBuf};
+use std::borrow::{ToOwned};
 use walkdir::WalkDir;
 
 pub struct Gitignore {
@@ -58,7 +59,7 @@ pub fn load(paths: &[PathBuf]) -> Gitignore {
                 }
             }
 
-            p = current.parent().map(|p| p.to_owned());
+            p = current.parent().map(ToOwned::to_owned);
         }
 
         if let Some(root) = top_level_git_dir {
@@ -70,7 +71,7 @@ pub fn load(paths: &[PathBuf]) -> Gitignore {
                 .filter(|e| e.file_name() == ".gitignore")
             {
                 let gitignore_path = entry.path();
-                if let Ok(f) = GitignoreFile::new(&gitignore_path) {
+                if let Ok(f) = GitignoreFile::new(gitignore_path) {
                     debug!("Loaded {:?}", gitignore_path);
                     files.push(f);
                 } else {
