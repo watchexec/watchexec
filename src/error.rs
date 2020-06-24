@@ -33,7 +33,18 @@ impl From<globset::Error> for Error {
 
 impl From<io::Error> for Error {
     fn from(err: io::Error) -> Self {
-        Self::Io(err)
+        Self::Io(
+            match err.raw_os_error() {
+                Some(os_err) => match os_err {
+                    7 => {
+                        let msg = "There are so many changed files that the environment variables of the child process have been overrun. Try running with --no-meta or --no-environment.";
+                        io::Error::new(io::ErrorKind::Other, msg)
+                    },
+                    _ => err,
+                }
+                None => err,
+            }
+        )
     }
 }
 
