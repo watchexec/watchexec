@@ -169,7 +169,12 @@ impl ExecHandler {
 
         debug!("Launching child process");
         let mut guard = self.child_process.write()?;
-        *guard = Some(process::spawn(&self.args.cmd, ops, self.args.no_shell, self.args.no_environment)?);
+        *guard = Some(process::spawn(
+            &self.args.cmd,
+            ops,
+            self.args.no_shell,
+            self.args.no_environment,
+        )?);
 
         Ok(())
     }
@@ -266,7 +271,12 @@ pub fn run(args: Args) -> Result<()> {
     watch(&ExecHandler::new(args)?)
 }
 
-fn wait_fs(rx: &Receiver<Event>, filter: &NotificationFilter, debounce: u64, no_meta: bool) -> Vec<PathOp> {
+fn wait_fs(
+    rx: &Receiver<Event>,
+    filter: &NotificationFilter,
+    debounce: u64,
+    no_meta: bool,
+) -> Vec<PathOp> {
     let mut paths = Vec::new();
     let mut cache = HashMap::new();
 

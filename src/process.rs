@@ -5,7 +5,12 @@ use crate::pathop::PathOp;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
-pub fn spawn(cmd: &[String], updated_paths: &[PathOp], no_shell: bool, no_environment: bool) -> Result<Process> {
+pub fn spawn(
+    cmd: &[String],
+    updated_paths: &[PathOp],
+    no_shell: bool,
+    no_environment: bool,
+) -> Result<Process> {
     self::imp::Process::new(cmd, updated_paths, no_shell, no_environment).map_err(|e| e.into())
 }
 
@@ -83,7 +88,12 @@ mod imp {
 
     #[allow(clippy::mutex_atomic)]
     impl Process {
-        pub fn new(cmd: &[String], updated_paths: &[PathOp], no_shell: bool, no_environment: bool) -> Result<Self> {
+        pub fn new(
+            cmd: &[String],
+            updated_paths: &[PathOp],
+            no_shell: bool,
+            no_environment: bool,
+        ) -> Result<Self> {
             use nix::unistd::*;
             use std::convert::TryInto;
             use std::os::unix::process::CommandExt;
@@ -234,7 +244,12 @@ mod imp {
     }
 
     impl Process {
-        pub fn new(cmd: &[String], updated_paths: &[PathOp], no_shell: bool, no_environment: bool) -> Result<Self> {
+        pub fn new(
+            cmd: &[String],
+            updated_paths: &[PathOp],
+            no_shell: bool,
+            no_environment: bool,
+        ) -> Result<Self> {
             use std::convert::TryInto;
             use std::os::windows::io::IntoRawHandle;
             use std::os::windows::process::CommandExt;

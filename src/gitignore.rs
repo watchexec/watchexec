@@ -1,10 +1,10 @@
 use globset::{GlobBuilder, GlobSet, GlobSetBuilder};
 
+use std::borrow::ToOwned;
 use std::fs;
 use std::io;
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::borrow::{ToOwned};
 use walkdir::WalkDir;
 
 pub struct Gitignore {
