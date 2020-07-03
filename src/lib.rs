@@ -9,19 +9,13 @@
 //!
 //! [watchexec]: https://github.com/watchexec/watchexec
 
-#![forbid(
-    clippy::pedantic,
-    clippy::nursery,
-    deprecated,
-    intra_doc_link_resolution_failure,
+#![forbid(deprecated)]
+#![warn(
+    clippy::all,
+    clippy::missing_const_for_fn,
     clippy::option_unwrap_used,
-    clippy::result_unwrap_used
-)]
-#![deny(unsafe_code, clippy::missing_const_for_fn, clippy::redundant_clone)]
-#![allow(
-    clippy::default_trait_access,
-    clippy::cognitive_complexity,
-    clippy::too_many_lines
+    clippy::result_unwrap_used,
+    intra_doc_link_resolution_failure
 )]
 
 #[macro_use]
