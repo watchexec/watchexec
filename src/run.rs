@@ -10,27 +10,12 @@ use crate::watcher::{Event, Watcher};
 use std::{
     collections::HashMap,
     fs::canonicalize,
-    io::Write,
     sync::{
         mpsc::{channel, Receiver},
         Arc, RwLock,
     },
     time::Duration,
 };
-
-fn init_logger(debug: bool) {
-    let mut log_builder = env_logger::Builder::new();
-    let level = if debug {
-        log::LevelFilter::Debug
-    } else {
-        log::LevelFilter::Warn
-    };
-
-    log_builder
-        .format(|buf, r| writeln!(buf, "*** {}", r.args()))
-        .filter(None, level)
-        .init();
-}
 
 pub trait Handler {
     /// Called through a manual request, such as an initial run.
@@ -76,7 +61,6 @@ where
     H: Handler,
 {
     let args = handler.args();
-    init_logger(args.debug);
 
     let mut paths = vec![];
     for path in &args.paths {
