@@ -16,11 +16,11 @@ Example use cases:
 ## Features
 
 * Simple invocation and use
-* Runs on OS X, Linux and Windows
+* Runs on OS X, Linux, and Windows
 * Monitors current directory and all subdirectories for changes
-    * Uses most efficient event polling mechanism for your platform (except for [BSD](https://github.com/passcod/notify#todo))
+    * Uses most efficient event polling mechanism for your platform (except for [BSD](https://github.com/notify-rs/notify#todo))
 * Coalesces multiple filesystem events into one, for editors that use swap/backup files during saving
-* By default, uses `.gitignore` to determine which files to ignore notifications for
+* By default, uses `.gitignore` and `.ignore` to determine which files to ignore notifications for
 * Support for watching files with a specific extension
 * Support for filtering/ignoring events based on [glob patterns](https://docs.rs/globset/*/globset/#syntax)
 * Launches child processes in a new process group
@@ -33,6 +33,7 @@ Example use cases:
         * `$WATCHEXEC_META_CHANGED_PATH`, the path of the file whose metadata changed
     * If multiple files changed:
         * `$WATCHEXEC_COMMON_PATH`, the longest common path of all of the files that triggered a change
+    * This can be disabled or limited with `--no-environment` and `--no-meta`
 * Optionally clears screen between executions
 * Optionally restarts the command with every modification (good for servers)
 * Does not require a language runtime
