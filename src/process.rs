@@ -5,8 +5,8 @@ use crate::pathop::PathOp;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
-pub fn spawn(cmd: &[String], updated_paths: &[PathOp], no_shell: bool) -> Result<Process> {
-    self::imp::Process::new(cmd, updated_paths, no_shell).map_err(|e| e.into())
+pub fn spawn(cmd: &[String], updated_paths: &[PathOp], no_shell: bool, no_environment: bool) -> Result<Process> {
+    self::imp::Process::new(cmd, updated_paths, no_shell, no_environment).map_err(|e| e.into())
 }
 
 pub use self::imp::Process;
@@ -83,7 +83,7 @@ mod imp {
 
     #[allow(clippy::mutex_atomic)]
     impl Process {
-        pub fn new(cmd: &[String], updated_paths: &[PathOp], no_shell: bool) -> Result<Self> {
+        pub fn new(cmd: &[String], updated_paths: &[PathOp], no_shell: bool, no_environment: bool) -> Result<Self> {
             use nix::unistd::*;
             use std::convert::TryInto;
             use std::os::unix::process::CommandExt;
@@ -107,7 +107,12 @@ mod imp {
 
             debug!("Assembled command {:?}", command);
 
-            let command_envs = super::collect_path_env_vars(updated_paths);
+            let command_envs = if no_environment {
+                Vec::new()
+            } else {
+                super::collect_path_env_vars(updated_paths)
+            };
+
             for &(ref name, ref val) in &command_envs {
                 command.env(name, val);
             }
@@ -229,7 +234,7 @@ mod imp {
     }
 
     impl Process {
-        pub fn new(cmd: &[String], updated_paths: &[PathOp], no_shell: bool) -> Result<Self> {
+        pub fn new(cmd: &[String], updated_paths: &[PathOp], no_shell: bool, no_environment: bool) -> Result<Self> {
             use std::convert::TryInto;
             use std::os::windows::io::IntoRawHandle;
             use std::os::windows::process::CommandExt;
@@ -304,7 +309,12 @@ mod imp {
             command.creation_flags(CREATE_SUSPENDED);
             debug!("Assembled command {:?}", command);
 
-            let command_envs = super::collect_path_env_vars(updated_paths);
+            let command_envs = if no_environment {
+                Vec::new()
+            } else {
+                super::collect_path_env_vars(updated_paths)
+            };
+
             for &(ref name, ref val) in &command_envs {
                 command.env(name, val);
             }
@@ -508,7 +518,7 @@ mod tests {
 
     #[test]
     fn test_start() {
-        let _ = spawn(&["echo".into(), "hi".into()], &[], true);
+        let _ = spawn(&["echo".into(), "hi".into()], &[], true, false);
     }
 
     /*
@@ -631,7 +641,7 @@ mod tests {
 
     #[test]
     fn test_start() {
-        let _ = spawn(&["echo".into(), "hi".into()], &[], true);
+        let _ = spawn(&["echo".into(), "hi".into()], &[], true, false);
     }
 
     /*

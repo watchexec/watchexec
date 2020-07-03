@@ -134,7 +134,7 @@ where
 
     loop {
         debug!("Waiting for filesystem activity");
-        let paths = wait_fs(&rx, &filter, args.debounce);
+        let paths = wait_fs(&rx, &filter, args.debounce, args.no_meta);
         debug!("Paths updated: {:?}", paths);
 
         if !handler.on_update(&paths)? {
@@ -185,7 +185,7 @@ impl ExecHandler {
 
         debug!("Launching child process");
         let mut guard = self.child_process.write()?;
-        *guard = Some(process::spawn(&self.args.cmd, ops, self.args.no_shell)?);
+        *guard = Some(process::spawn(&self.args.cmd, ops, self.args.no_shell, self.args.no_environment)?);
 
         Ok(())
     }
@@ -282,7 +282,7 @@ pub fn run(args: Args) -> Result<()> {
     watch(&ExecHandler::new(args)?)
 }
 
-fn wait_fs(rx: &Receiver<Event>, filter: &NotificationFilter, debounce: u64) -> Vec<PathOp> {
+fn wait_fs(rx: &Receiver<Event>, filter: &NotificationFilter, debounce: u64, no_meta: bool) -> Vec<PathOp> {
     let mut paths = Vec::new();
     let mut cache = HashMap::new();
 
@@ -291,6 +291,12 @@ fn wait_fs(rx: &Receiver<Event>, filter: &NotificationFilter, debounce: u64) -> 
 
         if let Some(ref path) = e.path {
             let pathop = PathOp::new(path, e.op.ok(), e.cookie);
+            if let Some(op) = pathop.op {
+                if no_meta && PathOp::is_meta(op) {
+                    continue;
+                }
+            }
+
             // Ignore cache for the initial file. Otherwise, in
             // debug mode it's hard to track what's going on
             let excluded = filter.is_excluded(path);

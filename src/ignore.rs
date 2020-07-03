@@ -80,7 +80,7 @@ pub fn load(paths: &[PathBuf]) -> Ignore {
             .filter(|e| e.file_name() == ".ignore")
         {
             let ignore_path = entry.path();
-            if let Ok(f) = IgnoreFile::new(&ignore_path) {
+            if let Ok(f) = IgnoreFile::new(ignore_path) {
                 debug!("Loaded {:?}", ignore_path);
                 files.push(f);
             } else {

@@ -58,6 +58,12 @@ pub struct Args {
     /// Do not wrap the commands in a shell.
     #[builder(default)]
     pub no_shell: bool,
+    /// Ignore metadata changes.
+    #[builder(default)]
+    pub no_meta: bool,
+    /// Do not set WATCHEXEC_*_PATH environment variables for child process.
+    #[builder(default)]
+    pub no_environment: bool,
     /// Skip auto-loading .gitignore files
     #[builder(default)]
     pub no_vcs_ignore: bool,
@@ -207,6 +213,12 @@ where
                  .help("Do not wrap command in 'sh -c' resp. 'cmd.exe /C'")
                  .short("n")
                  .long("no-shell"))
+        .arg(Arg::with_name("no-meta")
+                 .help("Ignore metadata changes")
+                 .long("no-meta"))
+        .arg(Arg::with_name("no-environment")
+                 .help("Do not set WATCHEXEC_*_PATH environment variables for child process")
+                 .long("no-environment"))
         .arg(Arg::with_name("once").short("1").hidden(true))
         .arg(Arg::with_name("watch-when-idle")
                  .help("Ignore events while the process is still running")
@@ -302,6 +314,8 @@ where
         debug: args.is_present("verbose"),
         run_initially: !args.is_present("postpone"),
         no_shell: args.is_present("no-shell"),
+        no_meta: args.is_present("no-meta"),
+        no_environment: args.is_present("no-environment"),
         no_vcs_ignore: args.is_present("no-vcs-ignore"),
         no_ignore: args.is_present("no-ignore"),
         once: args.is_present("once"),
