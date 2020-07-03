@@ -47,7 +47,7 @@ features = []
 nix = "0.17.0"
 
 [target.'cfg(windows)'.dependencies.winapi]
-version = "0.3.8"
+version = "0.3.9"
 features = ["ioapiset", "jobapi2", "tlhelp32"]
 
 [[bin]]

@@ -77,23 +77,25 @@ A release goes through these steps:
 
 7. "Real" test the new code. If new options were added, test those.
 
-8. Change the version number, run `cargo check`, and make a commit that contains _only_ the
+8. Check for any dependency updates with `cargo outdated -R`.
+
+9. Change the version number, run `cargo check`, and make a commit that contains _only_ the
    Cargo.toml and Cargo.lock changes. Use the version number (without `v` prefix) as only message.
 
-9. Create an annotated tag named the naked version (without `v` prefix), with identical message:
+10. Create an annotated tag named the naked version (without `v` prefix), with identical message:
 
-   ```
-   $ git tag -am 1.14.0{,}
-   ```
+    ```
+    $ git tag -am 1.14.0{,}
+    ```
 
-10. Push: `$ git push --follow-tags`.
+11. Push: `$ git push --follow-tags`.
 
-11. Edit the draft release, select the newly pushed tag, and publish it. Built artifacts will get
+12. Edit the draft release, select the newly pushed tag, and publish it. Built artifacts will get
     built and get added automatically to the release as downloads.
 
-12. Run the `cargo publish`.
+13. Run the `cargo publish`.
 
-13. Announce the release.
+14. Announce the release.
 
 ---
 vim: tw=100
