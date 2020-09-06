@@ -77,6 +77,10 @@ Run `make` when any file in `lib` or `src` changes:
 
     $ watchexec -w lib -w src make
 
+Run `bundle install` when the `Gemfile` changes:
+
+    $ watchexec -w Gemfile bundle install
+
 ## Installation
 
 ### Cargo
