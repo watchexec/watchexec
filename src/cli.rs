@@ -143,7 +143,7 @@ where
                  .long("exts")
                  .takes_value(true))
         .arg(Arg::with_name("path")
-                 .help("Watch a specific directory")
+                 .help("Watch a specific file or directory")
                  .short("w")
                  .long("watch")
                  .number_of_values(1)
