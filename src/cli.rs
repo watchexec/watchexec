@@ -47,7 +47,7 @@ pub struct Args {
     #[builder(default)]
     pub restart: bool,
     /// Interval to debounce the changes. (milliseconds)
-    #[builder(default = "500")]
+    #[builder(default = "300")]
     pub debounce: u64,
     /// Enable debug/verbose logging. No longer used as of 1.14.0 (soft-deprecated).
     ///
