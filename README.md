@@ -93,9 +93,17 @@ watchexec requires Rust 1.38 or later. You can install it using cargo:
 
     $ brew install watchexec
 
+### OS X with Webi
+
+    $ curl -sS https://webinstall.dev/watchexec | bash
+
 ### Linux
 
-For now, use the GitHub Releases tab to obtain the binary. PRs for packaging in unsupported distros are welcomed.
+Available via Webi
+
+    $ curl -sS https://webinstall.dev/watchexec/ | bash
+
+Or use the GitHub Releases tab to obtain the binary and place it in your `PATH`. PRs for packaging in unsupported distros are welcomed.
 
 #### Debian
 
@@ -116,6 +124,10 @@ Available [using scoop](https://scoop.sh/):
 Or [chocolatey](https://chocolatey.org/packages/watchexec):
 
     #> choco install watchexec
+    
+Or [Webi](https://webinstall.dev/watchexec):
+
+   #> curl.exe -A MS https://webinstall.dev/watchexec | powershell
 
 Or just unzip the binary from the GitHub Releases.
 
