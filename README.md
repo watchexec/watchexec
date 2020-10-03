@@ -83,27 +83,31 @@ Run `bundle install` when the `Gemfile` changes:
 
 ## Installation
 
-### Cargo
+### All platforms
 
-watchexec requires Rust 1.38 or later. You can install it using cargo:
+#### Cargo
+
+Requires Rust 1.38 or later.
 
     $ cargo install watchexec
 
-### OS X with Homebrew
+#### Pre-built
+
+Use the GitHub Releases tab to obtain the tarball/zipfile appropriate for your platform and architecture, extract it, and place it in your `PATH`.
+
+### macOS
+
+#### Homebrew
 
     $ brew install watchexec
 
-### OS X with Webi
+#### Webi
 
     $ curl -sS https://webinstall.dev/watchexec | bash
 
 ### Linux
 
-Available via Webi
-
-    $ curl -sS https://webinstall.dev/watchexec/ | bash
-
-Or use the GitHub Releases tab to obtain the binary and place it in your `PATH`. PRs for packaging in unsupported distros are welcomed.
+PRs for packaging in unsupported distros are welcome.
 
 #### Debian
 
@@ -115,31 +119,29 @@ Available in the **community** repository:
 
     $ pacman -S watchexec
 
+#### Webi
+
+    $ curl -sS https://webinstall.dev/watchexec/ | bash
+
 ### Windows
 
-Available [using scoop](https://scoop.sh/):
+#### Scoop
 
     #> scoop install watchexec
 
-Or [chocolatey](https://chocolatey.org/packages/watchexec):
+#### Chocolatey
 
     #> choco install watchexec
-    
-Or [Webi](https://webinstall.dev/watchexec):
 
-   #> curl.exe -A MS https://webinstall.dev/watchexec | powershell
+#### Webi
 
-Or just unzip the binary from the GitHub Releases.
+    #> curl.exe -A MS https://webinstall.dev/watchexec | powershell
 
 ## Shell completions
 
 Currently available shell completions:
 
 - zsh: `completions/zsh` should be installed to `/usr/share/zsh/site-functions/_watchexec`
-
-## Building
-
-Rust 1.38 or later is required.
 
 ## Credits
 
