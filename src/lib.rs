@@ -13,9 +13,8 @@
 #![warn(
     clippy::all,
     clippy::missing_const_for_fn,
-    clippy::option_unwrap_used,
-    clippy::result_unwrap_used,
-    intra_doc_link_resolution_failure
+    clippy::unwrap_used,
+    broken_intra_doc_links
 )]
 
 #[macro_use]

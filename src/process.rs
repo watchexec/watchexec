@@ -130,15 +130,13 @@ mod imp {
             unsafe {
                 command.pre_exec(|| setsid().map_err(from_nix_error).map(|_| ()));
             }
-            command.spawn().and_then(|p| {
-                Ok(Self {
-                    pgid: p
-                        .id()
-                        .try_into()
-                        .expect("u32 -> i32 failed in process::new"),
-                    lock: Mutex::new(false),
-                    cvar: Condvar::new(),
-                })
+            command.spawn().map(|p| Self {
+                pgid: p
+                    .id()
+                    .try_into()
+                    .expect("u32 -> i32 failed in process::new"),
+                lock: Mutex::new(false),
+                cvar: Condvar::new(),
             })
         }
 
