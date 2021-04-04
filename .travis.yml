@@ -28,6 +28,7 @@ jobs:
     - env: TARGET=i686-unknown-linux-musl
     - env: TARGET=x86_64-unknown-linux-musl
     - env: TARGET=x86_64-pc-windows-gnu
+    - env: TARGET=arm-unknown-linux-gnueabihf
   include:
     # Default test+release versions
     - os: windows
@@ -47,6 +48,11 @@ jobs:
     - os: linux
       rust: stable
       env: TARGET=x86_64-unknown-linux-musl
+    - os: linux
+      rust: stable
+      env:
+        - TARGET=arm-unknown-linux-gnueabihf
+        - USE_CROSS=1
     - os: windows
       rust: stable
       env: TARGET=x86_64-pc-windows-gnu

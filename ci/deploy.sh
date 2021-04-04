@@ -29,7 +29,11 @@ name="$project-$tag-$target"
 
 ### Build
 
-cargo build --target $target --release --locked
+cargo_command=cargo
+if [[ -n "$USE_CROSS" ]]; then
+    cargo_command=cross
+fi
+$cargo_command build --target $target --release --locked
 
 ### Decorate
 

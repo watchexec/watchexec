@@ -5,6 +5,10 @@ set -e
 rustup target add $TARGET
 cargo clean --target $TARGET --verbose
 
+if [[ -n "$USE_CROSS" ]]; then
+    cargo install cross
+fi
+
 if [ $TRAVIS_OS_NAME = windows ]; then
     choco install windows-sdk-10.1
 fi
