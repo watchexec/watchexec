@@ -119,7 +119,7 @@ where
     loop {
         debug!("Waiting for filesystem activity");
         let paths = wait_fs(&rx, &filter, args.debounce, args.no_meta);
-        debug!("Paths updated: {:?}", paths);
+        info!("Paths updated: {:?}", paths);
 
         if !handler.on_update(&paths)? {
             break;
