@@ -6,17 +6,20 @@ use watchexec::{cli, error, run};
 
 fn main() -> error::Result<()> {
     let args = cli::get_args()?;
-    init_logger(args.debug);
+
+    if args.debug {
+        init_logger(log::LevelFilter::Debug);
+    } else if args.changes {
+        init_logger(log::LevelFilter::Info);
+    } else {
+        init_logger(log::LevelFilter::Warn);
+    }
+
     run(args)
 }
 
-fn init_logger(debug: bool) {
+fn init_logger(level: log::LevelFilter) {
     let mut log_builder = env_logger::Builder::new();
-    let level = if debug {
-        log::LevelFilter::Debug
-    } else {
-        log::LevelFilter::Warn
-    };
 
     log_builder
         .format(|buf, r| writeln!(buf, "*** {}", r.args()))

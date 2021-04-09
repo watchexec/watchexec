@@ -54,6 +54,9 @@ pub struct Args {
     /// Debug messages are printed via debug! so configure your logger appropriately instead.
     #[builder(default)]
     pub debug: bool,
+    /// Change messages are printed via info! so configure your logger appropriately instead.
+    #[builder(default)]
+    pub changes: bool,
     /// Run the commands right after starting.
     #[builder(default = "true")]
     pub run_initially: bool,
@@ -178,6 +181,9 @@ where
                  .help("Print debugging messages to stderr")
                  .short("v")
                  .long("verbose"))
+        .arg(Arg::with_name("changes")
+                 .help("Only print path change information. Overridden by --verbose")
+                 .long("changes-only"))
         .arg(Arg::with_name("filter")
                  .help("Ignore all modifications except those matching the pattern")
                  .short("f")
@@ -314,6 +320,7 @@ where
         restart: args.is_present("restart"),
         debounce,
         debug: args.is_present("verbose"),
+        changes: args.is_present("changes"),
         run_initially: !args.is_present("postpone"),
         no_shell: args.is_present("no-shell"),
         no_meta: args.is_present("no-meta"),
