@@ -14,7 +14,8 @@
 //! ```
 
 use crate::error;
-use clap::{App, Arg, Error};
+use clap::{App, Arg};
+use log::LevelFilter;
 use std::{
     ffi::OsString,
     path::{PathBuf, MAIN_SEPARATOR},
@@ -242,25 +243,30 @@ where
         Some(i) => app.get_matches_from(i),
     };
 
-    let cmd: Vec<String> = values_t!(args.values_of("command"), String)?;
-    let paths = values_t!(args.values_of("path"), String)
+    let mut builder = ArgsBuilder::default();
+
+    let cmd: Vec<String> = values_t!(args.values_of("command"), String).map_err(|err| err.to_string())?;
+    builder.cmd(cmd);
+
+    let paths: Vec<PathBuf> = values_t!(args.values_of("path"), String)
         .unwrap_or_else(|_| vec![".".into()])
         .iter()
         .map(|string_path| string_path.into())
         .collect();
+    builder.paths(paths);
 
-    // Treat --kill as --signal SIGKILL (for compatibility with older syntax)
-    let signal = if args.is_present("kill") {
-        Some("SIGKILL".to_string())
-    } else {
-        // Convert Option<&str> to Option<String>
-        args.value_of("signal").map(str::to_string)
-    };
+    // Treat --kill as --signal SIGKILL (for compatibility with deprecated syntax)
+    if args.is_present("kill") {
+        builder.signal("SIGKILL");
+    }
+
+    if let Some(signal) = args.value_of("signal") {
+        builder.signal(signal);
+    }
 
     let mut filters = values_t!(args.values_of("filter"), String).unwrap_or_else(|_| Vec::new());
-
     if let Some(extensions) = args.values_of("extensions") {
-        for exts in extensions {
+        for exts in extensions { // TODO: refactor with flatten()
             filters.extend(exts.split(',').filter_map(|ext| {
                 if ext.is_empty() {
                     None
@@ -270,6 +276,8 @@ where
             }));
         }
     }
+
+    builder.filters(filters);
 
     let mut ignores = vec![];
     let default_ignores = vec![
@@ -290,50 +298,33 @@ where
     };
     ignores.extend(values_t!(args.values_of("ignore"), String).unwrap_or_else(|_| Vec::new()));
 
-    let poll_interval = if args.occurrences_of("poll") > 0 {
-        value_t!(args.value_of("poll"), u32).unwrap_or_else(|e| e.exit())
-    } else {
-        1000
-    };
+    builder.ignores(ignores);
 
-    let debounce = if args.occurrences_of("debounce") > 0 {
-        value_t!(args.value_of("debounce"), u64).unwrap_or_else(|e| e.exit())
-    } else {
-        500
-    };
-
-    if signal.is_some() && args.is_present("postpone") {
-        // TODO: Error::argument_conflict() might be the better fit, usage was unclear, though
-        Error::value_validation_auto("--postpone and --signal are mutually exclusive".to_string())
-            .exit();
+    if args.occurrences_of("poll") > 0 {
+        builder.poll_interval(value_t!(args.value_of("poll"), u32).unwrap_or_else(|e| e.exit()));
     }
 
-    if signal.is_some() && args.is_present("kill") {
-        // TODO: Error::argument_conflict() might be the better fit, usage was unclear, though
-        Error::value_validation_auto("--kill and --signal is ambiguous.\n       Hint: Use only '--signal SIGKILL' without --kill".to_string())
-            .exit();
+    if args.occurrences_of("debounce") > 0 {
+        builder.debounce(value_t!(args.value_of("debounce"), u64).unwrap_or_else(|e| e.exit()));
     }
 
-    Ok(Args {
-        cmd,
-        paths,
-        filters,
-        ignores,
-        signal,
-        clear_screen: args.is_present("clear"),
-        restart: args.is_present("restart"),
-        debounce,
-        debug: args.is_present("verbose"),
-        changes: args.is_present("changes"),
-        run_initially: !args.is_present("postpone"),
-        no_shell: args.is_present("no-shell"),
-        no_meta: args.is_present("no-meta"),
-        no_environment: args.is_present("no-environment"),
-        no_vcs_ignore: args.is_present("no-vcs-ignore"),
-        no_ignore: args.is_present("no-ignore"),
-        once: args.is_present("once"),
-        poll: args.occurrences_of("poll") > 0,
-        poll_interval,
-        watch_when_idle: args.is_present("watch-when-idle"),
-    })
+    // TODO: check how postpone + signal behaves
+
+    builder.clear_screen(args.is_present("clear"));
+    builder.restart(args.is_present("restart"));
+    builder.run_initially(!args.is_present("postpone"));
+    builder.no_shell(args.is_present("no-shell"));
+    builder.no_meta(args.is_present("no-meta"));
+    builder.no_environment(args.is_present("no-environment"));
+    builder.no_vcs_ignore(args.is_present("no-vcs-ignore"));
+    builder.no_ignore(args.is_present("no-ignore"));
+    builder.poll(args.occurrences_of("poll") > 0);
+    builder.watch_when_idle(args.is_present("watch-when-idle"));
+
+    let mut config = builder.build()?;
+    if args.is_present("once") {
+        config.once = true;
+    }
+
+    Ok(config)
 }

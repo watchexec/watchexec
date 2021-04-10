@@ -4,24 +4,18 @@ pub type Result<T> = ::std::result::Result<T, Error>;
 
 pub enum Error {
     Canonicalization(String, io::Error),
-    Clap(clap::Error),
     Glob(globset::Error),
     Io(io::Error),
     Notify(notify::Error),
+    Generic(String),
     PoisonedLock,
 }
 
-impl StdError for Error {
-    fn description(&self) -> &str {
-        // This method is soft-deprecated and shouldn't be used,
-        // see Display for the actual description.
-        "a watchexec error"
-    }
-}
+impl StdError for Error {}
 
-impl From<clap::Error> for Error {
-    fn from(err: clap::Error) -> Self {
-        Self::Clap(err)
+impl From<String> for Error {
+    fn from(err: String) -> Self {
+        Self::Generic(err)
     }
 }
 
@@ -68,7 +62,7 @@ impl fmt::Display for Error {
                 "Path",
                 format!("couldn't canonicalize '{}':\n{}", path, err),
             ),
-            Self::Clap(err) => ("Argument", err.to_string()),
+            Self::Generic(err) => ("", err.clone()),
             Self::Glob(err) => ("Globset", err.to_string()),
             Self::Io(err) => ("I/O", err.to_string()),
             Self::Notify(err) => ("Notify", err.to_string()),
