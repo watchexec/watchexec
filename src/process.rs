@@ -16,54 +16,8 @@ pub fn spawn(
 
 pub use self::imp::Process;
 
-/*
-fn needs_wrapping(s: &String) -> bool {
-    s.contains(|ch| match ch {
-        ' ' | '\t' | '\'' | '"' => true,
-        _ => false,
-    })
-}
-
-#[cfg(target_family = "unix")]
-fn wrap_in_quotes(s: &String) -> String {
-    format!(
-        "'{}'",
-        if s.contains('\'') {
-            s.replace('\'', "'\"'\"'")
-        } else {
-            s.clone()
-        }
-    )
-}
-
-#[cfg(target_family = "windows")]
-fn wrap_in_quotes(s: &String) -> String {
-    format!(
-        "\"{}\"",
-        if s.contains('"') {
-            s.replace('"', "\"\"")
-        } else {
-            s.clone()
-        }
-    )
-}
-
-fn wrap_commands(cmd: &Vec<String>) -> Vec<String> {
-    cmd.iter()
-        .map(|fragment| {
-            if needs_wrapping(fragment) {
-                wrap_in_quotes(fragment)
-            } else {
-                fragment.clone()
-            }
-        })
-        .collect()
-}
-*/
-
 #[cfg(target_family = "unix")]
 mod imp {
-    //use super::wrap_commands;
     use crate::pathop::PathOp;
     use crate::signal::Signal;
     use nix::libc::*;
@@ -197,7 +151,6 @@ mod imp {
 
 #[cfg(target_family = "windows")]
 mod imp {
-    //use super::wrap_commands;
     use crate::pathop::PathOp;
     use crate::signal::Signal;
     use std::io;
@@ -529,54 +482,11 @@ mod tests {
     use super::collect_path_env_vars;
     use super::get_longest_common_path;
     use super::spawn;
-    //use super::wrap_commands;
 
     #[test]
     fn test_start() {
         let _ = spawn(&["echo".into(), "hi".into()], &[], true, false);
     }
-
-    /*
-    #[test]
-    fn wrap_commands_that_have_whitespace() {
-        assert_eq!(
-            wrap_commands(&vec!["echo".into(), "hello world".into()]),
-            vec!["echo".into(), "'hello world'".into()] as Vec<String>
-        );
-    }
-
-    #[test]
-    fn wrap_commands_that_have_long_whitespace() {
-        assert_eq!(
-            wrap_commands(&vec!["echo".into(), "hello    world".into()]),
-            vec!["echo".into(), "'hello    world'".into()] as Vec<String>
-        );
-    }
-
-    #[test]
-    fn wrap_commands_that_have_single_quotes() {
-        assert_eq!(
-            wrap_commands(&vec!["echo".into(), "hello ' world".into()]),
-            vec!["echo".into(), "'hello '\"'\"' world'".into()] as Vec<String>
-        );
-        assert_eq!(
-            wrap_commands(&vec!["echo".into(), "hello'world".into()]),
-            vec!["echo".into(), "'hello'\"'\"'world'".into()] as Vec<String>
-        );
-    }
-
-    #[test]
-    fn wrap_commands_that_have_double_quotes() {
-        assert_eq!(
-            wrap_commands(&vec!["echo".into(), "hello \" world".into()]),
-            vec!["echo".into(), "'hello \" world'".into()] as Vec<String>
-        );
-        assert_eq!(
-            wrap_commands(&vec!["echo".into(), "hello\"world".into()]),
-            vec!["echo".into(), "'hello\"world'".into()] as Vec<String>
-        );
-    }
-    */
 
     #[test]
     fn longest_common_path_should_return_correct_value() {
@@ -652,52 +562,9 @@ mod tests {
 #[cfg(target_family = "windows")]
 mod tests {
     use super::spawn;
-    //use super::wrap_commands;
 
     #[test]
     fn test_start() {
         let _ = spawn(&["echo".into(), "hi".into()], &[], true, false);
     }
-
-    /*
-    #[test]
-    fn wrap_commands_that_have_whitespace() {
-        assert_eq!(
-            wrap_commands(&vec!["echo".into(), "hello world".into()]),
-            vec!["echo".into(), "\"hello world\"".into()] as Vec<String>
-        );
-    }
-
-    #[test]
-    fn wrap_commands_that_have_long_whitespace() {
-        assert_eq!(
-            wrap_commands(&vec!["echo".into(), "hello    world".into()]),
-            vec!["echo".into(), "\"hello    world\"".into()] as Vec<String>
-        );
-    }
-
-    #[test]
-    fn wrap_commands_that_have_single_quotes() {
-        assert_eq!(
-            wrap_commands(&vec!["echo".into(), "hello ' world".into()]),
-            vec!["echo".into(), "\"hello ' world\"".into()] as Vec<String>
-        );
-        assert_eq!(
-            wrap_commands(&vec!["echo".into(), "hello'world".into()]),
-            vec!["echo".into(), "\"hello'world\"".into()] as Vec<String>
-        );
-    }
-
-    #[test]
-    fn wrap_commands_that_have_double_quotes() {
-        assert_eq!(
-            wrap_commands(&vec!["echo".into(), "hello \" world".into()]),
-            vec!["echo".into(), "\"hello \"\" world\"".into()] as Vec<String>
-        );
-        assert_eq!(
-            wrap_commands(&vec!["echo".into(), "hello\"world".into()]),
-            vec!["echo".into(), "\"hello\"\"world\"".into()] as Vec<String>
-        );
-    }
-    */
 }
