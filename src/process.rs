@@ -8,10 +8,10 @@ use std::path::PathBuf;
 pub fn spawn(
     cmd: &[String],
     updated_paths: &[PathOp],
-    no_shell: bool,
-    no_environment: bool,
+    shell: bool,
+    environment: bool,
 ) -> Result<Process> {
-    self::imp::Process::new(cmd, updated_paths, no_shell, no_environment).map_err(|e| e.into())
+    self::imp::Process::new(cmd, updated_paths, shell, environment).map_err(|e| e.into())
 }
 
 pub use self::imp::Process;
@@ -45,19 +45,19 @@ mod imp {
         pub fn new(
             cmd: &[String],
             updated_paths: &[PathOp],
-            no_shell: bool,
-            no_environment: bool,
+            shell: bool,
+            environment: bool,
         ) -> Result<Self> {
             use nix::unistd::*;
             use std::convert::TryInto;
             use std::os::unix::process::CommandExt;
 
             // Assemble command to run.
-            // This is either the first argument from cmd (if no_shell was given) or "sh".
+            // This is either the first argument from cmd (if shell == false) or "sh".
             // Using "sh -c" gives us features like supporting pipes and redirects,
             // but is a little less performant and can cause trouble when using custom signals
             // (e.g. --signal SIGHUP)
-            let mut command = if no_shell {
+            let mut command = if !shell {
                 let (head, tail) = cmd.split_first().expect("cmd was empty");
                 let mut command = Command::new(head);
                 command.args(tail);
@@ -71,7 +71,7 @@ mod imp {
 
             debug!("Assembled command {:?}", command);
 
-            let command_envs = if no_environment {
+            let command_envs = if !environment {
                 Vec::new()
             } else {
                 super::collect_path_env_vars(updated_paths)
@@ -200,8 +200,8 @@ mod imp {
         pub fn new(
             cmd: &[String],
             updated_paths: &[PathOp],
-            no_shell: bool,
-            no_environment: bool,
+            shell: bool,
+            environment: bool,
         ) -> Result<Self> {
             use std::convert::TryInto;
             use std::os::windows::io::IntoRawHandle;
@@ -263,7 +263,7 @@ mod imp {
             }
 
             let mut command;
-            if no_shell {
+            if !shell {
                 let (first, rest) = cmd.split_first().expect("command is empty");
                 command = Command::new(first);
                 command.args(rest);
@@ -277,7 +277,7 @@ mod imp {
             command.creation_flags(CREATE_SUSPENDED);
             debug!("Assembled command {:?}", command);
 
-            let command_envs = if no_environment {
+            let command_envs = if !environment {
                 Vec::new()
             } else {
                 super::collect_path_env_vars(updated_paths)
