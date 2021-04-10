@@ -49,11 +49,6 @@ pub struct Args {
     /// Interval to debounce the changes. (milliseconds)
     #[builder(default = "500")]
     pub debounce: u64,
-    /// Enable debug/verbose logging. No longer used as of 1.14.0 (soft-deprecated).
-    ///
-    /// Debug messages are printed via debug! so configure your logger appropriately instead.
-    #[builder(default)]
-    pub debug: bool,
     /// Change messages are printed via info! so configure your logger appropriately instead.
     #[builder(default)]
     pub changes: bool,
@@ -102,6 +97,10 @@ impl ArgsBuilder {
 
         Ok(())
     }
+
+    #[deprecated(since = "1.15.0", note = "does nothing. set the log level instead")]
+    pub fn debug(&mut self, _: impl Into<bool>) -> &mut Self {
+        self
 }
 
 #[cfg(target_family = "windows")]
