@@ -534,8 +534,23 @@ mod tests {
     use super::spawn;
 
     #[test]
-    fn test_start() {
+    fn test_shell_default() {
         let _ = spawn(&["echo".into(), "hi".into()], &[], Shell::default(), false);
+    }
+
+    #[test]
+    fn test_shell_none() {
+        let _ = spawn(&["echo".into(), "hi".into()], &[], Shell::None, false);
+    }
+
+    #[test]
+    fn test_shell_alternate() {
+        let _ = spawn(
+            &["echo".into(), "hi".into()],
+            &[],
+            Shell::Unix("bash".into()),
+            false,
+        );
     }
 
     #[test]
@@ -614,22 +629,22 @@ mod tests {
     use super::{spawn, Shell};
 
     #[test]
-    fn test_default() {
+    fn test_shell_default() {
         let _ = spawn(&["echo".into(), "hi".into()], &[], Shell::default(), false);
     }
 
     #[test]
-    fn test_cmd() {
+    fn test_shell_cmd() {
         let _ = spawn(&["echo".into(), "hi".into()], &[], Shell::Cmd, false);
     }
 
     #[test]
-    fn test_powershell() {
+    fn test_shell_powershell() {
         let _ = spawn(&["echo".into(), "hi".into()], &[], Shell::Powershell, false);
     }
 
     #[test]
-    fn test_bash() {
+    fn test_shell_bash() {
         let _ = spawn(
             &["echo".into(), "hi".into()],
             &[],
