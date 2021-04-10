@@ -110,6 +110,14 @@ where
                  .help("Force polling mode (interval in milliseconds)")
                  .long("force-poll")
                  .value_name("interval"))
+        .arg(Arg::with_name("shell")
+                 .help(if cfg!(windows) {
+                     "Use a different shell, or `none`. Try --shell=powershell, which will become the default in 2.0."
+                 } else {
+                    "Use a different shell, or `none`. E.g. --shell=bash"
+                 })
+                 .long("shell"))
+        // -n short form will not be removed, and instead become a shorthand for --shell=none
         .arg(Arg::with_name("no-shell")
                  .help("Do not wrap command in 'sh -c' resp. 'cmd.exe /C'")
                  .short("n")
@@ -196,6 +204,24 @@ where
         builder.debounce(value_t!(args.value_of("debounce"), u64).unwrap_or_else(|e| e.exit()));
     }
 
+    let shell = if args.is_present("no-shell") {
+        Shell::None
+    } else if let Some(s) = args.value_of("shell") {
+        if s.eq_ignore_ascii_case("powershell") {
+            Shell::Powershell
+        } else if s.eq_ignore_ascii_case("none") {
+            Shell::None
+        } else if s.eq_ignore_ascii_case("cmd") {
+            cmd_shell(s.into())
+        } else {
+            Shell::Unix(s.into())
+        }
+    } else {
+        default_shell()
+    };
+
+    builder.shell(shell);
+
     // TODO: check how postpone + signal behaves
 
     builder.clear_screen(args.is_present("clear"));
@@ -223,4 +249,26 @@ where
     };
 
     Ok((config, loglevel))
+}
+
+// until 2.0
+#[cfg(windows)]
+fn default_shell() -> Shell {
+    Shell::Cmd
+}
+
+#[cfg(not(windows))]
+fn default_shell() -> Shell {
+    Shell::default()
+}
+
+// because Shell::Cmd is only on windows
+#[cfg(windows)]
+fn cmd_shell(_: String) -> Shell {
+    Shell::Cmd
+}
+
+#[cfg(not(windows))]
+fn cmd_shell(s: String) -> Shell {
+    Shell::Unix(s)
 }
