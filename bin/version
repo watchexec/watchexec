@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+app="watchexec"
+mainbranch="main"
+upstream_rx="watchexec/"
+
+curbranch=$(git rev-parse --abbrev-ref HEAD)
+if [[ "$curbranch" != "$mainbranch" ]]; then
+	echo "Current branch is not $mainbranch, abort!"
+	exit 1
+fi
+
+gitstatus=$(git status --untracked-files=no --porcelain)
+if [[ ! -z "$gitstatus" ]]; then
+	echo "Uncommited files and changes, abort!"
+	exit 2
+fi
+
+upstream=$(git remote -v | grep -i "$upstream_rx" -m1 | awk '{print $1}')
+echo "Upstream remote discovered as: $upstream"
+
+echo "Pulling from upstream"
+git pull --rebase --autostash $upstream $mainbranch
+
+echo "Fetching tags from upstream"
+git fetch --tags "$upstream"
+
+extver=$(grep -P '^version =' Cargo.toml | cut -d'"' -f2)
+echo "(Version from Cargo.toml: $extver)"
+
+newver="$1"
+
+if [[ "$newver" == "$extver" ]]; then
+	echo "New and existing versions are the same, abort!"
+	exit 3
+fi
+
+date=$(date +%Y-%m-%d)
+echo "Next version to be $newver ($date), creating..."
+
+sed -E -i "s/^version = \"[0-9.]+\"/version = \"$newver\"/" Cargo.toml
+
+cargo check
+
+git commit -am "$newver"
+git tag -sam "$newver" "$newver"
+
+echo "Pushing to upstream"
+git push --follow-tags $upstream $mainbranch
