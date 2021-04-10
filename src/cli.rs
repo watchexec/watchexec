@@ -78,6 +78,7 @@ pub struct Args {
     /// For testing only, always set to false.
     #[builder(setter(skip))]
     #[builder(default)]
+    #[doc(hidden)]
     pub once: bool,
     /// Force using the polling backend.
     #[builder(default)]
