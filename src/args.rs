@@ -126,7 +126,7 @@ where
                  .help("Ignore metadata changes")
                  .long("no-meta"))
         .arg(Arg::with_name("no-environment")
-                 .help("Do not set WATCHEXEC_*_PATH environment variables for child process")
+                 .help("Do not set WATCHEXEC_*_PATH environment variables for the command")
                  .long("no-environment"))
         .arg(Arg::with_name("once").short("1").hidden(true))
         .arg(Arg::with_name("watch-when-idle")

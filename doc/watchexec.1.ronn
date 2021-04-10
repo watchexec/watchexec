@@ -23,7 +23,7 @@ Comma-separated list of file extensions to filter by. Leading dots (.rs) are all
 Ignores modifications from paths that do not match <pattern>. This option can be specified multiple times, where a match on any given pattern causes the path to trigger <command>.
 
 * `-s`, `--signal`:
-Sends the specified signal (e.g. `SIGKILL`) to the child process. Defaults to `SIGTERM`.
+Sends the specified signal (e.g. `SIGKILL`) to the command. Defaults to `SIGTERM`.
 
 * `--shell` <shell>:
 Change the shell used to run the command. Set to `none` to run the command directly without a shell.
@@ -42,7 +42,7 @@ Shorthand for `--shell=none`.
 Ignore metadata changes.
 
 * `--no-environment`:
-Do not set WATCHEXEC_*_PATH environment variables for child process.
+Do not set WATCHEXEC_*_PATH environment variables for the command.
 
 * `-i`, `--ignore` <pattern>:
 Ignores modifications from paths that match <pattern>. This option can be specified multiple times, and a match on any pattern causes the path to be ignored.
@@ -51,7 +51,10 @@ Ignores modifications from paths that match <pattern>. This option can be specif
 Monitor a specific path for changes. By default, the current working directory is watched. This may be specified multiple times, where a change in any watched directory (and subdirectories) causes <command> to be executed.
 
 * `-r`, `--restart`:
-Terminates the child process group if it is still running when subsequent file modifications are detected. By default, sends `SIGTERM`; use `--signal` to change that.
+Terminates the command if it is still running when subsequent file modifications are detected. By default, sends `SIGTERM`; use `--signal` to change that.
+
+* `-W`, `--watch-when-idle`:
+Ignore events while the process is still running.
 
 * `-c`, `--clear`:
 Clears the screen before executing <command>.

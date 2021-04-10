@@ -23,8 +23,8 @@ Example use cases:
 * By default, uses `.gitignore` and `.ignore` to determine which files to ignore notifications for
 * Support for watching files with a specific extension
 * Support for filtering/ignoring events based on [glob patterns](https://docs.rs/globset/*/globset/#syntax)
-* Launches child processes in a new process group
-* Sets the following environment variables in the child process:
+* Launches the command in a new process group
+* Sets the following environment variables in the process:
     * If a single file changed (depending on the event type):
         * `$WATCHEXEC_CREATED_PATH`, the path of the file that was created
         * `$WATCHEXEC_REMOVED_PATH`, the path of the file that was removed
@@ -61,11 +61,11 @@ Call/restart `python server.py` when any Python file in the current directory (a
 
     $ watchexec -e py -r python server.py
 
-Call/restart `my_server` when any file in the current directory (and all subdirectories) changes, sending `SIGKILL` to stop the child process:
+Call/restart `my_server` when any file in the current directory (and all subdirectories) changes, sending `SIGKILL` to stop the command:
 
     $ watchexec -r -s SIGKILL my_server
 
-Send a SIGHUP to the child process upon changes (Note: using `-n` here we're executing `my_server` directly, instead of wrapping it in a shell:
+Send a SIGHUP to the command upon changes (Note: using `-n` here we're executing `my_server` directly, instead of wrapping it in a shell:
 
     $ watchexec -n -s SIGHUP my_server
 

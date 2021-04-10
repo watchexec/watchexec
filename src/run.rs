@@ -168,7 +168,7 @@ impl ExecHandler {
             clear_screen();
         }
 
-        debug!("Launching child process");
+        debug!("Launching command");
         let mut guard = self.child_process.write()?;
         *guard = Some(process::spawn(
             &self.args.cmd,
@@ -219,11 +219,11 @@ impl Handler for ExecHandler {
             }
 
             // SIGHUP scenario: --signal was given, but --restart was not
-            // Just send a signal (e.g. SIGHUP) to the child, do nothing more
+            // Just send a signal (e.g. SIGHUP) to the command, do nothing more
             (true, false, Some(signal), _) => signal_process(&self.child_process, signal),
 
             // Custom restart behaviour (--restart was given, and --signal specified):
-            // Send specified signal to the child, wait for it to exit, then run the command again
+            // Send specified signal to the command, wait for it to exit, then run the command again
             (_, true, Some(signal), false) => {
                 signal_process(&self.child_process, signal);
                 wait_on_process(&self.child_process);
@@ -231,7 +231,7 @@ impl Handler for ExecHandler {
             }
 
             // Default restart behaviour (--restart was given, but --signal wasn't specified):
-            // Send SIGTERM to the child, wait for it to exit, then run the command again
+            // Send SIGTERM to the command, wait for it to exit, then run the command again
             (_, true, None, false) => {
                 signal_process(&self.child_process, Signal::SIGTERM);
                 wait_on_process(&self.child_process);

@@ -36,10 +36,10 @@ pub struct Config {
     /// Clear the screen before each run.
     #[builder(default)]
     pub clear_screen: bool,
-    /// If Some, send that signal (e.g. SIGHUP) to the child on change.
+    /// If Some, send that signal (e.g. SIGHUP) to the command on change.
     #[builder(default)]
     pub signal: Option<String>,
-    /// If true, kill the child if it's still running when a change comes in.
+    /// If true, kill the command if it's still running when a change comes in.
     #[builder(default)]
     pub restart: bool,
     /// Interval to debounce the changes. (milliseconds)
@@ -54,7 +54,7 @@ pub struct Config {
     /// Ignore metadata changes.
     #[builder(default)]
     pub no_meta: bool,
-    /// Do not set WATCHEXEC_*_PATH environment variables for child process.
+    /// Do not set WATCHEXEC_*_PATH environment variables for the process.
     #[builder(default)]
     pub no_environment: bool,
     /// Skip auto-loading .gitignore files
@@ -74,6 +74,7 @@ pub struct Config {
     /// Interval for polling. (milliseconds)
     #[builder(default = "1000")]
     pub poll_interval: u32,
+    /// Ignore events emitted while the command is running.
     #[builder(default)]
     pub watch_when_idle: bool,
 }

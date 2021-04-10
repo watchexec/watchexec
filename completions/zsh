@@ -14,7 +14,7 @@ args=(
   '--shell=[Change the wrapping shell, or `none` to disable]'
   '--no-shell[Deprecated, use --shell=none]'
   '-n[Shorthand for --shell=none]'
-  '--no-environment[Do not set WATCHEXEC_*_PATH environment variables for child process]'
+  '--no-environment[Do not set WATCHEXEC_*_PATH environment variables for command]'
   '--no-meta[Ignore metadata changes]'
   '(-p --postpone)'{-p,--postpone}'[Wait until first change to execute command]'
   '(-r --restart)'{-r,--restart}'[Restart the process if it''s still running]'

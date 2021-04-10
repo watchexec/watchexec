@@ -157,7 +157,7 @@ mod imp {
             use crate::signal::ConvertToLibc;
 
             let signo = signal.convert_to_libc();
-            debug!("Sending {:?} (int: {}) to child process", signal, signo);
+            debug!("Sending {:?} (int: {}) to the command", signal, signo);
             self.c_signal(signo);
         }
 
