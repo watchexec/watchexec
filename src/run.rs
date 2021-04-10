@@ -207,60 +207,56 @@ impl Handler for ExecHandler {
 
     // Only returns Err() on lock poisoning.
     fn on_update(&self, ops: &[PathOp]) -> Result<bool> {
-        // We have four scenarios here:
-        //
-        // 1. Just send a specified signal to the child, do nothing more
-        // 2. Just spawn a process if there are no running processes in the background
-        // 3. Send a specified signal to the child, wait for it to exit, then run the command again
-        // 4. Send SIGTERM to the child, wait for it to exit, then run the command again
-        // 5. Make sure the previous run was ended, then run the command again
-        //
-        let scenario = (
-            self.args.restart,
-            self.signal.is_some(),
-            self.args.watch_when_idle,
-        );
-        let running_process = self.has_running_process();
+        match (
+            self.has_running_process(),
+            self.args.restart, // kill the command if it's still running when a change comes in
+            self.signal,
+            self.args.watch_when_idle, // ignore events emitted while the command is running
+        ) {
+            // Spawn a process when there are no running processes in the background
+            (false, _, _, _) => {
+                self.spawn(ops)?;
+            }
 
-        match scenario {
             // SIGHUP scenario: --signal was given, but --restart was not
             // Just send a signal (e.g. SIGHUP) to the child, do nothing more
-            (false, true, _) => signal_process(&self.child_process, self.signal, false),
-
-            // Spawn a process when there are no running processes in the background
-            (_, _, true) => {
-                if !running_process {
-                    self.spawn(ops)?;
-                }
-            }
+            (true, false, Some(signal), _) => signal_process(&self.child_process, signal),
 
             // Custom restart behaviour (--restart was given, and --signal specified):
             // Send specified signal to the child, wait for it to exit, then run the command again
-            (true, true, false) => {
-                signal_process(&self.child_process, self.signal, true);
+            (_, true, Some(signal), false) => {
+                signal_process(&self.child_process, signal);
+                wait_on_process(&self.child_process);
                 self.spawn(ops)?;
             }
 
             // Default restart behaviour (--restart was given, but --signal wasn't specified):
             // Send SIGTERM to the child, wait for it to exit, then run the command again
-            (true, false, false) => {
-                let sigterm = signal::new(Some("SIGTERM".into()));
-
-                signal_process(&self.child_process, sigterm, true);
+            (_, true, None, false) => {
+                signal_process(&self.child_process, Signal::SIGTERM);
+                wait_on_process(&self.child_process);
                 self.spawn(ops)?;
             }
 
             // Default behaviour (neither --signal nor --restart specified):
             // Make sure the previous run was ended, then run the command again
-            (false, false, false) => {
-                signal_process(&self.child_process, None, true);
+            (_, false, None, false) => {
+                wait_on_process(&self.child_process);
                 self.spawn(ops)?;
             }
+
+            // Command is running and we're ignoring updates while it's running
+            (true, _, _, true) => {}
         }
 
         // Handle once option for integration testing
         if self.args.once {
-            signal_process(&self.child_process, self.signal, false);
+            if let Some(signal) = self.signal {
+                signal_process(&self.child_process, signal);
+            }
+
+            wait_on_process(&self.child_process);
+
             return Ok(false);
         }
 
@@ -328,18 +324,20 @@ fn wait_fs(
     paths
 }
 
-// signal_process sends signal to process. It waits for the process to exit if wait is true
-fn signal_process(process: &RwLock<Option<Process>>, signal: Option<Signal>, wait: bool) {
+fn signal_process(process: &RwLock<Option<Process>>, signal: Signal) {
     let guard = process.read().expect("poisoned lock in signal_process");
 
     if let Some(ref child) = *guard {
-        if let Some(s) = signal {
-            child.signal(s);
-        }
+        debug!("Signaling process with {}", signal);
+        child.signal(signal);
+    }
+}
 
-        if wait {
-            debug!("Waiting for process to exit...");
-            child.wait();
-        }
+fn wait_on_process(process: &RwLock<Option<Process>>) {
+    let guard = process.read().expect("poisoned lock in wait_on_process");
+
+    if let Some(ref child) = *guard {
+        debug!("Waiting for process to exit...");
+        child.wait();
     }
 }
