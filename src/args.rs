@@ -259,7 +259,7 @@ where
     builder.no_ignore(args.is_present("no-ignore"));
     builder.poll(args.occurrences_of("poll") > 0);
 
-    let mut config = builder.build()?;
+    let mut config = builder.build().map_err(|err| err.to_string())?;
     if args.is_present("once") {
         config.once = true;
     }
