@@ -18,6 +18,28 @@ use std::{
     time::Duration,
 };
 
+/// Behaviour to use when handling updates while the command is running.
+#[derive(Clone, Copy, Debug)]
+pub enum OnBusyUpdate {
+    /// restart the command immediately
+    Restart,
+
+    /// wait for the command to exit, then start a new one
+    Queue,
+
+    /// send a signal only
+    Signal,
+
+    /// ignore updates while busy
+    DoNothing,
+}
+
+impl Default for OnBusyUpdate {
+    fn default() -> Self {
+        Self::DoNothing
+    }
+}
+
 pub trait Handler {
     /// Called through a manual request, such as an initial run.
     ///
@@ -209,44 +231,31 @@ impl Handler for ExecHandler {
     fn on_update(&self, ops: &[PathOp]) -> Result<bool> {
         match (
             self.has_running_process(),
-            self.args.restart, // kill the command if it's still running when a change comes in
+            self.args.on_busy_update,
             self.signal,
-            self.args.watch_when_idle, // ignore events emitted while the command is running
         ) {
-            // Spawn a process when there are no running processes in the background
-            (false, _, _, _) => {
+            // If nothing is running, start the command
+            (false, _, _) => {
                 self.spawn(ops)?;
             }
 
-            // SIGHUP scenario: --signal was given, but --restart was not
-            // Just send a signal (e.g. SIGHUP) to the command, do nothing more
-            (true, false, Some(signal), _) => signal_process(&self.child_process, signal),
+            // Just send a signal to the command, do nothing more
+            (true, OnBusyUpdate::Signal, signal) => signal_process(&self.child_process, signal.unwrap_or(Signal::SIGTERM)),
 
-            // Custom restart behaviour (--restart was given, and --signal specified):
-            // Send specified signal to the command, wait for it to exit, then run the command again
-            (_, true, Some(signal), false) => {
-                signal_process(&self.child_process, signal);
+            // Send a signal to the command, wait for it to exit, then run the command again
+            (true, OnBusyUpdate::Restart, signal) => {
+                signal_process(&self.child_process, signal.unwrap_or(Signal::SIGTERM));
                 wait_on_process(&self.child_process);
                 self.spawn(ops)?;
             }
 
-            // Default restart behaviour (--restart was given, but --signal wasn't specified):
-            // Send SIGTERM to the command, wait for it to exit, then run the command again
-            (_, true, None, false) => {
-                signal_process(&self.child_process, Signal::SIGTERM);
+            // Wait for the command to end, then run it again
+            (true, OnBusyUpdate::Queue, _) => {
                 wait_on_process(&self.child_process);
                 self.spawn(ops)?;
             }
 
-            // Default behaviour (neither --signal nor --restart specified):
-            // Make sure the previous run was ended, then run the command again
-            (_, false, None, false) => {
-                wait_on_process(&self.child_process);
-                self.spawn(ops)?;
-            }
-
-            // Command is running and we're ignoring updates while it's running
-            (true, _, _, true) => {}
+            (true, OnBusyUpdate::DoNothing, _) => {}
         }
 
         // Handle once option for integration testing

@@ -16,6 +16,7 @@
 use std::path::PathBuf;
 
 use crate::process::Shell;
+use crate::run::OnBusyUpdate;
 
 /// Arguments to the watcher
 #[derive(Builder, Clone, Debug)]
@@ -39,9 +40,9 @@ pub struct Config {
     /// If Some, send that signal (e.g. SIGHUP) to the command on change.
     #[builder(default)]
     pub signal: Option<String>,
-    /// If true, kill the command if it's still running when a change comes in.
+    /// Specify what to do when receiving updates while the command is running.
     #[builder(default)]
-    pub restart: bool,
+    pub on_busy_update: OnBusyUpdate,
     /// Interval to debounce the changes. (milliseconds)
     #[builder(default = "500")]
     pub debounce: u64,
@@ -74,9 +75,6 @@ pub struct Config {
     /// Interval for polling. (milliseconds)
     #[builder(default = "1000")]
     pub poll_interval: u32,
-    /// Ignore events emitted while the command is running.
-    #[builder(default)]
-    pub watch_when_idle: bool,
 }
 
 impl ConfigBuilder {
@@ -104,6 +102,24 @@ impl ConfigBuilder {
             self.shell(Shell::default())
         } else {
             self.shell(Shell::None)
+        }
+    }
+
+    #[deprecated(since = "1.15.0", note = "use on_busy_update(Restart) instead")]
+    pub fn restart(&mut self, b: impl Into<bool>) -> &mut Self {
+        if b.into() {
+            self.on_busy_update(OnBusyUpdate::Restart)
+        } else {
+            self
+        }
+    }
+
+    #[deprecated(since = "1.15.0", note = "use on_busy_update(DoNothing) instead")]
+    pub fn watch_when_idle(&mut self, b: impl Into<bool>) -> &mut Self {
+        if b.into() {
+            self.on_busy_update(OnBusyUpdate::DoNothing)
+        } else {
+            self
         }
     }
 }
