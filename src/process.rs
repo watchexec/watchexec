@@ -19,6 +19,18 @@ pub enum Shell {
     Powershell,
 }
 
+impl Default for Shell {
+    #[cfg(windows)]
+    fn default() -> Self {
+        Self::Powershell
+    }
+
+    #[cfg(not(windows))]
+    fn default() -> Self {
+        Self::Unix("sh".into())
+    }
+}
+
 pub fn spawn(
     cmd: &[String],
     updated_paths: &[PathOp],

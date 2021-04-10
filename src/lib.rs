@@ -34,6 +34,7 @@ pub mod run;
 mod signal;
 mod watcher;
 
+pub use process::Shell;
 pub use run::{run, watch, Handler};
 
 #[deprecated(since = "1.15.0", note = "Config has moved to config::Config")]

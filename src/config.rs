@@ -15,6 +15,8 @@
 
 use std::path::PathBuf;
 
+use crate::process::Shell;
+
 /// Arguments to the watcher
 #[derive(Builder, Clone, Debug)]
 #[builder(setter(into, strip_option))]
@@ -46,6 +48,9 @@ pub struct Config {
     /// Run the commands right after starting.
     #[builder(default = "true")]
     pub run_initially: bool,
+    /// Specify the shell to use.
+    #[builder(default)]
+    pub shell: Shell,
     /// Do not wrap the commands in a shell.
     #[builder(default)]
     pub no_shell: bool,
