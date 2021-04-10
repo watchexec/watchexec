@@ -24,6 +24,7 @@ extern crate log;
 extern crate lazy_static;
 
 pub mod cli;
+pub mod config;
 pub mod error;
 mod gitignore;
 mod ignore;
@@ -34,5 +35,10 @@ pub mod run;
 mod signal;
 mod watcher;
 
-pub use cli::{Args, ArgsBuilder};
 pub use run::{run, watch, Handler};
+
+#[deprecated(since = "1.15.0", note = "Config has moved to config::Config")]
+pub type Args = config::Config;
+
+#[deprecated(since = "1.15.0", note = "ConfigBuilder has moved to config::ConfigBuilder")]
+pub type ArgsBuilder = config::ConfigBuilder;

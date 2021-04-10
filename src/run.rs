@@ -1,4 +1,5 @@
-use crate::cli::{clear_screen, Args};
+use crate::cli::{clear_screen};
+use crate::config::Config;
 use crate::error::{Error, Result};
 use crate::gitignore;
 use crate::ignore;
@@ -48,9 +49,9 @@ pub trait Handler {
     ///
     /// Not called again; any changes will never be picked up.
     ///
-    /// The `Args` instance should be created using `ArgsBuilder` rather than direct initialisation
+    /// The `Config` instance should be created using `ConfigBuilder` rather than direct initialisation
     /// to resist potential breaking changes (see semver policy on crate root).
-    fn args(&self) -> Args;
+    fn args(&self) -> Config;
 }
 
 /// Starts watching, and calls a handler when something happens.
@@ -130,13 +131,13 @@ where
 }
 
 pub struct ExecHandler {
-    args: Args,
+    args: Config,
     signal: Option<Signal>,
     child_process: Arc<RwLock<Option<Process>>>,
 }
 
 impl ExecHandler {
-    pub fn new(args: Args) -> Result<Self> {
+    pub fn new(args: Config) -> Result<Self> {
         let child_process: Arc<RwLock<Option<Process>>> = Arc::new(RwLock::new(None));
         let weak_child = Arc::downgrade(&child_process);
 
@@ -190,7 +191,7 @@ impl ExecHandler {
 }
 
 impl Handler for ExecHandler {
-    fn args(&self) -> Args {
+    fn args(&self) -> Config {
         self.args.clone()
     }
 
@@ -267,7 +268,7 @@ impl Handler for ExecHandler {
     }
 }
 
-pub fn run(args: Args) -> Result<()> {
+pub fn run(args: Config) -> Result<()> {
     watch(&ExecHandler::new(args)?)
 }
 

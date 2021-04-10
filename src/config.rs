@@ -1,0 +1,96 @@
+//! Configuration for watchexec.
+//!
+//! The [`Config`] struct is not constructable, use [`ConfigBuilder`].
+//!
+//! # Examples
+//!
+//! ```
+//! # use watchexec::config::ConfigBuilder;
+//! ConfigBuilder::default()
+//!     .cmd(vec!["echo hello world".into()])
+//!     .paths(vec![".".into()])
+//!     .build()
+//!     .expect("mission failed");
+//! ```
+
+use std::path::PathBuf;
+
+/// Arguments to the watcher
+#[derive(Builder, Clone, Debug)]
+#[builder(setter(into, strip_option))]
+#[builder(build_fn(validate = "Self::validate"))]
+#[non_exhaustive]
+pub struct Config {
+    /// Command to execute in popen3 format (first program, rest arguments).
+    pub cmd: Vec<String>,
+    /// List of paths to watch for changes.
+    pub paths: Vec<PathBuf>,
+    /// Positive filters (trigger only on matching changes). Glob format.
+    #[builder(default)]
+    pub filters: Vec<String>,
+    /// Negative filters (do not trigger on matching changes). Glob format.
+    #[builder(default)]
+    pub ignores: Vec<String>,
+    /// Clear the screen before each run.
+    #[builder(default)]
+    pub clear_screen: bool,
+    /// If Some, send that signal (e.g. SIGHUP) to the child on change.
+    #[builder(default)]
+    pub signal: Option<String>,
+    /// If true, kill the child if it's still running when a change comes in.
+    #[builder(default)]
+    pub restart: bool,
+    /// Interval to debounce the changes. (milliseconds)
+    #[builder(default = "500")]
+    pub debounce: u64,
+    /// Run the commands right after starting.
+    #[builder(default = "true")]
+    pub run_initially: bool,
+    /// Do not wrap the commands in a shell.
+    #[builder(default)]
+    pub no_shell: bool,
+    /// Ignore metadata changes.
+    #[builder(default)]
+    pub no_meta: bool,
+    /// Do not set WATCHEXEC_*_PATH environment variables for child process.
+    #[builder(default)]
+    pub no_environment: bool,
+    /// Skip auto-loading .gitignore files
+    #[builder(default)]
+    pub no_vcs_ignore: bool,
+    /// Skip auto-loading .ignore files
+    #[builder(default)]
+    pub no_ignore: bool,
+    /// For testing only, always set to false.
+    #[builder(setter(skip))]
+    #[builder(default)]
+    #[doc(hidden)]
+    pub once: bool,
+    /// Force using the polling backend.
+    #[builder(default)]
+    pub poll: bool,
+    /// Interval for polling. (milliseconds)
+    #[builder(default = "1000")]
+    pub poll_interval: u32,
+    #[builder(default)]
+    pub watch_when_idle: bool,
+}
+
+impl ConfigBuilder {
+    fn validate(&self) -> Result<(), String> {
+        if self.cmd.as_ref().map_or(true, Vec::is_empty) {
+            return Err("cmd must not be empty".into());
+        }
+
+        if self.paths.as_ref().map_or(true, Vec::is_empty) {
+            return Err("paths must not be empty".into());
+        }
+
+        Ok(())
+    }
+
+    #[deprecated(since = "1.15.0", note = "does nothing. set the log level instead")]
+    pub fn debug(&mut self, _: impl Into<bool>) -> &mut Self {
+        self
+    }
+}
