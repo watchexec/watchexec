@@ -28,6 +28,28 @@ pub enum Signal {
     SIGUSR2,
 }
 
+#[cfg(windows)]
+impl fmt::Display for Signal {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use std::io::Write;
+        use Self::*;
+        write!(
+            f,
+            match self {
+                SIGKILL => "SIGKILL",
+                SIGTERM => "SIGTERM",
+                SIGINT => "SIGINT",
+                SIGHUP => "SIGHUP",
+                SIGSTOP => "SIGSTOP",
+                SIGCONT => "SIGCONT",
+                SIGCHLD => "SIGCHLD",
+                SIGUSR1 => "SIGUSR1",
+                SIGUSR2 => "SIGUSR2",
+            }
+        )
+    }
+}
+
 #[cfg(unix)]
 use nix::libc::*;
 
