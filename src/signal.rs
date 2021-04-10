@@ -29,7 +29,7 @@ pub enum Signal {
 }
 
 #[cfg(windows)]
-use std::{fmt, io::Write};
+use std::fmt;
 
 #[cfg(windows)]
 impl fmt::Display for Signal {
