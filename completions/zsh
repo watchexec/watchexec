@@ -19,6 +19,7 @@ args=(
   '(-r --restart)'{-r,--restart}'[Restart the process if it''s still running]'
   '(-V --version)'{-V,--version}'[Prints version information]'
   '(-v --verbose)'{-v,--verbose}'[Print debugging messages to stderr]'
+  '--changes-only[Print changed paths to stderr for pattern debugging]'
   '(-d --debounce)'{-d+,--debounce=}'[Set the timeout between detected change and command execution, defaults to 500ms]:milliseconds'
   '(-e --exts)'{-e+,--exts=}'[Comma-separated list of file extensions to watch (js,css,html)]:extensions'
   '(-f --filter)'{-f+,--filter=}'[Ignore all modifications except those matching the pattern]:pattern'
