@@ -123,6 +123,7 @@ where
                  } else {
                     "Use a different shell, or `none`. E.g. --shell=bash"
                  })
+                 .takes_value(true)
                  .long("shell"))
         // -n short form will not be removed, and instead become a shorthand for --shell=none
         .arg(Arg::with_name("no-shell")
