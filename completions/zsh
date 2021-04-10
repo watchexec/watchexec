@@ -11,7 +11,6 @@ cmd="$words[1]"
 args=(
   '(-c --clear)'{-c,--clear}'[Clear screen before executing command]'
   '(-h --help)'{-h,--help}'[Prints help information]'
-  '(-k --kill)'{-k,--kill}'[Send SIGKILL to child processes (deprecated, use -s SIGKILL instead)]'
   '(-n --no-shell)'{-n,--no-shell}'[Do not wrap command in ''sh -c'' resp. ''cmd.exe /C'']'
   '--no-environment[Do not set WATCHEXEC_*_PATH environment variables for child process]'
   '--no-meta[Ignore metadata changes]'
