@@ -5,7 +5,7 @@ use crate::gitignore;
 use crate::ignore;
 use crate::notification_filter::NotificationFilter;
 use crate::pathop::PathOp;
-use crate::process::{self, Process};
+use crate::process::{self, Shell, Process};
 use crate::signal::{self, Signal};
 use crate::watcher::{Event, Watcher};
 use std::{
@@ -168,13 +168,31 @@ impl ExecHandler {
             clear_screen();
         }
 
+        #[cfg(windows)]
+        fn get_shell(config: &Config) -> Shell {
+            if config.no_shell {
+                Shell::None
+            } else {
+                Shell::Cmd
+            }
+        }
+
+        #[cfg(not(windows))]
+        fn get_shell(config: &Config) -> Shell {
+            if config.no_shell {
+                Shell::None
+            } else {
+                Shell::Unix("sh".into())
+            }
+        }
+
         debug!("Launching child process");
         let mut guard = self.child_process.write()?;
         *guard = Some(process::spawn(
             &self.args.cmd,
             ops,
-            self.args.no_shell,
-            self.args.no_environment,
+            get_shell(&self.args),
+            !self.args.no_environment,
         )?);
 
         Ok(())

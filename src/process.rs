@@ -5,10 +5,24 @@ use crate::pathop::PathOp;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
+/// Shell to use to run commands.
+///
+/// `Cmd` and `Powershell` are special-cased because they have different calling
+/// conventions. Also `Cmd` is only available in Windows, while `Powershell` is
+/// also available on unices (provided the end-user has it installed, of course).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Shell {
+    None,
+    Unix(String),
+    #[cfg(windows)]
+    Cmd,
+    Powershell,
+}
+
 pub fn spawn(
     cmd: &[String],
     updated_paths: &[PathOp],
-    shell: bool,
+    shell: Shell,
     environment: bool,
 ) -> Result<Process> {
     self::imp::Process::new(cmd, updated_paths, shell, environment).map_err(|e| e.into())
@@ -18,6 +32,7 @@ pub use self::imp::Process;
 
 #[cfg(target_family = "unix")]
 mod imp {
+    use super::Shell;
     use crate::pathop::PathOp;
     use crate::signal::Signal;
     use nix::libc::*;
@@ -45,7 +60,7 @@ mod imp {
         pub fn new(
             cmd: &[String],
             updated_paths: &[PathOp],
-            shell: bool,
+            shell: Shell,
             environment: bool,
         ) -> Result<Self> {
             use nix::unistd::*;
@@ -53,20 +68,27 @@ mod imp {
             use std::os::unix::process::CommandExt;
 
             // Assemble command to run.
-            // This is either the first argument from cmd (if shell == false) or "sh".
+            // This is either the first argument from cmd (if shell == None) or "sh".
             // Using "sh -c" gives us features like supporting pipes and redirects,
             // but is a little less performant and can cause trouble when using custom signals
             // (e.g. --signal SIGHUP)
-            let mut command = if !shell {
-                let (head, tail) = cmd.split_first().expect("cmd was empty");
-                let mut command = Command::new(head);
-                command.args(tail);
-                command
-            } else {
-                let mut command = Command::new("sh");
-                //command.arg("-c").arg(wrap_commands(cmd).join(" "));
-                command.arg("-c").arg(cmd.join(" "));
-                command
+            let mut command = match shell {
+                Shell::None => {
+                    let (head, tail) = cmd.split_first().expect("cmd was empty");
+                    let mut c = Command::new(head);
+                    c.args(tail);
+                    c
+                }
+                Shell::Powershell => {
+                    let mut c = Command::new("pwsh");
+                    c.arg("-Command").arg(cmd.join(" "));
+                    c
+                }
+                Shell::Unix(name) => {
+                    let mut c = Command::new(name);
+                    c.arg("-c").arg(cmd.join(" "));
+                    c
+                }
             };
 
             debug!("Assembled command {:?}", command);
@@ -151,6 +173,7 @@ mod imp {
 
 #[cfg(target_family = "windows")]
 mod imp {
+    use super::Shell;
     use crate::pathop::PathOp;
     use crate::signal::Signal;
     use std::io;
@@ -200,7 +223,7 @@ mod imp {
         pub fn new(
             cmd: &[String],
             updated_paths: &[PathOp],
-            shell: bool,
+            shell: Shell,
             environment: bool,
         ) -> Result<Self> {
             use std::convert::TryInto;
@@ -262,17 +285,30 @@ mod imp {
                 panic!("failed to set job info: {}", last_err());
             }
 
-            let mut command;
-            if !shell {
-                let (first, rest) = cmd.split_first().expect("command is empty");
-                command = Command::new(first);
-                command.args(rest);
-            } else {
-                command = Command::new("cmd.exe");
-                command.arg("/C");
-                //command.arg(wrap_commands(cmd).join(" "));
-                command.arg(cmd.join(" "));
-            }
+            let mut command = match shell {
+                Shell::None => {
+                    let (first, rest) = cmd.split_first().expect("command is empty");
+                    let mut c = Command::new(first);
+                    c.args(rest);
+                }
+                Shell::Cmd => {
+                    let mut c = Command::new("cmd.exe");
+                    c.arg("/C").arg(cmd.join(" "));
+                    c
+                }
+                Shell::Powershell => {
+                    let mut c = Command::new("powershell.exe");
+                    c.arg("-Command").arg(cmd.join(" "));
+                    c
+                }
+
+                // Using unixy shells on windows could be supported...
+                Shell::Unix(name) => {
+                    let mut c = Command::new(name);
+                    c.arg("-c").arg(cmd.join(" "));
+                    c
+                }
+            };
 
             command.creation_flags(CREATE_SUSPENDED);
             debug!("Assembled command {:?}", command);
