@@ -21,17 +21,17 @@ use std::{
 /// Behaviour to use when handling updates while the command is running.
 #[derive(Clone, Copy, Debug)]
 pub enum OnBusyUpdate {
-    /// restart the command immediately
-    Restart,
+    /// ignore updates while busy
+    DoNothing,
 
     /// wait for the command to exit, then start a new one
     Queue,
 
+    /// restart the command immediately
+    Restart,
+
     /// send a signal only
     Signal,
-
-    /// ignore updates while busy
-    DoNothing,
 }
 
 impl Default for OnBusyUpdate {

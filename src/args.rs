@@ -7,6 +7,7 @@ use std::{
 
 use crate::{error, Shell};
 use crate::config::{Config, ConfigBuilder};
+use crate::run::OnBusyUpdate;
 
 pub fn get_args() -> error::Result<(Config, LevelFilter)> {
     get_args_impl(None::<&[&str]>)
@@ -49,8 +50,12 @@ where
                  .help("Clear screen before executing command")
                  .short("c")
                  .long("clear"))
+        .arg(Arg::with_name("on-busy-update")
+                 .help("Select the behaviour to use when receiving events while the command is running. Current default is queue, will change to do-nothing in 2.0")
+                 .possible_values(&["do-nothing", "queue", "restart", "signal"])
+                 .long("on-busy-update"))
         .arg(Arg::with_name("restart")
-                 .help("Restart the process if it's still running")
+                 .help("Restart the process if it's still running. Shorthand for --on-busy-update=restart")
                  .short("r")
                  .long("restart"))
         .arg(Arg::with_name("signal")
@@ -130,7 +135,7 @@ where
                  .long("no-environment"))
         .arg(Arg::with_name("once").short("1").hidden(true))
         .arg(Arg::with_name("watch-when-idle")
-                 .help("Ignore events while the process is still running. This is distinct from `--restart` in that with this option, events received while the command is running will not trigger a new run immediately after the current command is done. Will become the default in 2.0.")
+                 .help("Deprecated alias for --on-busy-update=do-nothing, which will become the default in 2.0.")
                  .short("W")
                  .long("watch-when-idle"));
 
@@ -204,7 +209,24 @@ where
         builder.debounce(value_t!(args.value_of("debounce"), u64).unwrap_or_else(|e| e.exit()));
     }
 
-    let shell = if args.is_present("no-shell") {
+    builder.on_busy_update(if args.is_present("restart") {
+        OnBusyUpdate::Restart
+    } else if args.is_present("watch-when-idle") {
+        OnBusyUpdate::DoNothing
+    } else if let Some(s) = args.value_of("on-busy-update") {
+        match s.as_bytes() {
+            b"do-nothing" => OnBusyUpdate::DoNothing,
+            b"queue" => OnBusyUpdate::Queue,
+            b"restart" => OnBusyUpdate::Restart,
+            b"signal" => OnBusyUpdate::Signal,
+            _ => unreachable!("clap restricts on-busy-updates values")
+        }
+    } else {
+        // will become DoNothing in v2.0
+        OnBusyUpdate::Queue
+    });
+
+    builder.shell(if args.is_present("no-shell") {
         Shell::None
     } else if let Some(s) = args.value_of("shell") {
         if s.eq_ignore_ascii_case("powershell") {
@@ -218,21 +240,15 @@ where
         }
     } else {
         default_shell()
-    };
-
-    builder.shell(shell);
-
-    // TODO: check how postpone + signal behaves
+    });
 
     builder.clear_screen(args.is_present("clear"));
-    builder.restart(args.is_present("restart"));
     builder.run_initially(!args.is_present("postpone"));
     builder.no_meta(args.is_present("no-meta"));
     builder.no_environment(args.is_present("no-environment"));
     builder.no_vcs_ignore(args.is_present("no-vcs-ignore"));
     builder.no_ignore(args.is_present("no-ignore"));
     builder.poll(args.occurrences_of("poll") > 0);
-    builder.watch_when_idle(args.is_present("watch-when-idle"));
 
     let mut config = builder.build()?;
     if args.is_present("once") {
