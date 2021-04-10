@@ -99,17 +99,22 @@ impl ArgsBuilder {
     pub fn debug(&mut self, _: impl Into<bool>) -> &mut Self {
         self
 }
+}
 
+/// Clear the screen.
 #[cfg(target_family = "windows")]
 pub fn clear_screen() {
+// TODO: clearscreen with powershell?
     let _ = Command::new("cmd")
         .arg("/c")
         .arg("tput reset || cls")
         .status();
 }
 
+/// Clear the screen.
 #[cfg(target_family = "unix")]
 pub fn clear_screen() {
+// TODO: clear screen via control codes instead
     let _ = Command::new("tput").arg("reset").status();
 }
 
