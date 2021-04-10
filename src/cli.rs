@@ -172,7 +172,7 @@ where
                  .number_of_values(1)
                  .value_name("signal"))
         .arg(Arg::with_name("kill")
-                 .help("Send SIGKILL to child processes (deprecated, use -s SIGKILL instead)")
+                 .hidden(true)
                  .short("k")
                  .long("kill"))
         .arg(Arg::with_name("debounce")
