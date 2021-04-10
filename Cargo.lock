@@ -523,7 +523,7 @@ dependencies = [
 
 [[package]]
 name = "watchexec"
-version = "1.14.1"
+version = "1.15.0"
 dependencies = [
  "clap",
  "derive_builder",
