@@ -1,13 +1,13 @@
-use clap::{App, Arg, value_t, values_t, crate_version};
+use clap::{crate_version, value_t, values_t, App, Arg};
 use log::LevelFilter;
 use std::{
     ffi::OsString,
     path::{PathBuf, MAIN_SEPARATOR},
 };
 
-use crate::{error, Shell};
 use crate::config::{Config, ConfigBuilder};
 use crate::run::OnBusyUpdate;
+use crate::{error, Shell};
 
 pub fn get_args() -> error::Result<(Config, LevelFilter)> {
     get_args_impl(None::<&[&str]>)
@@ -146,7 +146,8 @@ where
 
     let mut builder = ConfigBuilder::default();
 
-    let cmd: Vec<String> = values_t!(args.values_of("command"), String).map_err(|err| err.to_string())?;
+    let cmd: Vec<String> =
+        values_t!(args.values_of("command"), String).map_err(|err| err.to_string())?;
     builder.cmd(cmd);
 
     let paths: Vec<PathBuf> = values_t!(args.values_of("path"), String)
@@ -167,7 +168,8 @@ where
 
     let mut filters = values_t!(args.values_of("filter"), String).unwrap_or_else(|_| Vec::new());
     if let Some(extensions) = args.values_of("extensions") {
-        for exts in extensions { // TODO: refactor with flatten()
+        for exts in extensions {
+            // TODO: refactor with flatten()
             filters.extend(exts.split(',').filter_map(|ext| {
                 if ext.is_empty() {
                     None
@@ -219,7 +221,7 @@ where
             b"queue" => OnBusyUpdate::Queue,
             b"restart" => OnBusyUpdate::Restart,
             b"signal" => OnBusyUpdate::Signal,
-            _ => unreachable!("clap restricts on-busy-updates values")
+            _ => unreachable!("clap restricts on-busy-updates values"),
         }
     } else {
         // will become DoNothing in v2.0

@@ -9,10 +9,7 @@
 //!
 //! [watchexec]: https://github.com/watchexec/watchexec
 
-#![warn(
-    clippy::option_unwrap_used,
-    clippy::result_unwrap_used,
-)]
+#![warn(clippy::option_unwrap_used, clippy::result_unwrap_used)]
 
 #[macro_use]
 extern crate derive_builder;
@@ -40,5 +37,8 @@ pub use run::{run, watch, Handler};
 #[deprecated(since = "1.15.0", note = "Config has moved to config::Config")]
 pub type Args = config::Config;
 
-#[deprecated(since = "1.15.0", note = "ConfigBuilder has moved to config::ConfigBuilder")]
+#[deprecated(
+    since = "1.15.0",
+    note = "ConfigBuilder has moved to config::ConfigBuilder"
+)]
 pub type ArgsBuilder = config::ConfigBuilder;

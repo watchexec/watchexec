@@ -1,7 +1,7 @@
 use std::io::Write;
 
 // until args.rs is removed from the lib
-pub(crate) use watchexec::{error, config, run, Shell};
+pub(crate) use watchexec::{config, error, run, Shell};
 
 mod args;
 

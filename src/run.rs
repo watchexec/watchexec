@@ -1,4 +1,4 @@
-use crate::cli::{clear_screen};
+use crate::cli::clear_screen;
 use crate::config::Config;
 use crate::error::{Error, Result};
 use crate::gitignore;
@@ -231,10 +231,7 @@ impl Handler for ExecHandler {
     fn on_update(&self, ops: &[PathOp]) -> Result<bool> {
         let signal = self.signal.unwrap_or(Signal::SIGTERM);
 
-        match (
-            self.has_running_process(),
-            self.args.on_busy_update,
-        ) {
+        match (self.has_running_process(), self.args.on_busy_update) {
             // If nothing is running, start the command
             (false, _) => {
                 self.spawn(ops)?;
