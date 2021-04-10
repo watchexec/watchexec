@@ -523,6 +523,7 @@ fn get_longest_common_path(paths: &[PathBuf]) -> Option<String> {
 #[cfg(test)]
 #[cfg(target_family = "unix")]
 mod tests {
+    use super::Shell;
     use crate::pathop::PathOp;
     use std::collections::HashSet;
     use std::path::PathBuf;
@@ -533,7 +534,7 @@ mod tests {
 
     #[test]
     fn test_start() {
-        let _ = spawn(&["echo".into(), "hi".into()], &[], true, false);
+        let _ = spawn(&["echo".into(), "hi".into()], &[], Shell::default(), false);
     }
 
     #[test]
@@ -609,10 +610,30 @@ mod tests {
 #[cfg(test)]
 #[cfg(target_family = "windows")]
 mod tests {
-    use super::spawn;
+    use super::{spawn, Shell};
 
     #[test]
-    fn test_start() {
-        let _ = spawn(&["echo".into(), "hi".into()], &[], true, false);
+    fn test_default() {
+        let _ = spawn(&["echo".into(), "hi".into()], &[], Shell::default(), false);
+    }
+
+    #[test]
+    fn test_cmd() {
+        let _ = spawn(&["echo".into(), "hi".into()], &[], Shell::Cmd, false);
+    }
+
+    #[test]
+    fn test_powershell() {
+        let _ = spawn(&["echo".into(), "hi".into()], &[], Shell::Powershell, false);
+    }
+
+    #[test]
+    fn test_bash() {
+        let _ = spawn(
+            &["echo".into(), "hi".into()],
+            &[],
+            Shell::Unix("bash".into()),
+            false,
+        );
     }
 }
