@@ -207,11 +207,15 @@ where
     builder.ignores(ignores);
 
     if args.occurrences_of("poll") > 0 {
-        builder.poll_interval(Duration::from_millis(value_t!(args.value_of("poll"), u64).unwrap_or_else(|e| e.exit())));
+        builder.poll_interval(Duration::from_millis(
+            value_t!(args.value_of("poll"), u64).unwrap_or_else(|e| e.exit()),
+        ));
     }
 
     if args.occurrences_of("debounce") > 0 {
-        builder.debounce(Duration::from_millis(value_t!(args.value_of("debounce"), u64).unwrap_or_else(|e| e.exit())));
+        builder.debounce(Duration::from_millis(
+            value_t!(args.value_of("debounce"), u64).unwrap_or_else(|e| e.exit()),
+        ));
     }
 
     builder.on_busy_update(if args.is_present("restart") {

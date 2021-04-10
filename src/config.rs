@@ -13,7 +13,7 @@
 //!     .expect("mission failed");
 //! ```
 
-use std::{time::Duration, path::PathBuf};
+use std::{path::PathBuf, time::Duration};
 
 use crate::process::Shell;
 use crate::run::OnBusyUpdate;
