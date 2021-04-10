@@ -25,8 +25,18 @@ Ignores modifications from paths that do not match <pattern>. This option can be
 * `-s`, `--signal`:
 Sends the specified signal (e.g. `SIGKILL`) to the child process. Defaults to `SIGTERM`.
 
-* `-n`, `--no-shell`:
-Execute command directly, do not wrap it in `sh -c` resp. `cmd.exe /C`. This is especially useful in combination with `--signal`, as the signal is then send directly to the specified command. While `--no-shell` is a little more performant than the default, it prevents using shell-features like pipes and redirects.
+* `--shell` <shell>:
+Change the shell used to run the command. Set to `none` to run the command directly without a shell.
+
+The special value `powershell` will use Microsoft Powershell's calling convention, otherwise `SHELL -c COMMAND`.
+
+The `none` value is especially useful in combination with `--signal`, as the signal is then send directly to the specified command. While `--shell=none` is a little more performant than the default, it prevents using shell-features like pipes and redirects.
+
+* `--no-shell`:
+Deprecated. Alias for `--shell=none`.
+
+* `-n`:
+Shorthand for `--shell=none`.
 
 * `--no-meta`:
 Ignore metadata changes.

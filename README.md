@@ -65,7 +65,7 @@ Call/restart `my_server` when any file in the current directory (and all subdire
 
     $ watchexec -r -s SIGKILL my_server
 
-Send a SIGHUP to the child process upon changes (Note: with using `-n | --no-shell` here, we're executing `my_server` directly, instead of wrapping it in a shell:
+Send a SIGHUP to the child process upon changes (Note: using `-n` here we're executing `my_server` directly, instead of wrapping it in a shell:
 
     $ watchexec -n -s SIGHUP my_server
 

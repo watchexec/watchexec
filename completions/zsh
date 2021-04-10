@@ -11,7 +11,9 @@ cmd="$words[1]"
 args=(
   '(-c --clear)'{-c,--clear}'[Clear screen before executing command]'
   '(-h --help)'{-h,--help}'[Prints help information]'
-  '(-n --no-shell)'{-n,--no-shell}'[Do not wrap command in ''sh -c'' resp. ''cmd.exe /C'']'
+  '--shell=[Change the wrapping shell, or `none` to disable]'
+  '--no-shell[Deprecated, use --shell=none]'
+  '-n[Shorthand for --shell=none]'
   '--no-environment[Do not set WATCHEXEC_*_PATH environment variables for child process]'
   '--no-meta[Ignore metadata changes]'
   '(-p --postpone)'{-p,--postpone}'[Wait until first change to execute command]'
