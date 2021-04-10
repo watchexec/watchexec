@@ -29,22 +29,23 @@ pub enum Signal {
 }
 
 #[cfg(windows)]
+use std::{fmt, io::Write};
+
+#[cfg(windows)]
 impl fmt::Display for Signal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use std::io::Write;
-        use Self::*;
-        write!(
+        write!("{}",
             f,
             match self {
-                SIGKILL => "SIGKILL",
-                SIGTERM => "SIGTERM",
-                SIGINT => "SIGINT",
-                SIGHUP => "SIGHUP",
-                SIGSTOP => "SIGSTOP",
-                SIGCONT => "SIGCONT",
-                SIGCHLD => "SIGCHLD",
-                SIGUSR1 => "SIGUSR1",
-                SIGUSR2 => "SIGUSR2",
+                Self::SIGKILL => "SIGKILL",
+                Self::SIGTERM => "SIGTERM",
+                Self::SIGINT => "SIGINT",
+                Self::SIGHUP => "SIGHUP",
+                Self::SIGSTOP => "SIGSTOP",
+                Self::SIGCONT => "SIGCONT",
+                Self::SIGCHLD => "SIGCHLD",
+                Self::SIGUSR1 => "SIGUSR1",
+                Self::SIGUSR2 => "SIGUSR2",
             }
         )
     }
