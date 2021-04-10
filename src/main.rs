@@ -5,16 +5,9 @@ extern crate watchexec;
 use watchexec::{cli, error, run};
 
 fn main() -> error::Result<()> {
-    let args = cli::get_args()?;
-
-    if args.debug {
-        init_logger(log::LevelFilter::Debug);
-    } else if args.changes {
-        init_logger(log::LevelFilter::Info);
-    } else {
-        init_logger(log::LevelFilter::Warn);
-    }
-
+    #[allow(deprecated)]
+    let (args, loglevel) = cli::get_args()?;
+    init_logger(loglevel);
     run(args)
 }
 

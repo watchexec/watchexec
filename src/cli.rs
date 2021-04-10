@@ -120,12 +120,12 @@ pub fn clear_screen() {
 }
 
 #[deprecated(since = "1.15.0", note = "this will be removed from the library API. use the builder")]
-pub fn get_args() -> error::Result<Args> {
+pub fn get_args() -> error::Result<(Args, LevelFilter)> {
     get_args_impl(None::<&[&str]>)
 }
 
 #[deprecated(since = "1.15.0", note = "this will be removed from the library API. use the builder")]
-pub fn get_args_from<I, T>(from: I) -> error::Result<Args>
+pub fn get_args_from<I, T>(from: I) -> error::Result<(Args, LevelFilter)>
 where
     I: IntoIterator<Item = T>,
     T: Into<OsString> + Clone,
@@ -133,7 +133,7 @@ where
     get_args_impl(Some(from))
 }
 
-fn get_args_impl<I, T>(from: Option<I>) -> error::Result<Args>
+fn get_args_impl<I, T>(from: Option<I>) -> error::Result<(Args, LevelFilter)>
 where
     I: IntoIterator<Item = T>,
     T: Into<OsString> + Clone,
@@ -326,5 +326,13 @@ where
         config.once = true;
     }
 
-    Ok(config)
+    let loglevel = if args.is_present("verbose") {
+        LevelFilter::Debug
+    } else if args.is_present("changes") {
+        LevelFilter::Info
+    } else {
+        LevelFilter::Warn
+    };
+
+    Ok((config, loglevel))
 }
