@@ -1,7 +1,6 @@
 //! CLI arguments and library Args struct
 //!
-//! Use `ArgsBuilder` preferentially as that will shield you from breaking changes resulting from
-//! added fields and some field type changes.
+//! The [`Args`] struct is not constructable, use [`ArgsBuilder`].
 //!
 //! # Examples
 //!
@@ -26,6 +25,7 @@ use std::{
 #[derive(Builder, Clone, Debug)]
 #[builder(setter(into, strip_option))]
 #[builder(build_fn(validate = "Self::validate"))]
+#[non_exhaustive]
 pub struct Args {
     /// Command to execute in popen3 format (first program, rest arguments).
     pub cmd: Vec<String>,
