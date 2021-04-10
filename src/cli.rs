@@ -47,7 +47,7 @@ pub struct Args {
     #[builder(default)]
     pub restart: bool,
     /// Interval to debounce the changes. (milliseconds)
-    #[builder(default = "300")]
+    #[builder(default = "500")]
     pub debounce: u64,
     /// Enable debug/verbose logging. No longer used as of 1.14.0 (soft-deprecated).
     ///
@@ -83,7 +83,7 @@ pub struct Args {
     #[builder(default)]
     pub poll: bool,
     /// Interval for polling. (milliseconds)
-    #[builder(default = "2")]
+    #[builder(default = "1000")]
     pub poll_interval: u32,
     #[builder(default)]
     pub watch_when_idle: bool,
