@@ -97,7 +97,7 @@ impl Gitignore {
             .iter()
             .filter(|f| path.starts_with(&f.root))
             .collect();
-        applicable_files.sort_by(|l, r| l.root_len().cmp(&r.root_len()));
+        applicable_files.sort_by_key(|f| f.root_len());
 
         // TODO: add user gitignores
 

@@ -56,10 +56,6 @@ impl Watcher {
     }
 
     pub fn is_polling(&self) -> bool {
-        if let WatcherImpl::Poll(_) = self.watcher_impl {
-            true
-        } else {
-            false
-        }
+        matches!(self.watcher_impl, WatcherImpl::Poll(_))
     }
 }

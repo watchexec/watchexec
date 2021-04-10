@@ -9,7 +9,7 @@
 //!
 //! [watchexec]: https://github.com/watchexec/watchexec
 
-#![warn(clippy::option_unwrap_used, clippy::result_unwrap_used)]
+#![warn(clippy::unwrap_used)]
 
 #[macro_use]
 extern crate derive_builder;
