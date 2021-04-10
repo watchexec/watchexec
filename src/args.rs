@@ -130,7 +130,7 @@ where
                  .long("no-environment"))
         .arg(Arg::with_name("once").short("1").hidden(true))
         .arg(Arg::with_name("watch-when-idle")
-                 .help("Ignore events while the process is still running")
+                 .help("Ignore events while the process is still running. This is distinct from `--restart` in that with this option, events received while the command is running will not trigger a new run immediately after the current command is done. Will become the default in 2.0.")
                  .short("W")
                  .long("watch-when-idle"));
 

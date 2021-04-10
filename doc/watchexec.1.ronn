@@ -54,7 +54,9 @@ Monitor a specific path for changes. By default, the current working directory i
 Terminates the command if it is still running when subsequent file modifications are detected. By default, sends `SIGTERM`; use `--signal` to change that.
 
 * `-W`, `--watch-when-idle`:
-Ignore events while the process is still running.
+Ignore events while the process is still running. This is distinct from `--restart` in that with this option, events received while the command is running will not trigger a new run immediately after the current command is done.
+
+This behaviour will become the default in v2.0.
 
 * `-c`, `--clear`:
 Clears the screen before executing <command>.
