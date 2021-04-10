@@ -51,9 +51,6 @@ pub struct Config {
     /// Specify the shell to use.
     #[builder(default)]
     pub shell: Shell,
-    /// Do not wrap the commands in a shell.
-    #[builder(default)]
-    pub no_shell: bool,
     /// Ignore metadata changes.
     #[builder(default)]
     pub no_meta: bool,
@@ -97,5 +94,15 @@ impl ConfigBuilder {
     #[deprecated(since = "1.15.0", note = "does nothing. set the log level instead")]
     pub fn debug(&mut self, _: impl Into<bool>) -> &mut Self {
         self
+    }
+
+    /// Do not wrap the commands in a shell.
+    #[deprecated(since = "1.15.0", note = "use shell(Shell::None) instead")]
+    pub fn no_shell(&mut self, s: impl Into<bool>) -> &mut Self {
+        if s.into() {
+            self.shell(Shell::default())
+        } else {
+            self.shell(Shell::None)
+        }
     }
 }

@@ -5,7 +5,7 @@ use std::{
     path::{PathBuf, MAIN_SEPARATOR},
 };
 
-use crate::error;
+use crate::{error, Shell};
 use crate::config::{Config, ConfigBuilder};
 
 pub fn get_args() -> error::Result<(Config, LevelFilter)> {
@@ -119,7 +119,7 @@ where
                  .long("shell"))
         // -n short form will not be removed, and instead become a shorthand for --shell=none
         .arg(Arg::with_name("no-shell")
-                 .help("Do not wrap command in 'sh -c' resp. 'cmd.exe /C'")
+                 .help("Do not wrap command in a shell. Deprecated: use --shell=none instead.")
                  .short("n")
                  .long("no-shell"))
         .arg(Arg::with_name("no-meta")
@@ -227,7 +227,6 @@ where
     builder.clear_screen(args.is_present("clear"));
     builder.restart(args.is_present("restart"));
     builder.run_initially(!args.is_present("postpone"));
-    builder.no_shell(args.is_present("no-shell"));
     builder.no_meta(args.is_present("no-meta"));
     builder.no_environment(args.is_present("no-environment"));
     builder.no_vcs_ignore(args.is_present("no-vcs-ignore"));
