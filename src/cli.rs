@@ -98,7 +98,7 @@ impl ArgsBuilder {
     #[deprecated(since = "1.15.0", note = "does nothing. set the log level instead")]
     pub fn debug(&mut self, _: impl Into<bool>) -> &mut Self {
         self
-}
+    }
 }
 
 /// Clear the screen.
@@ -118,10 +118,12 @@ pub fn clear_screen() {
     let _ = Command::new("tput").arg("reset").status();
 }
 
+#[deprecated(since = "1.15.0", note = "this will be removed from the library API. use the builder")]
 pub fn get_args() -> error::Result<Args> {
     get_args_impl(None::<&[&str]>)
 }
 
+#[deprecated(since = "1.15.0", note = "this will be removed from the library API. use the builder")]
 pub fn get_args_from<I, T>(from: I) -> error::Result<Args>
 where
     I: IntoIterator<Item = T>,
