@@ -302,6 +302,7 @@ mod imp {
                     let (first, rest) = cmd.split_first().expect("command is empty");
                     let mut c = Command::new(first);
                     c.args(rest);
+                    c
                 }
                 Shell::Cmd => {
                     let mut c = Command::new("cmd.exe");
