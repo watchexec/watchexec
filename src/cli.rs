@@ -49,9 +49,6 @@ pub struct Args {
     /// Interval to debounce the changes. (milliseconds)
     #[builder(default = "500")]
     pub debounce: u64,
-    /// Change messages are printed via info! so configure your logger appropriately instead.
-    #[builder(default)]
-    pub changes: bool,
     /// Run the commands right after starting.
     #[builder(default = "true")]
     pub run_initially: bool,
