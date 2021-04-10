@@ -34,8 +34,9 @@ use std::{fmt, io::Write};
 #[cfg(windows)]
 impl fmt::Display for Signal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!("{}",
+        write!(
             f,
+            "{}",
             match self {
                 Self::SIGKILL => "SIGKILL",
                 Self::SIGTERM => "SIGTERM",
