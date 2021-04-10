@@ -1,14 +1,15 @@
 use std::io::Write;
 
-extern crate watchexec;
+// until args.rs is removed from the lib
+pub(crate) use watchexec::{error, config};
 
-use watchexec::{cli, error, run};
+mod args;
 
 fn main() -> error::Result<()> {
     #[allow(deprecated)]
-    let (args, loglevel) = cli::get_args()?;
+    let (args, loglevel) = args::get_args()?;
     init_logger(loglevel);
-    run(args)
+    watchexec::run(args)
 }
 
 fn init_logger(level: log::LevelFilter) {

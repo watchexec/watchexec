@@ -15,14 +15,13 @@
 )]
 
 #[macro_use]
-extern crate clap;
-#[macro_use]
 extern crate derive_builder;
 #[macro_use]
 extern crate log;
 #[macro_use]
 extern crate lazy_static;
 
+mod args;
 pub mod cli;
 pub mod config;
 pub mod error;
