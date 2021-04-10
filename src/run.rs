@@ -229,33 +229,34 @@ impl Handler for ExecHandler {
 
     // Only returns Err() on lock poisoning.
     fn on_update(&self, ops: &[PathOp]) -> Result<bool> {
+        let signal = self.signal.unwrap_or(Signal::SIGTERM);
+
         match (
             self.has_running_process(),
             self.args.on_busy_update,
-            self.signal,
         ) {
             // If nothing is running, start the command
-            (false, _, _) => {
+            (false, _) => {
                 self.spawn(ops)?;
             }
 
             // Just send a signal to the command, do nothing more
-            (true, OnBusyUpdate::Signal, signal) => signal_process(&self.child_process, signal.unwrap_or(Signal::SIGTERM)),
+            (true, OnBusyUpdate::Signal) => signal_process(&self.child_process, signal),
 
             // Send a signal to the command, wait for it to exit, then run the command again
-            (true, OnBusyUpdate::Restart, signal) => {
-                signal_process(&self.child_process, signal.unwrap_or(Signal::SIGTERM));
+            (true, OnBusyUpdate::Restart) => {
+                signal_process(&self.child_process, signal);
                 wait_on_process(&self.child_process);
                 self.spawn(ops)?;
             }
 
             // Wait for the command to end, then run it again
-            (true, OnBusyUpdate::Queue, _) => {
+            (true, OnBusyUpdate::Queue) => {
                 wait_on_process(&self.child_process);
                 self.spawn(ops)?;
             }
 
-            (true, OnBusyUpdate::DoNothing, _) => {}
+            (true, OnBusyUpdate::DoNothing) => {}
         }
 
         // Handle once option for integration testing
