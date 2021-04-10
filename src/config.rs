@@ -44,7 +44,7 @@ pub struct Config {
     #[builder(default)]
     pub on_busy_update: OnBusyUpdate,
     /// Interval to debounce the changes.
-    #[builder(default = "Duration::from_millis(500)")]
+    #[builder(default = "Duration::from_millis(150)")]
     pub debounce: Duration,
     /// Run the commands right after starting.
     #[builder(default = "true")]
