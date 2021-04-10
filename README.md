@@ -1,6 +1,6 @@
 # watchexec
 
-[![Build status](https://badgen.net/travis/watchexec/watchexec/main)](https://travis-ci.org/watchexec/watchexec)
+[![CI status](https://github.com/watchexec/watchexec/actions/workflows/check.yml/badge.svg)](https://github.com/watchexec/watchexec/actions/workflows/check.yml)
 [![Crates.io status](https://badgen.net/crates/v/watchexec)](https://crates.io/crates/watchexec)
 [![Docs status](https://docs.rs/watchexec/badge.svg)](https://docs.rs/watchexec)
 
@@ -91,6 +91,10 @@ Requires Rust 1.38 or later.
 
     $ cargo install watchexec
 
+#### [Binstall](https://github.com/ryankurte/cargo-binstall)
+
+    $ cargo binstall watchexec
+
 #### Pre-built
 
 Use the GitHub Releases tab to obtain the tarball/zipfile appropriate for your platform and architecture, extract it, and place it in your `PATH`.
@@ -111,7 +115,7 @@ PRs for packaging in unsupported distros are welcome.
 
 #### Debian
 
-A deb package is available for amd64 architectures in the GitHub Releases.
+A deb package is available for several architectures in the GitHub Releases.
 
 #### Arch Linux
 

@@ -1,0 +1,140 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "*.*.*"
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        name:
+          - linux-amd64-gnu
+          - linux-amd64-musl
+          - linux-i686-musl
+          - linux-armhf-gnu
+          - linux-arm64-gnu
+          - mac-x86-64
+          - windows-x86-64
+        include:
+          - name: linux-amd64-gnu
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            cross: false
+
+          - name: linux-amd64-musl
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            cross: true
+
+          - name: linux-i686-musl
+            os: ubuntu-latest
+            target: i686-unknown-linux-musl
+            cross: true
+
+          - name: linux-armhf-gnu
+            os: ubuntu-latest
+            target: armv7-unknown-linux-gnueabihf
+            cross: true
+
+          - name: linux-arm64-gnu
+            os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            cross: true
+
+          - name: mac-x86-64
+            os: macos-latest
+            target: x86_64-apple-darwin
+            cross: false
+
+          - name: windows-x86-64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            cross: false
+
+    name: Binaries for ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('Cargo.lock') }}
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+      - uses: actions-rs/cargo@v1
+        name: Build
+        with:
+          use-cross: ${{ matrix.cross }}
+          command: build
+          args: --release --locked --target ${{ matrix.target }}
+      - name: Package
+        shell: bash
+        run: |
+          set -euxo pipefail
+          ext=""
+          [[ "${{ matrix.name }}" == windows-* ]] && ext=".exe"
+          bin="target/${{ matrix.target }}/release/watchexec${ext}"
+          version=$(echo "${{ github.ref }}" | cut -d/ -f3 | cut -dv -f2)
+          dst="watchexec-${version}-${{ matrix.target }}"
+          mkdir "$dst"
+          strip "$bin" || true
+          mv "$bin" "$dst/"
+          mv README.md LICENSE completions doc/watchexec.1 "$dst/"
+      - name: Archive (tar)
+        if: '! startsWith(matrix.name, ''windows-'')'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          version=$(echo "${{ github.ref }}" | cut -d/ -f3 | cut -dv -f2)
+          dst="watchexec-${version}-${{ matrix.target }}"
+          tar cavf "$dst.tar.xz" "$dst"
+      - name: Archive (deb)
+        if: startsWith(matrix.name, 'linux-')
+        shell: bash
+        run: |
+          set -euxo pipefail
+          version=$(echo "${{ github.ref }}" | cut -d/ -f3 | cut -dv -f2)
+          dst="watchexec-${version}-${{ matrix.target }}"
+          mkdir -p "deb/$dst"
+          cd "deb/$dst"
+          mkdir -p DEBIAN usr/{bin,share/{man/man1,zsh/site-functions}}
+          cp "../../$dst/watchexec" usr/bin/
+          cp "../../$dst/watchexec.1" usr/share/man/man1/
+          cp "../../$dst/completions/zsh" usr/share/zsh/site-functions/_watchexec
+          cat <<-CONTROL > DEBIAN/control
+          Package: watchexec
+          Version: ${version}
+          Architecture: $(echo "${{ matrix.name }}" | cut -d- -f2)
+          Maintainer: Félix Saparelli <aur@passcod.name>
+          Installed-Size: $(du -d1 usr | tail -n1 | cut -d\t -f1)
+          Homepage: https://github.com/watchexec/watchexec
+          Description: Executes commands in response to file modifications.
+           Software development often involves running the same commands over and over. Boring!
+           Watchexec is a simple, standalone tool that watches a path and runs a command whenever it detects modifications.
+          CONTROL
+          cd ..
+          fakeroot dpkg -b "$dst"
+          mv "$dst.deb" ../
+          cd ..
+      - name: Archive (zip)
+        if: startsWith(matrix.name, 'windows-')
+        shell: bash
+        run: |
+          set -euxo pipefail
+          version=$(echo "${{ github.ref }}" | cut -d/ -f3 | cut -dv -f2)
+          dst="watchexec-${version}-${{ matrix.target }}"
+          7z a "$dst.zip" "$dst"
+      - uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            watchexec-*.tar.xz
+            watchexec-*.deb
+            watchexec-*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

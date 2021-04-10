@@ -1,0 +1,2 @@
+#!/bin/sh
+exec ronn doc/watchexec.1.ronn

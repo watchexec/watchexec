@@ -47,12 +47,6 @@ Apart from that, welcome and thank you for your time!
 
 A release goes through these steps:
 
-0. Versioning indications on PRs. These are statements by the maintainers when reviewing or
-   discussing PRs generally in `[square brackets]` that make an indication of what implication
-   merging the PR will have on versioning. For example:
-
-   > [versioning note: this is a feature add but not considered an api breaking change (due to the builder)]
-
 1. Opening a draft release. Before even merging anything, a draft (only visible privately) release
    is made. These are a github feature and only visible to maintainers. Name the release... that can
    be descriptive or whimsical or both. Release title template is `{version without v}: {title}`.
@@ -70,7 +64,8 @@ A release goes through these steps:
    also added the corresponding completions, manpage entries, readme entries. Or two PRs may
    conflict slightly or do the same thing twice, in which case harmonising things is required here.
 
-5. Run `cargo fmt`, `cargo test`, `cargo clippy`. CI will also run, wait for that. In the meantime:
+5. Run `cargo fmt`, `cargo test`, `cargo clippy`, `bin/manpage`. Commit the result, if any.
+   CI will also run, wait for that. In the meantime:
 
 6. Run through related issues to the PRs and close them if that wasn't done automatically. Or if the
    PRs only fixed a problem partially, chime in to mention that, and to restate what remains to fix.
@@ -79,23 +74,14 @@ A release goes through these steps:
 
 8. Check for any dependency updates with `cargo outdated -R`.
 
-9. Change the version number, run `cargo check`, and make a commit that contains _only_ the
-   Cargo.toml and Cargo.lock changes. Use the version number (without `v` prefix) as only message.
+9. Run `bin/version 1.2.3` where `1.2.3` is the new version number. This will tag and push,
+   triggering the GitHub Action for releases.
 
-10. Create an annotated tag named the naked version (without `v` prefix), with identical message:
+10. Wait for all builds to complete, then attach the draft release to the tag, and publish it.
 
-    ```
-    $ git tag -am 1.14.0{,}
-    ```
+11. Run the `cargo publish`.
 
-11. Push: `$ git push --follow-tags`.
-
-12. Edit the draft release, select the newly pushed tag, and publish it. Built artifacts will get
-    built and get added automatically to the release as downloads.
-
-13. Run the `cargo publish`.
-
-14. Announce the release.
+12. Announce the release.
 
 ---
 vim: tw=100

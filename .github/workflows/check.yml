@@ -1,0 +1,56 @@
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - try/**
+    tags-ignore:
+      - v*.*.*
+
+name: Checks & Tests
+
+jobs:
+  check:
+    strategy:
+      matrix:
+        platform:
+          - ubuntu
+          - windows
+          - macos
+
+    name: Check & Test on ${{ matrix.platform }}
+    runs-on: "${{ matrix.platform }}-latest"
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - run: rustup component add clippy
+      - uses: actions-rs/cargo@v1
+        with:
+          command: check
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+      - uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: -- -D warnings
+
+  msrv:
+    name: Check on MSRV
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: 1.38.0
+          override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          command: check
+

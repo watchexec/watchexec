@@ -1,36 +1,32 @@
 [package]
 name = "watchexec"
 version = "1.14.1"
-authors = ["Matt Green <mattgreenrocks@gmail.com>"]
+
+authors = ["Matt Green <mattgreenrocks@gmail.com>", "Félix Saparelli <felix@passcod.name>"]
+license = "Apache-2.0"
 description = "Executes commands in response to file modifications"
+keywords = ["watcher", "inotify", "fsevents", "kqueue"]
+categories = ["command-line-utilities"]
+
 documentation = "https://github.com/watchexec/watchexec"
 homepage = "https://github.com/watchexec/watchexec"
 repository = "https://github.com/watchexec/watchexec"
 readme = "README.md"
-keywords = ["watcher", "inotify", "fsevents", "kqueue"]
-categories = ["command-line-utilities"]
-license = "Apache-2.0"
-exclude = ["/ci/*", "/pkg/*", "/.travis.yml", "/Makefile", "/appveyor.yml"]
+
 edition = "2018"
+exclude = ["/pkg", "/bin", "/.github"]
 
-[badges]
-appveyor = { repository = "watchexec/watchexec" }
-travis-ci = { repository = "watchexec/watchexec" }
-
-[profile.dev]
-panic = "abort"
-
-[profile.release]
-lto = true
-panic = "abort"
+[[bin]]
+name = "watchexec"
+doc = false
 
 [dependencies]
+derive_builder = "0.9.0"
 glob = "0.3.0"
 globset = "0.4.5"
 lazy_static = "1.1.0"
 log = "0.4.4"
 notify = "4.0.15"
-derive_builder = "0.9.0"
 walkdir = "2.3.1"
 
 [dependencies.clap]
@@ -50,9 +46,22 @@ nix = "0.17.0"
 version = "0.3.9"
 features = ["ioapiset", "jobapi2", "tlhelp32"]
 
-[[bin]]
-name = "watchexec"
-doc = false
-
 [build-dependencies]
 embed-resource = "1.3.3"
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+lto = true
+panic = "abort"
+codegen-units = 1
+
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/{ version }/{ name }-{ version }-{ target }.tar.xz"
+bin-dir = "{ name }-{ version }-{ target }/{ bin }{ format }"
+pkg-fmt = "txz"
+
+[package.metadata.binstall.overrides.x86_64-pc-windows-msvc]
+pkg-url = "{ repo }/releases/download/{ version }/{ name }-{ version }-{ target }.zip"
+pkg-fmt = "zip"
