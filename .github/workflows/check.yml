@@ -5,7 +5,7 @@ on:
       - main
       - try/**
     tags-ignore:
-      - v*.*.*
+      - "*.*.*"
 
 name: Checks & Tests
 
