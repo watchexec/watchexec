@@ -13,7 +13,7 @@
 //!     .expect("mission failed");
 //! ```
 
-use std::path::PathBuf;
+use std::{time::Duration, path::PathBuf};
 
 use crate::process::Shell;
 use crate::run::OnBusyUpdate;
@@ -43,9 +43,9 @@ pub struct Config {
     /// Specify what to do when receiving updates while the command is running.
     #[builder(default)]
     pub on_busy_update: OnBusyUpdate,
-    /// Interval to debounce the changes. (milliseconds)
-    #[builder(default = "500")]
-    pub debounce: u64,
+    /// Interval to debounce the changes.
+    #[builder(default = "Duration::from_millis(500)")]
+    pub debounce: Duration,
     /// Run the commands right after starting.
     #[builder(default = "true")]
     pub run_initially: bool,
@@ -72,9 +72,9 @@ pub struct Config {
     /// Force using the polling backend.
     #[builder(default)]
     pub poll: bool,
-    /// Interval for polling. (milliseconds)
-    #[builder(default = "1000")]
-    pub poll_interval: u32,
+    /// Interval for polling.
+    #[builder(default = "Duration::from_secs(1)")]
+    pub poll_interval: Duration,
 }
 
 impl ConfigBuilder {

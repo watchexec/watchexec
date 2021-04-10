@@ -1,4 +1,6 @@
 use notify::{raw_watcher, PollWatcher, RecommendedWatcher, RecursiveMode};
+use std::convert::TryFrom;
+use std::time::Duration;
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 
@@ -25,12 +27,12 @@ impl Watcher {
         tx: Sender<Event>,
         paths: &[PathBuf],
         poll: bool,
-        interval_ms: u32,
+        interval: Duration,
     ) -> Result<Self, Error> {
         use notify::Watcher;
 
         let imp = if poll {
-            let mut watcher = PollWatcher::with_delay_ms(tx, interval_ms)?;
+            let mut watcher = PollWatcher::with_delay_ms(tx, u32::try_from(interval.as_millis()).unwrap_or(u32::MAX))?;
             for path in paths {
                 watcher.watch(path, RecursiveMode::Recursive)?;
                 debug!("Watching {:?}", path);

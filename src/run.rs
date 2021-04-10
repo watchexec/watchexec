@@ -131,7 +131,7 @@ where
     })?;
 
     if watcher.is_polling() {
-        warn!("Polling for changes every {} ms", args.poll_interval);
+        warn!("Polling for changes every {:?} ms", args.poll_interval);
     }
 
     // Call handler initially, if necessary
@@ -278,7 +278,7 @@ pub fn run(args: Config) -> Result<()> {
 fn wait_fs(
     rx: &Receiver<Event>,
     filter: &NotificationFilter,
-    debounce: u64,
+    debounce: Duration,
     no_meta: bool,
 ) -> Vec<PathOp> {
     let mut paths = Vec::new();
@@ -310,8 +310,7 @@ fn wait_fs(
     }
 
     // Wait for filesystem activity to cool off
-    let timeout = Duration::from_millis(debounce);
-    while let Ok(e) = rx.recv_timeout(timeout) {
+    while let Ok(e) = rx.recv_timeout(debounce) {
         if let Some(ref path) = e.path {
             let pathop = PathOp::new(path, e.op.ok(), e.cookie);
             if cache.contains_key(&pathop) {
