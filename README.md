@@ -87,7 +87,7 @@ Run `bundle install` when the `Gemfile` changes:
 
 #### Cargo
 
-Requires Rust 1.40 or later.
+Requires Rust 1.43 or later.
 
     $ cargo install watchexec
 
