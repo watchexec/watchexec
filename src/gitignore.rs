@@ -46,7 +46,7 @@ pub fn load(paths: &[PathBuf]) -> Gitignore {
 
     for path in paths {
         let mut top_level_git_dir = None;
-        let mut p = Some(path.clone()); // FIXME: cow
+        let mut p = Some(path.as_path());
 
         while let Some(ref current) = p {
             debug!("Looking in {:?} for a .git directory", current);
@@ -54,15 +54,16 @@ pub fn load(paths: &[PathBuf]) -> Gitignore {
             // Stop if we see a .git directory
             if let Ok(metadata) = current.join(".git").metadata() {
                 if metadata.is_dir() {
-                    top_level_git_dir = Some(path);
+                    top_level_git_dir = Some(*current);
                     break;
                 }
             }
 
-            p = current.parent().map(ToOwned::to_owned);
+            p = current.parent();
         }
 
         if let Some(root) = top_level_git_dir {
+            debug!("Found the top level git directory: {:?}", root);
             // scan in subdirectories
             for entry in WalkDir::new(root)
                 .into_iter()
