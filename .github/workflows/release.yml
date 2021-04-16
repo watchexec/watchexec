@@ -85,7 +85,7 @@ jobs:
           mkdir "$dst"
           strip "$bin" || true
           mv "$bin" "$dst/"
-          mv README.md LICENSE completions doc/watchexec.1 "$dst/"
+          mv README.md LICENSE completions doc/watchexec.1{,.html} "$dst/"
       - name: Archive (tar)
         if: '! startsWith(matrix.name, ''windows-'')'
         shell: bash
@@ -103,9 +103,10 @@ jobs:
           dst="watchexec-${version}-${{ matrix.target }}"
           mkdir -p "deb/$dst"
           cd "deb/$dst"
-          mkdir -p DEBIAN usr/{bin,share/{man/man1,zsh/site-functions}}
+          mkdir -p DEBIAN usr/{bin,share/{man/man1,doc/watchexec,zsh/site-functions}}
           cp "../../$dst/watchexec" usr/bin/
           cp "../../$dst/watchexec.1" usr/share/man/man1/
+          cp "../../$dst/watchexec.1.html" usr/share/doc/watchexec/
           cp "../../$dst/completions/zsh" usr/share/zsh/site-functions/_watchexec
           cat <<-CONTROL > DEBIAN/control
           Package: watchexec
