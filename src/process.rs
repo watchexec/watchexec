@@ -589,6 +589,16 @@ mod tests {
     }
 
     #[test]
+    fn test_shell_alternate_shopts() {
+        let _ = spawn(
+            &["echo".into(), "hi".into()],
+            &[],
+            Shell::Unix("bash -o errexit".into()),
+            false,
+        );
+    }
+
+    #[test]
     fn longest_common_path_should_return_correct_value() {
         let single_path = vec![PathBuf::from("/tmp/random/")];
         let single_result =
