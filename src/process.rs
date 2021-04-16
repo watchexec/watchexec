@@ -24,7 +24,7 @@ pub enum Shell {
     /// This means two things:
     /// - the program is invoked with `-c` followed by the command, and
     /// - the string will be split on space, and the resulting vec used as
-    ///   popen3 arguments: first is the shell program, rest are additional
+    ///   execvp(3) arguments: first is the shell program, rest are additional
     ///   arguments (which come before the `-c` mentioned above). This is a very
     ///   simplistic approach deliberately: it will not support quoted
     ///   arguments, for example. Use [`Shell::None`] with a custom command vec

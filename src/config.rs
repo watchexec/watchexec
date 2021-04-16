@@ -26,7 +26,7 @@ use crate::run::OnBusyUpdate;
 pub struct Config {
     /// Command to execute.
     ///
-    /// When `shell` is [`Shell::None`], this is expected to be in “popen3”
+    /// When `shell` is [`Shell::None`], this is expected to be in “execvp(3)”
     /// format: first program, rest arguments. Otherwise, all elements will be
     /// joined together with a single space and passed to the shell. More
     /// control can then be obtained by providing a 1-element vec, and doing
