@@ -41,6 +41,12 @@
   ol.man-decor li.tc {text-align:center;letter-spacing:4px}
   ol.man-decor li.tr {text-align:right;float:right}
   </style>
+  <style type='text/css' media='all'>
+  /* style: toc */
+  .man-navigation {display:block !important;position:fixed;top:0;left:113ex;height:100%;width:100%;padding:48px 0 0 0;border-left:1px solid #dbdbdb;background:#eee}
+  .man-navigation a,.man-navigation a:hover,.man-navigation a:link,.man-navigation a:visited {display:block;margin:0;padding:5px 2px 5px 30px;color:#999;text-decoration:none}
+  .man-navigation a:hover {color:#111;text-decoration:underline}
+  </style>
 </head>
 <!--
   The following styles are deprecated and will be removed at some point:
@@ -85,7 +91,13 @@
 <h2 id="OPTIONS">OPTIONS</h2>
 
 <dl>
-<dt class="flush"><var>command</var></dt><dd><p>Command to run when watched files are modified, and at startup, unless <code>--postpone</code> is specified. All <var>argument</var>s are passed to <var>command</var>. If you pass flags to the command, you should separate it with <code>--</code>, for example: <code>watchexec -w src -- rsync -a src dest</code>.</p></dd>
+<dt class="flush"><var>command</var></dt><dd>Command to run when watched files are modified, and at startup, unless <code>--postpone</code> is specified. All <var>argument</var>s are passed to <var>command</var>. If you pass flags to the command, you should separate it with <code>--</code>, for example: <code>watchexec -w src -- rsync -a src dest</code>.</dd>
+</dl>
+
+
+<p>Behaviour depends on the value of <code>--shell</code>: for all except <code>none</code>, every part of <var>command</var> is joined together into one string with a single ascii space character, and given to the shell as described. For <code>none</code>, each distinct element of <var>command</var> is passed as per the <span class="man-ref">execvp<span class="s">(3)</span></span> convention: first argument is the program, as a file or searched in the <code>PATH</code>, rest are arguments.</p>
+
+<dl>
 <dt><code>-e</code>, <code>--exts</code> <var>extensions</var></dt><dd><p>Comma-separated list of file extensions to filter by. Leading dots (.rs) are allowed. (This is a shorthand for <code>-f</code>).</p></dd>
 <dt><code>-f</code>, <code>--filter</code> <var>pattern</var></dt><dd><p>Ignores modifications from paths that do not match <var>pattern</var>. This option can be specified multiple times, where a match on any given pattern causes the path to trigger <var>command</var>.</p></dd>
 <dt><code>-s</code>, <code>--signal</code></dt><dd><p>Sends the specified signal (e.g. <code>SIGKILL</code>) to the command. Defaults to <code>SIGTERM</code>.</p></dd>
@@ -95,7 +107,13 @@
 
 <p>The special value <code>powershell</code> will use Microsoft Powershell's calling convention, otherwise <code>SHELL -c COMMAND</code>.</p>
 
-<p>The <code>none</code> value is especially useful in combination with <code>--signal</code>, as the signal is then send directly to the specified command. While <code>--shell=none</code> is a little more performant than the default, it prevents using shell-features like pipes and redirects.</p>
+<p>On Windows, the additional <code>cmd</code> special value uses CMD.EXE calling convention.</p>
+
+<p>The <code>none</code> value is especially useful in combination with <code>--signal</code>, as the signal is then sent directly to the running command. While <code>--shell=none</code> is a little more performant than the default, it prevents using shell-features like pipes and redirects.</p>
+
+<p>If not a special value, the string provided may contain arguments to the shell as long as that is kept simple: the string is split along whitespace, and used as per <span class="man-ref">execvp<span class="s">(3)</span></span>: first is shell program, rest are arguments to the shell, then <code>-c</code> is added, and finally the <code>COMMAND</code>.</p>
+
+<p>See the <a href="#EXAMPLES" title="EXAMPLES" data-bare-link="true">EXAMPLES</a> for uses of each of these.</p>
 
 <dl>
 <dt><code>--no-shell</code></dt><dd><p>Deprecated. Alias for <code>--shell=none</code>.</p></dd>
@@ -172,6 +190,31 @@
 <p>Watch lib and src directories for changes, rebuilding each time:</p>
 
 <pre><code>$ watchexec -w lib -w src make
+</code></pre>
+
+<p>Use without shell:</p>
+
+<pre><code>$ watchexec -n -- zsh -x -o shwordsplit scr
+</code></pre>
+
+<p>Use with powershell (default on windows from 2.0):</p>
+
+<pre><code>$ watchexec --shell=powershell -- test-connection localhost
+</code></pre>
+
+<p>Use with cmd (default on windows until 2.0):</p>
+
+<pre><code>$ watchexec --shell=cmd -- dir
+</code></pre>
+
+<p>Use with a different unix shell:</p>
+
+<pre><code>$ watchexec --shell=bash -- 'echo $BASH_VERSION'
+</code></pre>
+
+<p>Use with a unix shell and options:</p>
+
+<pre><code>$ watchexec --shell='zsh -x -o shwordsplit' -- scr
 </code></pre>
 
 

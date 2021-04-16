@@ -1,2 +1,2 @@
 #!/bin/sh
-exec ronn doc/watchexec.1.ronn
+exec ronn --roff --html --style=toc doc/watchexec.1.ronn

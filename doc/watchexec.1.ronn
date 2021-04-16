@@ -34,7 +34,7 @@ The special value `powershell` will use Microsoft Powershell's calling conventio
 
 On Windows, the additional `cmd` special value uses CMD.EXE calling convention.
 
-The `none` value is especially useful in combination with `--signal`, as the signal is then send directly to the specified command. While `--shell=none` is a little more performant than the default, it prevents using shell-features like pipes and redirects.
+The `none` value is especially useful in combination with `--signal`, as the signal is then sent directly to the running command. While `--shell=none` is a little more performant than the default, it prevents using shell-features like pipes and redirects.
 
 If not a special value, the string provided may contain arguments to the shell as long as that is kept simple: the string is split along whitespace, and used as per execvp(3): first is shell program, rest are arguments to the shell, then `-c` is added, and finally the `COMMAND`.
 

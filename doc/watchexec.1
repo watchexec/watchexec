@@ -21,6 +21,9 @@ At startup, the specified \fIcommand\fR (passing any supplied \fIargument\fRs) i
 \fIcommand\fR
 Command to run when watched files are modified, and at startup, unless \fB\-\-postpone\fR is specified\. All \fIargument\fRs are passed to \fIcommand\fR\. If you pass flags to the command, you should separate it with \fB\-\-\fR, for example: \fBwatchexec \-w src \-\- rsync \-a src dest\fR\.
 .
+.P
+Behaviour depends on the value of \fB\-\-shell\fR: for all except \fBnone\fR, every part of \fIcommand\fR is joined together into one string with a single ascii space character, and given to the shell as described\. For \fBnone\fR, each distinct element of \fIcommand\fR is passed as per the execvp(3) convention: first argument is the program, as a file or searched in the \fBPATH\fR, rest are arguments\.
+.
 .TP
 \fB\-e\fR, \fB\-\-exts\fR \fIextensions\fR
 Comma\-separated list of file extensions to filter by\. Leading dots (\.rs) are allowed\. (This is a shorthand for \fB\-f\fR)\.
@@ -41,7 +44,16 @@ Change the shell used to run the command\. Set to \fBnone\fR to run the command 
 The special value \fBpowershell\fR will use Microsoft Powershell\'s calling convention, otherwise \fBSHELL \-c COMMAND\fR\.
 .
 .P
-The \fBnone\fR value is especially useful in combination with \fB\-\-signal\fR, as the signal is then send directly to the specified command\. While \fB\-\-shell=none\fR is a little more performant than the default, it prevents using shell\-features like pipes and redirects\.
+On Windows, the additional \fBcmd\fR special value uses CMD\.EXE calling convention\.
+.
+.P
+The \fBnone\fR value is especially useful in combination with \fB\-\-signal\fR, as the signal is then sent directly to the running command\. While \fB\-\-shell=none\fR is a little more performant than the default, it prevents using shell\-features like pipes and redirects\.
+.
+.P
+If not a special value, the string provided may contain arguments to the shell as long as that is kept simple: the string is split along whitespace, and used as per execvp(3): first is shell program, rest are arguments to the shell, then \fB\-c\fR is added, and finally the \fBCOMMAND\fR\.
+.
+.P
+See the \fIEXAMPLES\fR for uses of each of these\.
 .
 .TP
 \fB\-\-no\-shell\fR
@@ -209,6 +221,71 @@ Watch lib and src directories for changes, rebuilding each time:
 .nf
 
 $ watchexec \-w lib \-w src make
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Use without shell:
+.
+.IP "" 4
+.
+.nf
+
+$ watchexec \-n \-\- zsh \-x \-o shwordsplit scr
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Use with powershell (default on windows from 2\.0):
+.
+.IP "" 4
+.
+.nf
+
+$ watchexec \-\-shell=powershell \-\- test\-connection localhost
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Use with cmd (default on windows until 2\.0):
+.
+.IP "" 4
+.
+.nf
+
+$ watchexec \-\-shell=cmd \-\- dir
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Use with a different unix shell:
+.
+.IP "" 4
+.
+.nf
+
+$ watchexec \-\-shell=bash \-\- \'echo $BASH_VERSION\'
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Use with a unix shell and options:
+.
+.IP "" 4
+.
+.nf
+
+$ watchexec \-\-shell=\'zsh \-x \-o shwordsplit\' \-\- scr
 .
 .fi
 .
