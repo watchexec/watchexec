@@ -16,6 +16,8 @@ At startup, the specified <command> (passing any supplied <argument>s) is run on
 * <command>:
 Command to run when watched files are modified, and at startup, unless `--postpone` is specified. All <argument>s are passed to <command>. If you pass flags to the command, you should separate it with `--`, for example: `watchexec -w src -- rsync -a src dest`.
 
+Behaviour depends on the value of `--shell`: for all except `none`, every part of <command> is joined together into one string with a single ascii space character, and given to the shell as described. For `none`, each distinct element of <command> is passed as per the execvp(3) convention: first argument is the program, as a file or searched in the `PATH`, rest are arguments.
+
 * `-e`, `--exts` <extensions>:
 Comma-separated list of file extensions to filter by. Leading dots (.rs) are allowed. (This is a shorthand for `-f`).
 
