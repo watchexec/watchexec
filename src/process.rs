@@ -23,6 +23,12 @@ pub enum Shell {
     ///
     /// This means two things:
     /// - the program is invoked with `-c` followed by the command, and
+    /// - the string will be split on space, and the resulting vec used as
+    ///   popen3 arguments: first is the shell program, rest are additional
+    ///   arguments (which come before the `-c` mentioned above). This is a very
+    ///   simplistic approach deliberately: it will not support quoted
+    ///   arguments, for example. Use [`Shell::None`] with a custom command vec
+    ///   if you want that.
     Unix(String),
 
     /// Use the Windows CMD.EXE shell.
@@ -95,7 +101,14 @@ impl Shell {
 
             Shell::Unix(name) => {
                 assert!(!name.is_empty(), "shell program was empty");
+                let sh = name.split_ascii_whitespace().collect::<Vec<_>>();
+
+                // UNWRAP: checked by assert
+                #[allow(clippy::unwrap_used)]
+                let (shprog, shopts) = sh.split_first().unwrap();
+
                 let mut c = Command::new(shprog);
+                c.args(shopts);
                 c.arg("-c").arg(cmd.join(" "));
                 c
             }
