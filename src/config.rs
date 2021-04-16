@@ -24,54 +24,75 @@ use crate::run::OnBusyUpdate;
 #[builder(build_fn(validate = "Self::validate"))]
 #[non_exhaustive]
 pub struct Config {
-    /// Command to execute in popen3 format (first program, rest arguments).
+    /// Command to execute.
+    ///
+    /// When `shell` is [`Shell::None`], this is expected to be in “popen3”
+    /// format: first program, rest arguments. Otherwise, all elements will be
+    /// joined together with a single space and passed to the shell. More
+    /// control can then be obtained by providing a 1-element vec, and doing
+    /// your own joining and/or escaping there.
     pub cmd: Vec<String>,
+
     /// List of paths to watch for changes.
     pub paths: Vec<PathBuf>,
+
     /// Positive filters (trigger only on matching changes). Glob format.
     #[builder(default)]
     pub filters: Vec<String>,
+
     /// Negative filters (do not trigger on matching changes). Glob format.
     #[builder(default)]
     pub ignores: Vec<String>,
+
     /// Clear the screen before each run.
     #[builder(default)]
     pub clear_screen: bool,
+
     /// If Some, send that signal (e.g. SIGHUP) to the command on change.
     #[builder(default)]
     pub signal: Option<String>,
+
     /// Specify what to do when receiving updates while the command is running.
     #[builder(default)]
     pub on_busy_update: OnBusyUpdate,
+
     /// Interval to debounce the changes.
     #[builder(default = "Duration::from_millis(150)")]
     pub debounce: Duration,
+
     /// Run the commands right after starting.
     #[builder(default = "true")]
     pub run_initially: bool,
+
     /// Specify the shell to use.
     #[builder(default)]
     pub shell: Shell,
+
     /// Ignore metadata changes.
     #[builder(default)]
     pub no_meta: bool,
+
     /// Do not set WATCHEXEC_*_PATH environment variables for the process.
     #[builder(default)]
     pub no_environment: bool,
+
     /// Skip auto-loading .gitignore files
     #[builder(default)]
     pub no_vcs_ignore: bool,
+
     /// Skip auto-loading .ignore files
     #[builder(default)]
     pub no_ignore: bool,
+
     /// For testing only, always set to false.
-    #[builder(setter(skip))]
-    #[builder(default)]
+    #[builder(setter(skip), default)]
     #[doc(hidden)]
     pub once: bool,
+
     /// Force using the polling backend.
     #[builder(default)]
     pub poll: bool,
+
     /// Interval for polling.
     #[builder(default = "Duration::from_secs(1)")]
     pub poll_interval: Duration,

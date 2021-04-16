@@ -2,20 +2,41 @@
 
 use crate::error::Result;
 use crate::pathop::PathOp;
-use std::collections::{HashMap, HashSet};
-use std::path::PathBuf;
+use std::{collections::{HashMap, HashSet},
+path::PathBuf,
+process::Command};
 
 /// Shell to use to run commands.
 ///
 /// `Cmd` and `Powershell` are special-cased because they have different calling
 /// conventions. Also `Cmd` is only available in Windows, while `Powershell` is
 /// also available on unices (provided the end-user has it installed, of course).
+///
+/// See [`Config.cmd`][crate::config::Config] for the semantics of `None` vs the
+/// other options.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Shell {
+    /// Use no shell, and execute the command directly.
     None,
+
+    /// Use the given string as a unix shell invocation.
+    ///
+    /// This means two things:
+    /// - the program is invoked with `-c` followed by the command, and
     Unix(String),
+
+    /// Use the Windows CMD.EXE shell.
+    ///
+    /// This is invoked with `/C` followed by the command.
     #[cfg(windows)]
     Cmd,
+
+    /// Use Powershell, on Windows or elsewhere.
+    ///
+    /// This is invoked with `-Command` followed by the command.
+    ///
+    /// This is preferred over `Unix("pwsh")`, though that will also work
+    /// on unices due to Powershell supporting the `-c` short option.
     Powershell,
 }
 
