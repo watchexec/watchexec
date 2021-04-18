@@ -81,6 +81,18 @@ Run `bundle install` when the `Gemfile` changes:
 
     $ watchexec -w Gemfile bundle install
 
+Run two commands:
+
+    $ watchexec 'date; make'
+
+If you come from `entr`, note that the watchexec command is run in a shell by default. You can use `-n` or `--shell=none` to not do that:
+
+    $ watchexec -n -- echo ';' lorem ipsum
+
+On Windows, you may prefer to use Powershell:
+
+    $ watchexec --shell=powershell -- test-connection localhost
+
 ## Installation
 
 ### All platforms
