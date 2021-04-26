@@ -35,6 +35,7 @@
     </trustInfo>
     <application xmlns="urn:schemas-microsoft-com:asm.v3">
         <windowsSettings>
+            <heapType xmlns="http://schemas.microsoft.com/SMI/2020/WindowsSettings">SegmentHeap</heapType>
             <longPathAware xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">true</longPathAware>
         </windowsSettings>
     </application>
