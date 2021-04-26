@@ -16,6 +16,7 @@
     <application xmlns="urn:schemas-microsoft-com:asm.v3">
         <windowsSettings xmlns:ws="http://schemas.microsoft.com/SMI/2020/WindowsSettings">
             <ws:activeCodePage>UTF-8</ws:activeCodePage>
+            <ws:heapType>SegmentHeap</ws:heapType>
             <ws:longPathAware>true</ws:longPathAware>
         </windowsSettings>
     </application>
