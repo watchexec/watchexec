@@ -2,9 +2,8 @@
 <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
     <assemblyIdentity
         type="win32"
-        name="Watchexec.Watchexec"
-        version="1.15.1"
-        processorArchitecture="amd64"
+        name="Watchexec.Cli.watchexec"
+        version="1.15.1.0"
     />
 
     <trustInfo>

@@ -40,7 +40,7 @@ fi
 date=$(date +%Y-%m-%d)
 echo "Next version to be $newver ($date), creating..."
 
-sed -E -i "s/version=\"$extver\"/version=\"$newver\"/1" watchexec.exe.manifest
+sed -E -i "s/version=\"$extver.0\"/version=\"$newver.0\"/1" watchexec.exe.manifest
 sed -E -i "s/^version = \"$extver\"/version = \"$newver\"/1" Cargo.toml
 
 cargo check
