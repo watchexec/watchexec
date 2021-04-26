@@ -14,7 +14,7 @@
         </security>
     </trustInfo>
     <application xmlns="urn:schemas-microsoft-com:asm.v3">
-        <windowsSettings xmlns:ws="http://schemas.microsoft.com/SMI/2016/WindowsSettings">
+        <windowsSettings xmlns:ws="http://schemas.microsoft.com/SMI/2020/WindowsSettings">
             <ws:longPathAware>true</ws:longPathAware>
         </windowsSettings>
     </application>
