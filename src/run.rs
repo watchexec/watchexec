@@ -131,7 +131,7 @@ where
     })?;
 
     if watcher.is_polling() {
-        warn!("Polling for changes every {:?} ms", args.poll_interval);
+        warn!("Polling for changes every {:?}", args.poll_interval);
     }
 
     // Call handler initially, if necessary
