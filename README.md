@@ -101,11 +101,11 @@ On Windows, you may prefer to use Powershell:
 
 Requires Rust 1.43 or later.
 
-    $ cargo install watchexec
+    $ cargo install watchexec-cli
 
 #### [Binstall](https://github.com/ryankurte/cargo-binstall)
 
-    $ cargo binstall watchexec
+    $ cargo binstall watchexec-cli
 
 #### Pre-built
 

@@ -1,4 +1,3 @@
-use crate::cli::clear_screen;
 use crate::config::Config;
 use crate::error::{Error, Result};
 use crate::gitignore;
@@ -187,7 +186,7 @@ impl ExecHandler {
 
     fn spawn(&self, ops: &[PathOp]) -> Result<()> {
         if self.args.clear_screen {
-            clear_screen();
+            clearscreen::clear()?;
         }
 
         debug!("Launching command");

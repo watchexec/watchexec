@@ -27,8 +27,8 @@ git pull --rebase --autostash $upstream $mainbranch
 echo "Fetching tags from upstream"
 git fetch --tags "$upstream"
 
-extver=$(grep -P '^version =' Cargo.toml | head -n1 | cut -d'"' -f2)
-echo "(Version from Cargo.toml: $extver)"
+extver=$(grep -P '^version =' cli/Cargo.toml | head -n1 | cut -d'"' -f2)
+echo "(Version from cli/Cargo.toml: $extver)"
 
 newver="$1"
 
@@ -40,8 +40,9 @@ fi
 date=$(date +%Y-%m-%d)
 echo "Next version to be $newver ($date), creating..."
 
-sed -E -i "s/version=\"$extver.0\"/version=\"$newver.0\"/1" watchexec.exe.manifest
-sed -E -i "s/^version = \"$extver\"/version = \"$newver\"/1" Cargo.toml
+sed -E -i "s/version=\"$extver.0\"/version=\"$newver.0\"/1" cli/watchexec.exe.manifest
+sed -E -i "s/^version = \"$extver\"/version = \"$newver\"/1" cli/Cargo.toml
+sed -E -i "s/^version = \"$extver\"/version = \"$newver\"/1" lib/Cargo.toml
 
 cargo check
 

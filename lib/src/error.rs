@@ -2,6 +2,7 @@ use std::{error::Error as StdError, fmt, io, sync::PoisonError};
 
 pub type Result<T> = ::std::result::Result<T, Error>;
 
+#[non_exhaustive]
 pub enum Error {
     Canonicalization(String, io::Error),
     Glob(globset::Error),
@@ -9,6 +10,7 @@ pub enum Error {
     Notify(notify::Error),
     Generic(String),
     PoisonedLock,
+    ClearScreen(clearscreen::Error),
 }
 
 impl StdError for Error {}
@@ -49,6 +51,15 @@ impl<'a, T> From<PoisonError<T>> for Error {
     }
 }
 
+impl From<clearscreen::Error> for Error {
+    fn from(err: clearscreen::Error) -> Self {
+        match err {
+            clearscreen::Error::Io(err) => Self::Io(err),
+            other => Self::ClearScreen(other),
+        }
+    }
+}
+
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (error_type, error) = match self {
@@ -61,6 +72,7 @@ impl fmt::Display for Error {
             Self::Io(err) => ("I/O", err.to_string()),
             Self::Notify(err) => ("Notify", err.to_string()),
             Self::PoisonedLock => ("Internal", "poisoned lock".to_string()),
+            Self::ClearScreen(err) => ("ClearScreen", err.to_string()),
         };
 
         write!(f, "{} error: {}", error_type, error)
