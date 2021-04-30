@@ -67,6 +67,12 @@ jobs:
             cross: false
             experimental: false
 
+          - name: windows-arm64
+            os: windows-latest
+            target: aarch64-pc-windows-msvc
+            cross: true
+            experimental: true
+
     name: Binaries for ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.experimental }}
