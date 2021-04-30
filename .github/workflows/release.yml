@@ -56,7 +56,7 @@ jobs:
             experimental: false
 
           - name: mac-arm64
-            os: macos-latest
+            os: macos-11.0
             target: aarch64-apple-darwin
             cross: true
             experimental: true
@@ -79,6 +79,7 @@ jobs:
           key: ${{ runner.os }}-cargo-registry-${{ hashFiles('Cargo.lock') }}
       - uses: actions-rs/toolchain@v1
         with:
+          target: ${{ matrix.target }}
           toolchain: stable
           profile: minimal
           override: true
