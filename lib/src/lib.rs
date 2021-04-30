@@ -1,13 +1,8 @@
-//! Watchexec: the library
+//! [Watchexec]: the library
 //!
-//! This is the library version of the CLI tool [watchexec]. The tool is
-//! implemented with this library, but the purpose of the watchexec project is
-//! to deliver the CLI tool, instead of focusing on the library interface first
-//! and foremost. **For this reason, semver guarantees do _not_ apply to this
-//! library.** Please use exact version matching, as this API may break even
-//! between patch point releases. This policy may change in the future.
+//! From version 1.16.0, semver applies!
 //!
-//! [watchexec]: https://github.com/watchexec/watchexec
+//! [Watchexec]: https://github.com/watchexec/watchexec
 
 #![doc(html_favicon_url = "https://raw.githubusercontent.com/watchexec/watchexec/main/doc/logo.svg")]
 #![doc(html_logo_url = "https://raw.githubusercontent.com/watchexec/watchexec/main/doc/logo.svg")]
