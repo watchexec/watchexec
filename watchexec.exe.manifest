@@ -33,8 +33,9 @@
 
     <application xmlns="urn:schemas-microsoft-com:asm.v3">
         <windowsSettings xmlns:ws="http://schemas.microsoft.com/SMI/2020/WindowsSettings">
-            <ws:heapType>SegmentHeap</ws:heapType>
-            <ws:longPathAware>true</ws:longPathAware>
+            <ws:longPathAware xmlns:ws="http://schemas.microsoft.com/SMI/2016/WindowsSettings">true</ws:longPathAware>
+            <ws:activeCodePage xmlns:ws="http://schemas.microsoft.com/SMI/2019/WindowsSettings">UTF-8</ws:activeCodePage>
+            <ws:heapType xmlns:ws="http://schemas.microsoft.com/SMI/2020/WindowsSettings">SegmentHeap</ws:heapType>
         </windowsSettings>
     </application>
 </assembly>
