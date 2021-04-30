@@ -42,12 +42,11 @@ echo "Next version to be $newver ($date), creating..."
 
 sed -E -i "s/version=\"$extver.0\"/version=\"$newver.0\"/1" cli/watchexec.exe.manifest
 sed -E -i "s/^version = \"$extver\"/version = \"$newver\"/1" cli/Cargo.toml
-sed -E -i "s/^version = \"$extver\"/version = \"$newver\"/1" lib/Cargo.toml
 
 cargo check
 
-git commit -am "$newver"
-git tag -sam "$newver" "$newver"
+git commit -am "cli: v$newver"
+git tag -sam "watchexec-cli $newver" "cli-v$newver"
 
 echo "Pushing to upstream"
 git push --follow-tags $upstream $mainbranch

@@ -74,8 +74,8 @@ A release goes through these steps:
 
 8. Check for any dependency updates with `cargo outdated -R`.
 
-9. Run `bin/version 1.2.3` where `1.2.3` is the new version number. This will tag and push,
-   triggering the GitHub Action for releases.
+9. Run `bin/cli-version 1.2.3` where `1.2.3` is the new version number. This will tag and push,
+   triggering the GitHub Action for releases. Use `bin/lib-version` to release a library update.
 
 10. Wait for all builds to complete, then attach the draft release to the tag, and publish it.
 

@@ -1,9 +1,9 @@
-name: Release
+name: CLI Release
 
 on:
   push:
     tags:
-      - "*.*.*"
+      - "cli-v*.*.*"
 
 jobs:
   build:
@@ -102,7 +102,7 @@ jobs:
           ext=""
           [[ "${{ matrix.name }}" == windows-* ]] && ext=".exe"
           bin="target/${{ matrix.target }}/release/watchexec${ext}"
-          version=$(echo "${{ github.ref }}" | cut -d/ -f3 | cut -dv -f2)
+          version=$(grep -oP '[0-9.]+' <<< "${{ github.ref }}")
           dst="watchexec-${version}-${{ matrix.target }}"
           mkdir "$dst"
           strip "$bin" || true
@@ -113,7 +113,7 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          version=$(echo "${{ github.ref }}" | cut -d/ -f3 | cut -dv -f2)
+          version=$(grep -oP '[0-9.]+' <<< "${{ github.ref }}")
           dst="watchexec-${version}-${{ matrix.target }}"
           tar cavf "$dst.tar.xz" "$dst"
       - name: Archive (deb)
@@ -121,7 +121,7 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          version=$(echo "${{ github.ref }}" | cut -d/ -f3 | cut -dv -f2)
+          version=$(grep -oP '[0-9.]+' <<< "${{ github.ref }}")
           dst="watchexec-${version}-${{ matrix.target }}"
           mkdir -p "deb/$dst"
           cd "deb/$dst"
@@ -150,7 +150,7 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          version=$(echo "${{ github.ref }}" | cut -d/ -f3 | cut -dv -f2)
+          version=$(grep -oP '[0-9.]+' <<< "${{ github.ref }}")
           dst="watchexec-${version}-${{ matrix.target }}"
           7z a "$dst.zip" "$dst"
       - uses: softprops/action-gh-release@v1

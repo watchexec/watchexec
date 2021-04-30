@@ -37,10 +37,10 @@ features = []
 embed-resource = "1.6.1"
 
 [package.metadata.binstall]
-pkg-url = "{ repo }/releases/download/{ version }/watchexec-{ version }-{ target }.tar.xz"
+pkg-url = "{ repo }/releases/download/cli-v{ version }/watchexec-{ version }-{ target }.tar.xz"
 bin-dir = "watchexec-{ version }-{ target }/{ bin }{ format }"
 pkg-fmt = "txz"
 
 [package.metadata.binstall.overrides.x86_64-pc-windows-msvc]
-pkg-url = "{ repo }/releases/download/{ version }/watchexec-{ version }-{ target }.zip"
+pkg-url = "{ repo }/releases/download/cli-v{ version }/watchexec-{ version }-{ target }.zip"
 pkg-fmt = "zip"
