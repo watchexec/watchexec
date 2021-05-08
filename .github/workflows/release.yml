@@ -107,7 +107,7 @@ jobs:
           mkdir "$dst"
           strip "$bin" || true
           mv "$bin" "$dst/"
-          mv README.md LICENSE completions doc/watchexec.1{,.html} "$dst/"
+          mv cli/README.md LICENSE completions doc/watchexec.1{,.html} "$dst/"
       - name: Archive (tar)
         if: '! startsWith(matrix.name, ''windows-'')'
         shell: bash

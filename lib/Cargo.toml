@@ -10,7 +10,7 @@ keywords = ["watcher", "filesystem", "watchexec"]
 documentation = "https://github.com/watchexec/watchexec"
 homepage = "https://github.com/watchexec/watchexec"
 repository = "https://github.com/watchexec/watchexec"
-readme = "../README.md"
+readme = "README.md"
 
 edition = "2018"
 
