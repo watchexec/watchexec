@@ -125,6 +125,10 @@ Use the GitHub Releases tab to obtain the tarball/zipfile appropriate for your p
 
     $ brew install watchexec
 
+#### Nix
+
+    $ nix-env -iA nixpkgs.watchexec
+
 #### Webi
 
     $ curl -sS https://webinstall.dev/watchexec | bash
@@ -142,6 +146,10 @@ A deb package is available for several architectures in the GitHub Releases.
 Available in the **community** repository:
 
     $ pacman -S watchexec
+
+#### NixOS
+
+    $ nix-env -iA nixos.watchexec
 
 #### Webi
 
