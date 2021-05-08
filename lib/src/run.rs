@@ -104,31 +104,22 @@ where
     let poll = args.poll;
     #[cfg(target_os = "linux")]
     let poll_interval = args.poll_interval;
-    #[allow(clippy::redundant_clone)]
-    let watcher = Watcher::new(tx.clone(), &paths, args.poll, args.poll_interval).or_else(|err| {
-        if poll {
-            return Err(err);
-        }
 
-        #[cfg(target_os = "linux")]
-        {
-            use nix::libc;
-            let mut fallback = false;
-            if let notify::Error::Io(ref e) = err {
-                if e.raw_os_error() == Some(libc::ENOSPC) {
-                    warn!("System notification limit is too small, falling back to polling mode. For better performance increase system limit:\n\tsysctl fs.inotify.max_user_watches=524288");
-                    fallback = true;
-                }
-            }
 
-            if fallback {
-                return Watcher::new(tx, &paths, true, poll_interval);
+    #[cfg_attr(not(target_os = "linux"), allow(clippy::redundant_clone))]
+    let mut maybe_watcher = Watcher::new(tx.clone(), &paths, args.poll, args.poll_interval);
+
+    #[cfg(target_os = "linux")]
+    if !poll {
+        if let Err(notify::Error::Io(ref e)) = maybe_watcher {
+            if e.raw_os_error() == Some(nix::libc::ENOSPC) {
+                warn!("System notification limit is too small, falling back to polling mode. For better performance increase system limit:\n\tsysctl fs.inotify.max_user_watches=524288");
+                maybe_watcher = Watcher::new(tx, &paths, true, poll_interval);
             }
         }
+    }
 
-        Err(err)
-    })?;
-
+    let watcher = maybe_watcher?;
     if watcher.is_polling() {
         warn!("Polling for changes every {:?}", args.poll_interval);
     }
