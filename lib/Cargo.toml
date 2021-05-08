@@ -15,7 +15,7 @@ readme = "../README.md"
 edition = "2018"
 
 [dependencies]
-clearscreen = "1.0.2"
+clearscreen = "1.0.3"
 derive_builder = "0.10.0"
 glob = "0.3.0"
 globset = "0.4.6"
