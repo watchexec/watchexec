@@ -94,7 +94,7 @@ jobs:
         with:
           use-cross: ${{ matrix.cross }}
           command: build
-          args: --release --locked --target ${{ matrix.target }}
+          args: --package watchexec-cli --release --locked --target ${{ matrix.target }}
       - name: Package
         shell: bash
         run: |
