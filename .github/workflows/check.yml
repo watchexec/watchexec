@@ -10,6 +10,7 @@ on:
       - try/**
     tags-ignore:
       - "cli-v*.*.*"
+      - "lib-v*.*.*"
     paths:
       - "cli/**"
       - "lib/**"
