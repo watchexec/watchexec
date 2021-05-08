@@ -765,7 +765,7 @@ dependencies = [
 
 [[package]]
 name = "watchexec-cli"
-version = "1.15.3"
+version = "1.16.0"
 dependencies = [
  "clap",
  "embed-resource",
