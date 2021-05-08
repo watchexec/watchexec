@@ -47,7 +47,6 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: -- -D warnings
 
   msrv:
     name: Check on MSRV

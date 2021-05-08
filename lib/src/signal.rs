@@ -15,6 +15,7 @@ pub use nix::sys::signal::Signal;
 
 // This is a dummy enum for Windows
 #[cfg(windows)]
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Copy, Clone)]
 pub enum Signal {
     SIGKILL,
