@@ -2,9 +2,11 @@
 
 use crate::error::Result;
 use crate::pathop::PathOp;
-use std::{collections::{HashMap, HashSet},
-path::PathBuf,
-process::Command};
+use std::{
+    collections::{HashMap, HashSet},
+    path::PathBuf,
+    process::Command,
+};
 
 /// Shell to use to run commands.
 ///
@@ -248,14 +250,11 @@ mod imp {
     use crate::pathop::PathOp;
     use crate::signal::Signal;
     use std::{
+        convert::TryInto,
         io::{self, Result},
         mem,
+        os::windows::{io::IntoRawHandle, process::CommandExt},
         ptr,
-        convert::TryInto,
-        os::windows::{
-            io::IntoRawHandle,
-            process::CommandExt,
-        },
     };
     use winapi::{
         shared::{

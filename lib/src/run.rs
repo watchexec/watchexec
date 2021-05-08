@@ -101,20 +101,16 @@ where
     let filter = NotificationFilter::new(&args.filters, &args.ignores, gitignore, ignore)?;
 
     let (tx, rx) = channel();
-    let poll = args.poll;
-    #[cfg(target_os = "linux")]
-    let poll_interval = args.poll_interval;
 
-
-    #[cfg_attr(not(target_os = "linux"), allow(clippy::redundant_clone))]
+    #[cfg_attr(not(target_os = "linux"), allow(clippy::redundant_clone, unused_mut))]
     let mut maybe_watcher = Watcher::new(tx.clone(), &paths, args.poll, args.poll_interval);
 
     #[cfg(target_os = "linux")]
-    if !poll {
+    if !args.poll {
         if let Err(notify::Error::Io(ref e)) = maybe_watcher {
             if e.raw_os_error() == Some(nix::libc::ENOSPC) {
                 warn!("System notification limit is too small, falling back to polling mode. For better performance increase system limit:\n\tsysctl fs.inotify.max_user_watches=524288");
-                maybe_watcher = Watcher::new(tx, &paths, true, poll_interval);
+                maybe_watcher = Watcher::new(tx, &paths, true, args.poll_interval);
             }
         }
     }
