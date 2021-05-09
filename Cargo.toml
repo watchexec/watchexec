@@ -4,10 +4,6 @@ members = [
   "cli",
 ]
 
-[profile.dev]
-panic = "abort"
-
 [profile.release]
 lto = true
-panic = "abort"
 codegen-units = 1
