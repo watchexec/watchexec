@@ -36,6 +36,10 @@ features = []
 [build-dependencies]
 embed-resource = "1.6.1"
 
+[dev-dependencies]
+assert_cmd = "1.0.3"
+insta = "1.7.1"
+
 [package.metadata.binstall]
 pkg-url = "{ repo }/releases/download/cli-v{ version }/watchexec-{ version }-{ target }.tar.xz"
 bin-dir = "watchexec-{ version }-{ target }/{ bin }{ format }"

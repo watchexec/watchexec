@@ -1,0 +1,44 @@
+---
+source: cli/tests/help.rs
+expression: String::from_utf8(output.stdout).unwrap()
+
+---
+watchexec 1.16.0
+Execute commands when watched files change
+
+USAGE:
+    watchexec [FLAGS] [OPTIONS] <command>...
+
+FLAGS:
+        --changes-only         Only print path change information. Overridden by --verbose
+    -c, --clear                Clear screen before executing command
+    -h, --help                 Prints help information
+        --no-default-ignore    Skip auto-ignoring of commonly ignored globs
+        --no-environment       Do not set WATCHEXEC_*_PATH environment variables for the command
+        --no-ignore            Skip auto-loading of ignore files (.gitignore, .ignore, etc.) for filtering
+        --no-meta              Ignore metadata changes
+    -n, --no-shell             Do not wrap command in a shell. Deprecated: use --shell=none instead.
+        --no-vcs-ignore        Skip auto-loading of .gitignore files for filtering
+    -p, --postpone             Wait until first change to execute command
+    -r, --restart              Restart the process if it's still running. Shorthand for --on-busy-update=restart
+    -V, --version              Prints version information
+    -v, --verbose              Print debugging messages to stderr
+    -W, --watch-when-idle      Deprecated alias for --on-busy-update=do-nothing, which will become the default in 2.0.
+
+OPTIONS:
+    -d, --debounce <milliseconds>            Set the timeout between detected change and command execution, defaults to
+                                             150ms
+    -e, --exts <extensions>                  Comma-separated list of file extensions to watch (e.g. js,css,html)
+    -f, --filter <pattern>...                Ignore all modifications except those matching the pattern
+    -i, --ignore <pattern>...                Ignore modifications to paths matching the pattern
+        --on-busy-update <on-busy-update>    Select the behaviour to use when receiving events while the command is
+                                             running. Current default is queue, will change to do-nothing in 2.0.
+                                             [possible values: do-nothing, queue, restart, signal]
+    -w, --watch <path>...                    Watch a specific file or directory
+        --force-poll <interval>              Force polling mode (interval in milliseconds)
+        --shell <shell>                      Use a different shell, or `none`. E.g. --shell=bash
+    -s, --signal <signal>                    Send signal to process upon changes, e.g. SIGHUP
+
+ARGS:
+    <command>...    Command to execute
+
