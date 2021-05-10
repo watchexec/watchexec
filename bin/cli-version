@@ -41,6 +41,7 @@ date=$(date +%Y-%m-%d)
 echo "Next version to be $newver ($date), creating..."
 
 sed -E -i "s/version=\"$extver.0\"/version=\"$newver.0\"/1" cli/watchexec.exe.manifest
+sed -E -i "s/watchexec(.exe)? $extver/watchexec\1 $newver/" cli/tests/snapshots/help__*
 sed -E -i "s/^version = \"$extver\"/version = \"$newver\"/1" cli/Cargo.toml
 
 cargo check
