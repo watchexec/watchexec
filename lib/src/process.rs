@@ -370,19 +370,18 @@ mod imp {
                 command.env(name, val);
             }
 
-            command.spawn().and_then(|p| {
+            command.spawn().map(|p| {
                 let handle = p.into_raw_handle();
-                let r = unsafe { AssignProcessToJobObject(job, handle) };
-                if r == 0 {
+                if unsafe { AssignProcessToJobObject(job, handle) } == 0 {
                     panic!("failed to add to job object: {}", last_err());
                 }
 
                 resume_threads(handle);
 
-                Ok(Self {
+                Self {
                     job,
                     completion_port,
-                })
+                }
             })
         }
 
