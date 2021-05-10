@@ -7,7 +7,7 @@ watchexec.exe 1.16.0
 Execute commands when watched files change
 
 USAGE:
-    watchexec [FLAGS] [OPTIONS] <command>...
+    watchexec.exe [FLAGS] [OPTIONS] <command>...
 
 FLAGS:
         --changes-only         Only print path change information. Overridden by --verbose
