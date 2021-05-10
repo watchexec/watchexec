@@ -1,33 +1,18 @@
 use clap::{crate_version, value_t, values_t, App, Arg};
 use log::LevelFilter;
 use std::{
-    ffi::OsString,
     path::{PathBuf, MAIN_SEPARATOR},
     time::Duration,
 };
 
-use crate::config::{Config, ConfigBuilder};
-use crate::run::OnBusyUpdate;
-use crate::{error, Shell};
+use watchexec::{
+    config::{Config, ConfigBuilder},
+    error,
+    run::OnBusyUpdate,
+    Shell,
+};
 
 pub fn get_args() -> error::Result<(Config, LevelFilter)> {
-    get_args_impl(None::<&[&str]>)
-}
-
-#[allow(dead_code)]
-pub fn get_args_from<I, T>(from: I) -> error::Result<(Config, LevelFilter)>
-where
-    I: IntoIterator<Item = T>,
-    T: Into<OsString> + Clone,
-{
-    get_args_impl(Some(from))
-}
-
-fn get_args_impl<I, T>(from: Option<I>) -> error::Result<(Config, LevelFilter)>
-where
-    I: IntoIterator<Item = T>,
-    T: Into<OsString> + Clone,
-{
     let app = App::new("watchexec")
         .version(crate_version!())
         .about("Execute commands when watched files change")
@@ -142,11 +127,7 @@ where
                  .short("W")
                  .long("watch-when-idle"));
 
-    let args = match from {
-        None => app.get_matches(),
-        Some(i) => app.get_matches_from(i),
-    };
-
+    let args = app.get_matches();
     let mut builder = ConfigBuilder::default();
 
     let cmd: Vec<String> =

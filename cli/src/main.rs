@@ -1,19 +1,16 @@
 use std::io::Write;
 
+use watchexec::{error::Result, run};
+
 mod args;
 
-fn main() -> error::Result<()> {
-    #[allow(deprecated)]
+fn main() -> Result<()> {
     let (args, loglevel) = args::get_args()?;
-    init_logger(loglevel);
-    watchexec::run(args)
-}
 
-fn init_logger(level: log::LevelFilter) {
-    let mut log_builder = env_logger::Builder::new();
-
-    log_builder
+    env_logger::Builder::new()
         .format(|buf, r| writeln!(buf, "*** {}", r.args()))
-        .filter(None, level)
+        .filter(None, loglevel)
         .init();
+
+    run(args)
 }
