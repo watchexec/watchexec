@@ -3,6 +3,7 @@
 use crate::error::Result;
 use crate::pathop::PathOp;
 use std::{
+    borrow::Cow,
     collections::{HashMap, HashSet},
     path::PathBuf,
     process::Command,
@@ -123,7 +124,20 @@ pub fn spawn(
     updated_paths: &[PathOp],
     shell: Shell,
     environment: bool,
+    print_exec: bool,
 ) -> Result<Process> {
+    if print_exec {
+        let readable_cmd = cmd.iter()
+            .map(|s| shell_escape::escape(Cow::Borrowed(s)))
+            .fold(String::new(), |mut a, b| {
+                if !a.is_empty() {
+                    a.push(' ');
+                }
+                a.push_str(&b);
+                a
+            });
+        println!("[Running {:?}]", readable_cmd);
+    }
     self::imp::Process::new(cmd, updated_paths, shell, environment).map_err(|e| e.into())
 }
 
@@ -136,6 +150,7 @@ mod imp {
     use crate::signal::Signal;
     use nix::libc::*;
     use nix::{self, Error};
+    use std::borrow::Cow;
     use std::io::{self, Result};
     use std::sync::*;
 
@@ -191,14 +206,16 @@ mod imp {
             })
         }
 
-        pub fn reap(&self) {
+        pub fn reap(&self) -> Option<Cow<'static, str>> {
             use nix::sys::wait::*;
             use nix::unistd::Pid;
 
             let mut finished = true;
+            let mut exit = None;
             loop {
                 match waitpid(Pid::from_raw(-self.pgid), Some(WaitPidFlag::WNOHANG)) {
-                    Ok(WaitStatus::Exited(_, _)) | Ok(WaitStatus::Signaled(_, _, _)) => {}
+                    Ok(WaitStatus::Exited(_, code)) => exit = Some(Cow::Owned(code.to_string())),
+                    Ok(WaitStatus::Signaled(_, signal, _)) => exit = Some(Cow::Borrowed(signal.as_str())),
                     Ok(_) => {
                         finished = false;
                         break;
@@ -212,6 +229,8 @@ mod imp {
                 *done = true;
                 self.cvar.notify_one();
             }
+
+            exit
         }
 
         pub fn signal(&self, signal: Signal) {
@@ -385,7 +404,7 @@ mod imp {
             })
         }
 
-        pub const fn reap(&self) {}
+        pub const fn reap(&self) -> Option<Cow<'static, str>> { None }
 
         pub fn signal(&self, _signal: Signal) {
             unsafe {
@@ -568,12 +587,12 @@ mod tests {
 
     #[test]
     fn test_shell_default() {
-        let _ = spawn(&["echo".into(), "hi".into()], &[], Shell::default(), false);
+        let _ = spawn(&["echo".into(), "hi".into()], &[], Shell::default(), false, false);
     }
 
     #[test]
     fn test_shell_none() {
-        let _ = spawn(&["echo".into(), "hi".into()], &[], Shell::None, false);
+        let _ = spawn(&["echo".into(), "hi".into()], &[], Shell::None, false, false);
     }
 
     #[test]
@@ -582,6 +601,7 @@ mod tests {
             &["echo".into(), "hi".into()],
             &[],
             Shell::Unix("bash".into()),
+            false,
             false,
         );
     }
@@ -592,6 +612,7 @@ mod tests {
             &["echo".into(), "hi".into()],
             &[],
             Shell::Unix("bash -o errexit".into()),
+            false,
             false,
         );
     }

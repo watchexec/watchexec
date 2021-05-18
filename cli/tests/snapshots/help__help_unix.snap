@@ -20,6 +20,7 @@ FLAGS:
     -n, --no-shell             Do not wrap command in a shell. Deprecated: use --shell=none instead.
         --no-vcs-ignore        Skip auto-loading of .gitignore files for filtering
     -p, --postpone             Wait until first change to execute command
+    -x, --print-exec           Show the exit code when the process terminates
     -r, --restart              Restart the process if it's still running. Shorthand for --on-busy-update=restart
     -V, --version              Prints version information
     -v, --verbose              Print debugging messages to stderr

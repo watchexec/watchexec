@@ -102,6 +102,10 @@ pub fn get_args() -> error::Result<(Config, LevelFilter)> {
                  .help("Force polling mode (interval in milliseconds)")
                  .long("force-poll")
                  .value_name("interval"))
+        .arg(Arg::with_name("print-exec")
+                 .help("Show the exit code when the process terminates")
+                 .short("x")
+                 .long("print-exec"))
         .arg(Arg::with_name("shell")
                  .help(if cfg!(windows) {
                      "Use a different shell, or `none`. Try --shell=powershell, which will become the default in 2.0."
@@ -239,6 +243,7 @@ pub fn get_args() -> error::Result<(Config, LevelFilter)> {
     builder.no_vcs_ignore(args.is_present("no-vcs-ignore"));
     builder.no_ignore(args.is_present("no-ignore"));
     builder.poll(args.occurrences_of("poll") > 0);
+    builder.print_exec(args.is_present("print-exec"));
 
     let mut config = builder.build().map_err(|err| err.to_string())?;
     if args.is_present("once") {

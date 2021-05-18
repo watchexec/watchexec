@@ -96,6 +96,10 @@ pub struct Config {
     /// Interval for polling.
     #[builder(default = "Duration::from_secs(1)")]
     pub poll_interval: Duration,
+
+    /// Print start and exit of processes
+    #[builder(default)]
+    pub print_exec: bool,
 }
 
 impl ConfigBuilder {

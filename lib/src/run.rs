@@ -152,12 +152,17 @@ impl ExecHandler {
         // Convert signal string to the corresponding integer
         let signal = signal::new(args.signal.clone());
 
+        let print_exec = args.print_exec;
         signal::install_handler(move |sig: Signal| {
             if let Some(lock) = weak_child.upgrade() {
                 let strong = lock.read().expect("poisoned lock in install_handler");
                 if let Some(ref child) = *strong {
                     match sig {
-                        Signal::SIGCHLD => child.reap(), // SIGCHLD is special, initiate reap()
+                        Signal::SIGCHLD => if let Some(exit) = child.reap() { // SIGCHLD is special, initiate reap()
+                            if print_exec {
+                                println!("[Finished running. Exit status: {}]", exit);
+                            }
+                        }
                         _ => child.signal(sig),
                     }
                 }
@@ -183,6 +188,7 @@ impl ExecHandler {
             ops,
             self.args.shell.clone(),
             !self.args.no_environment,
+            self.args.print_exec,
         )?);
 
         Ok(())
