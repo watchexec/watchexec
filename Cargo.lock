@@ -78,9 +78,9 @@ dependencies = [
 
 [[package]]
 name = "clearscreen"
-version = "1.0.3"
+version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44631537ab6f26f3fc395de037db13bed7682b1036bd1d9f2c21de65b08ef6f0"
+checksum = "9eff80751e49709362458c0b612c3c682693d7a58966e0bf429872888f647e20"
 dependencies = [
  "nix",
  "terminfo",
