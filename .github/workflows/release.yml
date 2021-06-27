@@ -87,6 +87,9 @@ jobs:
 
       - name: Install cargo-deb
         run: cargo install cargo-deb --version 1.30.0
+      - name: Install cargo-generate-rpm
+        run: cargo install cargo-generate-rpm --version 0.4.0
+
       - uses: actions-rs/toolchain@v1
         with:
           target: ${{ matrix.target }}
@@ -126,8 +129,8 @@ jobs:
           dst="watchexec-${version}-${{ matrix.target }}"
           mkdir "$dst"
           strip "$bin" || true
-          mv "$bin" "$dst/"
-          mv cli/README.md LICENSE completions doc/watchexec.1{,.html} "$dst/"
+          cp "$bin" "$dst/"
+          cp cli/README.md LICENSE completions doc/{logo.svg,watchexec.1{,.html}} "$dst/"
 
       - name: Archive (tar)
         if: '! startsWith(matrix.name, ''windows-'')'
@@ -145,6 +148,16 @@ jobs:
           version=$(cat VERSION)
           dst="watchexec-${version}-${{ matrix.target }}"
           cargo deb -p watchexec-cli --target ${{ matrix.target }} --output "$dst.deb"
+      - name: Archive (rpm)
+        if: startsWith(matrix.name, 'linux-')
+        shell: bash
+        run: |
+          set -euxo pipefail
+          shopt -s globstar
+          version=$(cat VERSION)
+          dst="watchexec-${version}-${{ matrix.target }}"
+          cargo generate-rpm -p cli --target "${{ matrix.target }}" --target "target/${{ matrix.target }}"
+          mv target/**/*.rpm "$dst.rpm"
       - name: Archive (zip)
         if: startsWith(matrix.name, 'windows-')
         shell: bash
