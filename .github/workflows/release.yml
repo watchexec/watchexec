@@ -84,6 +84,9 @@ jobs:
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-cargo-registry-${{ hashFiles('Cargo.lock') }}
+
+      - name: Install cargo-deb
+        run: cargo install cargo-deb --version 1.30.0
       - uses: actions-rs/toolchain@v1
         with:
           target: ${{ matrix.target }}
@@ -141,28 +144,7 @@ jobs:
           set -euxo pipefail
           version=$(cat VERSION)
           dst="watchexec-${version}-${{ matrix.target }}"
-          mkdir -p "deb/$dst"
-          cd "deb/$dst"
-          mkdir -p DEBIAN usr/{bin,share/{man/man1,doc/watchexec,zsh/site-functions}}
-          cp "../../$dst/watchexec" usr/bin/
-          cp "../../$dst/watchexec.1" usr/share/man/man1/
-          cp "../../$dst/watchexec.1.html" usr/share/doc/watchexec/
-          cp "../../$dst/completions/zsh" usr/share/zsh/site-functions/_watchexec
-          cat <<-CONTROL > DEBIAN/control
-          Package: watchexec
-          Version: ${version}
-          Architecture: $(echo "${{ matrix.name }}" | cut -d- -f2)
-          Maintainer: Félix Saparelli <aur@passcod.name>
-          Installed-Size: $(du -d1 usr | tail -n1 | cut -d\t -f1)
-          Homepage: https://github.com/watchexec/watchexec
-          Description: Executes commands in response to file modifications.
-           Software development often involves running the same commands over and over. Boring!
-           Watchexec is a simple, standalone tool that watches a path and runs a command whenever it detects modifications.
-          CONTROL
-          cd ..
-          fakeroot dpkg -b "$dst"
-          mv "$dst.deb" ../
-          cd ..
+          cargo deb -p watchexec-cli --target ${{ matrix.target }} --output "$dst.deb"
       - name: Archive (zip)
         if: startsWith(matrix.name, 'windows-')
         shell: bash
