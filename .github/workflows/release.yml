@@ -1,6 +1,7 @@
 name: CLI Release
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - "cli-v*.*.*"
@@ -89,12 +90,28 @@ jobs:
           toolchain: stable
           profile: minimal
           override: true
+
       - uses: actions-rs/cargo@v1
         name: Build
         with:
           use-cross: ${{ matrix.cross }}
           command: build
           args: --package watchexec-cli --release --locked --target ${{ matrix.target }}
+
+      - name: Extract version
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          version=$(grep -m1 -F 'version =' cli/Cargo.toml | cut -d\" -f2)
+
+          if [[ -z "$version" ]]; then
+            echo "Error: no version :("
+            exit 1
+          fi
+
+          echo "$version" > VERSION
+
       - name: Package
         shell: bash
         run: |
@@ -102,18 +119,19 @@ jobs:
           ext=""
           [[ "${{ matrix.name }}" == windows-* ]] && ext=".exe"
           bin="target/${{ matrix.target }}/release/watchexec${ext}"
-          version=$(grep -oE '[0-9.]+' <<< "${{ github.ref }}")
+          version=$(cat VERSION)
           dst="watchexec-${version}-${{ matrix.target }}"
           mkdir "$dst"
           strip "$bin" || true
           mv "$bin" "$dst/"
           mv cli/README.md LICENSE completions doc/watchexec.1{,.html} "$dst/"
+
       - name: Archive (tar)
         if: '! startsWith(matrix.name, ''windows-'')'
         shell: bash
         run: |
           set -euxo pipefail
-          version=$(grep -oE '[0-9.]+' <<< "${{ github.ref }}")
+          version=$(cat VERSION)
           dst="watchexec-${version}-${{ matrix.target }}"
           tar cavf "$dst.tar.xz" "$dst"
       - name: Archive (deb)
@@ -121,7 +139,7 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          version=$(grep -oE '[0-9.]+' <<< "${{ github.ref }}")
+          version=$(cat VERSION)
           dst="watchexec-${version}-${{ matrix.target }}"
           mkdir -p "deb/$dst"
           cd "deb/$dst"
@@ -150,14 +168,78 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          version=$(grep -oE '[0-9.]+' <<< "${{ github.ref }}")
+          version=$(cat VERSION)
           dst="watchexec-${version}-${{ matrix.target }}"
           7z a "$dst.zip" "$dst"
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: builds
+          retention-days: 1
+          path: |
+            watchexec-*.tar.xz
+            watchexec-*.tar.zst
+            watchexec-*.deb
+            watchexec-*.rpm
+            watchexec-*.zip
+
+  sign:
+    needs: build
+
+    name: Checksum and sign
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cargo/bin
+          key: sign-tools-${{ hashFiles('.github/workflows/release.yml') }}
+
+      - name: Install rsign2
+        run: cargo install rsign2 --version 0.5.7
+      - name: Install b3sum
+        run: cargo install b3sum --version 0.3.7
+
+      - uses: actions/download-artifact@v2
+        with:
+          name: builds
+
+      - name: Checksums with BLAKE3
+        run: b3sum watchexec-* | tee B3SUMS
+
+      - name: Checksums with SHA512
+        run: sha512sum watchexec-* | tee SHA512SUMS
+
+      - name: Sign checksums
+        shell: bash
+        env:
+          RELEASE_KEY: ${{ secrets.RELEASE_KEY }}
+        run: |
+          set -u
+          echo "$RELEASE_KEY" > release.key
+          set -x
+          version=$(grep -m1 -F 'version =' cli/Cargo.toml | cut -d\" -f2)
+          for algo in B3 SHA512; do
+            echo | rsign sign \
+              -p .github/workflows/release.pub \
+              -s release.key \
+              -t "watchexec v$version signed with automated key" \
+              -c 'see website for signing information' \
+              -x "${algo}SUMS.auto.minisig" \
+              "${algo}SUMS"
+          done
+          rm release.key
+          cat {B3,SHA512}SUMS.auto.minisig
+
       - uses: softprops/action-gh-release@v1
         with:
           files: |
             watchexec-*.tar.xz
+            watchexec-*.tar.zst
             watchexec-*.deb
+            watchexec-*.rpm
             watchexec-*.zip
+            *SUMS*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
