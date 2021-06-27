@@ -9,7 +9,7 @@ keywords = ["watcher", "filesystem", "cli", "watchexec"]
 categories = ["command-line-utilities"]
 
 documentation = "https://github.com/watchexec/watchexec"
-homepage = "https://github.com/watchexec/watchexec"
+homepage = "https://watchexec.github.io"
 repository = "https://github.com/watchexec/watchexec"
 readme = "README.md"
 

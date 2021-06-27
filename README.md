@@ -40,7 +40,7 @@ More usage examples: [in the CLI README](./cli/#usage-examples)!
 
 ## Install
 
-- As pre-built binary: https://github.com/watchexec/watchexec/releases
+- As pre-built binary: https://watchexec.github.io/downloads/
 - With your package manager for Arch, Homebrew, Nix, Scoop, Chocolatey…
 - From source with Cargo: `cargo install watchexec-cli`
 
