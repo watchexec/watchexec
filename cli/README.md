@@ -91,6 +91,12 @@ On Windows, you may prefer to use Powershell:
 
 ### All platforms
 
+#### Pre-built
+
+Use the [download page on the website](https://watchexec.github.io/downloads/) to obtain the
+package (for Debian/Ubuntu/Fedora) or tarball/zipfile appropriate for your platform and
+architecture, extract or install it, and call the `watchexec` binary.
+
 #### Cargo
 
 Requires Rust 1.43 or later.
@@ -100,10 +106,6 @@ Requires Rust 1.43 or later.
 #### [Binstall](https://github.com/ryankurte/cargo-binstall)
 
     $ cargo binstall watchexec-cli
-
-#### Pre-built
-
-Use the GitHub Releases tab to obtain the tarball/zipfile appropriate for your platform and architecture, extract it, and place it in your `PATH`.
 
 ### macOS
 
