@@ -194,7 +194,10 @@ impl ExecHandler {
             .read()
             .expect("poisoned lock in has_running_process");
 
-        (*guard).is_some()
+        (*guard)
+            .as_ref()
+            .map(|process| !process.is_complete())
+            .unwrap_or(false)
     }
 }
 
@@ -216,8 +219,15 @@ impl Handler for ExecHandler {
     // Only returns Err() on lock poisoning.
     fn on_update(&self, ops: &[PathOp]) -> Result<bool> {
         let signal = self.signal.unwrap_or(Signal::SIGTERM);
+        let has_running_processes = self.has_running_process();
 
-        match (self.has_running_process(), self.args.on_busy_update) {
+        log::debug!(
+            "ON UPDATE: has_running_processes: {} --- on_busy_update: {:?}",
+            has_running_processes,
+            self.args.on_busy_update
+        );
+
+        match (has_running_processes, self.args.on_busy_update) {
             // If nothing is running, start the command
             (false, _) => {
                 self.spawn(ops)?;
