@@ -241,6 +241,13 @@ mod imp {
                     .expect("poisoned cvar in process::wait");
             }
         }
+
+        pub fn is_complete(&self) -> bool {
+            *self
+                .lock
+                .lock()
+                .expect("poisoned lock in process::is_complete")
+        }
     }
 }
 
@@ -393,22 +400,45 @@ mod imp {
             }
         }
 
+        // Some(true) if complete, Some(false) if incomplete, None if timed out
+        fn wait_for_completion(&self, timeout: DWORD) -> Option<bool> {
+            let mut code: DWORD = 0;
+            let mut key: ULONG_PTR = 0;
+            let mut overlapped = mem::MaybeUninit::<LPOVERLAPPED>::uninit();
+
+            if 0 == unsafe {
+                GetQueuedCompletionStatus(
+                    self.completion_port,
+                    &mut code,
+                    &mut key,
+                    overlapped.as_mut_ptr(),
+                    timeout,
+                )
+            } {
+                // TODO: handle errors? how does that manifest for timeouts?
+                None
+            } else {
+                Some(code == JOB_OBJECT_MSG_ACTIVE_PROCESS_ZERO && (key as HANDLE) == self.job)
+            }
+        }
+
+        pub fn is_complete(&self) -> bool {
+            // you need to poll a few times to get the real answer
+            // if the process has already completed... odd but okay
+            for _ in 0..5 {
+                if let Some(true) = self.wait_for_completion(0) {
+                    return true;
+                }
+            }
+
+            false
+        }
+
         pub fn wait(&self) {
             loop {
-                let mut code: DWORD = 0;
-                let mut key: ULONG_PTR = 0;
-                let mut overlapped = mem::MaybeUninit::<LPOVERLAPPED>::uninit();
-                unsafe {
-                    GetQueuedCompletionStatus(
-                        self.completion_port,
-                        &mut code,
-                        &mut key,
-                        overlapped.as_mut_ptr(),
-                        INFINITE,
-                    );
-                }
-
-                if code == JOB_OBJECT_MSG_ACTIVE_PROCESS_ZERO && (key as HANDLE) == self.job {
+                if self.wait_for_completion(INFINITE).expect(
+                    "GetQueuedCompletionStatus passed INFINITE timeout but timed out anyway",
+                ) {
                     break;
                 }
             }
