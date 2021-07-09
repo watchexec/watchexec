@@ -423,7 +423,15 @@ mod imp {
         }
 
         pub fn is_complete(&self) -> bool {
-            self.wait_for_completion(0).unwrap_or(false)
+            // you need to poll a few times to get the real answer
+            // if the process has already completed... odd but okay
+            for _ in 0..5 {
+                if let Some(true) = self.wait_for_completion(0) {
+                    return true;
+                }
+            }
+
+            false
         }
 
         pub fn wait(&self) {
