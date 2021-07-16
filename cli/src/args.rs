@@ -1,18 +1,18 @@
-use clap::{crate_version, value_t, values_t, App, Arg};
-use log::LevelFilter;
 use std::{
     path::{PathBuf, MAIN_SEPARATOR},
     time::Duration,
 };
 
+use clap::{crate_version, value_t, values_t, App, Arg};
+use color_eyre::eyre::Result;
+use log::LevelFilter;
 use watchexec::{
     config::{Config, ConfigBuilder},
-    error,
     run::OnBusyUpdate,
     Shell,
 };
 
-pub fn get_args() -> error::Result<(Config, LevelFilter)> {
+pub fn get_args() -> Result<(Config, LevelFilter)> {
     let app = App::new("watchexec")
         .version(crate_version!())
         .about("Execute commands when watched files change")
@@ -131,7 +131,7 @@ pub fn get_args() -> error::Result<(Config, LevelFilter)> {
     let mut builder = ConfigBuilder::default();
 
     let cmd: Vec<String> =
-        values_t!(args.values_of("command"), String).map_err(|err| err.to_string())?;
+        values_t!(args.values_of("command"), String)?;
     builder.cmd(cmd);
 
     let paths: Vec<PathBuf> = values_t!(args.values_of("path"), String)
@@ -240,7 +240,7 @@ pub fn get_args() -> error::Result<(Config, LevelFilter)> {
     builder.no_ignore(args.is_present("no-ignore"));
     builder.poll(args.occurrences_of("poll") > 0);
 
-    let mut config = builder.build().map_err(|err| err.to_string())?;
+    let mut config = builder.build()?;
     if args.is_present("once") {
         config.once = true;
     }

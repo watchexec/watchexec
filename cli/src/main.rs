@@ -1,10 +1,12 @@
 use std::io::Write;
 
-use watchexec::{error::Result, run};
+use color_eyre::eyre::Result;
+use watchexec::run;
 
 mod args;
 
 fn main() -> Result<()> {
+    color_eyre::install()?;
     let (args, loglevel) = args::get_args()?;
 
     env_logger::Builder::new()
@@ -12,5 +14,6 @@ fn main() -> Result<()> {
         .filter(None, loglevel)
         .init();
 
-    run(args)
+    run(args)?;
+    Ok(())
 }
