@@ -254,35 +254,35 @@ mod tests {
     }
 
     #[test]
-    fn test_matches_exact() {
+    fn matches_exact() {
         let file = build_gitignore("Cargo.toml");
 
         assert!(file.is_excluded(&base_dir().join("Cargo.toml")));
     }
 
     #[test]
-    fn test_does_not_match() {
+    fn does_not_match() {
         let file = build_gitignore("Cargo.toml");
 
         assert!(!file.is_excluded(&base_dir().join("src").join("main.rs")));
     }
 
     #[test]
-    fn test_matches_simple_wildcard() {
+    fn matches_simple_wildcard() {
         let file = build_gitignore("targ*");
 
         assert!(file.is_excluded(&base_dir().join("target")));
     }
 
     #[test]
-    fn test_matches_subdir_exact() {
+    fn matches_subdir_exact() {
         let file = build_gitignore("target");
 
         assert!(file.is_excluded(&base_dir().join("target/")));
     }
 
     #[test]
-    fn test_matches_subdir() {
+    fn matches_subdir() {
         let file = build_gitignore("target");
 
         assert!(file.is_excluded(&base_dir().join("target").join("file")));
@@ -290,7 +290,7 @@ mod tests {
     }
 
     #[test]
-    fn test_wildcard_with_dir() {
+    fn wildcard_with_dir() {
         let file = build_gitignore("target/f*");
 
         assert!(file.is_excluded(&base_dir().join("target").join("file")));
@@ -298,7 +298,7 @@ mod tests {
     }
 
     #[test]
-    fn test_leading_slash() {
+    fn leading_slash() {
         let file = build_gitignore("/*.c");
 
         assert!(file.is_excluded(&base_dir().join("cat-file.c")));
@@ -306,7 +306,7 @@ mod tests {
     }
 
     #[test]
-    fn test_leading_double_wildcard() {
+    fn leading_double_wildcard() {
         let file = build_gitignore("**/foo");
 
         assert!(file.is_excluded(&base_dir().join("foo")));
@@ -315,7 +315,7 @@ mod tests {
     }
 
     #[test]
-    fn test_trailing_double_wildcard() {
+    fn trailing_double_wildcard() {
         let file = build_gitignore("abc/**");
 
         assert!(!file.is_excluded(&base_dir().join("def").join("foo")));
@@ -324,7 +324,7 @@ mod tests {
     }
 
     #[test]
-    fn test_sandwiched_double_wildcard() {
+    fn sandwiched_double_wildcard() {
         let file = build_gitignore("a/**/b");
 
         assert!(file.is_excluded(&base_dir().join("a").join("b")));
@@ -333,7 +333,7 @@ mod tests {
     }
 
     #[test]
-    fn test_empty_file_never_excludes() {
+    fn empty_file_never_excludes() {
         let file =
             GitignoreFile::from_strings(&[], &base_dir()).expect("test gitignore file invalid");
 
@@ -341,7 +341,7 @@ mod tests {
     }
 
     #[test]
-    fn test_checks_all_patterns() {
+    fn checks_all_patterns() {
         let patterns = vec!["target", "target2"];
         let file = GitignoreFile::from_strings(&patterns, &base_dir())
             .expect("test gitignore file invalid");
@@ -351,7 +351,7 @@ mod tests {
     }
 
     #[test]
-    fn test_handles_whitelisting() {
+    fn handles_negative_patterns() {
         let patterns = vec!["target", "!target/foo.txt"];
         let file = GitignoreFile::from_strings(&patterns, &base_dir())
             .expect("test gitignore file invalid");
