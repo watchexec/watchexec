@@ -1,10 +1,14 @@
 use std::{
-    path::{PathBuf, MAIN_SEPARATOR},
+    env,
+    ffi::OsString,
+    fs::File,
+    io::{BufRead, BufReader},
+    path::{Path, PathBuf, MAIN_SEPARATOR},
     time::Duration,
 };
 
 use clap::{crate_version, value_t, values_t, App, Arg};
-use color_eyre::eyre::Result;
+use color_eyre::eyre::{Context, Report, Result};
 use log::LevelFilter;
 use watchexec::{
     config::{Config, ConfigBuilder},
@@ -16,6 +20,7 @@ pub fn get_args() -> Result<(Config, LevelFilter)> {
     let app = App::new("watchexec")
         .version(crate_version!())
         .about("Execute commands when watched files change")
+        .after_help("Use @argfile as first argument to load arguments from the file `argfile` (one argument per line) which will be inserted in place of the @argfile (further arguments on the CLI will override or add onto those in the file).")
         .arg(Arg::with_name("command")
                  .help("Command to execute")
                  .multiple(true)
@@ -127,11 +132,30 @@ pub fn get_args() -> Result<(Config, LevelFilter)> {
                  .short("W")
                  .long("watch-when-idle"));
 
-    let args = app.get_matches();
+    let mut raw_args: Vec<OsString> = env::args_os().collect();
+
+    if let Some(first) = raw_args.get(1).and_then(|s| s.to_str()) {
+        if let Some(arg_path) = first.strip_prefix('@').map(Path::new) {
+            let arg_file = BufReader::new(
+                File::open(arg_path)
+                    .wrap_err_with(|| format!("Failed to open argument file {:?}", arg_path))?,
+            );
+
+            let mut more_args: Vec<OsString> = arg_file
+                .lines()
+                .map(|l| l.map(OsString::from).map_err(Report::from))
+                .collect::<Result<_>>()?;
+
+            more_args.insert(0, raw_args.remove(0));
+            more_args.extend(raw_args.into_iter().skip(1));
+            raw_args = more_args;
+        }
+    }
+
+    let args = app.get_matches_from(raw_args);
     let mut builder = ConfigBuilder::default();
 
-    let cmd: Vec<String> =
-        values_t!(args.values_of("command"), String)?;
+    let cmd: Vec<String> = values_t!(args.values_of("command"), String)?;
     builder.cmd(cmd);
 
     let paths: Vec<PathBuf> = values_t!(args.values_of("path"), String)
