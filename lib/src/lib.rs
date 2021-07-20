@@ -4,10 +4,8 @@
 //!
 //! [Watchexec]: https://github.com/watchexec/watchexec
 
-#![doc(
-    html_favicon_url = "https://raw.githubusercontent.com/watchexec/watchexec/main/doc/logo.svg"
-)]
-#![doc(html_logo_url = "https://raw.githubusercontent.com/watchexec/watchexec/main/doc/logo.svg")]
+#![doc(html_favicon_url = "https://watchexec.github.io/logo:watchexec.svg")]
+#![doc(html_logo_url = "https://watchexec.github.io/logo:watchexec.svg")]
 #![warn(clippy::unwrap_used)]
 
 #[macro_use]
