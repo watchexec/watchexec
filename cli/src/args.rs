@@ -62,7 +62,7 @@ pub fn get_args() -> Result<(Config, LevelFilter)> {
                  .short("k")
                  .long("kill"))
         .arg(Arg::with_name("debounce")
-                 .help("Set the timeout between detected change and command execution, defaults to 150ms")
+                 .help("Set the timeout between detected change and command execution, defaults to 100ms")
                  .takes_value(true)
                  .value_name("milliseconds")
                  .short("d")

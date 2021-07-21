@@ -27,7 +27,7 @@ FLAGS:
 
 OPTIONS:
     -d, --debounce <milliseconds>            Set the timeout between detected change and command execution, defaults to
-                                             150ms
+                                             100ms
     -e, --exts <extensions>                  Comma-separated list of file extensions to watch (e.g. js,css,html)
     -f, --filter <pattern>...                Ignore all modifications except those matching the pattern
     -i, --ignore <pattern>...                Ignore modifications to paths matching the pattern

@@ -76,7 +76,7 @@ Postpone execution of <command> until the first file modification is detected.
 Poll for changes every <interval> ms instead of using system-specific notification mechanisms (such as inotify). This is useful when you are monitoring NFS shares.
 
 * `-d`, `--debounce`:
-Set the timeout between detected change and command execution, to avoid restarting too frequently when there are many events; defaults to 150ms.
+Set the timeout between detected change and command execution, to avoid restarting too frequently when there are many events; defaults to 100ms.
 
 * `--no-vcs-ignore`:
 Skip loading of version control system (VCS) ignore files. By default, watchexec loads .gitignore files in the current directory (or parent directories) and uses them to populate the ignore list.

@@ -22,7 +22,7 @@ args=(
   '(-V --version)'{-V,--version}'[Prints version information]'
   '(-v --verbose)'{-v,--verbose}'[Print debugging messages to stderr]'
   '--changes-only[Print changed paths to stderr for pattern debugging]'
-  '(-d --debounce)'{-d+,--debounce=}'[Set the timeout between detected change and command execution, defaults to 150ms]:milliseconds'
+  '(-d --debounce)'{-d+,--debounce=}'[Set the timeout between detected change and command execution, defaults to 100ms]:milliseconds'
   '(-e --exts)'{-e+,--exts=}'[Comma-separated list of file extensions to watch (js,css,html)]:extensions'
   '(-f --filter)'{-f+,--filter=}'[Ignore all modifications except those matching the pattern]:pattern'
   '(-i --ignore)'{-i+,--ignore=}'[Ignore modifications to paths matching the pattern]:pattern'
