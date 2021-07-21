@@ -194,7 +194,7 @@ mod tests {
                 PathBuf::from(r"C:\Perm\Logs\hi")
             ])
             .expect("failed to get longest common path"),
-            "C:/"
+            r"C:\"
         );
     }
 
