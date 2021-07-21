@@ -172,7 +172,7 @@ mod test {
             .to_command(&["echo".into(), "hi".into()])
             .group_status()?
             .success());
-        Ok(())(&["echo".into(), "hi".into()], &[], Shell::Cmd, false);
+        Ok(())
     }
 
     #[test]
