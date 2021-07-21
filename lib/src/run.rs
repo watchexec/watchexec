@@ -257,7 +257,7 @@ impl ExecHandler {
         }
 
         let mut child = self.child_process.lock()?;
-        child.kill()?;
+        child.kill().ok();
 
         let mut command = self.args.shell.to_command(&self.args.cmd);
         debug!("Assembled command: {:?}", command);
