@@ -6,7 +6,7 @@
 
 # Watchexec library
 
-_The library which powers [Watchexec CLI](https://github.com/watchexec/watchexec) and other tools._
+_The library which powers [Watchexec CLI](https://watchexec.github.io) and other tools._
 
 - **[API documentation][docs]**.
 - Licensed under [Apache 2.0][license].

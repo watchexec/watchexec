@@ -50,7 +50,7 @@ All options in detail: [in the CLI README](./cli/#installation).
 ## Extend
 
 - [watchexec library](./lib/): to create more specialised watchexec-powered tools! such as:
-  - [cargo watch](https://github.com/passcod/cargo-watch): for Rust/Cargo projects.
+  - [cargo watch](https://github.com/watchexec/cargo-watch): for Rust/Cargo projects.
 - [clearscreen](https://github.com/watchexec/clearscreen): to clear the (terminal) screen on every platform.
 - [command group](https://github.com/watchexec/command-group): to run commands in process groups.
 - [notify](https://github.com/notify-rs/notify): to respond to file modifications (third-party).
