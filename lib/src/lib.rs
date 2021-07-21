@@ -21,10 +21,11 @@ mod gitignore;
 mod ignore;
 mod notification_filter;
 pub mod pathop;
-mod process;
+mod paths;
 pub mod run;
+mod shell;
 mod signal;
 mod watcher;
 
-pub use process::Shell;
 pub use run::{run, watch, Handler};
+pub use shell::Shell;

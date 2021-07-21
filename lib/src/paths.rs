@@ -1,146 +1,8 @@
-#![allow(unsafe_code)]
-
-use crate::error::Result;
 use crate::pathop::PathOp;
-use command_group::{CommandGroup, GroupChild};
 use std::{
     collections::{HashMap, HashSet},
     path::PathBuf,
-    process::Command,
 };
-
-/// Shell to use to run commands.
-///
-/// `Cmd` and `Powershell` are special-cased because they have different calling
-/// conventions. Also `Cmd` is only available in Windows, while `Powershell` is
-/// also available on unices (provided the end-user has it installed, of course).
-///
-/// See [`Config.cmd`][crate::config::Config] for the semantics of `None` vs the
-/// other options.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Shell {
-    /// Use no shell, and execute the command directly.
-    None,
-
-    /// Use the given string as a unix shell invocation.
-    ///
-    /// This means two things:
-    /// - the program is invoked with `-c` followed by the command, and
-    /// - the string will be split on space, and the resulting vec used as
-    ///   execvp(3) arguments: first is the shell program, rest are additional
-    ///   arguments (which come before the `-c` mentioned above). This is a very
-    ///   simplistic approach deliberately: it will not support quoted
-    ///   arguments, for example. Use [`Shell::None`] with a custom command vec
-    ///   if you want that.
-    Unix(String),
-
-    /// Use the Windows CMD.EXE shell.
-    ///
-    /// This is invoked with `/C` followed by the command.
-    #[cfg(windows)]
-    Cmd,
-
-    /// Use Powershell, on Windows or elsewhere.
-    ///
-    /// This is invoked with `-Command` followed by the command.
-    ///
-    /// This is preferred over `Unix("pwsh")`, though that will also work
-    /// on unices due to Powershell supporting the `-c` short option.
-    Powershell,
-}
-
-impl Default for Shell {
-    #[cfg(windows)]
-    fn default() -> Self {
-        Self::Powershell
-    }
-
-    #[cfg(not(windows))]
-    fn default() -> Self {
-        Self::Unix("sh".into())
-    }
-}
-
-impl Shell {
-    /// Obtain a [`Command`] given the cmd vec from [`Config`][crate::config::Config].
-    ///
-    /// Behaves as described in the enum documentation.
-    ///
-    /// # Panics
-    ///
-    /// - Panics if `cmd` is empty.
-    /// - Panics if the string in the `Unix` variant is empty or only whitespace.
-    pub fn to_command(&self, cmd: &[String]) -> Command {
-        assert!(!cmd.is_empty(), "cmd was empty");
-
-        match self {
-            Shell::None => {
-                // UNWRAP: checked by assert
-                #[allow(clippy::unwrap_used)]
-                let (first, rest) = cmd.split_first().unwrap();
-                let mut c = Command::new(first);
-                c.args(rest);
-                c
-            }
-
-            #[cfg(windows)]
-            Shell::Cmd => {
-                let mut c = Command::new("cmd.exe");
-                c.arg("/C").arg(cmd.join(" "));
-                c
-            }
-
-            Shell::Powershell if cfg!(windows) => {
-                let mut c = Command::new("powershell.exe");
-                c.arg("-Command").arg(cmd.join(" "));
-                c
-            }
-
-            Shell::Powershell => {
-                let mut c = Command::new("pwsh");
-                c.arg("-Command").arg(cmd.join(" "));
-                c
-            }
-
-            Shell::Unix(name) => {
-                assert!(!name.is_empty(), "shell program was empty");
-                let sh = name.split_ascii_whitespace().collect::<Vec<_>>();
-
-                // UNWRAP: checked by assert
-                #[allow(clippy::unwrap_used)]
-                let (shprog, shopts) = sh.split_first().unwrap();
-
-                let mut c = Command::new(shprog);
-                c.args(shopts);
-                c.arg("-c").arg(cmd.join(" "));
-                c
-            }
-        }
-    }
-}
-
-pub fn spawn(
-    cmd: &[String],
-    updated_paths: &[PathOp],
-    shell: Shell,
-    environment: bool,
-) -> Result<GroupChild> {
-    let mut command = shell.to_command(&cmd);
-    debug!("Assembled command {:?}", command);
-
-    let command_envs = if !environment {
-        Vec::new()
-    } else {
-        collect_path_env_vars(updated_paths)
-    };
-
-    for (name, val) in &command_envs {
-        command.env(name, val);
-    }
-
-    let child = command.group_spawn()?;
-    Ok(child)
-}
 
 /// Collect `PathOp` details into op-categories to pass onto the exec'd command as env-vars
 ///
@@ -149,7 +11,7 @@ pub fn spawn(
 /// `REMOVED` -> `notify::ops::REMOVE`
 /// `CREATED` -> `notify::ops::CREATE`
 /// `RENAMED` -> `notify::ops::RENAME`
-fn collect_path_env_vars(pathops: &[PathOp]) -> Vec<(String, String)> {
+pub fn collect_path_env_vars(pathops: &[PathOp]) -> Vec<(String, String)> {
     #[cfg(target_family = "unix")]
     const ENV_SEP: &str = ":";
     #[cfg(not(target_family = "unix"))]
@@ -205,7 +67,7 @@ fn collect_path_env_vars(pathops: &[PathOp]) -> Vec<(String, String)> {
     vars
 }
 
-fn get_longest_common_path(paths: &[PathBuf]) -> Option<String> {
+pub fn get_longest_common_path(paths: &[PathBuf]) -> Option<String> {
     match paths.len() {
         0 => return None,
         1 => return paths[0].to_str().map(ToString::to_string),
@@ -238,48 +100,16 @@ fn get_longest_common_path(paths: &[PathBuf]) -> Option<String> {
 }
 
 #[cfg(test)]
-#[cfg(target_family = "unix")]
 mod tests {
-    use super::Shell;
     use crate::pathop::PathOp;
     use std::collections::HashSet;
     use std::path::PathBuf;
 
     use super::collect_path_env_vars;
     use super::get_longest_common_path;
-    use super::spawn;
 
     #[test]
-    fn test_shell_default() {
-        let _ = spawn(&["echo".into(), "hi".into()], &[], Shell::default(), false);
-    }
-
-    #[test]
-    fn test_shell_none() {
-        let _ = spawn(&["echo".into(), "hi".into()], &[], Shell::None, false);
-    }
-
-    #[test]
-    fn test_shell_alternate() {
-        let _ = spawn(
-            &["echo".into(), "hi".into()],
-            &[],
-            Shell::Unix("bash".into()),
-            false,
-        );
-    }
-
-    #[test]
-    fn test_shell_alternate_shopts() {
-        let _ = spawn(
-            &["echo".into(), "hi".into()],
-            &[],
-            Shell::Unix("bash -o errexit".into()),
-            false,
-        );
-    }
-
-    #[test]
+    #[cfg(unix)]
     fn longest_common_path_should_return_correct_value() {
         let single_path = vec![PathBuf::from("/tmp/random/")];
         let single_result =
@@ -315,6 +145,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn pathops_collect_to_env_vars() {
         let pathops = vec![
             PathOp::new(
@@ -345,37 +176,6 @@ mod tests {
         assert_eq!(
             vars.iter().collect::<HashSet<_>>(),
             expected_vars.iter().collect::<HashSet<_>>()
-        );
-    }
-}
-
-#[cfg(test)]
-#[cfg(target_family = "windows")]
-mod tests {
-    use super::{spawn, Shell};
-
-    #[test]
-    fn test_shell_default() {
-        let _ = spawn(&["echo".into(), "hi".into()], &[], Shell::default(), false);
-    }
-
-    #[test]
-    fn test_shell_cmd() {
-        let _ = spawn(&["echo".into(), "hi".into()], &[], Shell::Cmd, false);
-    }
-
-    #[test]
-    fn test_shell_powershell() {
-        let _ = spawn(&["echo".into(), "hi".into()], &[], Shell::Powershell, false);
-    }
-
-    #[test]
-    fn test_shell_bash() {
-        let _ = spawn(
-            &["echo".into(), "hi".into()],
-            &[],
-            Shell::Unix("bash".into()),
-            false,
         );
     }
 }

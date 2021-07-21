@@ -15,8 +15,8 @@
 
 use std::{path::PathBuf, time::Duration};
 
-use crate::process::Shell;
 use crate::run::OnBusyUpdate;
+use crate::Shell;
 
 /// Arguments to the watcher
 #[derive(Builder, Clone, Debug)]
