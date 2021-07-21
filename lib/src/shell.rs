@@ -188,7 +188,7 @@ mod test {
     #[test]
     #[cfg(windows)]
     fn windows_shell_bash() -> Result<(), std::io::Error> {
-        assert!(Shell::Unix("bash")
+        assert!(Shell::Unix("bash".into())
             .to_command(&["echo".into(), "hi".into()])
             .group_status()?
             .success());
