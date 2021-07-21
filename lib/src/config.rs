@@ -96,6 +96,10 @@ pub struct Config {
     /// Interval for polling.
     #[builder(default = "Duration::from_secs(1)")]
     pub poll_interval: Duration,
+
+    /// Whether to use a process group to run the command.
+    #[builder(default = "true")]
+    pub use_process_group: bool,
 }
 
 impl ConfigBuilder {

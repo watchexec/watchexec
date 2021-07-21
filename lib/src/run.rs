@@ -1,6 +1,17 @@
-use command_group::GroupChild;
 #[cfg(unix)]
 use command_group::UnixChildExt;
+use command_group::{CommandGroup, GroupChild};
+
+use std::{
+    collections::HashMap,
+    fs::canonicalize,
+    process::Child,
+    sync::{
+        mpsc::{channel, Receiver},
+        Arc, Mutex,
+    },
+    time::Duration,
+};
 
 use crate::config::Config;
 use crate::error::{Error, Result};
@@ -8,18 +19,8 @@ use crate::gitignore;
 use crate::ignore;
 use crate::notification_filter::NotificationFilter;
 use crate::pathop::PathOp;
-use crate::process;
 use crate::signal::{self, Signal};
 use crate::watcher::{Event, Watcher};
-use std::{
-    collections::HashMap,
-    fs::canonicalize,
-    sync::{
-        mpsc::{channel, Receiver},
-        Arc, Mutex,
-    },
-    time::Duration,
-};
 
 /// Behaviour to use when handling updates while the command is running.
 #[derive(Clone, Copy, Debug)]
@@ -142,15 +143,79 @@ where
     Ok(())
 }
 
+#[derive(Debug)]
+pub enum ChildProcess {
+    None,
+    Grouped(GroupChild),
+    Ungrouped(Child),
+}
+
+impl Default for ChildProcess {
+    fn default() -> Self {
+        ChildProcess::None
+    }
+}
+
+impl ChildProcess {
+    #[cfg(unix)]
+    fn signal(&mut self, sig: Signal) -> Result<()> {
+        match self {
+            Self::None => Ok(()),
+            Self::Grouped(c) => {
+                debug!("Sending signal {} to process group id={}", sig, c.id());
+                c.signal(sig)
+            }
+            Self::Ungrouped(c) => {
+                debug!("Sending signal {} to process id={}", sig, c.id());
+                c.signal(sig)
+            }
+        }
+        .map_err(|e| e.into())
+    }
+
+    fn kill(&mut self) -> Result<()> {
+        match self {
+            Self::None => Ok(()),
+            Self::Grouped(c) => {
+                debug!("Killing process group id={}", c.id());
+                c.kill()
+            }
+            Self::Ungrouped(c) => {
+                debug!("Killing process id={}", c.id());
+                c.kill()
+            }
+        }
+        .map_err(|e| e.into())
+    }
+
+    fn is_running(&mut self) -> Result<bool> {
+        match self {
+            Self::None => Ok(false),
+            Self::Grouped(c) => c.try_wait().map(|w| w.is_none()),
+            Self::Ungrouped(c) => c.try_wait().map(|w| w.is_none()),
+        }
+        .map_err(|e| e.into())
+    }
+
+    fn wait(&mut self) -> Result<()> {
+        match self {
+            Self::None => Ok(()),
+            Self::Grouped(c) => c.wait().map(drop),
+            Self::Ungrouped(c) => c.wait().map(drop),
+        }
+        .map_err(|e| e.into())
+    }
+}
+
 pub struct ExecHandler {
     args: Config,
     signal: Option<Signal>,
-    child_process: Arc<Mutex<Option<GroupChild>>>,
+    child_process: Arc<Mutex<ChildProcess>>,
 }
 
 impl ExecHandler {
     pub fn new(args: Config) -> Result<Self> {
-        let child_process: Arc<Mutex<Option<GroupChild>>> = Arc::new(Mutex::new(None));
+        let child_process: Arc<Mutex<ChildProcess>> = Arc::default();
         let weak_child = Arc::downgrade(&child_process);
 
         // Convert signal string to the corresponding integer
@@ -158,24 +223,21 @@ impl ExecHandler {
 
         signal::install_handler(move |sig: Signal| {
             if let Some(lock) = weak_child.upgrade() {
-                let mut strong = lock.lock().expect("poisoned lock in install_handler");
-                if let Some(child) = strong.as_mut() {
-                    match sig {
-                        Signal::SIGCHLD => {
-                            debug!("Try-waiting on command");
-                            child.try_wait().ok();
-                        }
-                        _ => {
-                            #[cfg(unix)]
-                            child.signal(sig).unwrap_or_else(|err| {
-                                warn!("Could not pass on signal to command: {}", err)
-                            });
+                let mut child = lock.lock().expect("poisoned lock in install_handler");
+                match sig {
+                    Signal::SIGCHLD => {
+                        child.is_running().ok();
+                    }
+                    _ => {
+                        #[cfg(unix)]
+                        child.signal(sig).unwrap_or_else(|err| {
+                            warn!("Could not pass on signal to command: {}", err)
+                        });
 
-                            #[cfg(not(unix))]
-                            child.kill().unwrap_or_else(|err| {
-                                warn!("Could not pass on termination to command: {}", err)
-                            });
-                        }
+                        #[cfg(not(unix))]
+                        child.kill().unwrap_or_else(|err| {
+                            warn!("Could not pass on termination to command: {}", err)
+                        });
                     }
                 }
             }
@@ -193,34 +255,34 @@ impl ExecHandler {
             clearscreen::clear()?;
         }
 
-        let mut guard = self.child_process.lock()?;
-        if let Some(child) = guard.as_mut() {
-            debug!("Killing process group id={}", child.id());
-            child.kill()?;
+        let mut child = self.child_process.lock()?;
+        child.kill()?;
+
+        let mut command = self.args.shell.to_command(&self.args.cmd);
+        debug!("Assembled command: {:?}", command);
+
+        if !self.args.no_environment {
+            for (name, val) in crate::paths::collect_path_env_vars(ops) {
+                debug!("Command environment: {}={:?}", name, val);
+                command.env(name, val);
+            }
         }
 
         debug!("Launching command");
-        *guard = Some(process::spawn(
-            &self.args.cmd,
-            ops,
-            self.args.shell.clone(),
-            !self.args.no_environment,
-        )?);
+        *child = if self.args.use_process_group {
+            ChildProcess::Grouped(command.group_spawn()?)
+        } else {
+            ChildProcess::Ungrouped(command.spawn()?)
+        };
 
         Ok(())
     }
 
     pub fn has_running_process(&self) -> Result<bool> {
-        let mut guard = self
-            .child_process
+        self.child_process
             .lock()
-            .expect("poisoned lock in has_running_process");
-
-        if let Some(child) = guard.as_mut() {
-            Ok(child.try_wait()?.is_none())
-        } else {
-            Ok(false)
-        }
+            .expect("poisoned lock in has_running_process")
+            .is_running()
     }
 }
 
@@ -239,7 +301,6 @@ impl Handler for ExecHandler {
         Ok(true)
     }
 
-    // Only returns Err() on lock poisoning.
     fn on_update(&self, ops: &[PathOp]) -> Result<bool> {
         log::debug!("ON UPDATE: called");
 
@@ -351,37 +412,25 @@ fn wait_fs(
     paths
 }
 
-fn signal_process(process: &Mutex<Option<GroupChild>>, signal: Signal) -> Result<()> {
-    let mut guard = process.lock().expect("poisoned lock in signal_process");
+fn signal_process(process: &Mutex<ChildProcess>, signal: Signal) -> Result<()> {
+    let mut child = process.lock().expect("poisoned lock in signal_process");
 
-    if let Some(child) = guard.as_mut() {
-        #[cfg(unix)]
-        {
-            debug!("Signaling process with {}", signal);
-            child.signal(signal)?;
-        }
+    #[cfg(unix)]
+    child.signal(signal)?;
 
-        #[cfg(not(unix))]
-        {
-            if matches!(signal, Signal::SIGTERM | Signal::SIGKILL) {
-                debug!("Killing process");
-                child.kill()?;
-            } else {
-                debug!("Ignoring signal to send to process");
-            }
-        }
+    #[cfg(not(unix))]
+    if matches!(signal, Signal::SIGTERM | Signal::SIGKILL) {
+        child.kill()?;
+    } else {
+        debug!("Ignoring signal to send to process");
     }
 
     Ok(())
 }
 
-fn wait_on_process(process: &Mutex<Option<GroupChild>>) -> Result<()> {
-    let mut guard = process.lock().expect("poisoned lock in wait_on_process");
-
-    if let Some(child) = guard.as_mut() {
-        debug!("Waiting for process to exit...");
-        child.wait()?;
-    }
-
-    Ok(())
+fn wait_on_process(process: &Mutex<ChildProcess>) -> Result<()> {
+    process
+        .lock()
+        .expect("poisoned lock in wait_on_process")
+        .wait()
 }
