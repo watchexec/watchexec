@@ -21,7 +21,7 @@ path = "src/main.rs"
 
 [dependencies]
 log = "0.4.14"
-watchexec = { path = "../lib", version = "1.17.0" }
+watchexec = { path = "../lib", version = "1.17.1" }
 color-eyre = "0.5.11"
 
 [dependencies.clap]
