@@ -164,14 +164,18 @@ impl ExecHandler {
                         Signal::SIGCHLD => {
                             debug!("Try-waiting on command");
                             child.try_wait().ok();
-                        },
+                        }
                         _ => {
                             #[cfg(unix)]
-                            child.signal(sig).unwrap_or_else(|err| warn!("Could not pass on signal to command: {}", err));
+                            child.signal(sig).unwrap_or_else(|err| {
+                                warn!("Could not pass on signal to command: {}", err)
+                            });
 
                             #[cfg(not(unix))]
-                            child.kill().unwrap_or_else(|err| warn!("Could not pass on termination to command: {}", err));
-                        },
+                            child.kill().unwrap_or_else(|err| {
+                                warn!("Could not pass on termination to command: {}", err)
+                            });
+                        }
                     }
                 }
             }
@@ -189,8 +193,13 @@ impl ExecHandler {
             clearscreen::clear()?;
         }
 
-        debug!("Launching command");
         let mut guard = self.child_process.lock()?;
+        if let Some(child) = guard.as_mut() {
+            debug!("Killing process group id={}", child.id());
+            child.kill()?;
+        }
+
+        debug!("Launching command");
         *guard = Some(process::spawn(
             &self.args.cmd,
             ops,
@@ -346,12 +355,14 @@ fn signal_process(process: &Mutex<Option<GroupChild>>, signal: Signal) -> Result
     let mut guard = process.lock().expect("poisoned lock in signal_process");
 
     if let Some(child) = guard.as_mut() {
-        #[cfg(unix)] {
+        #[cfg(unix)]
+        {
             debug!("Signaling process with {}", signal);
             child.signal(signal)?;
         }
 
-        #[cfg(not(unix))] {
+        #[cfg(not(unix))]
+        {
             if matches!(signal, Signal::SIGTERM | Signal::SIGKILL) {
                 debug!("Killing process");
                 child.kill()?;

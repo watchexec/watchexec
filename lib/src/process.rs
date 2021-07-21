@@ -2,12 +2,12 @@
 
 use crate::error::Result;
 use crate::pathop::PathOp;
+use command_group::{CommandGroup, GroupChild};
 use std::{
     collections::{HashMap, HashSet},
     path::PathBuf,
     process::Command,
 };
-use command_group::{CommandGroup, GroupChild};
 
 /// Shell to use to run commands.
 ///
@@ -134,7 +134,7 @@ pub fn spawn(
         collect_path_env_vars(updated_paths)
     };
 
-    for &(ref name, ref val) in &command_envs {
+    for (name, val) in &command_envs {
         command.env(name, val);
     }
 
