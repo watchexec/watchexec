@@ -40,7 +40,7 @@ More usage examples: [in the CLI README](./cli/#usage-examples)!
 
 ## Install
 
-- As pre-built binary: https://github.com/watchexec/watchexec/releases
+- As pre-built binary package: https://watchexec.github.io/downloads/
 - With your package manager for Arch, Homebrew, Nix, Scoop, Chocolatey…
 - From source with Cargo: `cargo install watchexec-cli`
 
@@ -52,5 +52,6 @@ All options in detail: [in the CLI README](./cli/#installation).
 - [watchexec library](./lib/): to create more specialised watchexec-powered tools! such as:
   - [cargo watch](https://github.com/passcod/cargo-watch): for Rust/Cargo projects.
 - [clearscreen](https://github.com/watchexec/clearscreen): to clear the (terminal) screen on every platform.
-- [notify](https://github.com/notify-rs/notify): to respond to file modifications (third-party),
+- [command group](https://github.com/watchexec/command-group): to run commands in process groups.
+- [notify](https://github.com/notify-rs/notify): to respond to file modifications (third-party).
 - [globset](https://crates.io/crates/globset): to match globs (third-party).

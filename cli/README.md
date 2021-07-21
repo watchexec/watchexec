@@ -10,14 +10,14 @@ Example use cases:
 ## Features
 
 * Simple invocation and use
-* Runs on OS X, Linux, and Windows
+* Runs on Linux, Mac, Windows, and more
 * Monitors current directory and all subdirectories for changes
-    * Uses most efficient event polling mechanism for your platform (except for [BSD](https://github.com/notify-rs/notify#todo))
+    * Uses efficient event polling mechanism (on Linux, Mac, Windows)
 * Coalesces multiple filesystem events into one, for editors that use swap/backup files during saving
 * By default, uses `.gitignore` and `.ignore` to determine which files to ignore notifications for
 * Support for watching files with a specific extension
 * Support for filtering/ignoring events based on [glob patterns](https://docs.rs/globset/*/globset/#syntax)
-* Launches the command in a new process group
+* Launches the command in a new process group (can be disabled with `--no-process-group`)
 * Sets the following environment variables in the process:
     * If a single file changed (depending on the event type):
         * `$WATCHEXEC_CREATED_PATH`, the path of the file that was created
@@ -89,9 +89,18 @@ On Windows, you may prefer to use Powershell:
 
 ## Installation
 
-### All platforms
+### First-party
 
-#### Cargo
+#### Pre-built
+
+Use the download section on **[the website](https://watchexec.github.io/downloads/)** to obtain the
+package appropriate for your platform and architecture, extract it, and place it in your `PATH`.
+
+There are also Debian/Ubuntu (DEB) and Fedora/RedHat (RPM) packages.
+
+Checksums and signatures are available.
+
+#### Cargo (from source)
 
 Requires Rust 1.43 or later.
 
@@ -101,59 +110,27 @@ Requires Rust 1.43 or later.
 
     $ cargo binstall watchexec-cli
 
-#### Pre-built
+### Third-party
 
-Use the GitHub Releases tab to obtain the tarball/zipfile appropriate for your platform and architecture, extract it, and place it in your `PATH`.
+These are provided by third parties, caveat emptor!
 
-### macOS
+#### macOS
 
-#### Homebrew
+- Homebrew:  `$ brew install watchexec`
+- Nix/NixOS: `$ nix-env -iA nixpkgs.watchexec`
+- Webi:      `$ curl -sS https://webinstall.dev/watchexec | bash`
 
-    $ brew install watchexec
+#### Linux
 
-#### Nix
+- ArchLinux: `$ pacman -S watchexec`
+- Nix/NixOS: `$ nix-env -iA nixpkgs.watchexec`
+- Webi:      `$ curl -sS https://webinstall.dev/watchexec | bash`
 
-    $ nix-env -iA nixpkgs.watchexec
+#### Windows
 
-#### Webi
-
-    $ curl -sS https://webinstall.dev/watchexec | bash
-
-### Linux
-
-PRs for packaging in unsupported distros are welcome.
-
-#### Debian
-
-A deb package is available for several architectures in the GitHub Releases.
-
-#### Arch Linux
-
-Available in the **community** repository:
-
-    $ pacman -S watchexec
-
-#### NixOS
-
-    $ nix-env -iA nixos.watchexec
-
-#### Webi
-
-    $ curl -sS https://webinstall.dev/watchexec/ | bash
-
-### Windows
-
-#### Scoop
-
-    #> scoop install watchexec
-
-#### Chocolatey
-
-    #> choco install watchexec
-
-#### Webi
-
-    #> curl.exe -A MS https://webinstall.dev/watchexec | powershell
+- Scoop:      `#> scoop install watchexec`
+- Chocolatey: `#> choco install watchexec`
+- Webi:       `#> curl.exe -A MS https://webinstall.dev/watchexec | powershell`
 
 ## Shell completions
 
