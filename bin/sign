@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if ! which rsign >/dev/null; then
+    echo "Requires rsign2 tool: $ cargo install rsign2"
+    exit 2
+fi
+
+missing=""
+for f in {B3,SHA512}SUMS{,.auto.minisig}; do
+    [[ ! -f "$f" ]] && missing="$missing $f"
+done
+
+if [[ ! -z "$missing" ]]; then
+    echo "Usage: bin/sign [rsign options...]"
+    echo "You must first download the relevant sums and minisig files."
+    echo "Missing: $missing"
+    exit 1
+fi
+
+sigs=""
+for algo in B3 SHA512; do
+
+    echo "Verifying ${algo}SUMS.auto.minisig:"
+    rsign verify \
+        -p "$(dirname $BASH_SOURCE)/../.github/workflows/release.pub" \
+        -x "${algo}SUMS.auto.minisig" \
+        "${algo}SUMS"
+
+    version=$(grep -m1 -oP 'watchexec-[\d.]+' "${algo}SUMS" | cut -d- -f3)
+    ownsig="${algo}SUMS.$(whoami).minisig"
+    sigs="$sigs $ownsig"
+
+    echo "Signing ${algo}SUMS with your key to $ownsig:"
+    rsign sign \
+        -t "watchexec $version signed by maintainer: $(whoami)" \
+        -c 'see README.md for signing information' \
+        -x "$ownsig" \
+        $@ \
+        "${algo}SUMS"
+done
+
+echo "Done; please upload $sigs to Github release $version!"
