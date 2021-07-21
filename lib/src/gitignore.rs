@@ -1,4 +1,5 @@
 use globset::{GlobBuilder, GlobSet, GlobSetBuilder};
+use log::debug;
 
 use std::borrow::ToOwned;
 use std::fs;

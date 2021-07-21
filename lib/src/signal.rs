@@ -1,7 +1,7 @@
 use std::sync::Mutex;
 
 type CleanupFn = Box<dyn Fn(self::Signal) + Send>;
-lazy_static! {
+lazy_static::lazy_static! {
     static ref CLEANUP: Mutex<Option<CleanupFn>> = Mutex::new(None);
 }
 
@@ -106,6 +106,7 @@ pub fn install_handler<F>(handler: F)
 where
     F: Fn(self::Signal) + 'static + Send + Sync,
 {
+    use log::debug;
     use nix::sys::signal::*;
     use std::thread;
 

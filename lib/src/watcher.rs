@@ -1,3 +1,4 @@
+use log::debug;
 use notify::{raw_watcher, PollWatcher, RecommendedWatcher, RecursiveMode};
 use std::convert::TryFrom;
 use std::path::PathBuf;

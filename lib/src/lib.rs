@@ -8,13 +8,6 @@
 #![doc(html_logo_url = "https://watchexec.github.io/logo:watchexec.svg")]
 #![warn(clippy::unwrap_used)]
 
-#[macro_use]
-extern crate derive_builder;
-#[macro_use]
-extern crate log;
-#[macro_use]
-extern crate lazy_static;
-
 pub mod config;
 pub mod error;
 mod gitignore;

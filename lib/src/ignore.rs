@@ -1,4 +1,5 @@
 use globset::{GlobBuilder, GlobSet, GlobSetBuilder};
+use log::debug;
 use std::collections::HashSet;
 use std::fs;
 use std::io;

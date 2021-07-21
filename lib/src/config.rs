@@ -13,6 +13,7 @@
 //!     .expect("mission failed");
 //! ```
 
+use derive_builder::Builder;
 use std::{path::PathBuf, time::Duration};
 
 use crate::run::OnBusyUpdate;
