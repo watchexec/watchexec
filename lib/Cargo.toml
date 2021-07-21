@@ -16,6 +16,7 @@ edition = "2018"
 
 [dependencies]
 clearscreen = "1.0.4"
+command-group = "1.0.3"
 derive_builder = "0.10.0"
 glob = "0.3.0"
 globset = "=0.4.6"
@@ -25,11 +26,11 @@ notify = "4.0.15"
 walkdir = "2.3.2"
 
 [target.'cfg(unix)'.dependencies]
-nix = "0.20.0"
+nix = "0.22.0"
 
 [target.'cfg(windows)'.dependencies.winapi]
 version = "0.3.9"
-features = ["ioapiset", "jobapi2", "tlhelp32"]
+# features = ["ioapiset", "jobapi2", "tlhelp32"]
 
 [package.metadata.binstall]
 pkg-url = "{ repo }/releases/download/cli-v{ version }/watchexec-{ version }-{ target }.tar.xz"
