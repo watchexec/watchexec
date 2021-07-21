@@ -85,12 +85,17 @@ jobs:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-cargo-registry-${{ hashFiles('Cargo.lock') }}
 
+      - uses: actions/cache@v2
+        if: startsWith(matrix.name, 'linux-')
+        with:
+          path: ~/.cargo/bin
+          key: ${{ runner.os }}-cargo-bin-${{ hashFiles('.github/workflows/release.yml') }}
       - name: Install cargo-deb
         if: startsWith(matrix.name, 'linux-')
-        run: cargo install cargo-deb --version 1.30.0
+        run: which cargo-deb || cargo install cargo-deb --version 1.30.0
       - name: Install cargo-generate-rpm
         if: startsWith(matrix.name, 'linux-')
-        run: cargo install cargo-generate-rpm --version 0.4.0
+        run: which cargo-generate-rpm || cargo install cargo-generate-rpm --version 0.4.0
 
       - uses: actions-rs/toolchain@v1
         with:
