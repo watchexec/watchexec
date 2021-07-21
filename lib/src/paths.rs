@@ -110,72 +110,180 @@ mod tests {
 
     #[test]
     #[cfg(unix)]
-    fn longest_common_path_should_return_correct_value() {
-        let single_path = vec![PathBuf::from("/tmp/random/")];
-        let single_result =
-            get_longest_common_path(&single_path).expect("failed to get longest common path");
-        assert_eq!(single_result, "/tmp/random/");
-
-        let common_paths = vec![
-            PathBuf::from("/tmp/logs/hi"),
-            PathBuf::from("/tmp/logs/bye"),
-            PathBuf::from("/tmp/logs/bye"),
-            PathBuf::from("/tmp/logs/fly"),
-        ];
-
-        let common_result =
-            get_longest_common_path(&common_paths).expect("failed to get longest common path");
-        assert_eq!(common_result, "/tmp/logs");
-
-        let diverging_paths = vec![PathBuf::from("/tmp/logs/hi"), PathBuf::from("/var/logs/hi")];
-
-        let diverging_result =
-            get_longest_common_path(&diverging_paths).expect("failed to get longest common path");
-        assert_eq!(diverging_result, "/");
-
-        let uneven_paths = vec![
-            PathBuf::from("/tmp/logs/hi"),
-            PathBuf::from("/tmp/logs/"),
-            PathBuf::from("/tmp/logs/bye"),
-        ];
-
-        let uneven_result =
-            get_longest_common_path(&uneven_paths).expect("failed to get longest common path");
-        assert_eq!(uneven_result, "/tmp/logs");
+    fn longest_common_path_single_unix() {
+        assert_eq!(
+            get_longest_common_path(&[PathBuf::from("/tmp/random/")])
+                .expect("failed to get longest common path"),
+            "/tmp/random/"
+        );
     }
 
     #[test]
     #[cfg(unix)]
-    fn pathops_collect_to_env_vars() {
-        let pathops = vec![
-            PathOp::new(
-                &PathBuf::from("/tmp/logs/hi"),
-                Some(notify::op::CREATE),
-                None,
-            ),
-            PathOp::new(
-                &PathBuf::from("/tmp/logs/hey/there"),
-                Some(notify::op::CREATE),
-                None,
-            ),
-            PathOp::new(
-                &PathBuf::from("/tmp/logs/bye"),
-                Some(notify::op::REMOVE),
-                None,
-            ),
-        ];
-        let expected_vars = vec![
-            ("WATCHEXEC_COMMON_PATH".to_string(), "/tmp/logs".to_string()),
-            ("WATCHEXEC_REMOVED_PATH".to_string(), "/bye".to_string()),
-            (
-                "WATCHEXEC_CREATED_PATH".to_string(),
-                "/hi:/hey/there".to_string(),
-            ),
-        ];
-        let vars = collect_path_env_vars(&pathops);
+    fn longest_common_path_similar_unix() {
         assert_eq!(
-            vars.iter().collect::<HashSet<_>>(),
-            expected_vars.iter().collect::<HashSet<_>>()
+            get_longest_common_path(&[
+                PathBuf::from("/tmp/logs/hi"),
+                PathBuf::from("/tmp/logs/bye"),
+                PathBuf::from("/tmp/logs/bye"),
+                PathBuf::from("/tmp/logs/fly"),
+            ])
+            .expect("failed to get longest common path"),
+            "/tmp/logs"
+        );
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn longest_common_path_divergent_unix() {
+        assert_eq!(
+            get_longest_common_path(&[
+                PathBuf::from("/tmp/logs/hi"),
+                PathBuf::from("/var/logs/hi")
+            ])
+            .expect("failed to get longest common path"),
+            "/"
+        );
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn longest_common_path_uneven_unix() {
+        assert_eq!(
+            get_longest_common_path(&[
+                PathBuf::from("/tmp/logs/hi"),
+                PathBuf::from("/tmp/logs/"),
+                PathBuf::from("/tmp/logs/bye"),
+            ])
+            .expect("failed to get longest common path"),
+            "/tmp/logs"
+        );
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn longest_common_path_single_windows() {
+        assert_eq!(
+            get_longest_common_path(&[PathBuf::from(r"C:\Temp\Random\")])
+                .expect("failed to get longest common path"),
+            r"C:\Temp\Random\"
+        );
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn longest_common_path_similar_windows() {
+        assert_eq!(
+            get_longest_common_path(&[
+                PathBuf::from(r"C:\Temp\Logs\hi"),
+                PathBuf::from(r"C:\Temp\Logs\bye"),
+                PathBuf::from(r"C:\Temp\Logs\bye"),
+                PathBuf::from(r"C:\Temp\Logs\fly"),
+            ])
+            .expect("failed to get longest common path"),
+            r"C:\Temp\Logs"
+        );
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn longest_common_path_divergent_windows() {
+        assert_eq!(
+            get_longest_common_path(&[
+                PathBuf::from(r"C:\Temp\Logs\hi"),
+                PathBuf::from(r"C:\Perm\Logs\hi")
+            ])
+            .expect("failed to get longest common path"),
+            "C:/"
+        );
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn longest_common_path_uneven_windows() {
+        assert_eq!(
+            get_longest_common_path(&[
+                PathBuf::from(r"C:\Temp\Logs\hi"),
+                PathBuf::from(r"C:\Temp\Logs\"),
+                PathBuf::from(r"C:\Temp\Logs\bye"),
+            ])
+            .expect("failed to get longest common path"),
+            r"C:\Temp\Logs"
+        );
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn pathops_collect_to_env_vars_unix() {
+        assert_eq!(
+            collect_path_env_vars(&[
+                PathOp::new(
+                    &PathBuf::from("/tmp/logs/hi"),
+                    Some(notify::op::CREATE),
+                    None,
+                ),
+                PathOp::new(
+                    &PathBuf::from("/tmp/logs/hey/there"),
+                    Some(notify::op::CREATE),
+                    None,
+                ),
+                PathOp::new(
+                    &PathBuf::from("/tmp/logs/bye"),
+                    Some(notify::op::REMOVE),
+                    None,
+                ),
+            ])
+            .into_iter()
+            .collect::<HashSet<_>>(),
+            vec![
+                ("WATCHEXEC_COMMON_PATH".to_string(), "/tmp/logs".to_string()),
+                ("WATCHEXEC_REMOVED_PATH".to_string(), "/bye".to_string()),
+                (
+                    "WATCHEXEC_CREATED_PATH".to_string(),
+                    "/hi:/hey/there".to_string(),
+                ),
+            ]
+            .into_iter()
+            .collect::<HashSet<_>>()
+        );
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn pathops_collect_to_env_vars_windows() {
+        assert_eq!(
+            collect_path_env_vars(&[
+                PathOp::new(
+                    &PathBuf::from(r"C:\Temp\Logs\hi"),
+                    Some(notify::op::CREATE),
+                    None,
+                ),
+                PathOp::new(
+                    &PathBuf::from(r"C:\Temp\Logs\hey\there"),
+                    Some(notify::op::CREATE),
+                    None,
+                ),
+                PathOp::new(
+                    &PathBuf::from(r"C:\Temp\Logs\bye"),
+                    Some(notify::op::REMOVE),
+                    None,
+                ),
+            ])
+            .into_iter()
+            .collect::<HashSet<_>>(),
+            vec![
+                (
+                    "WATCHEXEC_COMMON_PATH".to_string(),
+                    r"C:\Temp\Logs".to_string()
+                ),
+                ("WATCHEXEC_REMOVED_PATH".to_string(), r"\bye".to_string()),
+                (
+                    "WATCHEXEC_CREATED_PATH".to_string(),
+                    r"\hi;\hey\there".to_string(),
+                ),
+            ]
+            .into_iter()
+            .collect::<HashSet<_>>()
         );
     }
 }
