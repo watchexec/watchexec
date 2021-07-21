@@ -30,13 +30,3 @@ nix = "0.22.0"
 
 [target.'cfg(windows)'.dependencies.winapi]
 version = "0.3.9"
-# features = ["ioapiset", "jobapi2", "tlhelp32"]
-
-[package.metadata.binstall]
-pkg-url = "{ repo }/releases/download/cli-v{ version }/watchexec-{ version }-{ target }.tar.xz"
-bin-dir = "watchexec-{ version }-{ target }/{ bin }{ format }"
-pkg-fmt = "txz"
-
-[package.metadata.binstall.overrides.x86_64-pc-windows-msvc]
-pkg-url = "{ repo }/releases/download/cli-v{ version }/watchexec-{ version }-{ target }.zip"
-pkg-fmt = "zip"
