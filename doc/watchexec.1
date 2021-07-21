@@ -1,7 +1,7 @@
 .\" generated with Ronn/v0.7.3
 .\" http://github.com/rtomayko/ronn/tree/0.7.3
 .
-.TH "WATCHEXEC" "1" "April 2021" "" ""
+.TH "WATCHEXEC" "1" "July 2021" "" ""
 .
 .SH "NAME"
 \fBwatchexec\fR \- execute commands when watched files change
@@ -89,6 +89,10 @@ Ignore events while the process is still running\. This is distinct from \fB\-\-
 .
 .P
 This behaviour will become the default in v2\.0\.
+.
+.TP
+\fB\-\-no\-process\-group\fR
+Do not use a process group when running \fIcommand\fR\.
 .
 .TP
 \fB\-c\fR, \fB\-\-clear\fR

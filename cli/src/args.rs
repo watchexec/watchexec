@@ -126,6 +126,9 @@ pub fn get_args() -> Result<(Config, LevelFilter)> {
         .arg(Arg::with_name("no-environment")
                  .help("Do not set WATCHEXEC_*_PATH environment variables for the command")
                  .long("no-environment"))
+        .arg(Arg::with_name("no-process-group")
+                 .help("Do not use a process group when running the command")
+                 .long("no-process-group"))
         .arg(Arg::with_name("once").short("1").hidden(true))
         .arg(Arg::with_name("watch-when-idle")
                  .help("Deprecated alias for --on-busy-update=do-nothing, which will become the default in 2.0.")
@@ -263,6 +266,7 @@ pub fn get_args() -> Result<(Config, LevelFilter)> {
     builder.no_vcs_ignore(args.is_present("no-vcs-ignore"));
     builder.no_ignore(args.is_present("no-ignore"));
     builder.poll(args.occurrences_of("poll") > 0);
+    builder.use_process_group(!args.is_present("no-process-group"));
 
     let mut config = builder.build()?;
     if args.is_present("once") {

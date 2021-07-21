@@ -66,6 +66,9 @@ Ignore events while the process is still running. This is distinct from `--resta
 
 This behaviour will become the default in v2.0.
 
+* `--no-process-group`:
+Do not use a process group when running <command>.
+
 * `-c`, `--clear`:
 Clears the screen before executing <command>.
 
