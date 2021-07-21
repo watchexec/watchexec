@@ -187,8 +187,8 @@ mod test {
 
     #[test]
     #[cfg(windows)]
-    fn windows_shell_bash() -> Result<(), std::io::Error> {
-        assert!(Shell::Unix("bash".into())
+    fn windows_shell_unix_style_powershell() -> Result<(), std::io::Error> {
+        assert!(Shell::Unix("powershell.exe".into())
             .to_command(&["echo".into(), "hi".into()])
             .group_status()?
             .success());
