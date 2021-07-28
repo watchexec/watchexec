@@ -43,6 +43,8 @@ echo "Next version to be $newver ($date), creating..."
 sed -E -i "s/version=\"$extver.0\"/version=\"$newver.0\"/1" cli/watchexec.exe.manifest
 sed -E -i "s/watchexec(.exe)? $extver/watchexec\1 $newver/" cli/tests/snapshots/help__*
 sed -E -i "s/^version = \"$extver\"/version = \"$newver\"/1" cli/Cargo.toml
+sed -E -i "s/^version: \"$extver\"/version: \"$newver\"/1" CITATION.cff
+sed -E -i "s/^date-released: .+$/date-released: $date/1" CITATION.cff
 
 cargo check
 

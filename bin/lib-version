@@ -41,6 +41,8 @@ date=$(date +%Y-%m-%d)
 echo "Next version to be $newver ($date), creating..."
 
 sed -E -i "s/^version = \"$extver\"/version = \"$newver\"/1" lib/Cargo.toml
+sed -E -i "s/^version: \"$extver\"/version: \"$newver\"/1" lib/CITATION.cff
+sed -E -i "s/^date-released: .+$/date-released: $date/1" lib/CITATION.cff
 
 cargo check
 
