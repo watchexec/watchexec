@@ -10,13 +10,11 @@ use std::{
 use clap::{crate_version, value_t, values_t, App, Arg};
 use color_eyre::eyre::{Context, Report, Result};
 use log::LevelFilter;
-use watchexec::{
-    config::{Config, ConfigBuilder},
-    run::OnBusyUpdate,
-    Shell,
-};
+use watchexec::{config::ConfigBuilder, run::OnBusyUpdate, Shell};
 
-pub fn get_args() -> Result<(Config, LevelFilter)> {
+use crate::handler::CliHandler;
+
+pub fn get_args() -> Result<CliHandler> {
     let app = App::new("watchexec")
         .version(crate_version!())
         .about("Execute commands when watched files change")
@@ -281,7 +279,7 @@ pub fn get_args() -> Result<(Config, LevelFilter)> {
         LevelFilter::Warn
     };
 
-    Ok((config, loglevel))
+    CliHandler::new(config, loglevel, false)
 }
 
 // until 2.0
