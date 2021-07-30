@@ -23,6 +23,7 @@ path = "src/main.rs"
 log = "0.4.14"
 watchexec = { path = "../lib", version = "1.17.1" }
 color-eyre = "0.5.11"
+notify-rust = "4.5.2"
 
 [dependencies.clap]
 version = "2.33.3"

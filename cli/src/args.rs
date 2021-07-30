@@ -131,7 +131,11 @@ pub fn get_args() -> Result<CliHandler> {
         .arg(Arg::with_name("watch-when-idle")
                  .help("Deprecated alias for --on-busy-update=do-nothing, which will become the default in 2.0.")
                  .short("W")
-                 .long("watch-when-idle"));
+                 .long("watch-when-idle"))
+        .arg(Arg::with_name("notif")
+                 .help("Send a desktop notification when watchexec notices a change (experimental, behaviour may change)")
+                 .short("N")
+                 .long("notify"));
 
     let mut raw_args: Vec<OsString> = env::args_os().collect();
 
@@ -279,7 +283,7 @@ pub fn get_args() -> Result<CliHandler> {
         LevelFilter::Warn
     };
 
-    CliHandler::new(config, loglevel, false)
+    CliHandler::new(config, loglevel, args.is_present("notif"))
 }
 
 // until 2.0
