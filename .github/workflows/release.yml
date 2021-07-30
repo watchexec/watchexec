@@ -93,9 +93,9 @@ jobs:
       - name: Install cargo-deb
         if: startsWith(matrix.name, 'linux-')
         run: which cargo-deb || cargo install cargo-deb --version 1.30.0 --locked
-      - name: Install cargo-generate-rpm
-        if: startsWith(matrix.name, 'linux-')
-        run: which cargo-generate-rpm || cargo install cargo-generate-rpm --version 0.4.0 --locked
+      # - name: Install cargo-generate-rpm
+      #   if: startsWith(matrix.name, 'linux-')
+      #   run: which cargo-generate-rpm || cargo install cargo-generate-rpm --version 0.4.0 --locked
 
       - uses: actions-rs/toolchain@v1
         with:
@@ -160,16 +160,16 @@ jobs:
           version=$(cat VERSION)
           dst="watchexec-${version}-${{ matrix.target }}"
           cargo deb -p watchexec-cli --no-build --no-strip --target ${{ matrix.target }} --output "$dst.deb"
-      - name: Archive (rpm)
-        if: startsWith(matrix.name, 'linux-')
-        shell: bash
-        run: |
-          set -euxo pipefail
-          shopt -s globstar
-          version=$(cat VERSION)
-          dst="watchexec-${version}-${{ matrix.target }}"
-          cargo generate-rpm -p cli --target "${{ matrix.target }}" --target-dir "target/${{ matrix.target }}"
-          mv target/**/*.rpm "$dst.rpm"
+      # - name: Archive (rpm)
+      #   if: startsWith(matrix.name, 'linux-')
+      #   shell: bash
+      #   run: |
+      #     set -euxo pipefail
+      #     shopt -s globstar
+      #     version=$(cat VERSION)
+      #     dst="watchexec-${version}-${{ matrix.target }}"
+      #     cargo generate-rpm -p cli --target "${{ matrix.target }}" --target-dir "target/${{ matrix.target }}"
+      #     mv target/**/*.rpm "$dst.rpm"
       - name: Archive (zip)
         if: startsWith(matrix.name, 'windows-')
         shell: bash
