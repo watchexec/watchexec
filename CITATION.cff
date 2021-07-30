@@ -7,7 +7,7 @@ message: |
 
 title: Watchexec (command-line tool)
 version: 1.17.0
-date-released: 2021-07-22
+date-released: 2021-07-31
 
 repository-code: https://github.com/watchexec/watchexec
 license: Apache-2.0
