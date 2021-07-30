@@ -92,10 +92,10 @@ jobs:
           key: ${{ runner.os }}-cargo-bin-${{ hashFiles('.github/workflows/release.yml') }}
       - name: Install cargo-deb
         if: startsWith(matrix.name, 'linux-')
-        run: which cargo-deb || cargo install cargo-deb --version 1.30.0
+        run: which cargo-deb || cargo install cargo-deb --version 1.30.0 --locked
       - name: Install cargo-generate-rpm
         if: startsWith(matrix.name, 'linux-')
-        run: which cargo-generate-rpm || cargo install cargo-generate-rpm --version 0.4.0
+        run: which cargo-generate-rpm || cargo install cargo-generate-rpm --version 0.4.0 --locked
 
       - uses: actions-rs/toolchain@v1
         with:
