@@ -20,8 +20,12 @@ miette = "0.7.0"
 notify = "5.0.0-pre.11"
 thiserror = "1.0.26"
 tracing = "0.1.26"
+dunce = "1.0.2"
 
 [dependencies.tokio]
 version = "1.10.0"
 features = ["full"]
+
+[dev-dependencies]
+tracing-subscriber = "0.2.19"
 

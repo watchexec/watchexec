@@ -17,4 +17,4 @@
 
 pub mod error;
 pub mod event;
-mod fs;
+pub mod fs;

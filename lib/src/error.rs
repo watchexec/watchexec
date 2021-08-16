@@ -2,8 +2,8 @@
 
 use std::path::PathBuf;
 
-use thiserror::Error;
 use miette::Diagnostic;
+use thiserror::Error;
 use tokio::sync::mpsc;
 
 use crate::{event::Event, fs::Watcher};
@@ -37,33 +37,49 @@ pub enum RuntimeError {
 	#[error("{kind:?} watcher failed to instantiate: {err}")]
 	#[diagnostic(
 		code(watchexec::runtime::fs_watcher_error),
-		help("perhaps retry with the poll watcher"),
+		help("perhaps retry with the poll watcher")
 	)]
-	FsWatcherCreate { kind: Watcher, #[source] err: notify::Error },
+	FsWatcherCreate {
+		kind: Watcher,
+		#[source]
+		err: notify::Error,
+	},
 
 	/// Error received when reading a filesystem event fails.
 	#[error("{kind:?} watcher received an event that we could not read: {err}")]
-	#[diagnostic(
-		code(watchexec::runtime::fs_watcher_event),
-	)]
-	FsWatcherEvent { kind: Watcher, #[source] err: notify::Error },
+	#[diagnostic(code(watchexec::runtime::fs_watcher_event))]
+	FsWatcherEvent {
+		kind: Watcher,
+		#[source]
+		err: notify::Error,
+	},
 
 	/// Error received when adding to the pathset for the filesystem watcher fails.
 	#[error("while adding {path:?} to the {kind:?} watcher: {err}")]
-	#[diagnostic(
-		code(watchexec::runtime::fs_watcher_path_add),
-	)]
-	FsWatcherPathAdd { path: PathBuf, kind: Watcher, #[source] err: notify::Error },
+	#[diagnostic(code(watchexec::runtime::fs_watcher_path_add))]
+	FsWatcherPathAdd {
+		path: PathBuf,
+		kind: Watcher,
+		#[source]
+		err: notify::Error,
+	},
 
 	/// Error received when removing from the pathset for the filesystem watcher fails.
 	#[error("while removing {path:?} from the {kind:?} watcher: {err}")]
-	#[diagnostic(
-		code(watchexec::runtime::fs_watcher_path_remove),
-	)]
-	FsWatcherPathRemove { path: PathBuf, kind: Watcher, #[source] err: notify::Error },
+	#[diagnostic(code(watchexec::runtime::fs_watcher_path_remove))]
+	FsWatcherPathRemove {
+		path: PathBuf,
+		kind: Watcher,
+		#[source]
+		err: notify::Error,
+	},
 
 	/// Error received when an event cannot be sent to the event channel.
 	#[error("cannot send event from {ctx}: {err}")]
 	#[diagnostic(code(watchexec::runtime::event_channel_send))]
-	EventChannelSend { ctx: &'static str, #[source] err: mpsc::error::TrySendError<Event> },
+	EventChannelSend {
+		ctx: &'static str,
+		#[source]
+		err: mpsc::error::TrySendError<Event>,
+	},
 }
