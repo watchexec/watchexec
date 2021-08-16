@@ -2055,6 +2055,7 @@ name = "watchexec"
 version = "1.17.1"
 dependencies = [
  "chrono",
+ "color-eyre",
  "dunce",
  "miette",
  "notify 5.0.0-pre.11",

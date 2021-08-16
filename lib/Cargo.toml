@@ -27,5 +27,6 @@ version = "1.10.0"
 features = ["full"]
 
 [dev-dependencies]
+color-eyre = "0.5.11"
 tracing-subscriber = "0.2.19"
 

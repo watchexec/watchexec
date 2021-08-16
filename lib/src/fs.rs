@@ -57,7 +57,8 @@ pub struct WorkingData {
 /// While you can run several, you should only have one.
 ///
 /// This only does a bare minimum of setup; to actually start the work, you need to set a non-empty pathset on the
-/// [`WorkingData`] with the [`watch`] channel, and send a notification.
+/// [`WorkingData`] with the [`watch`] channel, and send a notification. Take care _not_ to drop the watch sender:
+/// this will cause the worker to stop gracefully, which may not be what was expected.
 ///
 /// # Examples
 ///
@@ -183,6 +184,7 @@ pub async fn worker(
 		}
 	}
 
+	debug!("ending file watcher");
 	Ok(())
 }
 fn process_event(
