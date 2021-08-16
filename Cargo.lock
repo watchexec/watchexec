@@ -81,6 +81,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-trait"
+version = "0.1.51"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "44318e776df68115a881de9a8fd1b9e53368d7a4a5ce4cc48517da3393233a5e"
+dependencies = [
+ "proc-macro2",
+ "quote 1.0.9",
+ "syn 1.0.73",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -254,7 +265,9 @@ version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "758ddf93da6b6b45c6e44a73d07362945b98814e8c9bb57a8c9353f921c18ba3"
 dependencies = [
+ "async-trait",
  "nix 0.22.0",
+ "tokio",
  "winapi 0.3.9",
 ]
 
@@ -2056,6 +2069,7 @@ version = "1.17.1"
 dependencies = [
  "chrono",
  "color-eyre",
+ "command-group",
  "dunce",
  "miette",
  "notify 5.0.0-pre.11",
