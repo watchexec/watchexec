@@ -15,18 +15,13 @@ readme = "README.md"
 edition = "2018"
 
 [dependencies]
-clearscreen = "1.0.4"
-command-group = "1.0.3"
-derive_builder = "0.10.0"
-glob = "0.3.0"
-globset = "=0.4.6"
-lazy_static = "1.1.0"
-log = "0.4.14"
-notify = "4.0.15"
-walkdir = "2.3.2"
+chrono = "0.4.19"
+miette = "0.7.0"
+notify = "5.0.0-pre.11"
+thiserror = "1.0.26"
+tracing = "0.1.26"
 
-[target.'cfg(unix)'.dependencies]
-nix = "0.22.0"
+[dependencies.tokio]
+version = "1.10.0"
+features = ["full"]
 
-[target.'cfg(windows)'.dependencies.winapi]
-version = "0.3.9"

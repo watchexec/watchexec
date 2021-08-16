@@ -1,86 +1,69 @@
-use std::{error::Error as StdError, fmt, io, sync::PoisonError};
+//! Watchexec has two error types: for critical and for runtime errors.
 
-pub type Result<T> = ::std::result::Result<T, Error>;
+use std::path::PathBuf;
 
+use thiserror::Error;
+use miette::Diagnostic;
+use tokio::sync::mpsc;
+
+use crate::{event::Event, fs::Watcher};
+
+/// Errors which are not recoverable and stop watchexec execution.
+#[derive(Debug, Diagnostic, Error)]
 #[non_exhaustive]
-pub enum Error {
-    Canonicalization(String, io::Error),
-    Glob(globset::Error),
-    Io(io::Error),
-    Notify(notify::Error),
-    Generic(String),
-    PoisonedLock,
-    ClearScreen(clearscreen::Error),
+pub enum CriticalError {
+	/// A critical I/O error occurred.
+	#[error(transparent)]
+	#[diagnostic(code(watchexec::critical::io_error))]
+	IoError(#[from] std::io::Error),
+
+	/// Error received when an event cannot be sent to the errors channel.
+	#[error("cannot send internal runtime error: {0}")]
+	#[diagnostic(code(watchexec::critical::error_channel_send))]
+	ErrorChannelSend(#[from] mpsc::error::SendError<RuntimeError>),
 }
 
-impl StdError for Error {}
+/// Errors which _may_ be recoverable, transient, or only affect a part of the operation, and should
+/// be reported to the user and/or acted upon programatically, but will not outright stop watchexec.
+#[derive(Debug, Diagnostic, Error)]
+#[non_exhaustive]
+pub enum RuntimeError {
+	/// Generic I/O error, with no additional context.
+	#[error(transparent)]
+	#[diagnostic(code(watchexec::runtime::io_error))]
+	IoError(#[from] std::io::Error),
 
-impl From<String> for Error {
-    fn from(err: String) -> Self {
-        Self::Generic(err)
-    }
-}
+	/// Error received when creating a filesystem watcher fails.
+	#[error("{kind:?} watcher failed to instantiate: {err}")]
+	#[diagnostic(
+		code(watchexec::runtime::fs_watcher_error),
+		help("perhaps retry with the poll watcher"),
+	)]
+	FsWatcherCreate { kind: Watcher, #[source] err: notify::Error },
 
-impl From<globset::Error> for Error {
-    fn from(err: globset::Error) -> Self {
-        Self::Glob(err)
-    }
-}
+	/// Error received when reading a filesystem event fails.
+	#[error("{kind:?} watcher received an event that we could not read: {err}")]
+	#[diagnostic(
+		code(watchexec::runtime::fs_watcher_event),
+	)]
+	FsWatcherEvent { kind: Watcher, #[source] err: notify::Error },
 
-impl From<io::Error> for Error {
-    fn from(err: io::Error) -> Self {
-        Self::Io(match err.raw_os_error() {
-            Some(7) => io::Error::new(io::ErrorKind::Other, "There are so many changed files that the environment variables of the command have been overrun. Try running with --no-meta or --no-environment."),
-            _ => err,
-        })
-    }
-}
+	/// Error received when adding to the pathset for the filesystem watcher fails.
+	#[error("while adding {path:?} to the {kind:?} watcher: {err}")]
+	#[diagnostic(
+		code(watchexec::runtime::fs_watcher_path_add),
+	)]
+	FsWatcherPathAdd { path: PathBuf, kind: Watcher, #[source] err: notify::Error },
 
-impl From<notify::Error> for Error {
-    fn from(err: notify::Error) -> Self {
-        match err {
-            notify::Error::Io(err) => Self::Io(err),
-            other => Self::Notify(other),
-        }
-    }
-}
+	/// Error received when removing from the pathset for the filesystem watcher fails.
+	#[error("while removing {path:?} from the {kind:?} watcher: {err}")]
+	#[diagnostic(
+		code(watchexec::runtime::fs_watcher_path_remove),
+	)]
+	FsWatcherPathRemove { path: PathBuf, kind: Watcher, #[source] err: notify::Error },
 
-impl<'a, T> From<PoisonError<T>> for Error {
-    fn from(_err: PoisonError<T>) -> Self {
-        Self::PoisonedLock
-    }
-}
-
-impl From<clearscreen::Error> for Error {
-    fn from(err: clearscreen::Error) -> Self {
-        match err {
-            clearscreen::Error::Io(err) => Self::Io(err),
-            other => Self::ClearScreen(other),
-        }
-    }
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let (error_type, error) = match self {
-            Self::Canonicalization(path, err) => (
-                "Path",
-                format!("couldn't canonicalize '{}':\n{}", path, err),
-            ),
-            Self::Generic(err) => ("", err.clone()),
-            Self::Glob(err) => ("Globset", err.to_string()),
-            Self::Io(err) => ("I/O", err.to_string()),
-            Self::Notify(err) => ("Notify", err.to_string()),
-            Self::PoisonedLock => ("Internal", "poisoned lock".to_string()),
-            Self::ClearScreen(err) => ("ClearScreen", err.to_string()),
-        };
-
-        write!(f, "{} error: {}", error_type, error)
-    }
-}
-
-impl fmt::Debug for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(self, f)
-    }
+	/// Error received when an event cannot be sent to the event channel.
+	#[error("cannot send event from {ctx}: {err}")]
+	#[diagnostic(code(watchexec::runtime::event_channel_send))]
+	EventChannelSend { ctx: &'static str, #[source] err: mpsc::error::TrySendError<Event> },
 }
