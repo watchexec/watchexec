@@ -213,7 +213,7 @@ fn process_event(
 	trace!(event = ?ev, "processed notify event into watchexec event");
 	n_events
 		.try_send(ev)
-		.map_err(|err| RuntimeError::EventChannelSend {
+		.map_err(|err| RuntimeError::EventChannelTrySend {
 			ctx: "fs watcher",
 			err,
 		})?;

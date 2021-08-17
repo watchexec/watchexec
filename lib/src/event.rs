@@ -7,6 +7,8 @@
 use chrono::{DateTime, Local};
 use std::{collections::HashMap, path::PathBuf};
 
+use crate::signal::Signal;
+
 /// An event, as far as watchexec cares about.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Event {
@@ -22,6 +24,7 @@ pub enum Particle {
 	Path(PathBuf),
 	Source(Source),
 	Process(u32),
+	Signal(Signal),
 }
 
 /// The general origin of the event.
@@ -31,5 +34,6 @@ pub enum Source {
 	Filesystem,
 	Keyboard,
 	Mouse,
+	Os,
 	Time,
 }

@@ -19,5 +19,6 @@ pub mod error;
 pub mod event;
 pub mod fs;
 pub mod shell;
+pub mod signal;
 
 // the *action* is debounced, not the events

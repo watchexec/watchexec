@@ -80,6 +80,15 @@ pub enum RuntimeError {
 	EventChannelSend {
 		ctx: &'static str,
 		#[source]
+		err: mpsc::error::SendError<Event>,
+	},
+
+	/// Error received when an event cannot be sent to the event channel.
+	#[error("cannot send event from {ctx}: {err}")]
+	#[diagnostic(code(watchexec::runtime::event_channel_try_send))]
+	EventChannelTrySend {
+		ctx: &'static str,
+		#[source]
 		err: mpsc::error::TrySendError<Event>,
 	},
 }

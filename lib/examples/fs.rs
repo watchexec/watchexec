@@ -1,10 +1,10 @@
-use std::time::Duration;
+use std::{process::exit, time::Duration};
 
 use tokio::{
 	sync::{mpsc, watch},
 	time::sleep,
 };
-use watchexec::fs;
+use watchexec::{event::{Event, Particle}, fs, signal::{self, Signal}};
 
 // Run with: `env RUST_LOG=debug cargo run --example fs`,
 // then touch some files within the first 15 seconds, and afterwards.
@@ -13,7 +13,7 @@ async fn main() -> color_eyre::eyre::Result<()> {
 	tracing_subscriber::fmt::init();
 	color_eyre::install()?;
 
-	let (ev_s, mut ev_r) = mpsc::channel(1024);
+	let (ev_s, mut ev_r) = mpsc::channel::<Event>(1024);
 	let (er_s, mut er_r) = mpsc::channel(64);
 	let (wd_s, wd_r) = watch::channel(fs::WorkingData::default());
 
@@ -24,6 +24,11 @@ async fn main() -> color_eyre::eyre::Result<()> {
 	tokio::spawn(async move {
 		while let Some(e) = ev_r.recv().await {
 			tracing::info!("event: {:?}", e);
+
+			if e.particulars.contains(&Particle::Signal(Signal::Interrupt))
+			|| e.particulars.contains(&Particle::Signal(Signal::Terminate)) {
+				exit(0);
+			}
 		}
 	});
 
@@ -32,6 +37,8 @@ async fn main() -> color_eyre::eyre::Result<()> {
 			tracing::error!("error: {}", e);
 		}
 	});
+
+	tokio::spawn(signal::worker(er_s.clone(), ev_s.clone()));
 
 	let wd_sh = tokio::spawn(async move {
 		sleep(Duration::from_secs(15)).await;
