@@ -4,7 +4,6 @@
 //! 2. To be filtered upon according to whatever set of criteria is desired;
 //! 3. To carry information about what caused the event, which may be provided to the process.
 
-use chrono::{DateTime, Local};
 use std::{collections::HashMap, path::PathBuf};
 
 use crate::signal::Signal;
@@ -20,7 +19,6 @@ pub struct Event {
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum Particle {
-	Time(DateTime<Local>),
 	Path(PathBuf),
 	Source(Source),
 	Process(u32),

@@ -15,7 +15,6 @@ readme = "README.md"
 edition = "2018"
 
 [dependencies]
-chrono = "0.4.19"
 miette = "0.7.0"
 notify = "5.0.0-pre.11"
 thiserror = "1.0.26"
