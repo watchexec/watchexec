@@ -29,14 +29,13 @@ impl Default for Watcher {
 }
 
 impl Watcher {
-	fn create(self, f: impl notify::EventFn) -> Result<Box<dyn notify::Watcher + Send>, RuntimeError> {
+	fn create(
+		self,
+		f: impl notify::EventFn,
+	) -> Result<Box<dyn notify::Watcher + Send>, RuntimeError> {
 		match self {
-			Self::Native => {
-				notify::RecommendedWatcher::new(f).map(|w| Box::new(w) as _)
-			}
-			Self::Poll => {
-				notify::PollWatcher::new(f).map(|w| Box::new(w) as _)
-			}
+			Self::Native => notify::RecommendedWatcher::new(f).map(|w| Box::new(w) as _),
+			Self::Poll => notify::PollWatcher::new(f).map(|w| Box::new(w) as _),
 		}
 		.map_err(|err| RuntimeError::FsWatcherCreate { kind: self, err })
 	}

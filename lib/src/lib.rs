@@ -15,10 +15,20 @@
 #![warn(clippy::unwrap_used)]
 #![forbid(unsafe_code)]
 
+// the toolkit to make your own
 pub mod error;
 pub mod event;
 pub mod fs;
 pub mod shell;
 pub mod signal;
+
+// the core experience
+mod config;
+mod watchexec;
+
+#[doc(inline)]
+pub use config::Config;
+#[doc(inline)]
+pub use watchexec::Watchexec;
 
 // the *action* is debounced, not the events

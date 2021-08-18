@@ -2070,6 +2070,7 @@ dependencies = [
  "color-eyre",
  "command-group",
  "dunce",
+ "futures",
  "miette",
  "notify 5.0.0-pre.11",
  "thiserror",

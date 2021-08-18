@@ -4,7 +4,11 @@ use tokio::{
 	sync::{mpsc, watch},
 	time::sleep,
 };
-use watchexec::{event::{Event, Particle}, fs, signal::{self, Signal}};
+use watchexec::{
+	event::{Event, Particle},
+	fs,
+	signal::{self, Signal},
+};
 
 // Run with: `env RUST_LOG=debug cargo run --example fs`,
 // then touch some files within the first 15 seconds, and afterwards.
@@ -26,7 +30,8 @@ async fn main() -> color_eyre::eyre::Result<()> {
 			tracing::info!("event: {:?}", e);
 
 			if e.particulars.contains(&Particle::Signal(Signal::Interrupt))
-			|| e.particulars.contains(&Particle::Signal(Signal::Terminate)) {
+				|| e.particulars.contains(&Particle::Signal(Signal::Terminate))
+			{
 				exit(0);
 			}
 		}

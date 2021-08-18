@@ -135,7 +135,7 @@ async fn imp_worker(
 	errors: mpsc::Sender<RuntimeError>,
 	events: mpsc::Sender<Event>,
 ) -> Result<(), CriticalError> {
-	use tokio::signal::windows::{ctrl_c, ctrl_break};
+	use tokio::signal::windows::{ctrl_break, ctrl_c};
 
 	debug!("launching windows signal worker");
 
@@ -160,10 +160,17 @@ async fn imp_worker(
 	}
 }
 
-async fn send_event(errors: mpsc::Sender<RuntimeError>,
-	events: mpsc::Sender<Event>, sig: Signal) -> Result<(), CriticalError> {
+async fn send_event(
+	errors: mpsc::Sender<RuntimeError>,
+	events: mpsc::Sender<Event>,
+	sig: Signal,
+) -> Result<(), CriticalError> {
 	let particulars = vec![
-		Particle::Source(if sig == Signal::Interrupt { Source::Keyboard } else { Source::Os }),
+		Particle::Source(if sig == Signal::Interrupt {
+			Source::Keyboard
+		} else {
+			Source::Os
+		}),
 		Particle::Signal(sig),
 	];
 
@@ -174,7 +181,12 @@ async fn send_event(errors: mpsc::Sender<RuntimeError>,
 
 	trace!(?event, "processed signal into event");
 	if let Err(err) = events.send(event).await {
-		errors.send(RuntimeError::EventChannelSend { ctx: "signals", err }).await?;
+		errors
+			.send(RuntimeError::EventChannelSend {
+				ctx: "signals",
+				err,
+			})
+			.await?;
 	}
 
 	Ok(())

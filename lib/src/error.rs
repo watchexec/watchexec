@@ -4,9 +4,15 @@ use std::path::PathBuf;
 
 use miette::Diagnostic;
 use thiserror::Error;
-use tokio::sync::mpsc;
+use tokio::{
+	sync::{mpsc, watch},
+	task::JoinError,
+};
 
-use crate::{event::Event, fs::Watcher};
+use crate::{
+	event::Event,
+	fs::{self, Watcher},
+};
 
 /// Errors which are not recoverable and stop watchexec execution.
 #[derive(Debug, Diagnostic, Error)]
@@ -21,6 +27,11 @@ pub enum CriticalError {
 	#[error("cannot send internal runtime error: {0}")]
 	#[diagnostic(code(watchexec::critical::error_channel_send))]
 	ErrorChannelSend(#[from] mpsc::error::SendError<RuntimeError>),
+
+	/// Error received when joining the main watchexec task.
+	#[error("main task join: {0}")]
+	#[diagnostic(code(watchexec::critical::main_task_join))]
+	MainTaskJoin(#[source] JoinError),
 }
 
 /// Errors which _may_ be recoverable, transient, or only affect a part of the operation, and should
@@ -91,4 +102,14 @@ pub enum RuntimeError {
 		#[source]
 		err: mpsc::error::TrySendError<Event>,
 	},
+}
+
+/// Errors occurring from reconfigs.
+#[derive(Debug, Diagnostic, Error)]
+#[non_exhaustive]
+pub enum ReconfigError {
+	/// Error received when the fs watcher internal state cannot be updated.
+	#[error("reconfig: fs watch: {0}")]
+	#[diagnostic(code(watchexec::reconfig::fs_watch))]
+	FsWatch(#[from] watch::error::SendError<fs::WorkingData>),
 }

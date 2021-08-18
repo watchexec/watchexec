@@ -20,6 +20,7 @@ notify = "5.0.0-pre.11"
 thiserror = "1.0.26"
 tracing = "0.1.26"
 dunce = "1.0.2"
+futures = "0.3.16"
 
 [dependencies.command-group]
 version = "1.0.5"
