@@ -29,13 +29,13 @@ impl Default for Watcher {
 }
 
 impl Watcher {
-	fn create(self, f: impl notify::EventFn) -> Result<Box<dyn notify::Watcher>, RuntimeError> {
+	fn create(self, f: impl notify::EventFn) -> Result<Box<dyn notify::Watcher + Send>, RuntimeError> {
 		match self {
 			Self::Native => {
-				notify::RecommendedWatcher::new(f).map(|w| Box::new(w) as Box<dyn notify::Watcher>)
+				notify::RecommendedWatcher::new(f).map(|w| Box::new(w) as _)
 			}
 			Self::Poll => {
-				notify::PollWatcher::new(f).map(|w| Box::new(w) as Box<dyn notify::Watcher>)
+				notify::PollWatcher::new(f).map(|w| Box::new(w) as _)
 			}
 		}
 		.map_err(|err| RuntimeError::FsWatcherCreate { kind: self, err })
@@ -90,8 +90,8 @@ pub async fn worker(
 	debug!("launching filesystem worker");
 
 	let mut watcher_type = Watcher::default();
-	let mut watcher: Option<Box<dyn notify::Watcher>> = None;
-	let mut pathset: HashSet<PathBuf> = HashSet::new();
+	let mut watcher = None;
+	let mut pathset = HashSet::new();
 
 	while working.changed().await.is_ok() {
 		// In separate scope so we drop the working read lock as early as we can
@@ -187,6 +187,7 @@ pub async fn worker(
 	debug!("ending file watcher");
 	Ok(())
 }
+
 fn process_event(
 	nev: Result<notify::Event, notify::Error>,
 	kind: Watcher,
