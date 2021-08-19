@@ -1,11 +1,19 @@
 //! Watchexec: a library for utilities and programs which respond to events;
 //! file changes, human interaction, and more.
 //!
-//! Also see the CLI tool: https://watchexec.github.io/
+//! Also see the CLI tool: <https://watchexec.github.io/>
 //!
-//! This library is powered by [Tokio](https://tokio.rs), minimum version 1.10.
+//! This library is powered by [Tokio](https://tokio.rs), minimum version 1.10. This requirement may
+//! change (upwards) in the future without breaking change.
 //!
-//! The main way to use this crate involves constructing a [`Handler`] and running it.
+//! The main way to use this crate involves constructing a [`Watchexec`] around a [`Config`] and
+//! running it. The config may contain some instances of [`Handler`]s, which hook into watchexec
+//! processing at various points.
+//!
+//! Alternatively, one can use the modules exposed by the crate and the external crates such as
+//! [ClearScreen][clearscreen] and [Command Group][command_group] to build something more advanced,
+//! at the cost of reimplementing the glue code. See the examples folder for some basic/demo tools
+//! written with the individual modules.
 //!
 //! This crate does not itself use `unsafe`. However, it depends on a number of libraries which do,
 //! most because they interact with the operating system.
