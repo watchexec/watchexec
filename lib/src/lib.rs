@@ -24,10 +24,13 @@ pub mod signal;
 
 // the core experience
 mod config;
+mod handler;
 mod watchexec;
 
 #[doc(inline)]
 pub use config::Config;
+#[doc(inline)]
+pub use handler::Handler;
 #[doc(inline)]
 pub use watchexec::Watchexec;
 
