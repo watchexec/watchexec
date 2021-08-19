@@ -2069,6 +2069,7 @@ version = "1.17.1"
 dependencies = [
  "color-eyre",
  "command-group",
+ "derive_builder",
  "dunce",
  "futures",
  "miette",

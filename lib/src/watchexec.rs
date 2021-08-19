@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{mem::take, sync::Arc};
 
 use futures::FutureExt;
 use tokio::{
@@ -22,16 +22,16 @@ pub struct Watchexec {
 }
 
 impl Watchexec {
-	pub fn new(config: Config) -> Result<Self, CriticalError> {
-		let (fs_s, fs_r) = watch::channel(config.fs);
+	pub fn new(mut config: Config) -> Result<Self, CriticalError> {
+		let (fs_s, fs_r) = watch::channel(take(&mut config.fs));
 
 		let notify = Arc::new(Notify::new());
 		let start_lock = notify.clone();
 		let handle = spawn(async move {
 			notify.notified().await;
 
-			let (er_s, er_r) = mpsc::channel(64); // TODO: configure?
-			let (ev_s, ev_r) = mpsc::channel(1024); // TODO: configure?
+			let (er_s, er_r) = mpsc::channel(config.error_channel_size);
+			let (ev_s, ev_r) = mpsc::channel(config.event_channel_size);
 
 			macro_rules! subtask {
 				($task:expr) => {

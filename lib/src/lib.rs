@@ -24,10 +24,10 @@
 #![forbid(unsafe_code)]
 
 // the toolkit to make your own
+pub mod command;
 pub mod error;
 pub mod event;
 pub mod fs;
-pub mod command;
 pub mod signal;
 
 // the core experience
