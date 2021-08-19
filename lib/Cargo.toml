@@ -22,6 +22,7 @@ tracing = "0.1.26"
 dunce = "1.0.2"
 futures = "0.3.16"
 derive_builder = "0.10.2"
+atomic-take = "1.0.0"
 
 [dependencies.command-group]
 version = "1.0.5"
@@ -34,4 +35,3 @@ features = ["full"]
 [dev-dependencies]
 color-eyre = "0.5.11"
 tracing-subscriber = "0.2.19"
-

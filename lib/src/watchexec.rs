@@ -1,5 +1,6 @@
 use std::{mem::take, sync::Arc};
 
+use atomic_take::AtomicTake;
 use futures::FutureExt;
 use tokio::{
 	spawn,
@@ -16,13 +17,17 @@ use crate::{
 
 #[derive(Debug)]
 pub struct Watchexec {
-	handle: JoinHandle<Result<(), CriticalError>>,
+	handle: Arc<AtomicTake<JoinHandle<Result<(), CriticalError>>>>,
 	start_lock: Arc<Notify>,
 	fs_watch: watch::Sender<fs::WorkingData>,
 }
 
 impl Watchexec {
-	pub fn new(mut config: Config) -> Result<Self, CriticalError> {
+	/// TODO
+	///
+	/// Returns an [`Arc`] for convenience; use [`try_unwrap`][Arc::try_unwrap()] to get the value
+	/// directly if needed.
+	pub fn new(mut config: Config) -> Result<Arc<Self>, CriticalError> {
 		let (fs_s, fs_r) = watch::channel(take(&mut config.fs));
 
 		let notify = Arc::new(Notify::new());
@@ -45,11 +50,11 @@ impl Watchexec {
 			try_join!(fs, signal).map(drop)
 		});
 
-		Ok(Self {
-			handle,
+		Ok(Arc::new(Self {
+			handle: Arc::new(AtomicTake::new(handle)),
 			start_lock,
 			fs_watch: fs_s,
-		})
+		}))
 	}
 
 	pub fn reconfig(&self, config: Config) -> Result<(), ReconfigError> {
@@ -57,11 +62,17 @@ impl Watchexec {
 		Ok(())
 	}
 
-	pub async fn run(&mut self) -> Result<(), CriticalError> {
+	/// Start watchexec and obtain the handle to its main task.
+	///
+	/// This must only be called once.
+	///
+	/// # Panics
+	/// Panics if called twice.
+	pub fn main(&self) -> JoinHandle<Result<(), CriticalError>> {
 		self.start_lock.notify_one();
-		(&mut self.handle)
-			.await
-			.map_err(CriticalError::MainTaskJoin)?
+		self.handle
+			.take()
+			.expect("Watchexec::main was called twice")
 	}
 }
 
