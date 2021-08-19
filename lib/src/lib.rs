@@ -10,6 +10,35 @@
 //! running it. The config may contain some instances of [`Handler`]s, which hook into watchexec
 //! processing at various points.
 //!
+//! ```no_compile // TODO: implement and switch to no_run
+//! use watchexec::{Watchexec, ConfigBuilder, Handler as _};
+//!
+//! #[tokio::main]
+//! async fn main() {
+//!     let mut config = ConfigBuilder::new()
+//!     config.pathset(["watchexec.conf"]);
+//!
+//!     let conf = YourConfigFormat::load_from_file("watchexec.conf").await?;
+//!     conf.apply(&mut config);
+//!
+//!     let we = Watchexec::new(config.build().unwrap()).unwrap();
+//!     let w = we.clone();
+//!
+//!     let c = config.clone();
+//!     config.on_event(|e| async move {
+//!         if e.path().map(|p| p.ends_with("watchexec.conf")).unwrap_or(false) {
+//!             let conf = YourConfigFormat::load_from_file("watchexec.conf").await?;
+//!
+//!             conf.apply(&mut config);
+//!             w.reconfigure(config.build());
+//!             // tada! self-reconfiguring watchexec on config file change!
+//!         }
+//!     });
+//!
+//!     w.main().await.unwrap();
+//! }
+//! ```
+//!
 //! Alternatively, one can use the modules exposed by the crate and the external crates such as
 //! [ClearScreen][clearscreen] and [Command Group][command_group] to build something more advanced,
 //! at the cost of reimplementing the glue code. See the examples folder for some basic/demo tools
@@ -36,7 +65,7 @@ mod handler;
 mod watchexec;
 
 #[doc(inline)]
-pub use config::Config;
+pub use config::{Config, ConfigBuilder};
 #[doc(inline)]
 pub use handler::Handler;
 #[doc(inline)]

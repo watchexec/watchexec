@@ -5,11 +5,10 @@ use derive_builder::Builder;
 /// This is used both for constructing the instance and to reconfigure it at runtime, though note
 /// that some fields are only applied at construction time.
 ///
-/// You should prefer the [`ConfigBuilder`] rather than using this directly. This struct is marked
+/// Use [`ConfigBuilder`] to build a new one, or modify an existing one. This struct is marked
 /// non-exhaustive such that new options may be added without breaking change.
 #[derive(Builder, Clone, Debug)]
 #[non_exhaustive]
-#[builder(build_fn(name = "finish"))]
 pub struct Config {
 	/// Working data for the filesystem event source.
 	///
