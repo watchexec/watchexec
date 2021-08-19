@@ -102,6 +102,22 @@ pub enum RuntimeError {
 		#[source]
 		err: mpsc::error::TrySendError<Event>,
 	},
+
+	/// Error received when a [`Handler`][crate::Handler] errors.
+	///
+	/// The error is completely opaque, having been flattened into a string at the error point.
+	#[error("handler error while {ctx}: {err}")]
+	#[diagnostic(code(watchexec::runtime::handler))]
+	Handler { ctx: &'static str, err: String },
+}
+
+impl RuntimeError {
+	pub(crate) fn from_handler(ctx: &'static str, err: impl std::error::Error) -> Self {
+		Self::Handler {
+			ctx,
+			err: err.to_string(),
+		}
+	}
 }
 
 /// Errors occurring from reconfigs.
