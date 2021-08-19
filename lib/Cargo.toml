@@ -16,7 +16,7 @@ edition = "2018"
 
 [dependencies]
 miette = "0.7.0"
-notify = "5.0.0-pre.11"
+notify = "5.0.0-pre.12"
 thiserror = "1.0.26"
 tracing = "0.1.26"
 dunce = "1.0.2"

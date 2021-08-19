@@ -5,6 +5,7 @@ use std::{
 	path::PathBuf,
 };
 
+use notify::Watcher as _;
 use tokio::sync::{mpsc, watch};
 use tracing::{debug, trace};
 
@@ -33,7 +34,7 @@ impl Default for Watcher {
 impl Watcher {
 	fn create(
 		self,
-		f: impl notify::EventFn,
+		f: impl notify::EventHandler,
 	) -> Result<Box<dyn notify::Watcher + Send>, RuntimeError> {
 		match self {
 			Self::Native => notify::RecommendedWatcher::new(f).map(|w| Box::new(w) as _),
