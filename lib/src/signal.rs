@@ -1,3 +1,5 @@
+//! Event source for signals / notifications sent to the main process.
+
 use tokio::{select, sync::mpsc};
 use tracing::{debug, trace};
 

@@ -1,3 +1,5 @@
+//! Event source for changes to files and directories.
+
 use std::{
 	collections::{HashMap, HashSet},
 	path::PathBuf,

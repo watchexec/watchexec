@@ -1,3 +1,5 @@
+//! Command construction and configuration thereof.
+
 use tokio::process::Command;
 
 /// Shell to use to run commands.

@@ -1,4 +1,4 @@
-//! Watchexec has two error types: for critical and for runtime errors.
+//! Error types for critical, runtime, and specialised errors.
 
 use std::path::PathBuf;
 

@@ -27,7 +27,7 @@
 pub mod error;
 pub mod event;
 pub mod fs;
-pub mod shell;
+pub mod command;
 pub mod signal;
 
 // the core experience

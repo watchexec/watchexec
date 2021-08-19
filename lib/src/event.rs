@@ -1,3 +1,5 @@
+//! Synthetic event type, derived from inputs, triggers actions.
+//!
 //! Fundamentally, events in watchexec have three purposes:
 //!
 //! 1. To trigger the launch, restart, or other interruption of a process;
