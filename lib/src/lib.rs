@@ -7,10 +7,10 @@
 //! change (upwards) in the future without breaking change.
 //!
 //! The main way to use this crate involves constructing a [`Watchexec`] around a [`Config`] and
-//! running it. The config may contain some instances of [`Handler`]s, which hook into watchexec
-//! processing at various points.
+//! running it. The config may contain some instances of [`Handler`][handler::Handler]s, hooking
+//! into watchexec at various points.
 //!
-//! ```no_compile // TODO: implement and switch to no_run
+//! ```ignore // TODO: implement and switch to no_run
 //! use watchexec::{Watchexec, ConfigBuilder, Handler as _};
 //!
 //! #[tokio::main]
@@ -57,18 +57,16 @@ pub mod command;
 pub mod error;
 pub mod event;
 pub mod fs;
+pub mod handler;
 pub mod signal;
 
 // the core experience
 mod config;
-mod handler;
 mod watchexec;
 
 #[doc(inline)]
+pub use crate::watchexec::Watchexec;
+#[doc(inline)]
 pub use config::{Config, ConfigBuilder};
-#[doc(inline)]
-pub use handler::Handler;
-#[doc(inline)]
-pub use watchexec::Watchexec;
 
 // the *action* is debounced, not the events

@@ -103,7 +103,7 @@ pub enum RuntimeError {
 		err: mpsc::error::TrySendError<Event>,
 	},
 
-	/// Error received when a [`Handler`][crate::Handler] errors.
+	/// Error received when a [`Handler`][crate::handler::Handler] errors.
 	///
 	/// The error is completely opaque, having been flattened into a string at the error point.
 	#[error("handler error while {ctx}: {err}")]
