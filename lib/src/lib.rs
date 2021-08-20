@@ -53,6 +53,7 @@
 #![forbid(unsafe_code)]
 
 // the toolkit to make your own
+pub mod action;
 pub mod command;
 pub mod error;
 pub mod event;

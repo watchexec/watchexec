@@ -10,6 +10,7 @@ use tokio::{
 };
 
 use crate::{
+	action,
 	event::Event,
 	fs::{self, Watcher},
 };
@@ -124,7 +125,12 @@ impl RuntimeError {
 #[derive(Debug, Diagnostic, Error)]
 #[non_exhaustive]
 pub enum ReconfigError {
-	/// Error received when the fs watcher internal state cannot be updated.
+	/// Error received when the action processor cannot be updated.
+	#[error("reconfig: action watch: {0}")]
+	#[diagnostic(code(watchexec::reconfig::action_watch))]
+	ActionWatch(#[from] watch::error::SendError<action::WorkingData>),
+
+	/// Error received when the fs event source cannot be updated.
 	#[error("reconfig: fs watch: {0}")]
 	#[diagnostic(code(watchexec::reconfig::fs_watch))]
 	FsWatch(#[from] watch::error::SendError<fs::WorkingData>),

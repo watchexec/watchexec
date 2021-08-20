@@ -16,6 +16,13 @@ pub struct Config {
 	#[builder(default)]
 	pub fs: crate::fs::WorkingData,
 
+	/// Working data for the action processing.
+	///
+	/// This is the task responsible for scheduling the actions in response to events, applying the
+	/// filtering, etc.
+	#[builder(default)]
+	pub action: crate::action::WorkingData,
+
 	/// Internal: the buffer size of the channel which carries runtime errors.
 	///
 	/// The default (64) is usually fine. If you expect a much larger throughput of runtime errors,

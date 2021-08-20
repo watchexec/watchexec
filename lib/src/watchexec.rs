@@ -10,6 +10,7 @@ use tokio::{
 };
 
 use crate::{
+	action,
 	config::Config,
 	error::{CriticalError, ReconfigError},
 	fs, signal,
@@ -19,6 +20,7 @@ use crate::{
 pub struct Watchexec {
 	handle: Arc<AtomicTake<JoinHandle<Result<(), CriticalError>>>>,
 	start_lock: Arc<Notify>,
+	action_watch: watch::Sender<action::WorkingData>,
 	fs_watch: watch::Sender<fs::WorkingData>,
 }
 
@@ -29,6 +31,7 @@ impl Watchexec {
 	/// directly if needed.
 	pub fn new(mut config: Config) -> Result<Arc<Self>, CriticalError> {
 		let (fs_s, fs_r) = watch::channel(take(&mut config.fs));
+		let (ac_s, ac_r) = watch::channel(take(&mut config.action));
 
 		let notify = Arc::new(Notify::new());
 		let start_lock = notify.clone();
@@ -44,20 +47,23 @@ impl Watchexec {
 				};
 			}
 
+			let action = subtask!(action::worker(ac_r, er_s.clone(), ev_r));
 			let fs = subtask!(fs::worker(fs_r, er_s.clone(), ev_s.clone()));
 			let signal = subtask!(signal::worker(er_s.clone(), ev_s.clone()));
 
-			try_join!(fs, signal).map(drop)
+			try_join!(action, fs, signal).map(drop)
 		});
 
 		Ok(Arc::new(Self {
 			handle: Arc::new(AtomicTake::new(handle)),
 			start_lock,
+			action_watch: ac_s,
 			fs_watch: fs_s,
 		}))
 	}
 
 	pub fn reconfig(&self, config: Config) -> Result<(), ReconfigError> {
+		self.action_watch.send(config.action)?;
 		self.fs_watch.send(config.fs)?;
 		Ok(())
 	}
