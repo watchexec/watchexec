@@ -12,6 +12,7 @@ use tokio::{
 	task::{JoinError, JoinHandle},
 	try_join,
 };
+use tracing::{debug, error, trace};
 
 use crate::{
 	action,
@@ -45,13 +46,18 @@ impl Watchexec {
 		mut init: InitConfig,
 		mut runtime: RuntimeConfig,
 	) -> Result<Arc<Self>, CriticalError> {
+		trace!(?init, ?runtime, "initialising");
+
 		let (fs_s, fs_r) = watch::channel(take(&mut runtime.fs));
 		let (ac_s, ac_r) = watch::channel(take(&mut runtime.action));
 
+		trace!("creating main task");
 		let notify = Arc::new(Notify::new());
 		let start_lock = notify.clone();
 		let handle = spawn(async move {
+			trace!("waiting for start lock");
 			notify.notified().await;
+			debug!("starting main task");
 
 			let (er_s, er_r) = mpsc::channel(init.error_channel_size);
 			let (ev_s, ev_r) = mpsc::channel(init.event_channel_size);
@@ -59,20 +65,22 @@ impl Watchexec {
 			let eh = replace(&mut init.error_handler, Box::new(()) as _);
 
 			macro_rules! subtask {
-				($task:expr) => {
+				($name:ident, $task:expr) => {{
+					debug!(subtask=%stringify!($name), "spawning subtask");
 					spawn($task).then(|jr| async { flatten(jr) })
-				};
+				}};
 			}
 
-			let action = subtask!(action::worker(ac_r, er_s.clone(), ev_r));
-			let fs = subtask!(fs::worker(fs_r, er_s.clone(), ev_s.clone()));
-			let signal = subtask!(signal::worker(er_s.clone(), ev_s.clone()));
+			let action = subtask!(action, action::worker(ac_r, er_s.clone(), ev_r));
+			let fs = subtask!(fs, fs::worker(fs_r, er_s.clone(), ev_s.clone()));
+			let signal = subtask!(signal, signal::worker(er_s.clone(), ev_s.clone()));
 
-			let error_hook = subtask!(error_hook(er_r, eh));
+			let error_hook = subtask!(error_hook, error_hook(er_r, eh));
 
 			try_join!(action, error_hook, fs, signal).map(drop)
 		});
 
+		trace!("done with setup");
 		Ok(Arc::new(Self {
 			handle: Arc::new(AtomicTake::new(handle)),
 			start_lock,
@@ -83,6 +91,7 @@ impl Watchexec {
 	}
 
 	pub fn reconfig(&self, config: RuntimeConfig) -> Result<(), ReconfigError> {
+		debug!(?config, "reconfiguring");
 		self.action_watch.send(config.action)?;
 		self.fs_watch.send(config.fs)?;
 		Ok(())
@@ -95,7 +104,10 @@ impl Watchexec {
 	/// # Panics
 	/// Panics if called twice.
 	pub fn main(&self) -> JoinHandle<Result<(), CriticalError>> {
+		trace!("notifying start lock");
 		self.start_lock.notify_one();
+
+		debug!("handing over main task handle");
 		self.handle
 			.take()
 			.expect("Watchexec::main was called twice")
@@ -114,13 +126,17 @@ async fn error_hook(
 	mut handler: Box<dyn Handler<RuntimeError> + Send>,
 ) -> Result<(), CriticalError> {
 	while let Some(err) = errors.recv().await {
-		if let Err(e) = handler.handle(err) {
+		error!(%err, "runtime error");
+		if let Err(err) = handler.handle(err) {
+			error!(%err, "error while handling error");
 			handler
 				.handle(RuntimeError::Handler {
 					ctx: "error hook",
-					err: e.to_string(),
+					err: err.to_string(),
 				})
-				.ok();
+				.unwrap_or_else(|err| {
+					error!(%err, "error while handling error of handling error");
+				});
 		}
 	}
 
