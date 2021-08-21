@@ -47,7 +47,17 @@ pub struct InitConfig {
 	/// If the handler errors, [_that_ error][crate::error::RuntimeError::Handler] is immediately
 	/// given to the handler. If that second handler call errors as well, its error is ignored.
 	///
-	/// Only used at construction time, cannot be changed via reconfiguration.
+	/// # Examples
+	///
+	/// ```
+	/// # use std::convert::Infallible;
+	/// # use watchexec::config::InitConfigBuilder;
+	/// InitConfigBuilder::default()
+	///     .error_handler(Box::new(|err| async move {
+	///         tracing::error!("{}", err);
+	///         Ok::<(), Infallible>(())
+	///     }));
+	/// ```
 	#[builder(default = "Box::new(()) as _")]
 	pub error_handler: Box<dyn Handler<RuntimeError> + Send>,
 

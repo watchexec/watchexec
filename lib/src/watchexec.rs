@@ -70,7 +70,7 @@ impl Watchexec {
 
 			let error_hook = subtask!(error_hook(er_r, eh));
 
-			try_join!(action, fs, signal).map(drop)
+			try_join!(action, error_hook, fs, signal).map(drop)
 		});
 
 		Ok(Arc::new(Self {

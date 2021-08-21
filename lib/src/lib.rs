@@ -16,10 +16,10 @@
 //!
 //! #[tokio::main]
 //! async fn main() {
-//!     let init = InitConfigBuilder::new()
+//!     let init = InitConfigBuilder::default()
 //!         .error_handler(PrintDebug(std::io::stderr()));
 //!
-//!     let mut runtime = RuntimeConfigBuilder::new()
+//!     let mut runtime = RuntimeConfigBuilder::default()
 //!     config.pathset(["watchexec.conf"]);
 //!
 //!     let conf = YourConfigFormat::load_from_file("watchexec.conf").await?;
@@ -62,11 +62,11 @@ pub mod command;
 pub mod error;
 pub mod event;
 pub mod fs;
-pub mod handler;
 pub mod signal;
 
 // the core experience
 pub mod config;
+pub mod handler;
 mod watchexec;
 
 #[doc(inline)]

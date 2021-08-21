@@ -162,7 +162,7 @@ where
 
 impl<T> Handler<T> for () {
 	fn handle(&mut self, _data: T) -> Result<(), Box<dyn Error>> {
-		Ok(()).map_err(|e: std::convert::Infallible| Box::new(e) as _)
+		Ok::<(), std::convert::Infallible>(()).map_err(|e| Box::new(e) as _)
 	}
 }
 
