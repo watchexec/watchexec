@@ -88,10 +88,19 @@ use std::{error::Error, future::Future, io::Write, marker::PhantomData};
 
 use tokio::runtime::Handle;
 
+use crate::error::RuntimeError;
+
 /// A callable that can be used to hook into watchexec.
 pub trait Handler<T> {
 	/// Call the handler with the given data.
 	fn handle(&mut self, _data: T) -> Result<(), Box<dyn Error>>;
+}
+
+pub(crate) fn rte(ctx: &'static str, err: Box<dyn Error>) -> RuntimeError {
+	RuntimeError::Handler {
+		ctx,
+		err: err.to_string(),
+	}
 }
 
 /// Wrapper for [`Handler`]s that are non-future [`FnMut`]s.

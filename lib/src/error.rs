@@ -33,6 +33,13 @@ pub enum CriticalError {
 	#[error("main task join: {0}")]
 	#[diagnostic(code(watchexec::critical::main_task_join))]
 	MainTaskJoin(#[source] JoinError),
+
+	/// Error received when a handler is missing on initialisation.
+	///
+	/// This is a critical bug and unlikely to be recoverable in any way.
+	#[error("internal: missing handler on init")]
+	#[diagnostic(code(watchexec::critical::internal::missing_handler))]
+	MissingHandler,
 }
 
 /// Errors which _may_ be recoverable, transient, or only affect a part of the operation, and should
@@ -110,15 +117,6 @@ pub enum RuntimeError {
 	#[error("handler error while {ctx}: {err}")]
 	#[diagnostic(code(watchexec::runtime::handler))]
 	Handler { ctx: &'static str, err: String },
-}
-
-impl RuntimeError {
-	pub(crate) fn from_handler(ctx: &'static str, err: impl std::error::Error) -> Self {
-		Self::Handler {
-			ctx,
-			err: err.to_string(),
-		}
-	}
 }
 
 /// Errors occurring from reconfigs.

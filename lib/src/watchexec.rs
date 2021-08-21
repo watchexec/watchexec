@@ -19,7 +19,7 @@ use crate::{
 	config::{InitConfig, RuntimeConfig},
 	error::{CriticalError, ReconfigError, RuntimeError},
 	fs,
-	handler::Handler,
+	handler::{rte, Handler},
 	signal,
 };
 
@@ -130,10 +130,7 @@ async fn error_hook(
 		if let Err(err) = handler.handle(err) {
 			error!(%err, "error while handling error");
 			handler
-				.handle(RuntimeError::Handler {
-					ctx: "error hook",
-					err: err.to_string(),
-				})
+				.handle(rte("error hook", err))
 				.unwrap_or_else(|err| {
 					error!(%err, "error while handling error of handling error");
 				});
