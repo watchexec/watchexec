@@ -1,8 +1,8 @@
 //! Processor responsible for receiving events, filtering them, and scheduling actions in response.
 
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
-use tokio::sync::{mpsc, watch};
+use tokio::{sync::{mpsc, watch}, time::timeout};
 
 use crate::{
 	error::{CriticalError, RuntimeError},
@@ -24,9 +24,29 @@ impl Default for WorkingData {
 }
 
 pub async fn worker(
-	mut working: watch::Receiver<WorkingData>,
+	working: watch::Receiver<WorkingData>,
 	errors: mpsc::Sender<RuntimeError>,
-	events: mpsc::Receiver<Event>,
+	mut events: mpsc::Receiver<Event>,
 ) -> Result<(), CriticalError> {
+	let mut last = Instant::now();
+	let mut set = Vec::new();
+
+	loop {
+		let maxtime = working.borrow().throttle;
+		match timeout(maxtime, events.recv()).await {
+			Err(_timeout) => {},
+			Ok(None) => break,
+			Ok(Some(event)) => {
+				set.push(event);
+
+				if last.elapsed() < working.borrow().throttle {
+					continue;
+				}
+			}
+		}
+
+		last = Instant::now();
+		set.drain(..); // TODO: do action with the set
+	}
 	Ok(())
 }
