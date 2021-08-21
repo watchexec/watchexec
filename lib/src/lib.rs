@@ -6,22 +6,26 @@
 //! This library is powered by [Tokio](https://tokio.rs), minimum version 1.10. This requirement may
 //! change (upwards) in the future without breaking change.
 //!
-//! The main way to use this crate involves constructing a [`Watchexec`] around a [`Config`] and
-//! running it. The config may contain some instances of [`Handler`][handler::Handler]s, hooking
-//! into watchexec at various points.
+//! The main way to use this crate involves constructing a [`Watchexec`] around an
+//! [`InitConfig`][config::InitConfig] and a [`RuntimeConfig`][config::RuntimeConfig], then running
+//! it. [`Handler`][handler::Handler]s are used to hook into watchexec at various points. The
+//! runtime config can be changed at any time with the [`reconfig()`][Watchexec::reconfig()] method.
 //!
 //! ```ignore // TODO: implement and switch to no_run
-//! use watchexec::{Watchexec, ConfigBuilder, Handler as _};
+//! use watchexec::{Watchexec, InitConfigBuilder, RuntimeConfigBuilder, Handler as _};
 //!
 //! #[tokio::main]
 //! async fn main() {
-//!     let mut config = ConfigBuilder::new()
+//!     let init = InitConfigBuilder::new()
+//!         .error_handler(PrintDebug(std::io::stderr()));
+//!
+//!     let mut runtime = RuntimeConfigBuilder::new()
 //!     config.pathset(["watchexec.conf"]);
 //!
 //!     let conf = YourConfigFormat::load_from_file("watchexec.conf").await?;
-//!     conf.apply(&mut config);
+//!     conf.apply(&mut runtime);
 //!
-//!     let we = Watchexec::new(config.build().unwrap()).unwrap();
+//!     let we = Watchexec::new(init.build().unwrap(), runtime.build().unwrap()).unwrap();
 //!     let w = we.clone();
 //!
 //!     let c = config.clone();
@@ -29,8 +33,8 @@
 //!         if e.path().map(|p| p.ends_with("watchexec.conf")).unwrap_or(false) {
 //!             let conf = YourConfigFormat::load_from_file("watchexec.conf").await?;
 //!
-//!             conf.apply(&mut config);
-//!             w.reconfigure(config.build());
+//!             conf.apply(&mut runtime);
+//!             w.reconfigure(runtime.build().unwrap());
 //!             // tada! self-reconfiguring watchexec on config file change!
 //!         }
 //!     });
@@ -62,12 +66,10 @@ pub mod handler;
 pub mod signal;
 
 // the core experience
-mod config;
+pub mod config;
 mod watchexec;
 
 #[doc(inline)]
 pub use crate::watchexec::Watchexec;
-#[doc(inline)]
-pub use config::{Config, ConfigBuilder};
 
 // the *action* is debounced, not the events

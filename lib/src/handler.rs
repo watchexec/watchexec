@@ -4,7 +4,8 @@
 //! - for closures,
 //! - for std and tokio channels,
 //! - for printing to writers, in `Debug` and `Display` (where supported) modes (generally used for
-//!   debugging and testing, as they don't allow any other output customisation).
+//!   debugging and testing, as they don't allow any other output customisation),
+//! - for `()`, as placeholder.
 //!
 //! The implementation for [`FnMut`] only supports fns that return a [`Future`]. Unfortunately
 //! it's not possible to provide an implementation for fns that don't return a `Future` as well,
@@ -86,7 +87,6 @@
 use std::{error::Error, future::Future, io::Write, marker::PhantomData};
 
 use tokio::runtime::Handle;
-use tracing::{event, Level};
 
 /// A callable that can be used to hook into watchexec.
 pub trait Handler<T> {
@@ -157,6 +157,12 @@ where
 		Handle::current()
 			.block_on((self)(data))
 			.map_err(|e| Box::new(e) as _)
+	}
+}
+
+impl<T> Handler<T> for () {
+	fn handle(&mut self, _data: T) -> Result<(), Box<dyn Error>> {
+		Ok(()).map_err(|e: std::convert::Infallible| Box::new(e) as _)
 	}
 }
 

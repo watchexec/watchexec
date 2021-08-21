@@ -8,7 +8,7 @@ use tokio::process::Command;
 /// conventions. Also `Cmd` is only available in Windows, while `Powershell` is
 /// also available on unices (provided the end-user has it installed, of course).
 ///
-/// See [`Config.cmd`][crate::config::Config] for the semantics of `None` vs the
+/// See [`Config.cmd`] for the semantics of `None` vs the
 /// other options.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Shell {
@@ -55,7 +55,7 @@ impl Default for Shell {
 }
 
 impl Shell {
-	/// Obtain a [`Command`] given the cmd vec from [`Config`][crate::config::Config].
+	/// Obtain a [`Command`] given a list of command parts.
 	///
 	/// Behaves as described in the enum documentation.
 	///
