@@ -53,6 +53,18 @@ impl RuntimeConfig {
 		self
 	}
 
+	/// Set the shell to use to invoke commands.
+	pub fn command_shell(&mut self, shell: Shell) -> &mut Self {
+		self.action.shell = shell;
+		self
+	}
+
+	/// Set the command to run on action.
+	pub fn command<'cmd>(&mut self, command: impl IntoIterator<Item = &'cmd str>) -> &mut Self {
+		self.action.command = command.into_iter().map(|c| c.to_owned()).collect();
+		self
+	}
+
 	/// Set the action handler.
 	///
 	/// TODO: notes on how outcome is read immediately after handler returns

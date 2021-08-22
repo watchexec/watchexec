@@ -16,6 +16,7 @@ use tokio::{
 use tracing::{debug, trace};
 
 use crate::{
+	command::Shell,
 	error::{CriticalError, RuntimeError},
 	event::Event,
 	handler::{rte, Handler},
@@ -26,8 +27,12 @@ use crate::{
 pub struct WorkingData {
 	pub throttle: Duration,
 
-	/// TODO: notes on how outcome is read immediately after handler returns
 	pub action_handler: Arc<AtomicTake<Box<dyn Handler<Action> + Send>>>,
+
+	pub shell: Shell,
+
+	/// TODO: notes for command construction ref Shell and old src
+	pub command: Vec<String>,
 }
 
 impl fmt::Debug for WorkingData {
@@ -44,6 +49,8 @@ impl Default for WorkingData {
 			// set to 50ms here, but will remain 100ms on cli until 2022
 			throttle: Duration::from_millis(50),
 			action_handler: Arc::new(AtomicTake::new(Box::new(()) as _)),
+			shell: Shell::default(),
+			command: Vec::new(),
 		}
 	}
 }
