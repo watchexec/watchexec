@@ -6,7 +6,10 @@
 //! 2. To be filtered upon according to whatever set of criteria is desired;
 //! 3. To carry information about what caused the event, which may be provided to the process.
 
-use std::{collections::HashMap, path::PathBuf};
+use std::{
+	collections::HashMap,
+	path::{Path, PathBuf},
+};
 
 use crate::signal::Signal;
 
@@ -36,4 +39,14 @@ pub enum Source {
 	Mouse,
 	Os,
 	Time,
+}
+
+impl Event {
+	/// Return all paths in the event's particulars.
+	pub fn paths(&self) -> impl Iterator<Item = &Path> {
+		self.particulars.iter().filter_map(|p| match p {
+			Particle::Path(p) => Some(p.as_path()),
+			_ => None,
+		})
+	}
 }
