@@ -57,16 +57,16 @@ pub struct Action {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Outcome {
 	/// Stop processing this action silently.
-    DoNothing,
+	DoNothing,
 
-    /// Wait for command completion, then start a new one.
-    Queue,
+	/// Wait for command completion, then start a new one.
+	Queue,
 
 	/// Stop the command, then start a new one.
-    Restart,
+	Restart,
 
 	/// Send this signal to the command.
-    Signal(Signal),
+	Signal(Signal),
 
 	/// When command is running: do the inner outcome.
 	/// Otherwise: start the command.
@@ -107,19 +107,31 @@ pub async fn worker(
 		{ working.borrow().action_handler.take() }.ok_or(CriticalError::MissingHandler)?;
 
 	loop {
-		let maxtime = working.borrow().throttle;
-		match timeout(maxtime, events.recv()).await {
-			Err(_timeout) => {}
-			Ok(None) => break,
-			Ok(Some(event)) => {
-				set.push(event);
+		let maxtime = working.borrow().throttle.saturating_sub(last.elapsed());
 
-				if last.elapsed() < working.borrow().throttle {
-					continue;
+		if maxtime.is_zero() {
+			trace!("out of throttle on recycle");
+		} else {
+			trace!(?maxtime, "waiting for event");
+			match timeout(maxtime, events.recv()).await {
+				Err(_timeout) => {
+					trace!("timed out");
+				}
+				Ok(None) => break,
+				Ok(Some(event)) => {
+					trace!(?event, "got event");
+					set.push(event);
+
+					let elapsed = last.elapsed();
+					if elapsed < working.borrow().throttle {
+						trace!(?elapsed, "still within throttle window, cycling");
+						continue;
+					}
 				}
 			}
 		}
 
+		trace!("out of throttle, starting action process");
 		last = Instant::now();
 
 		let action = Action::new(set.drain(..).collect());
@@ -139,5 +151,7 @@ pub async fn worker(
 		let outcome = outcome.get().cloned().unwrap_or_default();
 		debug!(?outcome, "handler finished");
 	}
+
+	debug!("action worker finished");
 	Ok(())
 }
