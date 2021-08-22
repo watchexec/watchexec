@@ -2,6 +2,7 @@
 
 use std::{
 	collections::{HashMap, HashSet},
+	mem::take,
 	path::PathBuf,
 };
 
@@ -158,13 +159,9 @@ pub async fn worker(
 				trace!(?path, "removing path from the watcher");
 				if let Err(err) = w.unwatch(&path) {
 					error!(?err, "notify unwatch() error");
-					errors
-						.send(RuntimeError::FsWatcherPathRemove {
-							path,
-							kind: watcher_type,
-							err,
-						})
-						.await?;
+					for e in notify_multi_path_errors(watcher_type, path, err, true) {
+						errors.send(e).await?;
+					}
 				} else {
 					pathset.remove(&path);
 				}
@@ -174,14 +171,10 @@ pub async fn worker(
 				trace!(?path, "adding path to the watcher");
 				if let Err(err) = w.watch(&path, notify::RecursiveMode::Recursive) {
 					error!(?err, "notify watch() error");
-					errors
-						.send(RuntimeError::FsWatcherPathAdd {
-							path,
-							kind: watcher_type,
-							err,
-						})
-						.await?;
-					// TODO: unwatch and re-watch manually while ignoring all the erroring paths
+					for e in notify_multi_path_errors(watcher_type, path, err, false) {
+						errors.send(e).await?;
+					}
+				// TODO: unwatch and re-watch manually while ignoring all the erroring paths
 				} else {
 					pathset.insert(path);
 				}
@@ -191,6 +184,37 @@ pub async fn worker(
 
 	debug!("ending file watcher");
 	Ok(())
+}
+
+fn notify_multi_path_errors(
+	kind: Watcher,
+	path: PathBuf,
+	mut err: notify::Error,
+	rm: bool,
+) -> Vec<RuntimeError> {
+	let mut paths = take(&mut err.paths);
+	if paths.is_empty() {
+		paths.push(path);
+	}
+
+	let generic = err.to_string();
+	let mut err = Some(err);
+
+	let mut errs = Vec::with_capacity(paths.len());
+	for path in paths {
+		let e = err
+			.take()
+			.unwrap_or_else(|| notify::Error::generic(&generic))
+			.add_path(path.clone());
+
+		errs.push(if rm {
+			RuntimeError::FsWatcherPathRemove { path, kind, err: e }
+		} else {
+			RuntimeError::FsWatcherPathAdd { path, kind, err: e }
+		});
+	}
+
+	errs
 }
 
 fn process_event(
