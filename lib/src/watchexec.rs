@@ -92,6 +92,9 @@ impl Watchexec {
 						Err(e)
 					}
 				})
+				.map(|_| {
+					debug!("main task graceful exit");
+				})
 		});
 
 		trace!("done with setup");
