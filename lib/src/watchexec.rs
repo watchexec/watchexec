@@ -77,10 +77,16 @@ impl Watchexec {
 
 			let error_hook = subtask!(error_hook, error_hook(er_r, eh));
 
-			try_join!(action, error_hook, fs, signal).map(drop).or_else(|e| if matches!(e, CriticalError::Exit) {
-				trace!("got graceful exit request via critical error, erasing the error");
-				Ok(())
-			} else { Err(e) })
+			try_join!(action, error_hook, fs, signal)
+				.map(drop)
+				.or_else(|e| {
+					if matches!(e, CriticalError::Exit) {
+						trace!("got graceful exit request via critical error, erasing the error");
+						Ok(())
+					} else {
+						Err(e)
+					}
+				})
 		});
 
 		trace!("done with setup");

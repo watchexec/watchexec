@@ -1,8 +1,9 @@
-use std::time::Duration;
+use std::convert::Infallible;
 
-use tokio::time::sleep;
 use watchexec::{
+	action::{Action, Outcome},
 	config::{InitConfigBuilder, RuntimeConfig},
+	signal::Signal,
 	Watchexec,
 };
 
@@ -18,12 +19,27 @@ async fn main() -> color_eyre::eyre::Result<()> {
 		Ok::<(), std::convert::Infallible>(())
 	});
 
-	let runtime = RuntimeConfig::default();
+	let mut runtime = RuntimeConfig::default();
+	runtime.command(["date"]);
+	runtime.on_action(|action: Action| async move {
+		eprintln!("Watchexec Action: {:?}", action);
+
+		if action
+			.events
+			.iter()
+			.flat_map(|event| event.signals())
+			.any(|sig| sig == Signal::Interrupt)
+		{
+			action.outcome(Outcome::Exit);
+		} else {
+			action.outcome(Outcome::both(Outcome::Stop, Outcome::Start));
+		}
+
+		Ok::<(), Infallible>(())
+	});
 
 	let wx = Watchexec::new(init.build()?, runtime)?;
-	wx.main();
-
-	sleep(Duration::from_secs(1)).await;
+	wx.main().await??;
 
 	Ok(())
 }
