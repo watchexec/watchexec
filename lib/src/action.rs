@@ -105,6 +105,9 @@ pub enum Outcome {
 	/// Clear the screen.
 	Clear,
 
+	/// Exit watchexec.
+	Exit,
+
 	/// When command is running, do the first, otherwise the second.
 	IfRunning(Box<Outcome>, Box<Outcome>),
 
@@ -224,6 +227,9 @@ async fn apply_outcome(
 ) -> Result<(), RuntimeError> {
 	match (process.as_mut(), outcome) {
 		(_, Outcome::DoNothing) => {}
+		(_, Outcome::Exit) => {
+			return Err(RuntimeError::Exit);
+		}
 		(Some(p), Outcome::Stop) => {
 			p.kill().await?;
 			p.wait().await?;

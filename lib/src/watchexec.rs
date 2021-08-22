@@ -77,7 +77,10 @@ impl Watchexec {
 
 			let error_hook = subtask!(error_hook, error_hook(er_r, eh));
 
-			try_join!(action, error_hook, fs, signal).map(drop)
+			try_join!(action, error_hook, fs, signal).map(drop).or_else(|e| if matches!(e, CriticalError::Exit) {
+				trace!("got graceful exit request via critical error, erasing the error");
+				Ok(())
+			} else { Err(e) })
 		});
 
 		trace!("done with setup");
@@ -126,6 +129,11 @@ async fn error_hook(
 	mut handler: Box<dyn Handler<RuntimeError> + Send>,
 ) -> Result<(), CriticalError> {
 	while let Some(err) = errors.recv().await {
+		if matches!(err, RuntimeError::Exit) {
+			trace!("got graceful exit request via runtime error, upgrading to crit");
+			return Err(CriticalError::Exit);
+		}
+
 		error!(%err, "runtime error");
 		if let Err(err) = handler.handle(err) {
 			error!(%err, "error while handling error");

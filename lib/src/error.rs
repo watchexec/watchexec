@@ -19,6 +19,11 @@ use crate::{
 #[derive(Debug, Diagnostic, Error)]
 #[non_exhaustive]
 pub enum CriticalError {
+	/// Pseudo-error used to signal a graceful exit.
+	#[error("this should never be printed (exit)")]
+	#[diagnostic(code(watchexec::runtime::exit))]
+	Exit,
+
 	/// A critical I/O error occurred.
 	#[error(transparent)]
 	#[diagnostic(code(watchexec::critical::io_error))]
@@ -36,7 +41,7 @@ pub enum CriticalError {
 
 	/// Error received when a handler is missing on initialisation.
 	///
-	/// This is a critical bug and unlikely to be recoverable in any way.
+	/// This is a **bug** and should be reported.
 	#[error("internal: missing handler on init")]
 	#[diagnostic(code(watchexec::critical::internal::missing_handler))]
 	MissingHandler,
@@ -47,6 +52,11 @@ pub enum CriticalError {
 #[derive(Debug, Diagnostic, Error)]
 #[non_exhaustive]
 pub enum RuntimeError {
+	/// Pseudo-error used to signal a graceful exit.
+	#[error("this should never be printed (exit)")]
+	#[diagnostic(code(watchexec::runtime::exit))]
+	Exit,
+
 	/// Generic I/O error, with no additional context.
 	#[error(transparent)]
 	#[diagnostic(code(watchexec::runtime::io_error))]
