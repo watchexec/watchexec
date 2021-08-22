@@ -24,6 +24,8 @@ use crate::{
 #[non_exhaustive]
 pub struct WorkingData {
 	pub throttle: Duration,
+
+	/// TODO: notes on how outcome is read immediately after handler returns
 	pub action_handler: Arc<AtomicTake<Box<dyn Handler<Action> + Send>>>,
 }
 
@@ -38,7 +40,8 @@ impl fmt::Debug for WorkingData {
 impl Default for WorkingData {
 	fn default() -> Self {
 		Self {
-			throttle: Duration::from_millis(100),
+			// set to 50ms here, but will remain 100ms on cli until 2022
+			throttle: Duration::from_millis(50),
 			action_handler: Arc::new(AtomicTake::new(Box::new(()) as _)),
 		}
 	}
