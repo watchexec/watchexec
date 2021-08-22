@@ -117,6 +117,16 @@ pub enum RuntimeError {
 	#[error("handler error while {ctx}: {err}")]
 	#[diagnostic(code(watchexec::runtime::handler))]
 	Handler { ctx: &'static str, err: String },
+
+	/// Error received when operating on a process.
+	#[error("when operating on process: {0}")]
+	#[diagnostic(code(watchexec::runtime::process))]
+	Process(#[source] std::io::Error),
+
+	/// Error received when clearing the screen.
+	#[error("clear screen: {0}")]
+	#[diagnostic(code(watchexec::runtime::clearscreen))]
+	Clearscreen(#[from] clearscreen::Error),
 }
 
 /// Errors occurring from reconfigs.

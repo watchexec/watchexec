@@ -7,16 +7,16 @@ use std::{
 };
 
 use atomic_take::AtomicTake;
-use command_group::Signal;
+use command_group::{AsyncCommandGroup, Signal};
 use once_cell::sync::OnceCell;
 use tokio::{
 	sync::{mpsc, watch},
 	time::timeout,
 };
-use tracing::{debug, trace};
+use tracing::{debug, trace, warn};
 
 use crate::{
-	command::Shell,
+	command::{Process, Shell},
 	error::{CriticalError, RuntimeError},
 	event::Event,
 	handler::{rte, Handler},
@@ -41,6 +41,9 @@ impl fmt::Debug for WorkingData {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		f.debug_struct("WorkingData")
 			.field("throttle", &self.throttle)
+			.field("shell", &self.shell)
+			.field("command", &self.command)
+			.field("grouped", &self.grouped)
 			.finish_non_exhaustive()
 	}
 }
@@ -53,6 +56,7 @@ impl Default for WorkingData {
 			action_handler: Arc::new(AtomicTake::new(Box::new(()) as _)),
 			shell: Shell::default(),
 			command: Vec::new(),
+			grouped: true,
 		}
 	}
 }
@@ -92,9 +96,9 @@ pub enum Outcome {
 	/// If the command isn't running, start it.
 	Start,
 
-	/// Wait for command completion, then start a new one.
-	Queue,
-
+	// TODO
+	// /// Wait for command completion, then start a new one.
+	// Queue,
 	/// Send this signal to the command.
 	Signal(Signal),
 
@@ -142,6 +146,7 @@ pub async fn worker(
 	let mut set = Vec::new();
 	let mut handler =
 		{ working.borrow().action_handler.take() }.ok_or(CriticalError::MissingHandler)?;
+	let mut process: Option<Process> = None;
 
 	loop {
 		let maxtime = working.borrow().throttle.saturating_sub(last.elapsed());
@@ -188,12 +193,83 @@ pub async fn worker(
 		let outcome = outcome.get().cloned().unwrap_or_default();
 		debug!(?outcome, "handler finished");
 
-		let is_running = todo!();
+		let is_running = match process.as_mut().map(|p| p.is_running()).transpose() {
+			Err(err) => {
+				errors.send(err).await?;
+				false
+			}
+			Ok(Some(ir)) => ir,
+			Ok(None) => false,
+		};
 
 		let outcome = outcome.resolve(is_running);
 		debug!(?outcome, "outcome resolved");
+
+		let w = working.borrow().clone();
+		let rerr = apply_outcome(outcome, w, &mut process).await;
+		if let Err(err) = rerr {
+			errors.send(err).await?;
+		}
 	}
 
 	debug!("action worker finished");
+	Ok(())
+}
+
+#[async_recursion::async_recursion]
+async fn apply_outcome(
+	outcome: Outcome,
+	working: WorkingData,
+	process: &mut Option<Process>,
+) -> Result<(), RuntimeError> {
+	match (process.as_mut(), outcome) {
+		(_, Outcome::DoNothing) => {}
+		(Some(p), Outcome::Stop) => {
+			p.kill().await?;
+			p.wait().await?;
+		}
+		(p @ None, o @ Outcome::Stop)
+		| (p @ Some(_), o @ Outcome::Start)
+		| (p @ None, o @ Outcome::Signal(_)) => {
+			warn!(is_running=?p.is_some(), outcome=?o, "outcome does not apply to process state");
+		}
+		(None, Outcome::Start) => {
+			let mut command = working.shell.to_command(&working.command);
+
+			// TODO: pre-spawn hook
+
+			let proc = if working.grouped {
+				Process::Grouped(command.group_spawn()?)
+			} else {
+				Process::Ungrouped(command.spawn()?)
+			};
+
+			// TODO: post-spawn hook
+
+			*process = Some(proc);
+		}
+
+		(Some(p), Outcome::Signal(sig)) => {
+			// TODO: windows
+			p.signal(sig)?;
+		}
+
+		(_, Outcome::Clear) => {
+			clearscreen::clear()?;
+		}
+
+		(Some(_), Outcome::IfRunning(then, _)) => {
+			apply_outcome(*then, working, process).await?;
+		}
+		(None, Outcome::IfRunning(_, otherwise)) => {
+			apply_outcome(*otherwise, working, process).await?;
+		}
+
+		(_, Outcome::Both(one, two)) => {
+			apply_outcome(*one, working.clone(), process).await?;
+			apply_outcome(*two, working, process).await?;
+		}
+	}
+
 	Ok(())
 }
