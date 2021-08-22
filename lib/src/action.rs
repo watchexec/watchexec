@@ -7,6 +7,7 @@ use std::{
 };
 
 use atomic_take::AtomicTake;
+use command_group::Signal;
 use once_cell::sync::OnceCell;
 use tokio::{
 	sync::{mpsc, watch},
@@ -53,14 +54,28 @@ pub struct Action {
 	outcome: Arc<OnceCell<Outcome>>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Outcome {
-	DoNothing, // TODO more
+	/// Stop processing this action silently.
+    DoNothing,
+
+    /// Wait for command completion, then start a new one.
+    Queue,
+
+	/// Stop the command, then start a new one.
+    Restart,
+
+	/// Send this signal to the command.
+    Signal(Signal),
+
+	/// When command is running: do the inner outcome.
+	/// Otherwise: start the command.
+	OrStart(Box<Outcome>),
 }
 
 impl Default for Outcome {
 	fn default() -> Self {
-		Self::DoNothing // TODO
+		Self::DoNothing
 	}
 }
 
