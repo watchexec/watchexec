@@ -152,15 +152,27 @@ pub async fn worker(
 	let mut process: Option<Process> = None;
 
 	loop {
-		let maxtime = working.borrow().throttle.saturating_sub(last.elapsed());
+		let maxtime = if set.is_empty() {
+			trace!("nothing in set, waiting forever for next event");
+			Duration::from_secs(u64::MAX)
+		} else {
+			working.borrow().throttle.saturating_sub(last.elapsed())
+		};
 
 		if maxtime.is_zero() {
-			trace!("out of throttle on recycle");
+			if set.is_empty() {
+				trace!("out of throttle but nothing to do, resetting");
+				last = Instant::now();
+				continue;
+			} else {
+				trace!("out of throttle on recycle");
+			}
 		} else {
 			trace!(?maxtime, "waiting for event");
 			match timeout(maxtime, events.recv()).await {
 				Err(_timeout) => {
-					trace!("timed out");
+					trace!("timed out, cycling");
+					continue;
 				}
 				Ok(None) => break,
 				Ok(Some(event)) => {
@@ -188,7 +200,9 @@ pub async fn worker(
 		}
 
 		let outcome = action.outcome.clone();
-		let err = action_handler.handle(action).map_err(|e| rte("action worker", e));
+		let err = action_handler
+			.handle(action)
+			.map_err(|e| rte("action worker", e));
 		if let Err(err) = err {
 			errors.send(err).await?;
 		}
@@ -243,19 +257,19 @@ async fn apply_outcome(
 			if working.command.is_empty() {
 				warn!("tried to start a command without anything to run");
 			} else {
-			let mut command = working.shell.to_command(&working.command);
+				let mut command = working.shell.to_command(&working.command);
 
-			// TODO: pre-spawn hook
+				// TODO: pre-spawn hook
 
-			let proc = if working.grouped {
-				Process::Grouped(command.group_spawn()?)
-			} else {
-				Process::Ungrouped(command.spawn()?)
-			};
+				let proc = if working.grouped {
+					Process::Grouped(command.group_spawn()?)
+				} else {
+					Process::Ungrouped(command.spawn()?)
+				};
 
-			// TODO: post-spawn hook
+				// TODO: post-spawn hook
 
-			*process = Some(proc);
+				*process = Some(proc);
 			}
 		}
 
