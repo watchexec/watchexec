@@ -1,0 +1,67 @@
+use watchexec::{
+	action::{Action, Outcome},
+	config::{InitConfigBuilder, RuntimeConfig},
+	error::ReconfigError,
+	fs::Watcher,
+	signal::Signal,
+	Watchexec,
+};
+
+// Run with: `env RUST_LOG=debug cargo run --example print_out`
+#[tokio::main]
+async fn main() -> color_eyre::eyre::Result<()> {
+	tracing_subscriber::fmt::init();
+	color_eyre::install()?;
+
+	let mut init = InitConfigBuilder::default();
+	init.on_error(|err| async move {
+		eprintln!("Watchexec Runtime Error: {}", err);
+		Ok::<(), std::convert::Infallible>(())
+	});
+
+	let mut runtime = RuntimeConfig::default();
+	runtime.pathset(["src"]);
+	runtime.command(["date"]);
+
+	let wx = Watchexec::new(init.build()?, runtime.clone())?;
+	let w = wx.clone();
+
+	let config = runtime.clone();
+	runtime.on_action(move |action: Action| {
+		let mut config = config.clone();
+		let w = w.clone();
+		async move {
+			eprintln!("Watchexec Action: {:?}", action);
+
+			let sigs = action
+				.events
+				.iter()
+				.flat_map(|event| event.signals())
+				.collect::<Vec<_>>();
+
+			if sigs.iter().any(|sig| sig == &Signal::Interrupt) {
+				action.outcome(Outcome::Exit);
+			} else if sigs.iter().any(|sig| sig == &Signal::User1) {
+				eprintln!("Switching to native for funsies");
+				config.file_watcher(Watcher::Native).keep_action();
+				w.reconfigure(config)?;
+			} else if sigs.iter().any(|sig| sig == &Signal::User2) {
+				eprintln!("Switching to polling for funsies");
+				config.file_watcher(Watcher::Poll).keep_action();
+				w.reconfigure(config)?;
+			} else {
+				action.outcome(Outcome::if_running(
+					Outcome::both(Outcome::Stop, Outcome::Start),
+					Outcome::Start,
+				));
+			}
+
+			Ok::<(), ReconfigError>(())
+		}
+	});
+
+	wx.reconfigure(runtime)?;
+	wx.main().await??;
+
+	Ok(())
+}

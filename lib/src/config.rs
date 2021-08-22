@@ -78,6 +78,16 @@ impl RuntimeConfig {
 		self.action.action_handler = Arc::new(AtomicTake::new(Box::new(handler) as _));
 		self
 	}
+
+	/// Keep the action handler the same.
+	///
+	/// This is especially useful when reconfiguring _within_ the action handler.
+	///
+	/// Passing this config to `Watchexec::new()` will cause a `CriticalError::MissingHandler`.
+	pub fn keep_action(&mut self) -> &mut Self {
+		self.action.action_handler = Arc::new(AtomicTake::empty());
+		self
+	}
 }
 
 /// Initialisation configuration for [`Watchexec`][crate::Watchexec].
