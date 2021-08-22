@@ -2081,6 +2081,7 @@ dependencies = [
  "futures",
  "miette",
  "notify 5.0.0-pre.12",
+ "once_cell",
  "thiserror",
  "tokio",
  "tracing",

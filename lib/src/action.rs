@@ -7,6 +7,7 @@ use std::{
 };
 
 use atomic_take::AtomicTake;
+use once_cell::sync::OnceCell;
 use tokio::{
 	sync::{mpsc, watch},
 	time::timeout,
@@ -43,9 +44,38 @@ impl Default for WorkingData {
 	}
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Default)]
 pub struct Action {
 	pub events: Vec<Event>,
+	outcome: Arc<OnceCell<Outcome>>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Outcome {
+	DoNothing, // TODO more
+}
+
+impl Default for Outcome {
+	fn default() -> Self {
+		Self::DoNothing // TODO
+	}
+}
+
+impl Action {
+	fn new(events: Vec<Event>) -> Self {
+		Self {
+			events,
+			..Self::default()
+		}
+	}
+
+	/// Set the action's outcome.
+	///
+	/// This takes `self` and `Action` is not `Clone`, so it's only possible to call it once.
+	/// Regardless, if you _do_ manage to call it twice, it will do nothing beyond the first call.
+	pub fn outcome(self, outcome: Outcome) {
+		self.outcome.set(outcome).ok();
+	}
 }
 
 pub async fn worker(
@@ -74,9 +104,7 @@ pub async fn worker(
 
 		last = Instant::now();
 
-		let action = Action {
-			events: set.drain(..).collect(),
-		};
+		let action = Action::new(set.drain(..).collect());
 		debug!(?action, "action constructed");
 
 		if let Some(h) = working.borrow().action_handler.take() {
@@ -84,10 +112,14 @@ pub async fn worker(
 			handler = h;
 		}
 
+		let outcome = action.outcome.clone();
 		let err = handler.handle(action).map_err(|e| rte("action worker", e));
 		if let Err(err) = err {
 			errors.send(err).await?;
 		}
+
+		let outcome = outcome.get().cloned().unwrap_or_default();
+		debug!(?outcome, "handler finished");
 	}
 	Ok(())
 }
