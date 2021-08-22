@@ -54,11 +54,31 @@ pub struct Action {
 	outcome: Arc<OnceCell<Outcome>>,
 }
 
+impl Action {
+	fn new(events: Vec<Event>) -> Self {
+		Self {
+			events,
+			..Self::default()
+		}
+	}
+
+	/// Set the action's outcome.
+	///
+	/// This takes `self` and `Action` is not `Clone`, so it's only possible to call it once.
+	/// Regardless, if you _do_ manage to call it twice, it will do nothing beyond the first call.
+	pub fn outcome(self, outcome: Outcome) {
+		self.outcome.set(outcome).ok();
+	}
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Outcome {
 	/// Stop processing this action silently.
 	DoNothing,
+
+	/// If the command isn't running, start it.
+	Start,
 
 	/// Wait for command completion, then start a new one.
 	Queue,
@@ -82,20 +102,13 @@ impl Default for Outcome {
 	}
 }
 
-impl Action {
-	fn new(events: Vec<Event>) -> Self {
-		Self {
-			events,
-			..Self::default()
-		}
+impl Outcome {
+	pub fn if_running(then: Outcome, otherwise: Outcome) -> Self {
+		Self::IfRunning(Box::new(then), Box::new(otherwise))
 	}
 
-	/// Set the action's outcome.
-	///
-	/// This takes `self` and `Action` is not `Clone`, so it's only possible to call it once.
-	/// Regardless, if you _do_ manage to call it twice, it will do nothing beyond the first call.
-	pub fn outcome(self, outcome: Outcome) {
-		self.outcome.set(outcome).ok();
+	pub fn clear_and(then: Outcome) -> Self {
+		Self::ClearAnd(Box::new(then))
 	}
 }
 
