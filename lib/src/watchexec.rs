@@ -46,7 +46,7 @@ impl Watchexec {
 		mut init: InitConfig,
 		mut runtime: RuntimeConfig,
 	) -> Result<Arc<Self>, CriticalError> {
-		trace!(?init, ?runtime, "initialising");
+		debug!(?init, ?runtime, pid=%std::process::id(), "initialising");
 
 		let (fs_s, fs_r) = watch::channel(take(&mut runtime.fs));
 		let (ac_s, ac_r) = watch::channel(take(&mut runtime.action));
