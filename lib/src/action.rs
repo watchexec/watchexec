@@ -240,6 +240,9 @@ async fn apply_outcome(
 			warn!(is_running=?p.is_some(), outcome=?o, "outcome does not apply to process state");
 		}
 		(None, Outcome::Start) => {
+			if working.command.is_empty() {
+				warn!("tried to start a command without anything to run");
+			} else {
 			let mut command = working.shell.to_command(&working.command);
 
 			// TODO: pre-spawn hook
@@ -253,6 +256,7 @@ async fn apply_outcome(
 			// TODO: post-spawn hook
 
 			*process = Some(proc);
+			}
 		}
 
 		(Some(p), Outcome::Signal(sig)) => {
