@@ -54,7 +54,7 @@
 //!
 //!             action.outcome(Outcome::if_running(
 //!                 Outcome::DoNothing,
-//!                 Outcome::clear_and(Outcome::Start),
+//!                 Outcome::both(Outcome::Clear, Outcome::Start),
 //!             ));
 //!
 //!             Ok(())

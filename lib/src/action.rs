@@ -84,23 +84,26 @@ pub enum Outcome {
 	/// Stop processing this action silently.
 	DoNothing,
 
+	/// If the command is running, stop it.
+	Stop,
+
 	/// If the command isn't running, start it.
 	Start,
 
 	/// Wait for command completion, then start a new one.
 	Queue,
 
-	/// Stop the command, then start a new one.
-	Restart,
-
 	/// Send this signal to the command.
 	Signal(Signal),
+
+	/// Clear the screen.
+	Clear,
 
 	/// When command is running, do the first, otherwise the second.
 	IfRunning(Box<Outcome>, Box<Outcome>),
 
-	/// Clear the screen before doing the inner outcome.
-	ClearAnd(Box<Outcome>),
+	/// Do both outcomes in order.
+	Both(Box<Outcome>, Box<Outcome>),
 }
 
 impl Default for Outcome {
@@ -114,8 +117,10 @@ impl Outcome {
 		Self::IfRunning(Box::new(then), Box::new(otherwise))
 	}
 
-	pub fn clear_and(then: Outcome) -> Self {
-		Self::ClearAnd(Box::new(then))
+	pub fn both(one: Outcome, two: Outcome) -> Self {
+		Self::Both(Box::new(one), Box::new(two))
+	}
+
 	}
 }
 
