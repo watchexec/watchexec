@@ -121,6 +121,13 @@ impl Outcome {
 		Self::Both(Box::new(one), Box::new(two))
 	}
 
+	fn resolve(self, is_running: bool) -> Self {
+		match (is_running, self) {
+			(true, Self::IfRunning(then, _)) => then.resolve(true),
+			(false, Self::IfRunning(_, otherwise)) => otherwise.resolve(false),
+			(ir, Self::Both(one, two)) => Self::both(one.resolve(ir), two.resolve(ir)),
+			(_, other) => other,
+		}
 	}
 }
 
@@ -178,6 +185,11 @@ pub async fn worker(
 
 		let outcome = outcome.get().cloned().unwrap_or_default();
 		debug!(?outcome, "handler finished");
+
+		let is_running = todo!();
+
+		let outcome = outcome.resolve(is_running);
+		debug!(?outcome, "outcome resolved");
 	}
 
 	debug!("action worker finished");
