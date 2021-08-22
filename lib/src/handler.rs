@@ -86,7 +86,7 @@
 
 use std::{error::Error, future::Future, io::Write, marker::PhantomData};
 
-use tokio::runtime::Handle;
+use tokio::{runtime::Handle, task::block_in_place};
 
 use crate::error::RuntimeError;
 
@@ -163,9 +163,11 @@ where
 {
 	fn handle(&mut self, data: T) -> Result<(), Box<dyn Error>> {
 		// this will always be called within watchexec context, which runs within tokio
-		Handle::current()
-			.block_on((self)(data))
-			.map_err(|e| Box::new(e) as _)
+		block_in_place(|| {
+			Handle::current()
+				.block_on((self)(data))
+				.map_err(|e| Box::new(e) as _)
+		})
 	}
 }
 
