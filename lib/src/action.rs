@@ -55,6 +55,7 @@ pub struct Action {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Outcome {
 	/// Stop processing this action silently.
 	DoNothing,
@@ -68,9 +69,11 @@ pub enum Outcome {
 	/// Send this signal to the command.
 	Signal(Signal),
 
-	/// When command is running: do the inner outcome.
-	/// Otherwise: start the command.
-	OrStart(Box<Outcome>),
+	/// When command is running, do the first, otherwise the second.
+	IfRunning(Box<Outcome>, Box<Outcome>),
+
+	/// Clear the screen before doing the inner outcome.
+	ClearAnd(Box<Outcome>),
 }
 
 impl Default for Outcome {
