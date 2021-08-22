@@ -11,16 +11,15 @@ async fn main() -> color_eyre::eyre::Result<()> {
 	tracing_subscriber::fmt::init();
 	color_eyre::install()?;
 
-	let init = InitConfigBuilder::default()
-		.error_handler(Box::new(|err| async move {
-			eprintln!("Watchexec Runtime Error: {}", err);
-			Ok::<(), std::convert::Infallible>(())
-		}))
-		.build()?;
+	let mut init = InitConfigBuilder::default();
+	init.on_error(|err| async move {
+		eprintln!("Watchexec Runtime Error: {}", err);
+		Ok::<(), std::convert::Infallible>(())
+	});
 
 	let runtime = RuntimeConfig::default();
 
-	let wx = Watchexec::new(init, runtime)?;
+	let wx = Watchexec::new(init.build()?, runtime)?;
 	wx.main();
 
 	// TODO: induce an error here

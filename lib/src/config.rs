@@ -1,9 +1,11 @@
-use std::{fmt, sync::Arc, time::Duration};
+//! Configuration and builders for [`crate::Watchexec`].
+
+use std::{fmt, path::Path, sync::Arc, time::Duration};
 
 use atomic_take::AtomicTake;
 use derive_builder::Builder;
 
-use crate::{action::Action, error::RuntimeError, handler::Handler};
+use crate::{action::Action, command::Shell, error::RuntimeError, fs::Watcher, handler::Handler};
 
 /// Runtime configuration for [`Watchexec`][crate::Watchexec].
 ///
@@ -28,6 +30,38 @@ pub struct RuntimeConfig {
 	pub action: crate::action::WorkingData,
 }
 
+impl RuntimeConfig {
+	/// Set the pathset to be watched.
+	pub fn pathset<I, P>(&mut self, pathset: I) -> &mut Self
+	where
+		I: IntoIterator<Item = P>,
+		P: AsRef<Path>,
+	{
+		self.fs.pathset = pathset.into_iter().map(|p| p.as_ref().into()).collect();
+		self
+	}
+
+	/// Set the file watcher type to use.
+	pub fn file_watcher(&mut self, watcher: Watcher) -> &mut Self {
+		self.fs.watcher = watcher;
+		self
+	}
+
+	/// Set the action throttle.
+	pub fn action_throttle(&mut self, throttle: impl Into<Duration>) -> &mut Self {
+		self.action.throttle = throttle.into();
+		self
+	}
+
+	/// Set the action handler.
+	///
+	/// TODO: notes on how outcome is read immediately after handler returns
+	pub fn on_action(&mut self, handler: impl Handler<Action> + Send + 'static) -> &mut Self {
+		self.action.action_handler = Arc::new(AtomicTake::new(Box::new(handler) as _));
+		self
+	}
+}
+
 /// Initialisation configuration for [`Watchexec`][crate::Watchexec].
 ///
 /// This is used only for constructing the instance.
@@ -45,20 +79,21 @@ pub struct InitConfig {
 	/// `()` handler is used, which discards all errors.
 	///
 	/// If the handler errors, [_that_ error][crate::error::RuntimeError::Handler] is immediately
-	/// given to the handler. If that second handler call errors as well, its error is ignored.
+	/// given to the handler. If this second handler call errors as well, its error is ignored.
 	///
 	/// # Examples
 	///
 	/// ```
 	/// # use std::convert::Infallible;
 	/// # use watchexec::config::InitConfigBuilder;
-	/// InitConfigBuilder::default()
-	///     .error_handler(Box::new(|err| async move {
-	///         tracing::error!("{}", err);
-	///         Ok::<(), Infallible>(())
-	///     }));
+	/// let mut init = InitConfigBuilder::default();
+	/// init.on_error(|err| async move {
+	///     tracing::error!("{}", err);
+	///     Ok::<(), Infallible>(())
+	/// });
 	/// ```
-	#[builder(default = "Box::new(()) as _")]
+	#[builder(private, default = "Box::new(()) as _")]
+	// TODO: figure out how to remove the builder setter entirely
 	pub error_handler: Box<dyn Handler<RuntimeError> + Send>,
 
 	/// Internal: the buffer size of the channel which carries runtime errors.
@@ -74,6 +109,16 @@ pub struct InitConfig {
 	/// adjusting this value may help.
 	#[builder(default = "1024")]
 	pub event_channel_size: usize,
+}
+
+impl InitConfigBuilder {
+	/// Set the runtime error handler.
+	///
+	/// See the [documentation on the field][InitConfig#structfield.error_handler] for more details.
+	pub fn on_error(&mut self, handler: impl Handler<RuntimeError> + Send + 'static) -> &mut Self {
+		self.error_handler = Some(Box::new(handler) as _);
+		self
+	}
 }
 
 impl fmt::Debug for InitConfig {
