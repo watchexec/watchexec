@@ -1,30 +1,30 @@
-use std::fmt;
+use std::{fmt, sync::Arc, time::Duration};
 
+use atomic_take::AtomicTake;
 use derive_builder::Builder;
 
-use crate::{error::RuntimeError, handler::Handler};
+use crate::{action::Action, error::RuntimeError, handler::Handler};
 
 /// Runtime configuration for [`Watchexec`][crate::Watchexec].
 ///
 /// This is used both when constructing the instance (as initial configuration) and to reconfigure
 /// it at runtime via [`Watchexec::reconfig()`][crate::Watchexec::reconfig()].
 ///
-/// Use [`RuntimeConfigBuilder`] to build a new one, or modify an existing one. This struct is
-/// marked non-exhaustive such that new options may be added without breaking change.
-#[derive(Builder, Clone, Debug)]
+/// Use [`RuntimeConfig::default()`] to build a new one, or modify an existing one. This struct is
+/// marked non-exhaustive such that new options may be added without breaking change. You can make
+/// changes through the fields directly, or use the convenience (chainable!) methods instead.
+#[derive(Clone, Debug, Default)]
 #[non_exhaustive]
 pub struct RuntimeConfig {
 	/// Working data for the filesystem event source.
 	///
 	/// This notably includes the path set to be watched.
-	#[builder(default)]
 	pub fs: crate::fs::WorkingData,
 
 	/// Working data for the action processing.
 	///
 	/// This is the task responsible for scheduling the actions in response to events, applying the
 	/// filtering, etc.
-	#[builder(default)]
 	pub action: crate::action::WorkingData,
 }
 

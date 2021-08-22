@@ -19,13 +19,13 @@
 //!     let init = InitConfigBuilder::default()
 //!         .error_handler(PrintDebug(std::io::stderr()));
 //!
-//!     let mut runtime = RuntimeConfigBuilder::default()
-//!     config.pathset(["watchexec.conf"]);
+//!     let mut runtime = RuntimeConfig::default()
+//!     runtime.pathset(["watchexec.conf"]);
 //!
 //!     let conf = YourConfigFormat::load_from_file("watchexec.conf").await?;
 //!     conf.apply(&mut runtime);
 //!
-//!     let we = Watchexec::new(init.build().unwrap(), runtime.build().unwrap()).unwrap();
+//!     let we = Watchexec::new(init.build().unwrap(), runtime.clone()).unwrap();
 //!     let w = we.clone();
 //!
 //!     let c = config.clone();
@@ -34,7 +34,7 @@
 //!             let conf = YourConfigFormat::load_from_file("watchexec.conf").await?;
 //!
 //!             conf.apply(&mut runtime);
-//!             w.reconfigure(runtime.build().unwrap());
+//!             w.reconfigure(runtime.clone());
 //!             // tada! self-reconfiguring watchexec on config file change!
 //!         }
 //!     });

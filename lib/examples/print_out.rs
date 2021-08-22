@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use tokio::time::sleep;
 use watchexec::{
-	config::{InitConfigBuilder, RuntimeConfigBuilder},
+	config::{InitConfigBuilder, RuntimeConfig},
 	Watchexec,
 };
 
@@ -19,7 +19,7 @@ async fn main() -> color_eyre::eyre::Result<()> {
 		}))
 		.build()?;
 
-	let runtime = RuntimeConfigBuilder::default().build()?;
+	let runtime = RuntimeConfig::default();
 
 	let wx = Watchexec::new(init, runtime)?;
 	wx.main();
