@@ -177,6 +177,12 @@ pub async fn worker(
 				Ok(None) => break,
 				Ok(Some(event)) => {
 					trace!(?event, "got event");
+
+					if set.is_empty() {
+						trace!("event is the first, resetting throttle window");
+						last = Instant::now();
+					}
+
 					set.push(event);
 
 					let elapsed = last.elapsed();
@@ -247,6 +253,7 @@ async fn apply_outcome(
 		(Some(p), Outcome::Stop) => {
 			p.kill().await?;
 			p.wait().await?;
+			*process = None;
 		}
 		(p @ None, o @ Outcome::Stop)
 		| (p @ Some(_), o @ Outcome::Start)
@@ -261,6 +268,7 @@ async fn apply_outcome(
 
 				// TODO: pre-spawn hook
 
+				debug!(grouped=%working.grouped, ?command, "spawning command");
 				let proc = if working.grouped {
 					Process::Grouped(command.group_spawn()?)
 				} else {
@@ -270,6 +278,8 @@ async fn apply_outcome(
 				// TODO: post-spawn hook
 
 				*process = Some(proc);
+
+				// TODO: post-stop hook (immediately after *process* ends, not when Stop is applied)
 			}
 		}
 
