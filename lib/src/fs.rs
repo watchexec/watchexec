@@ -7,7 +7,7 @@ use std::{
 
 use notify::Watcher as _;
 use tokio::sync::{mpsc, watch};
-use tracing::{debug, trace};
+use tracing::{debug, error, trace};
 
 use crate::{
 	error::{CriticalError, RuntimeError},
@@ -157,6 +157,7 @@ pub async fn worker(
 			for path in to_drop {
 				trace!(?path, "removing path from the watcher");
 				if let Err(err) = w.unwatch(&path) {
+					error!(?err, "notify unwatch() error");
 					errors
 						.send(RuntimeError::FsWatcherPathRemove {
 							path,
@@ -172,6 +173,7 @@ pub async fn worker(
 			for path in to_watch {
 				trace!(?path, "adding path to the watcher");
 				if let Err(err) = w.watch(&path, notify::RecursiveMode::Recursive) {
+					error!(?err, "notify watch() error");
 					errors
 						.send(RuntimeError::FsWatcherPathAdd {
 							path,
@@ -179,6 +181,7 @@ pub async fn worker(
 							err,
 						})
 						.await?;
+					// TODO: unwatch and re-watch manually while ignoring all the erroring paths
 				} else {
 					pathset.insert(path);
 				}
