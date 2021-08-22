@@ -4,7 +4,7 @@ use std::process::ExitStatus;
 
 use command_group::{AsyncGroupChild, Signal};
 use tokio::process::{Child, Command};
-use tracing::debug;
+use tracing::{debug, trace};
 
 use crate::error::RuntimeError;
 
@@ -170,16 +170,20 @@ impl Process {
 		match self {
 			Self::None | Self::Done(_) => Ok(false),
 			Self::Grouped(c) => c.try_wait().map(|status| {
-				if let Some(s) = status {
-					*self = Self::Done(s);
+				trace!("try-waiting on process group");
+				if let Some(status) = status {
+					trace!(?status, "converting to ::Done");
+					*self = Self::Done(status);
 					true
 				} else {
 					false
 				}
 			}),
 			Self::Ungrouped(c) => c.try_wait().map(|status| {
-				if let Some(s) = status {
-					*self = Self::Done(s);
+				trace!("try-waiting on process");
+				if let Some(status) = status {
+					trace!(?status, "converting to ::Done");
+					*self = Self::Done(status);
 					true
 				} else {
 					false
@@ -194,12 +198,16 @@ impl Process {
 			Self::None => Ok(None),
 			Self::Done(status) => Ok(Some(*status)),
 			Self::Grouped(c) => {
+				trace!("waiting on process group");
 				let status = c.wait().await?;
+				trace!(?status, "converting to ::Done");
 				*self = Self::Done(status);
 				Ok(Some(status))
 			}
 			Self::Ungrouped(c) => {
+				trace!("waiting on process");
 				let status = c.wait().await?;
+				trace!(?status, "converting to ::Done");
 				*self = Self::Done(status);
 				Ok(Some(status))
 			}
