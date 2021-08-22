@@ -49,4 +49,11 @@ impl Event {
 			_ => None,
 		})
 	}
+	/// Return all signals in the event's particulars.
+	pub fn signals(&self) -> impl Iterator<Item = Signal> + '_ {
+		self.particulars.iter().filter_map(|p| match p {
+			Particle::Signal(s) => Some(*s),
+			_ => None,
+		})
+	}
 }
