@@ -33,6 +33,8 @@ pub struct WorkingData {
 
 	/// TODO: notes for command construction ref Shell and old src
 	pub command: Vec<String>,
+
+	pub grouped: bool,
 }
 
 impl fmt::Debug for WorkingData {
