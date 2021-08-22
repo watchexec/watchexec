@@ -71,6 +71,7 @@ impl Shell {
 	/// - Panics if the string in the `Unix` variant is empty or only whitespace.
 	pub fn to_command(&self, cmd: &[String]) -> Command {
 		assert!(!cmd.is_empty(), "cmd was empty");
+		trace!(shell=?self, ?cmd, "constructing command");
 
 		match self {
 			Shell::None => {

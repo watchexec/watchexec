@@ -20,6 +20,7 @@ async fn main() -> color_eyre::eyre::Result<()> {
 	});
 
 	let mut runtime = RuntimeConfig::default();
+	runtime.pathset(["src"]);
 	runtime.command(["date"]);
 	runtime.on_action(|action: Action| async move {
 		eprintln!("Watchexec Action: {:?}", action);
@@ -32,7 +33,10 @@ async fn main() -> color_eyre::eyre::Result<()> {
 		{
 			action.outcome(Outcome::Exit);
 		} else {
-			action.outcome(Outcome::both(Outcome::Stop, Outcome::Start));
+			action.outcome(Outcome::if_running(
+				Outcome::both(Outcome::Stop, Outcome::Start),
+				Outcome::Start,
+			));
 		}
 
 		Ok::<(), Infallible>(())

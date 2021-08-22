@@ -48,8 +48,13 @@ impl Watchexec {
 	) -> Result<Arc<Self>, CriticalError> {
 		debug!(?init, ?runtime, pid=%std::process::id(), "initialising");
 
-		let (fs_s, fs_r) = watch::channel(take(&mut runtime.fs));
 		let (ac_s, ac_r) = watch::channel(take(&mut runtime.action));
+		let (fs_s, fs_r) = watch::channel(fs::WorkingData::default());
+
+		// TODO: figure out how to do this (aka start the fs work) after the main task start lock
+		trace!("sending initial config to fs worker");
+		fs_s.send(take(&mut runtime.fs))
+			.expect("cannot send to just-created fs watch (bug)");
 
 		trace!("creating main task");
 		let notify = Arc::new(Notify::new());
