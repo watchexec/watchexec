@@ -147,7 +147,7 @@ pub async fn worker(
 ) -> Result<(), CriticalError> {
 	let mut last = Instant::now();
 	let mut set = Vec::new();
-	let mut handler =
+	let mut action_handler =
 		{ working.borrow().action_handler.take() }.ok_or(CriticalError::MissingHandler)?;
 	let mut process: Option<Process> = None;
 
@@ -184,11 +184,11 @@ pub async fn worker(
 
 		if let Some(h) = working.borrow().action_handler.take() {
 			trace!("action handler updated");
-			handler = h;
+			action_handler = h;
 		}
 
 		let outcome = action.outcome.clone();
-		let err = handler.handle(action).map_err(|e| rte("action worker", e));
+		let err = action_handler.handle(action).map_err(|e| rte("action worker", e));
 		if let Err(err) = err {
 			errors.send(err).await?;
 		}
