@@ -10,7 +10,7 @@ use crate::{action::Action, command::Shell, error::RuntimeError, fs::Watcher, ha
 /// Runtime configuration for [`Watchexec`][crate::Watchexec].
 ///
 /// This is used both when constructing the instance (as initial configuration) and to reconfigure
-/// it at runtime via [`Watchexec::reconfig()`][crate::Watchexec::reconfig()].
+/// it at runtime via [`Watchexec::reconfigure()`][crate::Watchexec::reconfigure()].
 ///
 /// Use [`RuntimeConfig::default()`] to build a new one, or modify an existing one. This struct is
 /// marked non-exhaustive such that new options may be added without breaking change. You can make

@@ -9,7 +9,7 @@
 //! The main way to use this crate involves constructing a [`Watchexec`] around an
 //! [`InitConfig`][config::InitConfig] and a [`RuntimeConfig`][config::RuntimeConfig], then running
 //! it. [`Handler`][handler::Handler]s are used to hook into watchexec at various points. The
-//! runtime config can be changed at any time with the [`reconfig()`][Watchexec::reconfig()] method.
+//! runtime config can be changed at any time with the [`Watchexec::reconfigure()`] method.
 //!
 //! ```no_run
 //! # use color_eyre::eyre::Report;
@@ -45,7 +45,7 @@
 //!                     let conf = YourConfigFormat::load_from_file("watchexec.conf").await?;
 //!
 //!                     conf.apply(&mut c);
-//!                     w.reconfig(c.clone());
+//!                     w.reconfigure(c.clone());
 //!                     // tada! self-reconfiguring watchexec on config file change!
 //!
 //!                     break;

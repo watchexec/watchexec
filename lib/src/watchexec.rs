@@ -90,7 +90,7 @@ impl Watchexec {
 		}))
 	}
 
-	pub fn reconfig(&self, config: RuntimeConfig) -> Result<(), ReconfigError> {
+	pub fn reconfigure(&self, config: RuntimeConfig) -> Result<(), ReconfigError> {
 		debug!(?config, "reconfiguring");
 		self.action_watch.send(config.action)?;
 		self.fs_watch.send(config.fs)?;
