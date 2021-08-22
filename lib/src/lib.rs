@@ -11,36 +11,65 @@
 //! it. [`Handler`][handler::Handler]s are used to hook into watchexec at various points. The
 //! runtime config can be changed at any time with the [`reconfig()`][Watchexec::reconfig()] method.
 //!
-//! ```ignore // TODO: implement and switch to no_run
-//! use watchexec::{Watchexec, InitConfigBuilder, RuntimeConfigBuilder, Handler as _};
+//! ```no_run
+//! # use color_eyre::eyre::Report;
+//! # use std::convert::Infallible;
+//! use watchexec::{
+//!     Watchexec,
+//!     action::{Action, Outcome},
+//!     config::{InitConfigBuilder, RuntimeConfig},
+//!     handler::{Handler as _, PrintDebug},
+//! };
 //!
 //! #[tokio::main]
-//! async fn main() {
-//!     let init = InitConfigBuilder::default()
-//!         .error_handler(PrintDebug(std::io::stderr()));
+//! async fn main() -> Result<(), Report> {
+//!     let mut init = InitConfigBuilder::default();
+//!     init.on_error(PrintDebug(std::io::stderr()));
 //!
-//!     let mut runtime = RuntimeConfig::default()
+//!     let mut runtime = RuntimeConfig::default();
 //!     runtime.pathset(["watchexec.conf"]);
 //!
 //!     let conf = YourConfigFormat::load_from_file("watchexec.conf").await?;
 //!     conf.apply(&mut runtime);
 //!
-//!     let we = Watchexec::new(init.build().unwrap(), runtime.clone()).unwrap();
+//!     let we = Watchexec::new(init.build().unwrap(), runtime.clone())?;
 //!     let w = we.clone();
 //!
-//!     let c = config.clone();
-//!     config.on_event(|e| async move {
-//!         if e.path().map(|p| p.ends_with("watchexec.conf")).unwrap_or(false) {
-//!             let conf = YourConfigFormat::load_from_file("watchexec.conf").await?;
+//!     let c = runtime.clone();
+//!     runtime.on_action(move |action: Action| {
+//!         let mut c = c.clone();
+//!         let w = w.clone();
+//!         async move {
+//!             for event in &action.events {
+//!                 if event.paths().any(|p| p.ends_with("/watchexec.conf")) {
+//!                     let conf = YourConfigFormat::load_from_file("watchexec.conf").await?;
 //!
-//!             conf.apply(&mut runtime);
-//!             w.reconfigure(runtime.clone());
-//!             // tada! self-reconfiguring watchexec on config file change!
+//!                     conf.apply(&mut c);
+//!                     w.reconfig(c.clone());
+//!                     // tada! self-reconfiguring watchexec on config file change!
+//!
+//!                     break;
+//!                 }
+//!             }
+//!
+//!             action.outcome(Outcome::if_running(
+//!                 Outcome::DoNothing,
+//!                 Outcome::clear_and(Outcome::Start),
+//!             ));
+//!
+//!             Ok(())
+//! #           as Result<_, Infallible>
 //!         }
 //!     });
 //!
-//!     w.main().await.unwrap();
+//!     we.main().await?;
+//!     Ok(())
 //! }
+//! # struct YourConfigFormat;
+//! # impl YourConfigFormat {
+//! # async fn load_from_file(_: &str) -> Result<Self, Infallible> { Ok::<_, Infallible>(Self) }
+//! # fn apply(&self, _: &mut RuntimeConfig) { }
+//! # }
 //! ```
 //!
 //! Alternatively, one can use the modules exposed by the crate and the external crates such as
