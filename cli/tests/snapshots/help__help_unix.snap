@@ -26,7 +26,6 @@ FLAGS:
     -r, --restart              Restart the process if it's still running. Shorthand for --on-busy-update=restart
     -V, --version              Prints version information
     -v, --verbose              Print debugging messages (-v, -vv, -vvv; use -vvv for bug reports)
-    -W, --watch-when-idle      Deprecated alias for --on-busy-update=do-nothing, which will become the default in 2.0.
 
 OPTIONS:
     -d, --debounce <milliseconds>            Set the timeout between detected change and command execution, defaults to

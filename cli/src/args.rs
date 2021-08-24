@@ -130,6 +130,7 @@ pub fn get_args() -> Result<ArgMatches<'static>> {
 		.arg(Arg::with_name("watch-when-idle")
 			.help("Deprecated alias for --on-busy-update=do-nothing, which will become the default in 2.0.")
 			.short("W")
+			.hidden(true)
 			.long("watch-when-idle"))
 		.arg(Arg::with_name("notif") // TODO
 			.help("Send a desktop notification when watchexec notices a change (experimental, behaviour may change)")
