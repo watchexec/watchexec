@@ -1,25 +1,139 @@
+use std::{
+	convert::Infallible, env::current_dir, io::stderr, path::Path, str::FromStr, time::Duration,
+};
+
 use clap::ArgMatches;
 use color_eyre::eyre::{eyre, Result};
 use watchexec::{
+	action::{Action, Outcome, Signal},
 	command::Shell,
 	config::{InitConfig, RuntimeConfig},
+	event::Event,
+	fs::Watcher,
+	handler::PrintDisplay,
 };
 
 pub fn new(args: &ArgMatches<'static>) -> Result<(InitConfig, RuntimeConfig)> {
-	Ok((init(&args)?, runtime(&args)?))
+	Ok((init(args)?, runtime(args)?))
 }
 
-fn init(args: &ArgMatches<'static>) -> Result<InitConfig> {
-    let mut config = InitConfig::builder();
+fn init(_args: &ArgMatches<'static>) -> Result<InitConfig> {
+	let mut config = InitConfig::builder();
 
-    Ok(config.build()?)
+	config.on_error(PrintDisplay(stderr()));
+
+	Ok(config.build()?)
 }
 
 fn runtime(args: &ArgMatches<'static>) -> Result<RuntimeConfig> {
-    let mut config = RuntimeConfig::default();
+	let mut config = RuntimeConfig::default();
 
+	config.command(
+		args.values_of_lossy("command")
+			.ok_or_else(|| eyre!("(clap) Bug: command is not present"))?
+			.iter(),
+	);
 
-    Ok(config)
+	config.pathset(match args.values_of_os("paths") {
+		Some(paths) => paths.map(|os| Path::new(os).to_owned()).collect(),
+		None => vec![current_dir()?],
+	});
+
+	config.action_throttle(Duration::from_millis(
+		args.value_of("debounce").unwrap_or("100").parse()?,
+	));
+
+	if let Some(interval) = args.value_of("poll") {
+		config.file_watcher(Watcher::Poll(Duration::from_millis(interval.parse()?)));
+	}
+
+	config.command_shell(if args.is_present("no-shell") {
+		Shell::None
+	} else if let Some(s) = args.value_of("shell") {
+		if s.eq_ignore_ascii_case("powershell") {
+			Shell::Powershell
+		} else if s.eq_ignore_ascii_case("none") {
+			Shell::None
+		} else if s.eq_ignore_ascii_case("cmd") {
+			cmd_shell(s.into())
+		} else {
+			Shell::Unix(s.into())
+		}
+	} else {
+		default_shell()
+	});
+
+	let clear = args.is_present("clear");
+	let mut on_busy = args
+		.value_of("on-busy-update")
+		.unwrap_or("queue")
+		.to_owned();
+
+	if args.is_present("restart") {
+		on_busy = "restart".into();
+	}
+
+	if args.is_present("watch-when-idle") {
+		on_busy = "do-nothing".into();
+	}
+
+	let mut signal = args
+		.value_of("signal")
+		.map(|s| Signal::from_str(s))
+		.transpose()?
+		.unwrap_or(Signal::SIGTERM);
+
+	if args.is_present("kill") {
+		signal = Signal::SIGKILL;
+	}
+
+	let print_events = args.is_present("print-events");
+	let once = args.is_present("once");
+
+	config.on_action(move |action: Action| {
+		let fut = async { Ok::<(), Infallible>(()) };
+
+		if print_events {
+			for event in &action.events {
+				for path in event.paths() {
+					eprintln!("[EVENT] Path: {}", path.display());
+				}
+
+				for signal in event.signals() {
+					eprintln!("[EVENT] Signal: {:?}", signal);
+				}
+			}
+		}
+
+		if once && !action.events.iter().any(|e| e == &Event::default()) {
+			action.outcome(Outcome::Exit);
+			return fut;
+		}
+
+		let when_running = match (clear, on_busy.as_str()) {
+			(_, "do-nothing") => Outcome::DoNothing,
+			(true, "restart") => {
+				Outcome::both(Outcome::Stop, Outcome::both(Outcome::Clear, Outcome::Start))
+			}
+			(false, "restart") => Outcome::both(Outcome::Stop, Outcome::Start),
+			(_, "signal") => Outcome::Signal(signal),
+			// (true, "queue") => Outcome::wait(Outcome::both(Outcome::Clear, Outcome::Start)),
+			// (false, "queue") => Outcome::wait(Outcome::Start),
+			_ => Outcome::DoNothing,
+		};
+
+		let when_idle = if clear {
+			Outcome::both(Outcome::Clear, Outcome::Start)
+		} else {
+			Outcome::Start
+		};
+
+		action.outcome(Outcome::if_running(when_running, when_idle));
+
+		fut
+	});
+
+	Ok(config)
 }
 
 // until 2.0
