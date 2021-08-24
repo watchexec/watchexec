@@ -4,6 +4,8 @@ use std::{
 	collections::{HashMap, HashSet},
 	mem::take,
 	path::PathBuf,
+	sync::{Arc, Mutex},
+	time::Duration,
 };
 
 use notify::Watcher as _;
@@ -23,7 +25,7 @@ use crate::{
 #[non_exhaustive]
 pub enum Watcher {
 	Native,
-	Poll,
+	Poll(Duration),
 }
 
 impl Default for Watcher {
@@ -39,7 +41,8 @@ impl Watcher {
 	) -> Result<Box<dyn notify::Watcher + Send>, RuntimeError> {
 		match self {
 			Self::Native => notify::RecommendedWatcher::new(f).map(|w| Box::new(w) as _),
-			Self::Poll => notify::PollWatcher::new(f).map(|w| Box::new(w) as _),
+			Self::Poll(delay) => notify::PollWatcher::with_delay(Arc::new(Mutex::new(f)), delay)
+				.map(|w| Box::new(w) as _),
 		}
 		.map_err(|err| RuntimeError::FsWatcherCreate { kind: self, err })
 	}
