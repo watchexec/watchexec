@@ -1,7 +1,6 @@
 use std::env::var;
 
 use color_eyre::eyre::Result;
-use tracing_subscriber::filter::LevelFilter;
 use watchexec::{event::Event, Watchexec};
 
 mod args;
@@ -19,11 +18,11 @@ async fn main() -> Result<()> {
 
 	if args.is_present("verbose") {
 		tracing_subscriber::fmt()
-			.with_max_level(match args.occurrences_of("verbose") {
+			.with_env_filter(match args.occurrences_of("verbose") {
 				0 => unreachable!(),
-				1 => LevelFilter::INFO,
-				2 => LevelFilter::DEBUG,
-				_ => LevelFilter::TRACE,
+				1 => "watchexec=debug",
+				2 => "watchexec=trace",
+				_ => "trace",
 			})
 			.try_init()
 			.ok();

@@ -4,14 +4,7 @@ use std::{
 
 use clap::ArgMatches;
 use color_eyre::eyre::{eyre, Result};
-use watchexec::{
-	action::{Action, Outcome, Signal},
-	command::Shell,
-	config::{InitConfig, RuntimeConfig},
-	fs::Watcher,
-	handler::PrintDisplay,
-	signal::Signal as InputSignal,
-};
+use watchexec::{action::{Action, Outcome, Signal}, command::Shell, config::{InitConfig, RuntimeConfig}, event::Event, fs::Watcher, handler::PrintDisplay, signal::Signal as InputSignal};
 
 pub fn new(args: &ArgMatches<'static>) -> Result<(InitConfig, RuntimeConfig)> {
 	Ok((init(args)?, runtime(args)?))
@@ -94,13 +87,17 @@ fn runtime(args: &ArgMatches<'static>) -> Result<RuntimeConfig> {
 		let fut = async { Ok::<(), Infallible>(()) };
 
 		if print_events {
-			for event in &action.events {
+			for (n, event) in action.events.iter().enumerate() {
 				for path in event.paths() {
-					eprintln!("[EVENT] Path: {}", path.display());
+					eprintln!("[EVENT {}] Path: {} -- {:?}", n, path.display(), event.metadata);
 				}
 
 				for signal in event.signals() {
-					eprintln!("[EVENT] Signal: {:?}", signal);
+					eprintln!("[EVENT {}] Signal: {:?} -- {:?}", n, signal, event.metadata);
+				}
+
+				if event == &Event::default() {
+					eprintln!("[EVENT {}] Empty -- {:?}", n, event.metadata);
 				}
 			}
 		}
@@ -125,19 +122,7 @@ fn runtime(args: &ArgMatches<'static>) -> Result<RuntimeConfig> {
 		}
 
 		if signals.contains(&InputSignal::Interrupt) {
-			let out = if signals
-				.iter()
-				.filter(|s| **s == InputSignal::Interrupt)
-				.count() >= 2
-			{
-				Outcome::both(Outcome::Stop, Outcome::Exit)
-			} else if cfg!(windows) {
-				Outcome::if_running(Outcome::Stop, Outcome::Exit)
-			} else {
-				Outcome::if_running(Outcome::Signal(Signal::SIGINT), Outcome::Exit)
-			};
-
-			action.outcome(out);
+			action.outcome(Outcome::both(Outcome::Stop, Outcome::Exit));
 			return fut;
 		}
 
