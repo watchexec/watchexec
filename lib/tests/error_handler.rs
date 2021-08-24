@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use tokio::time::sleep;
 use watchexec::{
-	config::{InitConfigBuilder, RuntimeConfig},
+	config::{InitConfig, RuntimeConfig},
 	Watchexec,
 };
 
@@ -11,7 +11,7 @@ async fn main() -> color_eyre::eyre::Result<()> {
 	tracing_subscriber::fmt::init();
 	color_eyre::install()?;
 
-	let mut init = InitConfigBuilder::default();
+	let mut init = InitConfig::builder();
 	init.on_error(|err| async move {
 		eprintln!("Watchexec Runtime Error: {}", err);
 		Ok::<(), std::convert::Infallible>(())

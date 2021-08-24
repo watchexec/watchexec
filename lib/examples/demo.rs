@@ -1,6 +1,6 @@
 use watchexec::{
 	action::{Action, Outcome},
-	config::{InitConfigBuilder, RuntimeConfig},
+	config::{InitConfig, RuntimeConfig},
 	error::ReconfigError,
 	fs::Watcher,
 	signal::Signal,
@@ -13,14 +13,14 @@ async fn main() -> color_eyre::eyre::Result<()> {
 	tracing_subscriber::fmt::init();
 	color_eyre::install()?;
 
-	let mut init = InitConfigBuilder::default();
+	let mut init = InitConfig::builder();
 	init.on_error(|err| async move {
 		eprintln!("Watchexec Runtime Error: {}", err);
 		Ok::<(), std::convert::Infallible>(())
 	});
 
 	let mut runtime = RuntimeConfig::default();
-	runtime.pathset(["src"]);
+	runtime.pathset(["src", "dontexist", "examples"]);
 	runtime.command(["date"]);
 
 	let wx = Watchexec::new(init.build()?, runtime.clone())?;

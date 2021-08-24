@@ -139,6 +139,13 @@ pub struct InitConfig {
 	pub event_channel_size: usize,
 }
 
+impl InitConfig {
+	/// Returns a new [`InitConfigBuilder`] for builder the initial configuration.
+	pub fn builder() -> InitConfigBuilder {
+		InitConfigBuilder::default()
+	}
+}
+
 impl InitConfigBuilder {
 	/// Set the runtime error handler.
 	///

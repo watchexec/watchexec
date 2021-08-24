@@ -17,13 +17,13 @@
 //! use watchexec::{
 //!     Watchexec,
 //!     action::{Action, Outcome},
-//!     config::{InitConfigBuilder, RuntimeConfig},
+//!     config::{InitConfig, RuntimeConfig},
 //!     handler::{Handler as _, PrintDebug},
 //! };
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Report> {
-//!     let mut init = InitConfigBuilder::default();
+//!     let mut init = InitConfig::builder();
 //!     init.on_error(PrintDebug(std::io::stderr()));
 //!
 //!     let mut runtime = RuntimeConfig::default();
