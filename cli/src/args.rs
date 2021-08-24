@@ -27,6 +27,7 @@ pub fn get_args() -> Result<ArgMatches<'static>> {
 			.help("Watch a specific file or directory")
 			.short("w")
 			.long("watch")
+			.value_name("path")
 			.number_of_values(1)
 			.multiple(true)
 			.takes_value(true))

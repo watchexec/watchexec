@@ -10,7 +10,6 @@ USAGE:
     watchexec [FLAGS] [OPTIONS] <command>...
 
 FLAGS:
-        --changes-only         Only print path change information. Overridden by --verbose
     -c, --clear                Clear screen before executing command
     -h, --help                 Prints help information
         --no-default-ignore    Skip auto-ignoring of commonly ignored globs
@@ -23,9 +22,10 @@ FLAGS:
     -N, --notify               Send a desktop notification when watchexec notices a change (experimental, behaviour may
                                change)
     -p, --postpone             Wait until first change to execute command
+        --print-events         Print events that trigger actions
     -r, --restart              Restart the process if it's still running. Shorthand for --on-busy-update=restart
     -V, --version              Prints version information
-    -v, --verbose              Print debugging messages to stderr
+    -v, --verbose              Print debugging messages (-v, -vv, -vvv; use -vvv for bug reports)
     -W, --watch-when-idle      Deprecated alias for --on-busy-update=do-nothing, which will become the default in 2.0.
 
 OPTIONS:
@@ -40,7 +40,8 @@ OPTIONS:
     -w, --watch <path>...                    Watch a specific file or directory
         --force-poll <interval>              Force polling mode (interval in milliseconds)
         --shell <shell>                      Use a different shell, or `none`. E.g. --shell=bash
-    -s, --signal <signal>                    Send signal to process upon changes, e.g. SIGHUP
+    -s, --signal <signal>                    Specify the signal to send when using --on-busy-update=signal [default:
+                                             SIGTERM]
 
 ARGS:
     <command>...    Command to execute
