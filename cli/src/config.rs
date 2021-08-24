@@ -8,9 +8,9 @@ use watchexec::{
 	action::{Action, Outcome, Signal},
 	command::Shell,
 	config::{InitConfig, RuntimeConfig},
-	event::Event,
 	fs::Watcher,
 	handler::PrintDisplay,
+	signal::Signal as InputSignal,
 };
 
 pub fn new(args: &ArgMatches<'static>) -> Result<(InitConfig, RuntimeConfig)> {
@@ -105,8 +105,59 @@ fn runtime(args: &ArgMatches<'static>) -> Result<RuntimeConfig> {
 			}
 		}
 
-		if once && !action.events.iter().any(|e| e == &Event::default()) {
-			action.outcome(Outcome::Exit);
+		if once {
+			// TODO
+			// action.outcome(Outcome::both(Outcome::Start, Outcome::both(Outcome::Wait, Outcome::Exit));
+			return fut;
+		}
+
+		let signals: Vec<InputSignal> = action.events.iter().flat_map(|e| e.signals()).collect();
+		let has_paths = action
+			.events
+			.iter()
+			.flat_map(|e| e.paths())
+			.next()
+			.is_some();
+
+		if signals.contains(&InputSignal::Terminate) {
+			action.outcome(Outcome::both(Outcome::Stop, Outcome::Exit));
+			return fut;
+		}
+
+		if signals.contains(&InputSignal::Interrupt) {
+			let out = if signals
+				.iter()
+				.filter(|s| **s == InputSignal::Interrupt)
+				.count() >= 2
+			{
+				Outcome::both(Outcome::Stop, Outcome::Exit)
+			} else if cfg!(windows) {
+				Outcome::if_running(Outcome::Stop, Outcome::Exit)
+			} else {
+				Outcome::if_running(Outcome::Signal(Signal::SIGINT), Outcome::Exit)
+			};
+
+			action.outcome(out);
+			return fut;
+		}
+
+		if !signals.is_empty() && !has_paths {
+			let mut out = Outcome::DoNothing;
+			for sig in signals {
+				out = Outcome::both(
+					out,
+					Outcome::Signal(match sig {
+						InputSignal::Hangup => Signal::SIGHUP,
+						InputSignal::Interrupt => Signal::SIGINT,
+						InputSignal::Quit => Signal::SIGQUIT,
+						InputSignal::Terminate => Signal::SIGTERM,
+						InputSignal::User1 => Signal::SIGUSR1,
+						InputSignal::User2 => Signal::SIGUSR2,
+					}),
+				);
+			}
+
+			action.outcome(out);
 			return fut;
 		}
 
