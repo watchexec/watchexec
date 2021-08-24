@@ -14,7 +14,7 @@ use std::{
 use crate::signal::Signal;
 
 /// An event, as far as watchexec cares about.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Event {
 	pub particulars: Vec<Particle>,
 	pub metadata: HashMap<String, Vec<String>>,

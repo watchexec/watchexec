@@ -18,6 +18,7 @@ use crate::{
 	action,
 	config::{InitConfig, RuntimeConfig},
 	error::{CriticalError, ReconfigError, RuntimeError},
+	event::Event,
 	fs,
 	handler::{rte, Handler},
 	signal,
@@ -29,6 +30,8 @@ pub struct Watchexec {
 
 	action_watch: watch::Sender<action::WorkingData>,
 	fs_watch: watch::Sender<fs::WorkingData>,
+
+	event_input: mpsc::Sender<Event>,
 }
 
 impl fmt::Debug for Watchexec {
@@ -48,8 +51,11 @@ impl Watchexec {
 	) -> Result<Arc<Self>, CriticalError> {
 		debug!(?init, ?runtime, pid=%std::process::id(), "initialising");
 
+		let (ev_s, ev_r) = mpsc::channel(init.event_channel_size);
 		let (ac_s, ac_r) = watch::channel(take(&mut runtime.action));
 		let (fs_s, fs_r) = watch::channel(fs::WorkingData::default());
+
+		let event_input = ev_s.clone();
 
 		// TODO: figure out how to do this (aka start the fs work) after the main task start lock
 		trace!("sending initial config to fs worker");
@@ -65,7 +71,6 @@ impl Watchexec {
 			debug!("starting main task");
 
 			let (er_s, er_r) = mpsc::channel(init.error_channel_size);
-			let (ev_s, ev_r) = mpsc::channel(init.event_channel_size);
 
 			let eh = replace(&mut init.error_handler, Box::new(()) as _);
 
@@ -104,6 +109,8 @@ impl Watchexec {
 
 			action_watch: ac_s,
 			fs_watch: fs_s,
+
+			event_input,
 		}))
 	}
 
@@ -111,6 +118,17 @@ impl Watchexec {
 		debug!(?config, "reconfiguring");
 		self.action_watch.send(config.action)?;
 		self.fs_watch.send(config.fs)?;
+		Ok(())
+	}
+
+	/// Inputs an [`Event`] directly.
+	///
+	/// This can be useful for testing, for custom event sources, or for one-off action triggers
+	/// (for example, on start).
+	///
+	/// Hint: use [`Event::default()`] to send an empty event (which won't be filtered).
+	pub async fn send_event(&self, event: Event) -> Result<(), CriticalError> {
+		self.event_input.send(event).await?;
 		Ok(())
 	}
 

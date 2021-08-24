@@ -29,10 +29,15 @@ pub enum CriticalError {
 	#[diagnostic(code(watchexec::critical::io_error))]
 	IoError(#[from] std::io::Error),
 
-	/// Error received when an event cannot be sent to the errors channel.
+	/// Error received when a runtime error cannot be sent to the errors channel.
 	#[error("cannot send internal runtime error: {0}")]
 	#[diagnostic(code(watchexec::critical::error_channel_send))]
 	ErrorChannelSend(#[from] mpsc::error::SendError<RuntimeError>),
+
+	/// Error received when an event cannot be sent to the events channel.
+	#[error("cannot send event to internal channel: {0}")]
+	#[diagnostic(code(watchexec::critical::event_channel_send))]
+	EventChannelSend(#[from] mpsc::error::SendError<Event>),
 
 	/// Error received when joining the main watchexec task.
 	#[error("main task join: {0}")]
