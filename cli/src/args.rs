@@ -1,21 +1,16 @@
 use std::{
-    env,
-    ffi::OsString,
-    fs::File,
-    io::{BufRead, BufReader},
-    path::{Path, PathBuf, MAIN_SEPARATOR},
-    time::Duration,
+	env,
+	ffi::OsString,
+	fs::File,
+	io::{BufRead, BufReader},
+	path::Path,
 };
 
-use clap::{crate_version, value_t, values_t, App, Arg};
+use clap::{crate_version, App, Arg, ArgMatches};
 use color_eyre::eyre::{Context, Report, Result};
-use log::LevelFilter;
-use watchexec::{config::ConfigBuilder, run::OnBusyUpdate, Shell};
 
-use crate::handler::CliHandler;
-
-pub fn get_args() -> Result<CliHandler> {
-    let app = App::new("watchexec")
+pub fn get_args() -> Result<ArgMatches<'static>> {
+	let app = App::new("watchexec")
         .version(crate_version!())
         .about("Execute commands when watched files change")
         .after_help("Use @argfile as first argument to load arguments from the file `argfile` (one argument per line) which will be inserted in place of the @argfile (further arguments on the CLI will override or add onto those in the file).")
@@ -65,6 +60,7 @@ pub fn get_args() -> Result<CliHandler> {
                  .value_name("milliseconds")
                  .short("d")
                  .long("debounce"))
+
         .arg(Arg::with_name("verbose")
                  .help("Print debugging messages to stderr")
                  .short("v")
@@ -72,6 +68,7 @@ pub fn get_args() -> Result<CliHandler> {
         .arg(Arg::with_name("changes")
                  .help("Only print path change information. Overridden by --verbose")
                  .long("changes-only"))
+
         .arg(Arg::with_name("filter")
                  .help("Ignore all modifications except those matching the pattern")
                  .short("f")
@@ -137,173 +134,25 @@ pub fn get_args() -> Result<CliHandler> {
                  .short("N")
                  .long("notify"));
 
-    let mut raw_args: Vec<OsString> = env::args_os().collect();
+	let mut raw_args: Vec<OsString> = env::args_os().collect();
 
-    if let Some(first) = raw_args.get(1).and_then(|s| s.to_str()) {
-        if let Some(arg_path) = first.strip_prefix('@').map(Path::new) {
-            let arg_file = BufReader::new(
-                File::open(arg_path)
-                    .wrap_err_with(|| format!("Failed to open argument file {:?}", arg_path))?,
-            );
+	if let Some(first) = raw_args.get(1).and_then(|s| s.to_str()) {
+		if let Some(arg_path) = first.strip_prefix('@').map(Path::new) {
+			let arg_file = BufReader::new(
+				File::open(arg_path)
+					.wrap_err_with(|| format!("Failed to open argument file {:?}", arg_path))?,
+			);
 
-            let mut more_args: Vec<OsString> = arg_file
-                .lines()
-                .map(|l| l.map(OsString::from).map_err(Report::from))
-                .collect::<Result<_>>()?;
+			let mut more_args: Vec<OsString> = arg_file
+				.lines()
+				.map(|l| l.map(OsString::from).map_err(Report::from))
+				.collect::<Result<_>>()?;
 
-            more_args.insert(0, raw_args.remove(0));
-            more_args.extend(raw_args.into_iter().skip(1));
-            raw_args = more_args;
-        }
-    }
+			more_args.insert(0, raw_args.remove(0));
+			more_args.extend(raw_args.into_iter().skip(1));
+			raw_args = more_args;
+		}
+	}
 
-    let args = app.get_matches_from(raw_args);
-    let mut builder = ConfigBuilder::default();
-
-    let cmd: Vec<String> = values_t!(args.values_of("command"), String)?;
-    builder.cmd(cmd);
-
-    let paths: Vec<PathBuf> = values_t!(args.values_of("path"), String)
-        .unwrap_or_else(|_| vec![".".into()])
-        .iter()
-        .map(|string_path| string_path.into())
-        .collect();
-    builder.paths(paths);
-
-    // Treat --kill as --signal SIGKILL (for compatibility with deprecated syntax)
-    if args.is_present("kill") {
-        builder.signal("SIGKILL");
-    }
-
-    if let Some(signal) = args.value_of("signal") {
-        builder.signal(signal);
-    }
-
-    let mut filters = values_t!(args.values_of("filter"), String).unwrap_or_else(|_| Vec::new());
-    if let Some(extensions) = args.values_of("extensions") {
-        for exts in extensions {
-            // TODO: refactor with flatten()
-            filters.extend(exts.split(',').filter_map(|ext| {
-                if ext.is_empty() {
-                    None
-                } else {
-                    Some(format!("*.{}", ext.replace(".", "")))
-                }
-            }));
-        }
-    }
-
-    builder.filters(filters);
-
-    let mut ignores = vec![];
-    let default_ignores = vec![
-        format!("**{}.DS_Store", MAIN_SEPARATOR),
-        String::from("*.py[co]"),
-        String::from("#*#"),
-        String::from(".#*"),
-        String::from(".*.kate-swp"),
-        String::from(".*.sw?"),
-        String::from(".*.sw?x"),
-        format!("**{}.git{}**", MAIN_SEPARATOR, MAIN_SEPARATOR),
-        format!("**{}.hg{}**", MAIN_SEPARATOR, MAIN_SEPARATOR),
-        format!("**{}.svn{}**", MAIN_SEPARATOR, MAIN_SEPARATOR),
-    ];
-
-    if args.occurrences_of("no-default-ignore") == 0 {
-        ignores.extend(default_ignores)
-    };
-    ignores.extend(values_t!(args.values_of("ignore"), String).unwrap_or_else(|_| Vec::new()));
-
-    builder.ignores(ignores);
-
-    if args.occurrences_of("poll") > 0 {
-        builder.poll_interval(Duration::from_millis(
-            value_t!(args.value_of("poll"), u64).unwrap_or_else(|e| e.exit()),
-        ));
-    }
-
-    if args.occurrences_of("debounce") > 0 {
-        builder.debounce(Duration::from_millis(
-            value_t!(args.value_of("debounce"), u64).unwrap_or_else(|e| e.exit()),
-        ));
-    }
-
-    builder.on_busy_update(if args.is_present("restart") {
-        OnBusyUpdate::Restart
-    } else if args.is_present("watch-when-idle") {
-        OnBusyUpdate::DoNothing
-    } else if let Some(s) = args.value_of("on-busy-update") {
-        match s.as_bytes() {
-            b"do-nothing" => OnBusyUpdate::DoNothing,
-            b"queue" => OnBusyUpdate::Queue,
-            b"restart" => OnBusyUpdate::Restart,
-            b"signal" => OnBusyUpdate::Signal,
-            _ => unreachable!("clap restricts on-busy-updates values"),
-        }
-    } else {
-        // will become DoNothing in v2.0
-        OnBusyUpdate::Queue
-    });
-
-    builder.shell(if args.is_present("no-shell") {
-        Shell::None
-    } else if let Some(s) = args.value_of("shell") {
-        if s.eq_ignore_ascii_case("powershell") {
-            Shell::Powershell
-        } else if s.eq_ignore_ascii_case("none") {
-            Shell::None
-        } else if s.eq_ignore_ascii_case("cmd") {
-            cmd_shell(s.into())
-        } else {
-            Shell::Unix(s.into())
-        }
-    } else {
-        default_shell()
-    });
-
-    builder.clear_screen(args.is_present("clear"));
-    builder.run_initially(!args.is_present("postpone"));
-    builder.no_meta(args.is_present("no-meta"));
-    builder.no_environment(args.is_present("no-environment"));
-    builder.no_vcs_ignore(args.is_present("no-vcs-ignore"));
-    builder.no_ignore(args.is_present("no-ignore"));
-    builder.poll(args.occurrences_of("poll") > 0);
-    builder.use_process_group(!args.is_present("no-process-group"));
-
-    let mut config = builder.build()?;
-    if args.is_present("once") {
-        config.once = true;
-    }
-
-    let loglevel = if args.is_present("verbose") {
-        LevelFilter::Debug
-    } else if args.is_present("changes") {
-        LevelFilter::Info
-    } else {
-        LevelFilter::Warn
-    };
-
-    CliHandler::new(config, loglevel, args.is_present("notif"))
-}
-
-// until 2.0
-#[cfg(windows)]
-fn default_shell() -> Shell {
-    Shell::Cmd
-}
-
-#[cfg(not(windows))]
-fn default_shell() -> Shell {
-    Shell::default()
-}
-
-// because Shell::Cmd is only on windows
-#[cfg(windows)]
-fn cmd_shell(_: String) -> Shell {
-    Shell::Cmd
-}
-
-#[cfg(not(windows))]
-fn cmd_shell(s: String) -> Shell {
-    Shell::Unix(s)
+	Ok(app.get_matches_from(raw_args))
 }

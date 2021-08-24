@@ -1,20 +1,35 @@
-use std::io::Write;
+use std::env::var;
 
 use color_eyre::eyre::Result;
-use watchexec::watch;
+use tracing_subscriber::filter::LevelFilter;
+use watchexec::Watchexec;
 
 mod args;
-mod handler;
+mod config;
 
-fn main() -> Result<()> {
-    color_eyre::install()?;
-    let handler = args::get_args()?;
+#[tokio::main]
+async fn main() -> Result<()> {
+	color_eyre::install()?;
 
-    env_logger::Builder::new()
-        .format(|buf, r| writeln!(buf, "*** {}", r.args()))
-        .filter(None, handler.log_level)
-        .init();
+	if var("RUST_LOG").is_ok() {
+		tracing_subscriber::fmt::init();
+	}
 
-    watch(&handler)?;
-    Ok(())
+	let args = args::get_args()?;
+
+	if args.is_present("verbose") {
+		tracing_subscriber::fmt()
+			.with_max_level(LevelFilter::DEBUG)
+			.try_init()
+			.ok();
+	}
+
+	let (init, runtime) = config::new(&args)?;
+
+	let config = runtime.clone();
+	let wx = Watchexec::new(init, runtime)?;
+
+	wx.main().await??;
+
+	Ok(())
 }
