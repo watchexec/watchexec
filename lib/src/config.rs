@@ -66,8 +66,12 @@ impl RuntimeConfig {
 	}
 
 	/// Set the command to run on action.
-	pub fn command<'cmd>(&mut self, command: impl IntoIterator<Item = &'cmd str>) -> &mut Self {
-		self.action.command = command.into_iter().map(|c| c.to_owned()).collect();
+	pub fn command<I, S>(&mut self, command: I) -> &mut Self
+	where
+		I: IntoIterator<Item = S>,
+		S: AsRef<str>,
+	{
+		self.action.command = command.into_iter().map(|c| c.as_ref().to_owned()).collect();
 		self
 	}
 
