@@ -7,7 +7,7 @@ use std::{
 };
 
 use atomic_take::AtomicTake;
-use command_group::{AsyncCommandGroup, Signal};
+use command_group::AsyncCommandGroup;
 use once_cell::sync::OnceCell;
 use tokio::{
 	sync::{mpsc, watch},
@@ -21,6 +21,8 @@ use crate::{
 	event::Event,
 	handler::{rte, Handler},
 };
+
+pub use command_group::Signal;
 
 #[derive(Clone)]
 #[non_exhaustive]
