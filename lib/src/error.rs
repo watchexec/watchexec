@@ -133,10 +133,20 @@ pub enum RuntimeError {
 	#[diagnostic(code(watchexec::runtime::handler))]
 	Handler { ctx: &'static str, err: String },
 
+	/// Error received when a [`Handler`][crate::handler::Handler] which has been passed a lock has kept that lock open after the handler has completed.
+	#[error("{0} handler returned while holding a lock alive")]
+	#[diagnostic(code(watchexec::runtime::handler_lock_held))]
+	HandlerLockHeld(&'static str),
+
 	/// Error received when operating on a process.
 	#[error("when operating on process: {0}")]
 	#[diagnostic(code(watchexec::runtime::process))]
 	Process(#[source] std::io::Error),
+
+	/// Error received when a process did not start correctly, or finished before we could even tell.
+	#[error("process was dead on arrival")]
+	#[diagnostic(code(watchexec::runtime::process_doa))]
+	ProcessDeadOnArrival,
 
 	/// Error received when clearing the screen.
 	#[error("clear screen: {0}")]

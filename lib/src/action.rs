@@ -2,7 +2,7 @@
 
 use std::{
 	fmt,
-	sync::Arc,
+	sync::{Arc, Weak},
 	time::{Duration, Instant},
 };
 
@@ -10,7 +10,8 @@ use atomic_take::AtomicTake;
 use command_group::AsyncCommandGroup;
 use once_cell::sync::OnceCell;
 use tokio::{
-	sync::{mpsc, watch},
+	process::Command,
+	sync::{mpsc, watch, Mutex, OwnedMutexGuard},
 	time::timeout,
 };
 use tracing::{debug, trace, warn};
@@ -30,6 +31,9 @@ pub struct WorkingData {
 	pub throttle: Duration,
 
 	pub action_handler: Arc<AtomicTake<Box<dyn Handler<Action> + Send>>>,
+	pub pre_spawn_handler: Arc<AtomicTake<Box<dyn Handler<PreSpawn> + Send>>>,
+	pub post_spawn_handler: Arc<AtomicTake<Box<dyn Handler<PostSpawn> + Send>>>,
+	pub completion_handler: Arc<AtomicTake<Box<dyn Handler<Action> + Send>>>,
 
 	pub shell: Shell,
 
@@ -56,6 +60,9 @@ impl Default for WorkingData {
 			// set to 50ms here, but will remain 100ms on cli until 2022
 			throttle: Duration::from_millis(50),
 			action_handler: Arc::new(AtomicTake::new(Box::new(()) as _)),
+			pre_spawn_handler: Arc::new(AtomicTake::new(Box::new(()) as _)),
+			post_spawn_handler: Arc::new(AtomicTake::new(Box::new(()) as _)),
+			completion_handler: Arc::new(AtomicTake::new(Box::new(()) as _)),
 			shell: Shell::default(),
 			command: Vec::new(),
 			grouped: true,
@@ -81,9 +88,55 @@ impl Action {
 	///
 	/// This takes `self` and `Action` is not `Clone`, so it's only possible to call it once.
 	/// Regardless, if you _do_ manage to call it twice, it will do nothing beyond the first call.
+	///
+	/// See the [`Action`] documentation about handlers to learn why it's a bad idea to clone or
+	/// send it elsewhere, and what kind of handlers you cannot use.
 	pub fn outcome(self, outcome: Outcome) {
 		self.outcome.set(outcome).ok();
 	}
+}
+
+#[derive(Debug)]
+#[non_exhaustive]
+pub struct PreSpawn {
+	pub command: Vec<String>,
+	command_w: Weak<Mutex<Command>>,
+}
+
+impl PreSpawn {
+	fn new(command: Command, cmd: Vec<String>) -> (Self, Arc<Mutex<Command>>) {
+		let arc = Arc::new(Mutex::new(command));
+		(
+			Self {
+				command: cmd,
+				command_w: Arc::downgrade(&arc),
+			},
+			arc.clone(),
+		)
+	}
+
+	/// Get write access to the command that will be spawned.
+	///
+	/// Keeping the lock alive beyond the end of the handler may cause the command to be cancelled,
+	/// but note no guarantees are made on this behaviour. Just don't do it. See the [`Action`]
+	/// documentation about handlers for more.
+	///
+	/// This will always return `Some()` under normal circumstances.
+	pub async fn command(&self) -> Option<OwnedMutexGuard<Command>> {
+		if let Some(arc) = self.command_w.upgrade() {
+			Some(arc.lock_owned().await)
+		} else {
+			None
+		}
+	}
+}
+
+#[derive(Debug)]
+#[non_exhaustive]
+pub struct PostSpawn {
+	pub command: Vec<String>,
+	pub id: u32,
+	pub grouped: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -149,9 +202,16 @@ pub async fn worker(
 ) -> Result<(), CriticalError> {
 	let mut last = Instant::now();
 	let mut set = Vec::new();
+	let mut process: Option<Process> = None;
+
 	let mut action_handler =
 		{ working.borrow().action_handler.take() }.ok_or(CriticalError::MissingHandler)?;
-	let mut process: Option<Process> = None;
+	let mut pre_spawn_handler =
+		{ working.borrow().pre_spawn_handler.take() }.ok_or(CriticalError::MissingHandler)?;
+	let mut post_spawn_handler =
+		{ working.borrow().post_spawn_handler.take() }.ok_or(CriticalError::MissingHandler)?;
+	let mut completion_handler =
+		{ working.borrow().completion_handler.take() }.ok_or(CriticalError::MissingHandler)?;
 
 	loop {
 		let maxtime = if set.is_empty() {
@@ -207,12 +267,30 @@ pub async fn worker(
 			action_handler = h;
 		}
 
+		if let Some(h) = working.borrow().pre_spawn_handler.take() {
+			trace!("pre-spawn handler updated");
+			pre_spawn_handler = h;
+		}
+
+		if let Some(h) = working.borrow().post_spawn_handler.take() {
+			trace!("post-spawn handler updated");
+			post_spawn_handler = h;
+		}
+
+		if let Some(h) = working.borrow().completion_handler.take() {
+			trace!("completion handler updated");
+			completion_handler = h;
+		}
+
+		debug!("running action handler");
 		let outcome = action.outcome.clone();
 		let err = action_handler
 			.handle(action)
 			.map_err(|e| rte("action worker", e));
 		if let Err(err) = err {
 			errors.send(err).await?;
+			debug!("action handler errored, skipping");
+			continue;
 		}
 
 		let outcome = outcome.get().cloned().unwrap_or_default();
@@ -231,7 +309,14 @@ pub async fn worker(
 		debug!(?outcome, "outcome resolved");
 
 		let w = working.borrow().clone();
-		let rerr = apply_outcome(outcome, w, &mut process).await;
+		let rerr = apply_outcome(
+			outcome,
+			w,
+			&mut process,
+			&mut pre_spawn_handler,
+			&mut post_spawn_handler,
+		)
+		.await;
 		if let Err(err) = rerr {
 			errors.send(err).await?;
 		}
@@ -246,6 +331,8 @@ async fn apply_outcome(
 	outcome: Outcome,
 	working: WorkingData,
 	process: &mut Option<Process>,
+	pre_spawn_handler: &mut Box<dyn Handler<PreSpawn> + Send>,
+	post_spawn_handler: &mut Box<dyn Handler<PostSpawn> + Send>,
 ) -> Result<(), RuntimeError> {
 	match (process.as_mut(), outcome) {
 		(_, Outcome::DoNothing) => {}
@@ -266,18 +353,40 @@ async fn apply_outcome(
 			if working.command.is_empty() {
 				warn!("tried to start a command without anything to run");
 			} else {
-				let mut command = working.shell.to_command(&working.command);
+				let command = working.shell.to_command(&working.command);
+				let (pre_spawn, command) = PreSpawn::new(command, working.command.clone());
 
-				// TODO: pre-spawn hook
+				debug!("running pre-spawn handler");
+				pre_spawn_handler
+					.handle(pre_spawn)
+					.map_err(|e| rte("action pre-spawn", e))?;
+
+				let mut command = Arc::try_unwrap(command)
+					.map_err(|_| RuntimeError::HandlerLockHeld("pre-spawn"))?
+					.into_inner();
 
 				debug!(grouped=%working.grouped, ?command, "spawning command");
-				let proc = if working.grouped {
-					Process::Grouped(command.group_spawn()?)
+				let (proc, id) = if working.grouped {
+					let proc = command.group_spawn()?;
+					let id = proc.id().ok_or(RuntimeError::ProcessDeadOnArrival)?;
+					debug!(pgid=%id, "process group spawned");
+					(Process::Grouped(proc), id)
 				} else {
-					Process::Ungrouped(command.spawn()?)
+					let proc = command.spawn()?;
+					let id = proc.id().ok_or(RuntimeError::ProcessDeadOnArrival)?;
+					debug!(pid=%id, "process spawned");
+					(Process::Ungrouped(proc), id)
 				};
 
-				// TODO: post-spawn hook
+				debug!("running post-spawn handler");
+				let post_spawn = PostSpawn {
+					command: working.command.clone(),
+					id,
+					grouped: working.grouped,
+				};
+				post_spawn_handler
+					.handle(post_spawn)
+					.map_err(|e| rte("action post-spawn", e))?;
 
 				*process = Some(proc);
 
@@ -295,15 +404,43 @@ async fn apply_outcome(
 		}
 
 		(Some(_), Outcome::IfRunning(then, _)) => {
-			apply_outcome(*then, working, process).await?;
+			apply_outcome(
+				*then,
+				working,
+				process,
+				pre_spawn_handler,
+				post_spawn_handler,
+			)
+			.await?;
 		}
 		(None, Outcome::IfRunning(_, otherwise)) => {
-			apply_outcome(*otherwise, working, process).await?;
+			apply_outcome(
+				*otherwise,
+				working,
+				process,
+				pre_spawn_handler,
+				post_spawn_handler,
+			)
+			.await?;
 		}
 
 		(_, Outcome::Both(one, two)) => {
-			apply_outcome(*one, working.clone(), process).await?;
-			apply_outcome(*two, working, process).await?;
+			apply_outcome(
+				*one,
+				working.clone(),
+				process,
+				pre_spawn_handler,
+				post_spawn_handler,
+			)
+			.await?;
+			apply_outcome(
+				*two,
+				working,
+				process,
+				pre_spawn_handler,
+				post_spawn_handler,
+			)
+			.await?;
 		}
 	}
 

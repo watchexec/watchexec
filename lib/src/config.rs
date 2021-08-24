@@ -5,7 +5,13 @@ use std::{fmt, path::Path, sync::Arc, time::Duration};
 use atomic_take::AtomicTake;
 use derive_builder::Builder;
 
-use crate::{action::Action, command::Shell, error::RuntimeError, fs::Watcher, handler::Handler};
+use crate::{
+	action::{Action, PostSpawn, PreSpawn},
+	command::Shell,
+	error::RuntimeError,
+	fs::Watcher,
+	handler::Handler,
+};
 
 /// Runtime configuration for [`Watchexec`][crate::Watchexec].
 ///
@@ -90,6 +96,43 @@ impl RuntimeConfig {
 	/// Passing this config to `Watchexec::new()` will cause a `CriticalError::MissingHandler`.
 	pub fn keep_action(&mut self) -> &mut Self {
 		self.action.action_handler = Arc::new(AtomicTake::empty());
+		self
+	}
+
+	/// Set the pre-spawn handler.
+	///
+	/// TODO: notes on locks held by handler
+	pub fn on_pre_spawn(&mut self, handler: impl Handler<PreSpawn> + Send + 'static) -> &mut Self {
+		self.action.pre_spawn_handler = Arc::new(AtomicTake::new(Box::new(handler) as _));
+		self
+	}
+
+	/// Keep the pre-spawn handler the same.
+	///
+	/// This is especially useful when reconfiguring _within_ the action handler.
+	///
+	/// Passing this config to `Watchexec::new()` will cause a `CriticalError::MissingHandler`.
+	pub fn keep_pre_spawn(&mut self) -> &mut Self {
+		self.action.pre_spawn_handler = Arc::new(AtomicTake::empty());
+		self
+	}
+
+	/// Set the post-spawn handler.
+	pub fn on_post_spawn(
+		&mut self,
+		handler: impl Handler<PostSpawn> + Send + 'static,
+	) -> &mut Self {
+		self.action.post_spawn_handler = Arc::new(AtomicTake::new(Box::new(handler) as _));
+		self
+	}
+
+	/// Keep the post-spawn handler the same.
+	///
+	/// This is especially useful when reconfiguring _within_ the action handler.
+	///
+	/// Passing this config to `Watchexec::new()` will cause a `CriticalError::MissingHandler`.
+	pub fn keep_post_spawn(&mut self) -> &mut Self {
+		self.action.post_spawn_handler = Arc::new(AtomicTake::empty());
 		self
 	}
 }
