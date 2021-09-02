@@ -229,6 +229,7 @@ fn process_event(
 
 	let mut particulars = Vec::with_capacity(4);
 	particulars.push(Particle::Source(Source::Filesystem));
+	particulars.push(Particle::FileEventKind(nev.kind));
 
 	for path in nev.paths {
 		particulars.push(Particle::Path(dunce::canonicalize(path)?));
@@ -238,9 +239,19 @@ fn process_event(
 		particulars.push(Particle::Process(pid));
 	}
 
+	let mut metadata = HashMap::new();
+
+	if let Some(uid) = nev.attrs.info() {
+		metadata.insert("file-event-info".to_string(), vec![uid.to_string()]);
+	}
+
+	if let Some(src) = nev.attrs.source() {
+		metadata.insert("notify-backend".to_string(), vec![src.to_string()]);
+	}
+
 	let ev = Event {
 		particulars,
-		metadata: HashMap::new(), // TODO
+		metadata,
 	};
 
 	trace!(event = ?ev, "processed notify event into watchexec event");

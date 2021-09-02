@@ -13,6 +13,8 @@ use std::{
 	process::ExitStatus,
 };
 
+use notify::EventKind;
+
 use crate::signal::Signal;
 
 /// An event, as far as watchexec cares about.
@@ -28,6 +30,7 @@ pub struct Event {
 #[non_exhaustive]
 pub enum Particle {
 	Path(PathBuf),
+	FileEventKind(EventKind),
 	Source(Source),
 	Process(u32),
 	Signal(Signal),
@@ -69,6 +72,7 @@ impl fmt::Display for Event {
 		for p in &self.particulars {
 			match p {
 				Particle::Path(p) => write!(f, " path={}", p.display())?,
+				Particle::FileEventKind(kind) => write!(f, " kind={:?}", kind)?,
 				Particle::Source(s) => write!(f, " source={:?}", s)?,
 				Particle::Process(p) => write!(f, " process={}", p)?,
 				Particle::Signal(s) => write!(f, " signal={:?}", s)?,
