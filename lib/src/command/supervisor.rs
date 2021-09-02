@@ -141,20 +141,16 @@ impl Supervisor {
 	}
 
 	#[cfg(unix)]
-	pub async fn signal(&self, signal: Signal) -> Result<(), RuntimeError> {
+	pub async fn signal(&self, signal: Signal) {
 		trace!(?signal, "sending signal intervention");
-		self.intervene
-			.send(Intervention::Signal(signal))
-			.await
-			.map_err(|err| RuntimeError::InternalSupervisor(err.to_string()))
+		self.intervene.send(Intervention::Signal(signal)).await.ok();
+		// only errors on channel closed, and that only happens if the process is dead
 	}
 
-	pub async fn kill(&self) -> Result<(), RuntimeError> {
+	pub async fn kill(&self) {
 		trace!("sending kill intervention");
-		self.intervene
-			.send(Intervention::Kill)
-			.await
-			.map_err(|err| RuntimeError::InternalSupervisor(err.to_string()))
+		self.intervene.send(Intervention::Kill).await.ok();
+		// only errors on channel closed, and that only happens if the process is dead
 	}
 
 	pub fn is_running(&self) -> bool {

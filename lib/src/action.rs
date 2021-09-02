@@ -328,7 +328,7 @@ async fn apply_outcome(
 			return Err(RuntimeError::Exit);
 		}
 		(Some(p), Outcome::Stop) => {
-			p.kill().await?;
+			p.kill().await;
 			p.wait().await?;
 			*process = None;
 		}
@@ -377,7 +377,7 @@ async fn apply_outcome(
 
 		(Some(p), Outcome::Signal(sig)) => {
 			// TODO: windows
-			p.signal(sig).await?;
+			p.signal(sig).await;
 		}
 
 		(_, Outcome::Clear) => {
