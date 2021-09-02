@@ -8,6 +8,7 @@
 
 use std::{
 	collections::HashMap,
+	fmt,
 	path::{Path, PathBuf},
 	process::ExitStatus,
 };
@@ -59,5 +60,27 @@ impl Event {
 			Particle::Signal(s) => Some(*s),
 			_ => None,
 		})
+	}
+}
+
+impl fmt::Display for Event {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		write!(f, "Event")?;
+		for p in &self.particulars {
+			match p {
+				Particle::Path(p) => write!(f, " path={}", p.display())?,
+				Particle::Source(s) => write!(f, " source={:?}", s)?,
+				Particle::Process(p) => write!(f, " process={}", p)?,
+				Particle::Signal(s) => write!(f, " signal={:?}", s)?,
+				Particle::ProcessCompletion(None) => write!(f, " command-completed")?,
+				Particle::ProcessCompletion(Some(c)) => write!(f, " command-completed({})", c)?,
+			}
+		}
+
+		if !self.metadata.is_empty() {
+			write!(f, " meta: {:?}", self.metadata)?;
+		}
+
+		Ok(())
 	}
 }
