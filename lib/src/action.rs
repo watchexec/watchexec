@@ -148,9 +148,9 @@ pub enum Outcome {
 	/// If the command isn't running, start it.
 	Start,
 
-	// TODO
-	// /// Wait for command completion, then start a new one.
-	// Queue,
+	/// Wait for command completion.
+	Wait,
+
 	/// Send this signal to the command.
 	Signal(Signal),
 
@@ -180,6 +180,10 @@ impl Outcome {
 
 	pub fn both(one: Outcome, two: Outcome) -> Self {
 		Self::Both(Box::new(one), Box::new(two))
+	}
+
+	pub fn wait(and_then: Outcome) -> Self {
+		Self::Both(Box::new(Outcome::Wait), Box::new(and_then))
 	}
 
 	fn resolve(self, is_running: bool) -> Self {
@@ -377,6 +381,10 @@ async fn apply_outcome(
 		(Some(p), Outcome::Signal(sig)) => {
 			// TODO: windows
 			p.signal(sig).await;
+		}
+
+		(Some(p), Outcome::Wait) => {
+			p.wait().await?;
 		}
 
 		(_, Outcome::Clear) => {

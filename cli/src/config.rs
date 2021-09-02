@@ -100,8 +100,7 @@ fn runtime(args: &ArgMatches<'static>) -> Result<RuntimeConfig> {
 		}
 
 		if once {
-			// TODO
-			// action.outcome(Outcome::both(Outcome::Start, Outcome::both(Outcome::Wait, Outcome::Exit));
+			action.outcome(Outcome::both(Outcome::Start, Outcome::wait(Outcome::Exit)));
 			return fut;
 		}
 
@@ -125,23 +124,23 @@ fn runtime(args: &ArgMatches<'static>) -> Result<RuntimeConfig> {
 
 		if !has_paths {
 			if !signals.is_empty() {
-			let mut out = Outcome::DoNothing;
-			for sig in signals {
-				out = Outcome::both(
-					out,
-					Outcome::Signal(match sig {
-						InputSignal::Hangup => Signal::SIGHUP,
-						InputSignal::Interrupt => Signal::SIGINT,
-						InputSignal::Quit => Signal::SIGQUIT,
-						InputSignal::Terminate => Signal::SIGTERM,
-						InputSignal::User1 => Signal::SIGUSR1,
-						InputSignal::User2 => Signal::SIGUSR2,
-					}),
-				);
-			}
+				let mut out = Outcome::DoNothing;
+				for sig in signals {
+					out = Outcome::both(
+						out,
+						Outcome::Signal(match sig {
+							InputSignal::Hangup => Signal::SIGHUP,
+							InputSignal::Interrupt => Signal::SIGINT,
+							InputSignal::Quit => Signal::SIGQUIT,
+							InputSignal::Terminate => Signal::SIGTERM,
+							InputSignal::User1 => Signal::SIGUSR1,
+							InputSignal::User2 => Signal::SIGUSR2,
+						}),
+					);
+				}
 
-			action.outcome(out);
-			return fut;
+				action.outcome(out);
+				return fut;
 			}
 
 			let completion = action.events.iter().flat_map(|e| e.completions()).next();
@@ -165,8 +164,8 @@ fn runtime(args: &ArgMatches<'static>) -> Result<RuntimeConfig> {
 			}
 			(false, "restart") => Outcome::both(Outcome::Stop, Outcome::Start),
 			(_, "signal") => Outcome::Signal(signal),
-			// (true, "queue") => Outcome::wait(Outcome::both(Outcome::Clear, Outcome::Start)),
-			// (false, "queue") => Outcome::wait(Outcome::Start),
+			(true, "queue") => Outcome::wait(Outcome::both(Outcome::Clear, Outcome::Start)),
+			(false, "queue") => Outcome::wait(Outcome::Start),
 			_ => Outcome::DoNothing,
 		};
 
