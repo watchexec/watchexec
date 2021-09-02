@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use watchexec::{
 	action::{Action, Outcome},
 	config::{InitConfig, RuntimeConfig},
@@ -47,7 +49,9 @@ async fn main() -> color_eyre::eyre::Result<()> {
 				w.reconfigure(config)?;
 			} else if sigs.iter().any(|sig| sig == &Signal::User2) {
 				eprintln!("Switching to polling for funsies");
-				config.file_watcher(Watcher::Poll).keep_action();
+				config
+					.file_watcher(Watcher::Poll(Duration::from_millis(50)))
+					.keep_action();
 				w.reconfigure(config)?;
 			} else {
 				action.outcome(Outcome::if_running(
