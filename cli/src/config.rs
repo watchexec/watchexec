@@ -8,7 +8,6 @@ use watchexec::{
 	action::{Action, Outcome, Signal},
 	command::Shell,
 	config::{InitConfig, RuntimeConfig},
-	event::{Event, Particle},
 	fs::Watcher,
 	handler::PrintDisplay,
 	signal::Signal as InputSignal,
@@ -96,34 +95,7 @@ fn runtime(args: &ArgMatches<'static>) -> Result<RuntimeConfig> {
 
 		if print_events {
 			for (n, event) in action.events.iter().enumerate() {
-				for path in event.paths() {
-					eprintln!(
-						"[EVENT {}] Path: {} -- {:?}",
-						n,
-						path.display(),
-						event.metadata
-					);
-				}
-
-				for signal in event.signals() {
-					eprintln!("[EVENT {}] Signal: {:?} -- {:?}", n, signal, event.metadata);
-				}
-
-				for com in event
-					.particulars
-					.iter()
-					.filter(|p| matches!(p, Particle::ProcessCompletion(_)))
-				{
-					if let Particle::ProcessCompletion(Some(status)) = com {
-						eprintln!("[EVENT {}] Process Finished with {}", n, status);
-					} else {
-						eprintln!("[EVENT {}] Process Finished", n);
-					}
-				}
-
-				if event == &Event::default() {
-					eprintln!("[EVENT {}] Empty -- {:?}", n, event.metadata);
-				}
+				eprintln!("[EVENT {}] {}", n, event);
 			}
 		}
 
