@@ -69,7 +69,7 @@ impl Supervisor {
 							Err(err) => {
 								error!(%err, "while waiting on process");
 								errors.send(err).await.ok();
-								trace!("marking process as done");
+								trace!("marking process as done, closing supervisor task early");
 								mark_done.send(true).ok();
 								return;
 							}
@@ -124,7 +124,7 @@ impl Supervisor {
 				}
 			}
 
-			trace!("marking process as done");
+			trace!("marking process as done, closing supervisor task");
 			mark_done.send(true).ok();
 		});
 
