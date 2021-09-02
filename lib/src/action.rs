@@ -321,6 +321,7 @@ async fn apply_outcome(
 	errors: mpsc::Sender<RuntimeError>,
 	events: mpsc::Sender<Event>,
 ) -> Result<(), RuntimeError> {
+	trace!(?outcome, "applying outcome");
 	match (process.as_mut(), outcome) {
 		(_, Outcome::DoNothing) => {}
 		(_, Outcome::Exit) => {
@@ -409,7 +410,7 @@ async fn apply_outcome(
 		}
 
 		(_, Outcome::Both(one, two)) => {
-			apply_outcome(
+			if let Err(err) = apply_outcome(
 				*one,
 				working.clone(),
 				process,
@@ -418,7 +419,14 @@ async fn apply_outcome(
 				errors.clone(),
 				events.clone(),
 			)
-			.await?;
+			.await
+			{
+				debug!(
+					"first outcome failed, sending an error but proceeding to the second anyway"
+				);
+				errors.send(err).await.ok();
+			}
+
 			apply_outcome(
 				*two,
 				working,
