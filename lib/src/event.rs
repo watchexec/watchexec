@@ -42,6 +42,7 @@ pub enum Source {
 	Mouse,
 	Os,
 	Time,
+	Internal,
 }
 
 impl Event {
