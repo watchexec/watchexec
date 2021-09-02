@@ -4,7 +4,15 @@ use std::{
 
 use clap::ArgMatches;
 use color_eyre::eyre::{eyre, Result};
-use watchexec::{action::{Action, Outcome, Signal}, command::Shell, config::{InitConfig, RuntimeConfig}, event::Event, fs::Watcher, handler::PrintDisplay, signal::Signal as InputSignal};
+use watchexec::{
+	action::{Action, Outcome, Signal},
+	command::Shell,
+	config::{InitConfig, RuntimeConfig},
+	event::Event,
+	fs::Watcher,
+	handler::PrintDisplay,
+	signal::Signal as InputSignal,
+};
 
 pub fn new(args: &ArgMatches<'static>) -> Result<(InitConfig, RuntimeConfig)> {
 	Ok((init(args)?, runtime(args)?))
@@ -89,7 +97,12 @@ fn runtime(args: &ArgMatches<'static>) -> Result<RuntimeConfig> {
 		if print_events {
 			for (n, event) in action.events.iter().enumerate() {
 				for path in event.paths() {
-					eprintln!("[EVENT {}] Path: {} -- {:?}", n, path.display(), event.metadata);
+					eprintln!(
+						"[EVENT {}] Path: {} -- {:?}",
+						n,
+						path.display(),
+						event.metadata
+					);
 				}
 
 				for signal in event.signals() {

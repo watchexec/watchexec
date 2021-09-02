@@ -81,7 +81,10 @@ impl Watchexec {
 				}};
 			}
 
-			let action = subtask!(action, action::worker(ac_r, er_s.clone(), ev_r));
+			let action = subtask!(
+				action,
+				action::worker(ac_r, er_s.clone(), ev_s.clone(), ev_r)
+			);
 			let fs = subtask!(fs, fs::worker(fs_r, er_s.clone(), ev_s.clone()));
 			let signal = subtask!(signal, signal::worker(er_s.clone(), ev_s.clone()));
 

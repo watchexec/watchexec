@@ -108,6 +108,11 @@ pub enum RuntimeError {
 		err: notify::Error,
 	},
 
+	/// Opaque internal error from a command supervisor.
+	#[error("internal: command supervisor: {0}")]
+	#[diagnostic(code(watchexec::runtime::internal_supervisor))]
+	InternalSupervisor(String),
+
 	/// Error received when an event cannot be sent to the event channel.
 	#[error("cannot send event from {ctx}: {err}")]
 	#[diagnostic(code(watchexec::runtime::event_channel_send))]

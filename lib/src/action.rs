@@ -7,7 +7,6 @@ use std::{
 };
 
 use atomic_take::AtomicTake;
-use command_group::AsyncCommandGroup;
 use once_cell::sync::OnceCell;
 use tokio::{
 	process::Command,
@@ -17,7 +16,7 @@ use tokio::{
 use tracing::{debug, trace, warn};
 
 use crate::{
-	command::{Process, Shell},
+	command::{Shell, Supervisor},
 	error::{CriticalError, RuntimeError},
 	event::Event,
 	handler::{rte, Handler},
@@ -33,7 +32,6 @@ pub struct WorkingData {
 	pub action_handler: Arc<AtomicTake<Box<dyn Handler<Action> + Send>>>,
 	pub pre_spawn_handler: Arc<AtomicTake<Box<dyn Handler<PreSpawn> + Send>>>,
 	pub post_spawn_handler: Arc<AtomicTake<Box<dyn Handler<PostSpawn> + Send>>>,
-	pub completion_handler: Arc<AtomicTake<Box<dyn Handler<Action> + Send>>>,
 
 	pub shell: Shell,
 
@@ -62,7 +60,6 @@ impl Default for WorkingData {
 			action_handler: Arc::new(AtomicTake::new(Box::new(()) as _)),
 			pre_spawn_handler: Arc::new(AtomicTake::new(Box::new(()) as _)),
 			post_spawn_handler: Arc::new(AtomicTake::new(Box::new(()) as _)),
-			completion_handler: Arc::new(AtomicTake::new(Box::new(()) as _)),
 			shell: Shell::default(),
 			command: Vec::new(),
 			grouped: true,
@@ -198,11 +195,12 @@ impl Outcome {
 pub async fn worker(
 	working: watch::Receiver<WorkingData>,
 	errors: mpsc::Sender<RuntimeError>,
+	events_tx: mpsc::Sender<Event>,
 	mut events: mpsc::Receiver<Event>,
 ) -> Result<(), CriticalError> {
 	let mut last = Instant::now();
 	let mut set = Vec::new();
-	let mut process: Option<Process> = None;
+	let mut process: Option<Supervisor> = None;
 
 	let mut action_handler =
 		{ working.borrow().action_handler.take() }.ok_or(CriticalError::MissingHandler)?;
@@ -210,8 +208,6 @@ pub async fn worker(
 		{ working.borrow().pre_spawn_handler.take() }.ok_or(CriticalError::MissingHandler)?;
 	let mut post_spawn_handler =
 		{ working.borrow().post_spawn_handler.take() }.ok_or(CriticalError::MissingHandler)?;
-	let mut completion_handler =
-		{ working.borrow().completion_handler.take() }.ok_or(CriticalError::MissingHandler)?;
 
 	loop {
 		let maxtime = if set.is_empty() {
@@ -277,11 +273,6 @@ pub async fn worker(
 			post_spawn_handler = h;
 		}
 
-		if let Some(h) = working.borrow().completion_handler.take() {
-			trace!("completion handler updated");
-			completion_handler = h;
-		}
-
 		debug!("running action handler");
 		let outcome = action.outcome.clone();
 		let err = action_handler
@@ -296,15 +287,7 @@ pub async fn worker(
 		let outcome = outcome.get().cloned().unwrap_or_default();
 		debug!(?outcome, "handler finished");
 
-		let is_running = match process.as_mut().map(|p| p.is_running()).transpose() {
-			Err(err) => {
-				errors.send(err).await?;
-				false
-			}
-			Ok(Some(ir)) => ir,
-			Ok(None) => false,
-		};
-
+		let is_running = process.as_ref().map(|p| p.is_running()).unwrap_or(false);
 		let outcome = outcome.resolve(is_running);
 		debug!(?outcome, "outcome resolved");
 
@@ -315,6 +298,8 @@ pub async fn worker(
 			&mut process,
 			&mut pre_spawn_handler,
 			&mut post_spawn_handler,
+			errors.clone(),
+			events_tx.clone(),
 		)
 		.await;
 		if let Err(err) = rerr {
@@ -330,9 +315,11 @@ pub async fn worker(
 async fn apply_outcome(
 	outcome: Outcome,
 	working: WorkingData,
-	process: &mut Option<Process>,
+	process: &mut Option<Supervisor>,
 	pre_spawn_handler: &mut Box<dyn Handler<PreSpawn> + Send>,
 	post_spawn_handler: &mut Box<dyn Handler<PostSpawn> + Send>,
+	errors: mpsc::Sender<RuntimeError>,
+	events: mpsc::Sender<Event>,
 ) -> Result<(), RuntimeError> {
 	match (process.as_mut(), outcome) {
 		(_, Outcome::DoNothing) => {}
@@ -365,38 +352,31 @@ async fn apply_outcome(
 					.map_err(|_| RuntimeError::HandlerLockHeld("pre-spawn"))?
 					.into_inner();
 
-				debug!(grouped=%working.grouped, ?command, "spawning command");
-				let (proc, id) = if working.grouped {
-					let proc = command.group_spawn()?;
-					let id = proc.id().ok_or(RuntimeError::ProcessDeadOnArrival)?;
-					debug!(pgid=%id, "process group spawned");
-					(Process::Grouped(proc), id)
-				} else {
-					let proc = command.spawn()?;
-					let id = proc.id().ok_or(RuntimeError::ProcessDeadOnArrival)?;
-					debug!(pid=%id, "process spawned");
-					(Process::Ungrouped(proc), id)
-				};
+				trace!("spawing supervisor for command");
+				let sup = Supervisor::spawn(
+					errors.clone(),
+					events.clone(),
+					&mut command,
+					working.grouped,
+				)?;
 
 				debug!("running post-spawn handler");
 				let post_spawn = PostSpawn {
 					command: working.command.clone(),
-					id,
+					id: sup.id(),
 					grouped: working.grouped,
 				};
 				post_spawn_handler
 					.handle(post_spawn)
 					.map_err(|e| rte("action post-spawn", e))?;
 
-				*process = Some(proc);
-
-				// TODO: post-stop hook (immediately after *process* ends, not when Stop is applied)
+				*process = Some(sup);
 			}
 		}
 
 		(Some(p), Outcome::Signal(sig)) => {
 			// TODO: windows
-			p.signal(sig)?;
+			p.signal(sig).await?;
 		}
 
 		(_, Outcome::Clear) => {
@@ -410,6 +390,8 @@ async fn apply_outcome(
 				process,
 				pre_spawn_handler,
 				post_spawn_handler,
+				errors,
+				events,
 			)
 			.await?;
 		}
@@ -420,6 +402,8 @@ async fn apply_outcome(
 				process,
 				pre_spawn_handler,
 				post_spawn_handler,
+				errors,
+				events,
 			)
 			.await?;
 		}
@@ -431,6 +415,8 @@ async fn apply_outcome(
 				process,
 				pre_spawn_handler,
 				post_spawn_handler,
+				errors.clone(),
+				events.clone(),
 			)
 			.await?;
 			apply_outcome(
@@ -439,6 +425,8 @@ async fn apply_outcome(
 				process,
 				pre_spawn_handler,
 				post_spawn_handler,
+				errors,
+				events,
 			)
 			.await?;
 		}

@@ -9,6 +9,7 @@
 use std::{
 	collections::HashMap,
 	path::{Path, PathBuf},
+	process::ExitStatus,
 };
 
 use crate::signal::Signal;
@@ -20,7 +21,8 @@ pub struct Event {
 	pub metadata: HashMap<String, Vec<String>>,
 }
 
-/// Something which can be used to filter an event.
+// TODO: this really needs a better name (along with "particulars")
+/// Something which can be used to filter or qualify an event.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum Particle {
@@ -28,6 +30,7 @@ pub enum Particle {
 	Source(Source),
 	Process(u32),
 	Signal(Signal),
+	ProcessCompletion(Option<ExitStatus>),
 }
 
 /// The general origin of the event.
