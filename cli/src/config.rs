@@ -123,7 +123,8 @@ fn runtime(args: &ArgMatches<'static>) -> Result<RuntimeConfig> {
 			return fut;
 		}
 
-		if !signals.is_empty() && !has_paths {
+		if !has_paths {
+			if !signals.is_empty() {
 			let mut out = Outcome::DoNothing;
 			for sig in signals {
 				out = Outcome::both(
@@ -141,6 +142,20 @@ fn runtime(args: &ArgMatches<'static>) -> Result<RuntimeConfig> {
 
 			action.outcome(out);
 			return fut;
+			}
+
+			let completion = action.events.iter().flat_map(|e| e.completions()).next();
+			if let Some(status) = completion {
+				match status {
+					Some(ex) if !ex.success() => {
+						eprintln!("[Command exited with {}]", ex);
+					}
+					_ => {}
+				}
+
+				action.outcome(Outcome::DoNothing);
+				return fut;
+			}
 		}
 
 		let when_running = match (clear, on_busy.as_str()) {

@@ -57,10 +57,19 @@ impl Event {
 			_ => None,
 		})
 	}
+
 	/// Return all signals in the event's particulars.
 	pub fn signals(&self) -> impl Iterator<Item = Signal> + '_ {
 		self.particulars.iter().filter_map(|p| match p {
 			Particle::Signal(s) => Some(*s),
+			_ => None,
+		})
+	}
+
+	/// Return all process completions in the event's particulars.
+	pub fn completions(&self) -> impl Iterator<Item = Option<ExitStatus>> + '_ {
+		self.particulars.iter().filter_map(|p| match p {
+			Particle::ProcessCompletion(s) => Some(*s),
 			_ => None,
 		})
 	}

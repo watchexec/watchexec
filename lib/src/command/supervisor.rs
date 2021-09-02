@@ -1,14 +1,19 @@
+use std::sync::{
+	atomic::{AtomicBool, Ordering},
+	Arc,
+};
+
 use command_group::{AsyncCommandGroup, Signal};
 use tokio::{
 	process::Command,
 	select, spawn,
 	sync::{
 		mpsc::{self, Sender},
-		watch,
+		oneshot,
 	},
 	task::JoinHandle,
 };
-use tracing::{debug, error, trace};
+use tracing::{debug, error, trace, warn};
 
 use crate::{
 	error::RuntimeError,
@@ -27,9 +32,14 @@ enum Intervention {
 #[derive(Debug)]
 pub struct Supervisor {
 	id: u32,
-	completion: watch::Receiver<bool>,
 	intervene: Sender<Intervention>,
 	handle: JoinHandle<()>,
+
+	// why this and not a watch::channel? two reasons:
+	// 1. I tried the watch and ran into some race conditions???
+	// 2. This way it's typed-enforced that I send only once
+	waiter: Option<oneshot::Receiver<()>>,
+	ongoing: Arc<AtomicBool>,
 }
 
 impl Supervisor {
@@ -52,9 +62,11 @@ impl Supervisor {
 			(Process::Ungrouped(proc), id)
 		};
 
-		let (mark_done, completion) = watch::channel(false);
+		let ongoing = Arc::new(AtomicBool::new(true));
+		let (notify, waiter) = oneshot::channel();
 		let (int_s, int_r) = mpsc::channel(8);
 
+		let going = ongoing.clone();
 		let handle = spawn(async move {
 			let mut process = process;
 			let mut int = int_r;
@@ -69,8 +81,10 @@ impl Supervisor {
 							Err(err) => {
 								error!(%err, "while waiting on process");
 								errors.send(err).await.ok();
-								trace!("marking process as done, closing supervisor task early");
-								mark_done.send(true).ok();
+								trace!("marking process as done");
+								going.store(false, Ordering::SeqCst);
+								trace!("closing supervisor task early");
+								notify.send(()).ok();
 								return;
 							}
 						}
@@ -127,13 +141,16 @@ impl Supervisor {
 				}
 			}
 
-			trace!("marking process as done, closing supervisor task");
-			mark_done.send(true).ok();
+			trace!("marking process as done");
+			going.store(false, Ordering::SeqCst);
+			trace!("closing supervisor task");
+			notify.send(()).ok();
 		});
 
 		Ok(Self {
 			id,
-			completion,
+			waiter: Some(waiter),
+			ongoing,
 			intervene: int_s,
 			handle, // TODO: is there anything useful to do with this? do we need to keep it?
 		})
@@ -157,26 +174,32 @@ impl Supervisor {
 	}
 
 	pub fn is_running(&self) -> bool {
-		!*self.completion.borrow()
+		let ongoing = self.ongoing.load(Ordering::SeqCst);
+		trace!(?ongoing, "supervisor state");
+		ongoing
 	}
 
 	pub async fn wait(&mut self) -> Result<(), RuntimeError> {
-		debug!("waiting on supervisor completion");
-
-		loop {
-			self.completion
-				.changed()
-				.await
-				.map_err(|err| RuntimeError::InternalSupervisor(err.to_string()))?;
-
-			if *self.completion.borrow() {
-				break;
-			} else {
-				debug!("got completion change event, but it wasn't done (waiting more)");
-			}
+		if !self.ongoing.load(Ordering::SeqCst) {
+			trace!("supervisor already completed");
+			return Ok(());
 		}
 
-		debug!("supervisor completed");
+		if let Some(waiter) = self.waiter.take() {
+			debug!("waiting on supervisor completion");
+			waiter
+				.await
+				.map_err(|err| RuntimeError::InternalSupervisor(err.to_string()))?;
+			debug!("supervisor completed");
+
+			if !self.ongoing.swap(false, Ordering::SeqCst) {
+				warn!("oneshot completed but ongoing was true, this should never happen");
+			}
+		} else {
+			warn!("waiter is None but ongoing was true, this should never happen");
+			self.ongoing.store(false, Ordering::SeqCst);
+		}
+
 		Ok(())
 	}
 }

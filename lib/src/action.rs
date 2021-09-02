@@ -332,12 +332,10 @@ async fn apply_outcome(
 			p.wait().await?;
 			*process = None;
 		}
-		(p @ None, o @ Outcome::Stop)
-		| (p @ Some(_), o @ Outcome::Start)
-		| (p @ None, o @ Outcome::Signal(_)) => {
-			warn!(is_running=?p.is_some(), outcome=?o, "outcome does not apply to process state");
+		(None, o @ Outcome::Stop) | (None, o @ Outcome::Wait) | (None, o @ Outcome::Signal(_)) => {
+			debug!(outcome=?o, "meaningless without a process, not doing anything");
 		}
-		(None, Outcome::Start) => {
+		(_, Outcome::Start) => {
 			if working.command.is_empty() {
 				warn!("tried to start a command without anything to run");
 			} else {
@@ -371,6 +369,7 @@ async fn apply_outcome(
 					.handle(post_spawn)
 					.map_err(|e| rte("action post-spawn", e))?;
 
+				// TODO: consider what we want to do for processes still running here?
 				*process = Some(sup);
 			}
 		}
