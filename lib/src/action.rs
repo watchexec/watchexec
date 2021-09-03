@@ -7,6 +7,7 @@ use std::{
 };
 
 use atomic_take::AtomicTake;
+use clearscreen::ClearScreen;
 use once_cell::sync::OnceCell;
 use tokio::{
 	process::Command,
@@ -154,8 +155,15 @@ pub enum Outcome {
 	/// Send this signal to the command.
 	Signal(Signal),
 
-	/// Clear the screen.
+	/// Clear the (terminal) screen.
 	Clear,
+
+	/// Reset the (terminal) screen.
+	///
+	/// This invokes: [`WindowsCooked`][ClearScreen::WindowsCooked],
+	/// [`WindowsVt`][ClearScreen::WindowsVt], [`VtWellDone`][ClearScreen::VtWellDone],
+	/// and [the default][ClearScreen::default()], in this order.
+	Reset,
 
 	/// Exit watchexec.
 	Exit,
@@ -389,6 +397,17 @@ async fn apply_outcome(
 
 		(_, Outcome::Clear) => {
 			clearscreen::clear()?;
+		}
+
+		(_, Outcome::Reset) => {
+			for cs in [
+				ClearScreen::WindowsCooked,
+				ClearScreen::WindowsVt,
+				ClearScreen::VtWellDone,
+				ClearScreen::default(),
+			] {
+				cs.clear()?;
+			}
 		}
 
 		(Some(_), Outcome::IfRunning(then, _)) => {
