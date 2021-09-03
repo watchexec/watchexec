@@ -160,9 +160,9 @@ pub enum Outcome {
 
 	/// Reset the (terminal) screen.
 	///
-	/// This invokes: [`WindowsCooked`][ClearScreen::WindowsCooked],
-	/// [`WindowsVt`][ClearScreen::WindowsVt], [`VtWellDone`][ClearScreen::VtWellDone],
-	/// and [the default][ClearScreen::default()], in this order.
+	/// This invokes (in order): [`WindowsCooked`][ClearScreen::WindowsCooked],
+	/// [`WindowsVt`][ClearScreen::WindowsVt], [`VtLeaveAlt`][ClearScreen::VtLeaveAlt],
+	/// [`VtWellDone`][ClearScreen::VtWellDone], and [the default][ClearScreen::default()].
 	Reset,
 
 	/// Exit watchexec.
@@ -403,6 +403,7 @@ async fn apply_outcome(
 			for cs in [
 				ClearScreen::WindowsCooked,
 				ClearScreen::WindowsVt,
+				ClearScreen::VtLeaveAlt,
 				ClearScreen::VtWellDone,
 				ClearScreen::default(),
 			] {
