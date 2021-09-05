@@ -16,6 +16,7 @@ jobs:
           - linux-i686-musl
           - linux-armhf-gnu
           - linux-arm64-gnu
+          - linux-arm64-musl
           - mac-x86-64
           - mac-arm64
           - windows-x86-64
@@ -49,6 +50,12 @@ jobs:
             target: aarch64-unknown-linux-gnu
             cross: true
             experimental: false
+          
+          - name: linux-arm64-musl
+            os: ubuntu-latest
+            target: aarch64-unknown-linux-musl
+            cross: true
+            experimental: true
 
           - name: mac-x86-64
             os: macos-latest
