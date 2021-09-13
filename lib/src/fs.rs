@@ -14,7 +14,7 @@ use tracing::{debug, error, trace};
 
 use crate::{
 	error::{CriticalError, RuntimeError},
-	event::{Event, Particle, Source},
+	event::{Event, Tag, Source},
 };
 
 /// What kind of filesystem watcher to use.
@@ -227,16 +227,16 @@ fn process_event(
 ) -> Result<(), RuntimeError> {
 	let nev = nev.map_err(|err| RuntimeError::FsWatcherEvent { kind, err })?;
 
-	let mut particulars = Vec::with_capacity(4);
-	particulars.push(Particle::Source(Source::Filesystem));
-	particulars.push(Particle::FileEventKind(nev.kind));
+	let mut tags = Vec::with_capacity(4);
+	tags.push(Tag::Source(Source::Filesystem));
+	tags.push(Tag::FileEventKind(nev.kind));
 
 	for path in nev.paths {
-		particulars.push(Particle::Path(dunce::canonicalize(path)?));
+		tags.push(Tag::Path(dunce::canonicalize(path)?));
 	}
 
 	if let Some(pid) = nev.attrs.process_id() {
-		particulars.push(Particle::Process(pid));
+		tags.push(Tag::Process(pid));
 	}
 
 	let mut metadata = HashMap::new();
@@ -250,7 +250,7 @@ fn process_event(
 	}
 
 	let ev = Event {
-		particulars,
+		tags,
 		metadata,
 	};
 

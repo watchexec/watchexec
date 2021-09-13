@@ -2,7 +2,7 @@ use std::process::exit;
 
 use tokio::sync::mpsc;
 use watchexec::{
-	event::{Event, Particle},
+	event::{Event, Tag},
 	signal::{self, Signal},
 };
 
@@ -21,7 +21,7 @@ async fn main() -> color_eyre::eyre::Result<()> {
 		while let Some(e) = ev_r.recv().await {
 			tracing::info!("event: {:?}", e);
 
-			if e.particulars.contains(&Particle::Signal(Signal::Terminate)) {
+			if e.tags.contains(&Tag::Signal(Signal::Terminate)) {
 				exit(0);
 			}
 		}

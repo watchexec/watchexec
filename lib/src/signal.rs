@@ -5,7 +5,7 @@ use tracing::{debug, trace};
 
 use crate::{
 	error::{CriticalError, RuntimeError},
-	event::{Event, Particle, Source},
+	event::{Event, Tag, Source},
 };
 
 /// A notification sent to the main (watchexec) process.
@@ -167,17 +167,17 @@ async fn send_event(
 	events: mpsc::Sender<Event>,
 	sig: Signal,
 ) -> Result<(), CriticalError> {
-	let particulars = vec![
-		Particle::Source(if sig == Signal::Interrupt {
+	let tags = vec![
+		Tag::Source(if sig == Signal::Interrupt {
 			Source::Keyboard
 		} else {
 			Source::Os
 		}),
-		Particle::Signal(sig),
+		Tag::Signal(sig),
 	];
 
 	let event = Event {
-		particulars,
+		tags,
 		metadata: Default::default(),
 	};
 

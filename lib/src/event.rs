@@ -20,15 +20,14 @@ use crate::signal::Signal;
 /// An event, as far as watchexec cares about.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Event {
-	pub particulars: Vec<Particle>,
+	pub tags: Vec<Tag>,
 	pub metadata: HashMap<String, Vec<String>>,
 }
 
-// TODO: this really needs a better name (along with "particulars")
 /// Something which can be used to filter or qualify an event.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
-pub enum Particle {
+pub enum Tag {
 	Path(PathBuf),
 	FileEventKind(EventKind),
 	Source(Source),
@@ -50,26 +49,26 @@ pub enum Source {
 }
 
 impl Event {
-	/// Return all paths in the event's particulars.
+	/// Return all paths in the event's tags.
 	pub fn paths(&self) -> impl Iterator<Item = &Path> {
-		self.particulars.iter().filter_map(|p| match p {
-			Particle::Path(p) => Some(p.as_path()),
+		self.tags.iter().filter_map(|p| match p {
+			Tag::Path(p) => Some(p.as_path()),
 			_ => None,
 		})
 	}
 
-	/// Return all signals in the event's particulars.
+	/// Return all signals in the event's tags.
 	pub fn signals(&self) -> impl Iterator<Item = Signal> + '_ {
-		self.particulars.iter().filter_map(|p| match p {
-			Particle::Signal(s) => Some(*s),
+		self.tags.iter().filter_map(|p| match p {
+			Tag::Signal(s) => Some(*s),
 			_ => None,
 		})
 	}
 
-	/// Return all process completions in the event's particulars.
+	/// Return all process completions in the event's tags.
 	pub fn completions(&self) -> impl Iterator<Item = Option<ExitStatus>> + '_ {
-		self.particulars.iter().filter_map(|p| match p {
-			Particle::ProcessCompletion(s) => Some(*s),
+		self.tags.iter().filter_map(|p| match p {
+			Tag::ProcessCompletion(s) => Some(*s),
 			_ => None,
 		})
 	}
@@ -78,15 +77,15 @@ impl Event {
 impl fmt::Display for Event {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		write!(f, "Event")?;
-		for p in &self.particulars {
+		for p in &self.tags {
 			match p {
-				Particle::Path(p) => write!(f, " path={}", p.display())?,
-				Particle::FileEventKind(kind) => write!(f, " kind={:?}", kind)?,
-				Particle::Source(s) => write!(f, " source={:?}", s)?,
-				Particle::Process(p) => write!(f, " process={}", p)?,
-				Particle::Signal(s) => write!(f, " signal={:?}", s)?,
-				Particle::ProcessCompletion(None) => write!(f, " command-completed")?,
-				Particle::ProcessCompletion(Some(c)) => write!(f, " command-completed({})", c)?,
+				Tag::Path(p) => write!(f, " path={}", p.display())?,
+				Tag::FileEventKind(kind) => write!(f, " kind={:?}", kind)?,
+				Tag::Source(s) => write!(f, " source={:?}", s)?,
+				Tag::Process(p) => write!(f, " process={}", p)?,
+				Tag::Signal(s) => write!(f, " signal={:?}", s)?,
+				Tag::ProcessCompletion(None) => write!(f, " command-completed")?,
+				Tag::ProcessCompletion(Some(c)) => write!(f, " command-completed({})", c)?,
 			}
 		}
 

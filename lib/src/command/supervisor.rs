@@ -17,7 +17,7 @@ use tracing::{debug, error, trace, warn};
 
 use crate::{
 	error::RuntimeError,
-	event::{Event, Particle, Source},
+	event::{Event, Tag, Source},
 };
 
 use super::Process;
@@ -120,9 +120,9 @@ impl Supervisor {
 				}
 				Ok(status) => {
 					let event = Event {
-						particulars: vec![
-							Particle::Source(Source::Internal),
-							Particle::ProcessCompletion(status),
+						tags: vec![
+							Tag::Source(Source::Internal),
+							Tag::ProcessCompletion(status),
 						],
 						metadata: Default::default(),
 					};
