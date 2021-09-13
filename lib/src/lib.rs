@@ -90,6 +90,7 @@ pub mod action;
 pub mod command;
 pub mod error;
 pub mod event;
+pub mod filter;
 pub mod fs;
 pub mod signal;
 

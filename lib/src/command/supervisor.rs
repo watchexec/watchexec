@@ -17,7 +17,7 @@ use tracing::{debug, error, trace, warn};
 
 use crate::{
 	error::RuntimeError,
-	event::{Event, Tag, Source},
+	event::{Event, Source, Tag},
 };
 
 use super::Process;

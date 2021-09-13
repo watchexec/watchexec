@@ -5,7 +5,7 @@ use tracing::{debug, trace};
 
 use crate::{
 	error::{CriticalError, RuntimeError},
-	event::{Event, Tag, Source},
+	event::{Event, Source, Tag},
 };
 
 /// A notification sent to the main (watchexec) process.

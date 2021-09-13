@@ -14,7 +14,7 @@ use tracing::{debug, error, trace};
 
 use crate::{
 	error::{CriticalError, RuntimeError},
-	event::{Event, Tag, Source},
+	event::{Event, Source, Tag},
 };
 
 /// What kind of filesystem watcher to use.
@@ -249,10 +249,7 @@ fn process_event(
 		metadata.insert("notify-backend".to_string(), vec![src.to_string()]);
 	}
 
-	let ev = Event {
-		tags,
-		metadata,
-	};
+	let ev = Event { tags, metadata };
 
 	trace!(event = ?ev, "processed notify event into watchexec event");
 	n_events
