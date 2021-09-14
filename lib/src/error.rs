@@ -157,6 +157,15 @@ pub enum RuntimeError {
 	#[error("clear screen: {0}")]
 	#[diagnostic(code(watchexec::runtime::clearscreen))]
 	Clearscreen(#[from] clearscreen::Error),
+
+	/// Error received when a filter cannot be parsed.
+	#[error("cannot parse filter `{src}`: {err:?}")]
+	#[diagnostic(code(watchexec::runtime::filter_parse))]
+	FilterParse {
+		src: String,
+		err: nom::error::ErrorKind,
+		// TODO: use miette's source snippet feature
+	},
 }
 
 /// Errors occurring from reconfigs.
