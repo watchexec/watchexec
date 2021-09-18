@@ -48,7 +48,7 @@ impl Default for Shell {
 
     #[cfg(not(windows))]
     fn default() -> Self {
-        Self::Unix("sh".into())
+        Self::Unix(std::env::var("SHELL").unwrap_or("sh".to_string()))
     }
 }
 
