@@ -1,208 +1,33 @@
 //! Processor responsible for receiving events, filtering them, and scheduling actions in response.
 
 use std::{
-	fmt,
-	sync::{Arc, Weak},
+	sync::{Arc},
 	time::{Duration, Instant},
 };
 
-use atomic_take::AtomicTake;
 use clearscreen::ClearScreen;
-use once_cell::sync::OnceCell;
 use tokio::{
-	process::Command,
-	sync::{mpsc, watch, Mutex, OwnedMutexGuard},
+	sync::{mpsc, watch},
 	time::timeout,
 };
 use tracing::{debug, trace, warn};
 
+pub use command_group::Signal;
+
 use crate::{
-	command::{Shell, Supervisor},
+	command::{ Supervisor},
 	error::{CriticalError, RuntimeError},
 	event::Event,
 	handler::{rte, Handler},
 };
 
-pub use command_group::Signal;
+#[doc(inline)]
+pub use outcome::Outcome;
+#[doc(inline)]
+pub use workingdata::*;
 
-#[derive(Clone)]
-#[non_exhaustive]
-pub struct WorkingData {
-	pub throttle: Duration,
-
-	pub action_handler: Arc<AtomicTake<Box<dyn Handler<Action> + Send>>>,
-	pub pre_spawn_handler: Arc<AtomicTake<Box<dyn Handler<PreSpawn> + Send>>>,
-	pub post_spawn_handler: Arc<AtomicTake<Box<dyn Handler<PostSpawn> + Send>>>,
-
-	pub shell: Shell,
-
-	/// TODO: notes for command construction ref Shell and old src
-	pub command: Vec<String>,
-
-	pub grouped: bool,
-}
-
-impl fmt::Debug for WorkingData {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		f.debug_struct("WorkingData")
-			.field("throttle", &self.throttle)
-			.field("shell", &self.shell)
-			.field("command", &self.command)
-			.field("grouped", &self.grouped)
-			.finish_non_exhaustive()
-	}
-}
-
-impl Default for WorkingData {
-	fn default() -> Self {
-		Self {
-			// set to 50ms here, but will remain 100ms on cli until 2022
-			throttle: Duration::from_millis(50),
-			action_handler: Arc::new(AtomicTake::new(Box::new(()) as _)),
-			pre_spawn_handler: Arc::new(AtomicTake::new(Box::new(()) as _)),
-			post_spawn_handler: Arc::new(AtomicTake::new(Box::new(()) as _)),
-			shell: Shell::default(),
-			command: Vec::new(),
-			grouped: true,
-		}
-	}
-}
-
-#[derive(Debug, Default)]
-pub struct Action {
-	pub events: Vec<Event>,
-	outcome: Arc<OnceCell<Outcome>>,
-}
-
-impl Action {
-	fn new(events: Vec<Event>) -> Self {
-		Self {
-			events,
-			..Self::default()
-		}
-	}
-
-	/// Set the action's outcome.
-	///
-	/// This takes `self` and `Action` is not `Clone`, so it's only possible to call it once.
-	/// Regardless, if you _do_ manage to call it twice, it will do nothing beyond the first call.
-	///
-	/// See the [`Action`] documentation about handlers to learn why it's a bad idea to clone or
-	/// send it elsewhere, and what kind of handlers you cannot use.
-	pub fn outcome(self, outcome: Outcome) {
-		self.outcome.set(outcome).ok();
-	}
-}
-
-#[derive(Debug)]
-#[non_exhaustive]
-pub struct PreSpawn {
-	pub command: Vec<String>,
-	command_w: Weak<Mutex<Command>>,
-}
-
-impl PreSpawn {
-	fn new(command: Command, cmd: Vec<String>) -> (Self, Arc<Mutex<Command>>) {
-		let arc = Arc::new(Mutex::new(command));
-		(
-			Self {
-				command: cmd,
-				command_w: Arc::downgrade(&arc),
-			},
-			arc.clone(),
-		)
-	}
-
-	/// Get write access to the command that will be spawned.
-	///
-	/// Keeping the lock alive beyond the end of the handler may cause the command to be cancelled,
-	/// but note no guarantees are made on this behaviour. Just don't do it. See the [`Action`]
-	/// documentation about handlers for more.
-	///
-	/// This will always return `Some()` under normal circumstances.
-	pub async fn command(&self) -> Option<OwnedMutexGuard<Command>> {
-		if let Some(arc) = self.command_w.upgrade() {
-			Some(arc.lock_owned().await)
-		} else {
-			None
-		}
-	}
-}
-
-#[derive(Debug)]
-#[non_exhaustive]
-pub struct PostSpawn {
-	pub command: Vec<String>,
-	pub id: u32,
-	pub grouped: bool,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum Outcome {
-	/// Stop processing this action silently.
-	DoNothing,
-
-	/// If the command is running, stop it.
-	Stop,
-
-	/// If the command isn't running, start it.
-	Start,
-
-	/// Wait for command completion.
-	Wait,
-
-	/// Send this signal to the command.
-	Signal(Signal),
-
-	/// Clear the (terminal) screen.
-	Clear,
-
-	/// Reset the (terminal) screen.
-	///
-	/// This invokes (in order): [`WindowsCooked`][ClearScreen::WindowsCooked],
-	/// [`WindowsVt`][ClearScreen::WindowsVt], [`VtLeaveAlt`][ClearScreen::VtLeaveAlt],
-	/// [`VtWellDone`][ClearScreen::VtWellDone], and [the default][ClearScreen::default()].
-	Reset,
-
-	/// Exit watchexec.
-	Exit,
-
-	/// When command is running, do the first, otherwise the second.
-	IfRunning(Box<Outcome>, Box<Outcome>),
-
-	/// Do both outcomes in order.
-	Both(Box<Outcome>, Box<Outcome>),
-}
-
-impl Default for Outcome {
-	fn default() -> Self {
-		Self::DoNothing
-	}
-}
-
-impl Outcome {
-	pub fn if_running(then: Outcome, otherwise: Outcome) -> Self {
-		Self::IfRunning(Box::new(then), Box::new(otherwise))
-	}
-
-	pub fn both(one: Outcome, two: Outcome) -> Self {
-		Self::Both(Box::new(one), Box::new(two))
-	}
-
-	pub fn wait(and_then: Outcome) -> Self {
-		Self::Both(Box::new(Outcome::Wait), Box::new(and_then))
-	}
-
-	fn resolve(self, is_running: bool) -> Self {
-		match (is_running, self) {
-			(true, Self::IfRunning(then, _)) => then.resolve(true),
-			(false, Self::IfRunning(_, otherwise)) => otherwise.resolve(false),
-			(ir, Self::Both(one, two)) => Self::both(one.resolve(ir), two.resolve(ir)),
-			(_, other) => other,
-		}
-	}
-}
+mod outcome;
+mod workingdata;
 
 pub async fn worker(
 	working: watch::Receiver<WorkingData>,
@@ -247,6 +72,8 @@ pub async fn worker(
 				Ok(None) => break,
 				Ok(Some(event)) => {
 					trace!(?event, "got event");
+
+					// TODO: filter event here
 
 					if set.is_empty() {
 						trace!("event is the first, resetting throttle window");
