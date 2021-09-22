@@ -1,7 +1,7 @@
 use std::{
 	fmt,
 	sync::{Arc, Weak},
-	time::{Duration},
+	time::Duration,
 };
 
 use atomic_take::AtomicTake;
@@ -13,7 +13,7 @@ use tokio::{
 
 pub use command_group::Signal;
 
-use crate::{command::Shell, event::Event, handler::{Handler}};
+use crate::{command::Shell, event::Event, filter::Filterer, handler::Handler};
 
 use super::Outcome;
 
@@ -26,12 +26,12 @@ pub struct WorkingData {
 	pub pre_spawn_handler: Arc<AtomicTake<Box<dyn Handler<PreSpawn> + Send>>>,
 	pub post_spawn_handler: Arc<AtomicTake<Box<dyn Handler<PostSpawn> + Send>>>,
 
-	pub shell: Shell,
-
 	/// TODO: notes for command construction ref Shell and old src
 	pub command: Vec<String>,
-
 	pub grouped: bool,
+	pub shell: Shell,
+
+	pub filterer: Arc<dyn Filterer>,
 }
 
 impl fmt::Debug for WorkingData {
@@ -53,9 +53,10 @@ impl Default for WorkingData {
 			action_handler: Arc::new(AtomicTake::new(Box::new(()) as _)),
 			pre_spawn_handler: Arc::new(AtomicTake::new(Box::new(()) as _)),
 			post_spawn_handler: Arc::new(AtomicTake::new(Box::new(()) as _)),
-			shell: Shell::default(),
 			command: Vec::new(),
+			shell: Shell::default(),
 			grouped: true,
+			filterer: Arc::new(()),
 		}
 	}
 }

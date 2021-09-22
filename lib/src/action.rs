@@ -1,7 +1,7 @@
 //! Processor responsible for receiving events, filtering them, and scheduling actions in response.
 
 use std::{
-	sync::{Arc},
+	sync::Arc,
 	time::{Duration, Instant},
 };
 
@@ -15,7 +15,7 @@ use tracing::{debug, trace, warn};
 pub use command_group::Signal;
 
 use crate::{
-	command::{ Supervisor},
+	command::Supervisor,
 	error::{CriticalError, RuntimeError},
 	event::Event,
 	handler::{rte, Handler},
@@ -73,7 +73,21 @@ pub async fn worker(
 				Ok(Some(event)) => {
 					trace!(?event, "got event");
 
-					// TODO: filter event here
+					let filtered = working.borrow().filterer.check_event(&event);
+					match filtered {
+						Err(err) => {
+							trace!(%err, "filter errored on event");
+							errors.send(err).await?;
+							continue;
+						}
+						Ok(false) => {
+							trace!("filter rejected event");
+							continue;
+						}
+						Ok(true) => {
+							trace!("filter passed event");
+						}
+					}
 
 					if set.is_empty() {
 						trace!("event is the first, resetting throttle window");

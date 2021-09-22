@@ -11,8 +11,8 @@ use nom::{
 };
 use regex::Regex;
 
-use crate::error::RuntimeError;
 use super::*;
+use crate::error::RuntimeError;
 
 impl FromStr for Filter {
 	type Err = RuntimeError;
