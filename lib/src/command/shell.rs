@@ -3,27 +3,27 @@ use tracing::trace;
 
 /// Shell to use to run commands.
 ///
-/// `Cmd` and `Powershell` are special-cased because they have different calling
-/// conventions. Also `Cmd` is only available in Windows, while `Powershell` is
-/// also available on unices (provided the end-user has it installed, of course).
+/// `Cmd` and `Powershell` are special-cased because they have different calling conventions. Also
+/// `Cmd` is only available in Windows, while `Powershell` is also available on unices (provided the
+/// end-user has it installed, of course).
 ///
-/// See [`Config.cmd`] for the semantics of `None` vs the
-/// other options.
+/// See [`Config.cmd`] for the semantics of `None` vs the other options.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Shell {
 	/// Use no shell, and execute the command directly.
+	///
+	/// This is the default, however as consumer of this library you are encouraged to set your own
+	/// default as makes sense in your application / for your platform.
 	None,
 
 	/// Use the given string as a unix shell invocation.
 	///
 	/// This means two things:
 	/// - the program is invoked with `-c` followed by the command, and
-	/// - the string will be split on space, and the resulting vec used as
-	///   execvp(3) arguments: first is the shell program, rest are additional
-	///   arguments (which come before the `-c` mentioned above). This is a very
-	///   simplistic approach deliberately: it will not support quoted
-	///   arguments, for example. Use [`Shell::None`] with a custom command vec
-	///   if you want that.
+	/// - the string will be split on space, and the resulting vec used as execvp(3) arguments:
+	///   first is the shell program, rest are additional arguments (which come before the `-c`
+	///   mentioned above). This is a very simplistic approach deliberately: it will not support
+	///   quoted arguments, for example. Use [`Shell::None`] with a custom command vec for that.
 	Unix(String),
 
 	/// Use the Windows CMD.EXE shell.
@@ -36,20 +36,14 @@ pub enum Shell {
 	///
 	/// This is invoked with `-Command` followed by the command.
 	///
-	/// This is preferred over `Unix("pwsh")`, though that will also work
-	/// on unices due to Powershell supporting the `-c` short option.
+	/// This is preferred over `Unix("pwsh")`, though that will also work on unices due to
+	/// Powershell supporting the `-c` short option.
 	Powershell,
 }
 
 impl Default for Shell {
-	#[cfg(windows)]
 	fn default() -> Self {
-		Self::Powershell
-	}
-
-	#[cfg(not(windows))]
-	fn default() -> Self {
-		Self::Unix("sh".into())
+		Self::None
 	}
 }
 
