@@ -36,6 +36,19 @@ pub enum Tag {
 	ProcessCompletion(Option<ExitStatus>),
 }
 
+impl Tag {
+	pub const fn discriminant_name(&self) -> &'static str {
+		match self {
+			Tag::Path(_) => "Path",
+			Tag::FileEventKind(_) => "FileEventKind",
+			Tag::Source(_) => "Source",
+			Tag::Process(_) => "Process",
+			Tag::Signal(_) => "Signal",
+			Tag::ProcessCompletion(_) => "ProcessCompletion",
+		}
+	}
+}
+
 /// The general origin of the event.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[non_exhaustive]
@@ -46,6 +59,19 @@ pub enum Source {
 	Os,
 	Time,
 	Internal,
+}
+
+impl fmt::Display for Source {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		write!(f, "{}", match self {
+			Self::Filesystem => "filesystem",
+			Self::Keyboard => "keyboard",
+			Self::Mouse => "mouse",
+			Self::Os => "os",
+			Self::Time => "time",
+			Self::Internal => "internal",
+		})
+	}
 }
 
 impl Event {

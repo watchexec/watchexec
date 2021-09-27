@@ -1,14 +1,7 @@
 use std::str::FromStr;
 
 use globset::Glob;
-use nom::{
-	branch::alt,
-	bytes::complete::{is_not, tag, tag_no_case, take_while1},
-	character::complete::char,
-	combinator::map_res,
-	sequence::{delimited, tuple},
-	Finish, IResult,
-};
+use nom::{Finish, IResult, branch::alt, bytes::complete::{is_not, tag, tag_no_case, take_while1}, character::complete::char, combinator::{map_res, opt}, sequence::{delimited, tuple}};
 use regex::Regex;
 
 use super::*;
@@ -59,7 +52,9 @@ impl FromStr for Filter {
 					"==" => Ok(Op::Equal),
 					"!=" => Ok(Op::NotEqual),
 					"~=" => Ok(Op::Regex),
+					"~!" => Ok(Op::NotRegex),
 					"*=" => Ok(Op::Glob),
+					"*!" => Ok(Op::NotGlob),
 					":=" => Ok(Op::InSet),
 					":!" => Ok(Op::NotInSet),
 					"=" => Ok(Op::Auto),
@@ -79,8 +74,8 @@ impl FromStr for Filter {
 
 		fn filter(i: &str) -> IResult<&str, Filter> {
 			map_res(
-				tuple((matcher, op, pattern)),
-				|(m, o, p)| -> Result<_, ()> {
+				tuple((opt(tag("!")), matcher, op, pattern)),
+				|(n, m, o, p)| -> Result<_, ()> {
 					Ok(Filter {
 						in_path: None,
 						on: m,
@@ -94,15 +89,16 @@ impl FromStr for Filter {
 						pat: match (o, m) {
 							// TODO: carry regex/glob errors through
 							(Op::Auto | Op::Glob, Matcher::Path) => {
-								Pattern::Glob(Glob::new(p).map_err(drop)?)
+								Pattern::Glob(Glob::new(p).map_err(drop)?.compile_matcher())
 							}
 							(Op::Equal | Op::NotEqual, _) => Pattern::Exact(p.to_string()),
-							(Op::Glob, _) => Pattern::Glob(Glob::new(p).map_err(drop)?),
-							(Op::Regex, _) => Pattern::Regex(Regex::new(p).map_err(drop)?),
+							(Op::Glob | Op::NotGlob, _) => Pattern::Glob(Glob::new(p).map_err(drop)?.compile_matcher()),
+							(Op::Regex | Op::NotRegex, _) => Pattern::Regex(Regex::new(p).map_err(drop)?),
 							(Op::Auto | Op::InSet | Op::NotInSet, _) => {
 								Pattern::Set(p.split(',').map(|s| s.trim().to_string()).collect())
 							}
 						},
+						negate: n.is_some(),
 					})
 				},
 			)(i)
