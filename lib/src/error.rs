@@ -1,6 +1,6 @@
 //! Error types for critical, runtime, and specialised errors.
 
-use std::path::PathBuf;
+use std::{collections::HashMap, path::PathBuf};
 
 use miette::Diagnostic;
 use thiserror::Error;
@@ -12,6 +12,7 @@ use tokio::{
 use crate::{
 	action,
 	event::Event,
+	filter::tagged::{Filter, Matcher},
 	fs::{self, Watcher},
 };
 
@@ -158,13 +159,22 @@ pub enum RuntimeError {
 	#[diagnostic(code(watchexec::runtime::clearscreen))]
 	Clearscreen(#[from] clearscreen::Error),
 
-	/// Error received when a filter cannot be parsed.
+	/// Error received when a tagged filter cannot be parsed.
 	#[error("cannot parse filter `{src}`: {err:?}")]
 	#[diagnostic(code(watchexec::runtime::filter_parse))]
 	FilterParse {
 		src: String,
 		err: nom::error::ErrorKind,
 		// TODO: use miette's source snippet feature
+	},
+
+	/// Error received when a filter cannot be added or removed from a tagged filter list.
+	#[error("cannot {action} filter: {err:?}")]
+	#[diagnostic(code(watchexec::runtime::filter_change))]
+	FilterChange {
+		action: &'static str,
+		#[source]
+		err: watch::error::SendError<HashMap<Matcher, Vec<Filter>>>,
 	},
 }
 

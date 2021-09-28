@@ -9,6 +9,7 @@ use crate::{
 	action::{Action, PostSpawn, PreSpawn},
 	command::Shell,
 	error::RuntimeError,
+	filter::Filterer,
 	fs::Watcher,
 	handler::Handler,
 };
@@ -78,6 +79,11 @@ impl RuntimeConfig {
 		S: AsRef<str>,
 	{
 		self.action.command = command.into_iter().map(|c| c.as_ref().to_owned()).collect();
+		self
+	}
+
+	pub fn filterer(&mut self, filterer: Arc<dyn Filterer>) -> &mut Self {
+		self.action.filterer = filterer;
 		self
 	}
 
