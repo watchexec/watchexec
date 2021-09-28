@@ -22,9 +22,10 @@ path = "src/main.rs"
 [dependencies]
 watchexec = { path = "../lib" }
 color-eyre = "0.5.11"
+console-subscriber = { git = "https://github.com/tokio-rs/console", optional = true }
 notify-rust = "4.5.2"
 tokio = { version = "1.10.0", features = ["full"] }
-tracing-subscriber = "0.2.20"
+tracing-subscriber = "0.2.24"
 
 [dependencies.clap]
 version = "2.33.3"
@@ -37,6 +38,9 @@ embed-resource = "1.6.1"
 [dev-dependencies]
 assert_cmd = "1.0.3"
 insta = "1.7.1"
+
+[features]
+dev-console = ["console-subscriber"]
 
 [package.metadata.binstall]
 pkg-url = "{ repo }/releases/download/cli-v{ version }/watchexec-{ version }-{ target }.tar.xz"

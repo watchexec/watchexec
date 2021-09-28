@@ -10,7 +10,10 @@ mod config;
 async fn main() -> Result<()> {
 	color_eyre::install()?;
 
-	if var("RUST_LOG").is_ok() {
+	#[cfg(feature = "dev-console")]
+	console_subscriber::init();
+
+	if var("RUST_LOG").is_ok() && cfg!(not(feature = "dev-console")) {
 		tracing_subscriber::fmt::init();
 	}
 
