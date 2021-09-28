@@ -73,19 +73,23 @@ pub async fn worker(
 				Ok(Some(event)) => {
 					trace!(?event, "got event");
 
-					let filtered = working.borrow().filterer.check_event(&event);
-					match filtered {
-						Err(err) => {
-							trace!(%err, "filter errored on event");
-							errors.send(err).await?;
-							continue;
-						}
-						Ok(false) => {
-							trace!("filter rejected event");
-							continue;
-						}
-						Ok(true) => {
-							trace!("filter passed event");
+					if event.is_empty() {
+						trace!("empty event, by-passing filters");
+					} else {
+						let filtered = working.borrow().filterer.check_event(&event);
+						match filtered {
+							Err(err) => {
+								trace!(%err, "filter errored on event");
+								errors.send(err).await?;
+								continue;
+							}
+							Ok(false) => {
+								trace!("filter rejected event");
+								continue;
+							}
+							Ok(true) => {
+								trace!("filter passed event");
+							}
 						}
 					}
 
