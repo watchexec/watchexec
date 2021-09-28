@@ -1,5 +1,6 @@
 use std::{
-	convert::Infallible, env::current_dir, io::stderr, path::Path, str::FromStr, time::Duration,
+	convert::Infallible, env::current_dir, io::stderr, path::Path, str::FromStr, sync::Arc,
+	time::Duration,
 };
 
 use clap::ArgMatches;
@@ -8,13 +9,15 @@ use watchexec::{
 	action::{Action, Outcome, Signal},
 	command::Shell,
 	config::{InitConfig, RuntimeConfig},
+	filter::tagged::TaggedFilterer,
 	fs::Watcher,
 	handler::PrintDisplay,
 	signal::Signal as InputSignal,
 };
 
-pub fn new(args: &ArgMatches<'static>) -> Result<(InitConfig, RuntimeConfig)> {
-	Ok((init(args)?, runtime(args)?))
+pub fn new(args: &ArgMatches<'static>) -> Result<(InitConfig, RuntimeConfig, Arc<TaggedFilterer>)> {
+	let r = runtime(args)?;
+	Ok((init(args)?, r.0, r.1))
 }
 
 fn init(_args: &ArgMatches<'static>) -> Result<InitConfig> {
@@ -25,7 +28,7 @@ fn init(_args: &ArgMatches<'static>) -> Result<InitConfig> {
 	Ok(config.build()?)
 }
 
-fn runtime(args: &ArgMatches<'static>) -> Result<RuntimeConfig> {
+fn runtime(args: &ArgMatches<'static>) -> Result<(RuntimeConfig, Arc<TaggedFilterer>)> {
 	let mut config = RuntimeConfig::default();
 
 	config.command(
@@ -89,6 +92,9 @@ fn runtime(args: &ArgMatches<'static>) -> Result<RuntimeConfig> {
 
 	let print_events = args.is_present("print-events");
 	let once = args.is_present("once");
+
+	let filterer = TaggedFilterer::new(".", ".");
+	config.filterer(filterer.clone());
 
 	config.on_action(move |action: Action| {
 		let fut = async { Ok::<(), Infallible>(()) };
@@ -180,10 +186,10 @@ fn runtime(args: &ArgMatches<'static>) -> Result<RuntimeConfig> {
 		fut
 	});
 
-	Ok(config)
+	Ok((config, filterer))
 }
 
-// until 2.0
+// until 2.0, then Powershell
 #[cfg(windows)]
 fn default_shell() -> Shell {
 	Shell::Cmd

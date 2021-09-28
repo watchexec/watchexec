@@ -28,7 +28,11 @@ async fn main() -> Result<()> {
 			.ok();
 	}
 
-	let (init, runtime) = config::new(&args)?;
+	let (init, runtime, filterer) = config::new(&args)?;
+
+	for filter in args.values_of("filter").unwrap_or_default() {
+		filterer.add_filter(filter.parse()?).await?;
+	}
 
 	let wx = Watchexec::new(init, runtime)?;
 
