@@ -63,18 +63,34 @@ pub enum Source {
 
 impl fmt::Display for Source {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		write!(f, "{}", match self {
-			Self::Filesystem => "filesystem",
-			Self::Keyboard => "keyboard",
-			Self::Mouse => "mouse",
-			Self::Os => "os",
-			Self::Time => "time",
-			Self::Internal => "internal",
-		})
+		write!(
+			f,
+			"{}",
+			match self {
+				Self::Filesystem => "filesystem",
+				Self::Keyboard => "keyboard",
+				Self::Mouse => "mouse",
+				Self::Os => "os",
+				Self::Time => "time",
+				Self::Internal => "internal",
+			}
+		)
 	}
 }
 
 impl Event {
+	/// Returns true if the event has an Internal source tag.
+	pub fn is_internal(&self) -> bool {
+		self.tags
+			.iter()
+			.any(|tag| matches!(tag, Tag::Source(Source::Internal)))
+	}
+
+	/// Returns true if the event has no tags.
+	pub fn is_empty(&self) -> bool {
+		self.tags.is_empty()
+	}
+
 	/// Return all paths in the event's tags.
 	pub fn paths(&self) -> impl Iterator<Item = &Path> {
 		self.tags.iter().filter_map(|p| match p {
