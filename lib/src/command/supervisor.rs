@@ -13,7 +13,7 @@ use tokio::{
 	},
 	task::JoinHandle,
 };
-use tracing::{debug, error, trace, warn};
+use tracing::{debug, error, trace};
 
 use crate::{
 	error::RuntimeError,
@@ -192,12 +192,19 @@ impl Supervisor {
 				.map_err(|err| RuntimeError::InternalSupervisor(err.to_string()))?;
 			debug!("supervisor completed");
 
-			if !self.ongoing.swap(false, Ordering::SeqCst) {
-				warn!("oneshot completed but ongoing was true, this should never happen");
+			if self.ongoing.swap(false, Ordering::SeqCst) {
+				#[cfg(debug_assertions)]
+				panic!("oneshot completed but ongoing was true, this should never happen");
+				#[cfg(not(debug_assertions))]
+				tracing::warn!("oneshot completed but ongoing was true, this should never happen");
 			}
 		} else {
-			warn!("waiter is None but ongoing was true, this should never happen");
-			self.ongoing.store(false, Ordering::SeqCst);
+			#[cfg(debug_assertions)]
+			panic!("waiter is None but ongoing was true, this should never happen");
+			#[cfg(not(debug_assertions))] {
+				self.ongoing.store(false, Ordering::SeqCst);
+				tracing::warn!("waiter is None but ongoing was true, this should never happen");
+			}
 		}
 
 		Ok(())
