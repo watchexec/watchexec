@@ -1,8 +1,16 @@
 use std::str::FromStr;
 
 use globset::Glob;
-use nom::{Finish, IResult, branch::alt, bytes::complete::{is_not, tag, tag_no_case, take_while1}, character::complete::char, combinator::{map_res, opt}, sequence::{delimited, tuple}};
+use nom::{
+	branch::alt,
+	bytes::complete::{is_not, tag, tag_no_case, take_while1},
+	character::complete::char,
+	combinator::{map_res, opt},
+	sequence::{delimited, tuple},
+	Finish, IResult,
+};
 use regex::Regex;
+use tracing::trace;
 
 use super::*;
 use crate::error::RuntimeError;
@@ -92,8 +100,12 @@ impl FromStr for Filter {
 								Pattern::Glob(Glob::new(p).map_err(drop)?.compile_matcher())
 							}
 							(Op::Equal | Op::NotEqual, _) => Pattern::Exact(p.to_string()),
-							(Op::Glob | Op::NotGlob, _) => Pattern::Glob(Glob::new(p).map_err(drop)?.compile_matcher()),
-							(Op::Regex | Op::NotRegex, _) => Pattern::Regex(Regex::new(p).map_err(drop)?),
+							(Op::Glob | Op::NotGlob, _) => {
+								Pattern::Glob(Glob::new(p).map_err(drop)?.compile_matcher())
+							}
+							(Op::Regex | Op::NotRegex, _) => {
+								Pattern::Regex(Regex::new(p).map_err(drop)?)
+							}
 							(Op::Auto | Op::InSet | Op::NotInSet, _) => {
 								Pattern::Set(p.split(',').map(|s| s.trim().to_string()).collect())
 							}
@@ -104,9 +116,13 @@ impl FromStr for Filter {
 			)(i)
 		}
 
+		trace!(src=?s, "parsing tagged filter");
 		filter(s)
 			.finish()
-			.map(|(_, f)| f)
+			.map(|(_, f)| {
+				trace!(src=?s, filter=?f, "parsed tagged filter");
+				f
+			})
 			.map_err(|e| RuntimeError::FilterParse {
 				src: s.to_string(),
 				err: e.code,
