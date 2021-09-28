@@ -1,9 +1,10 @@
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use globset::GlobMatcher;
 use regex::Regex;
-use tracing::warn;
+use tracing::{debug, trace, warn};
 
 use crate::error::RuntimeError;
 use crate::event::{Event, Tag};
@@ -15,48 +16,68 @@ pub struct TaggedFilterer {
 	/// The directory the project is in, its "root".
 	///
 	/// This is used to resolve absolute paths without an `in_path` context.
-	_root: PathBuf,
+	root: PathBuf,
 
 	/// Where the program is running from.
 	///
 	/// This is used to resolve relative paths without an `in_path` context.
-	_workdir: PathBuf,
+	workdir: PathBuf,
 
 	/// All filters that are applied, in order, by matcher.
-	filters: HashMap<Matcher, Vec<Filter>>,
+	filters: swaplock::SwapLock<HashMap<Matcher, Vec<Filter>>>,
 }
 
 impl Filterer for TaggedFilterer {
-	fn check_event(&self, event: &Event) -> Result<bool, RuntimeError> { // TODO: trace logging
-		if self.filters.is_empty() {
+	fn check_event(&self, event: &Event) -> Result<bool, RuntimeError> {
+		// TODO: trace logging
+		if self.filters.borrow().is_empty() {
+			trace!("no filters, skipping entire check (pass)");
 			return Ok(true);
 		}
 
+		trace!(tags=%event.tags.len(), "checking all tags on the event");
 		for tag in &event.tags {
-			if let Some(tag_filters) = self.filters.get(&tag.into()) {
+			let filters = self.filters.borrow().get(&tag.into()).cloned();
+			if let Some(tag_filters) = filters {
+				trace!(?tag, "checking tag");
+
 				if tag_filters.is_empty() {
+					trace!(?tag, "no filters for this tag, skipping (pass)");
 					continue;
 				}
 
+				trace!(?tag, filters=%tag_filters.len(), "found some filters for this tag");
+
 				let mut tag_match = true;
-				for filter in tag_filters {
+				for filter in &tag_filters {
+					trace!(?filter, ?tag, "checking filter againt tag");
 					if let Some(app) = self.match_tag(filter, tag)? {
 						if filter.negate {
 							if app {
+								trace!(prev=%tag_match, now=%true, "negate filter passes, resetting tag to pass");
 								tag_match = true;
+							} else {
+								trace!(prev=%tag_match, now=%tag_match, "negate filter fails, ignoring");
 							}
 						} else {
+							trace!(prev=%tag_match, this=%app, now=%(tag_match&app), "filter applies to this tag");
 							tag_match &= app;
 						}
 					}
 				}
 
 				if !tag_match {
+					trace!(?tag, "tag fails check, failing entire event");
 					return Ok(false);
 				}
+
+				trace!(?tag, "tag passes check, continuing");
+			} else {
+				trace!(?tag, "no filters for this tag, skipping (pass)");
 			}
 		}
 
+		trace!(?event, "passing event");
 		Ok(true)
 	}
 }
@@ -82,16 +103,27 @@ pub struct Filter {
 
 impl TaggedFilterer {
 	fn match_tag(&self, filter: &Filter, tag: &Tag) -> Result<Option<bool>, RuntimeError> {
+		trace!(?tag, matcher=?filter.on, "matching filter to tag");
 		match (tag, filter.on) {
 			(tag, Matcher::Tag) => filter.matches(tag.discriminant_name()),
 			(Tag::Path(_path), Matcher::Path) => todo!("tagged filterer: path matcher"),
-			(Tag::FileEventKind(kind), Matcher::FileEventKind) => filter.matches(format!("{:?}", kind)),
+			(Tag::FileEventKind(kind), Matcher::FileEventKind) => {
+				filter.matches(format!("{:?}", kind))
+			}
 			(Tag::Source(src), Matcher::Source) => filter.matches(src.to_string()),
 			(Tag::Process(pid), Matcher::Process) => filter.matches(pid.to_string()),
 			(Tag::Signal(_sig), Matcher::Signal) => todo!("tagged filterer: signal matcher"),
-			(Tag::ProcessCompletion(_oes), Matcher::ProcessCompletion) => todo!("tagged filterer: completion matcher"),
-			_ => return Ok(None),
-		}.map(Some)
+			(Tag::ProcessCompletion(_oes), Matcher::ProcessCompletion) => {
+				todo!("tagged filterer: completion matcher")
+			}
+			(tag, matcher) => {
+				trace!(?tag, ?matcher, "no match for tag, skipping");
+				return Ok(None);
+			}
+		}
+		.map(Some)
+	}
+
 	}
 }
 
@@ -99,24 +131,26 @@ impl Filter {
 	pub fn matches(&self, subject: impl AsRef<str>) -> Result<bool, RuntimeError> {
 		let subject = subject.as_ref();
 
-		// TODO: cache compiled globs
-
-		match (self.op, &self.pat) {
-			(Op::Equal, Pattern::Exact(pat)) => Ok(subject == pat),
-			(Op::NotEqual, Pattern::Exact(pat)) => Ok(subject != pat),
-			(Op::Regex, Pattern::Regex(pat)) => Ok(pat.is_match(subject)),
-			(Op::NotRegex, Pattern::Regex(pat)) => Ok(!pat.is_match(subject)),
-			(Op::Glob, Pattern::Glob(pat)) => Ok(pat.is_match(subject)),
-			(Op::NotGlob, Pattern::Glob(pat)) => Ok(!pat.is_match(subject)),
-			(Op::InSet, Pattern::Set(set)) => Ok(set.contains(subject)),
-			(Op::InSet, Pattern::Exact(pat)) => Ok(subject == pat),
-			(Op::NotInSet, Pattern::Set(set)) => Ok(!set.contains(subject)),
-			(Op::NotInSet, Pattern::Exact(pat)) => Ok(subject != pat),
+		trace!(op=?self.op, pat=?self.pat, ?subject, "performing filter match");
+		Ok(match (self.op, &self.pat) {
+			(Op::Equal, Pattern::Exact(pat)) => subject == pat,
+			(Op::NotEqual, Pattern::Exact(pat)) => subject != pat,
+			(Op::Regex, Pattern::Regex(pat)) => pat.is_match(subject),
+			(Op::NotRegex, Pattern::Regex(pat)) => !pat.is_match(subject),
+			(Op::Glob, Pattern::Glob(pat)) => pat.is_match(subject),
+			(Op::NotGlob, Pattern::Glob(pat)) => !pat.is_match(subject),
+			(Op::InSet, Pattern::Set(set)) => set.contains(subject),
+			(Op::InSet, Pattern::Exact(pat)) => subject == pat,
+			(Op::NotInSet, Pattern::Set(set)) => !set.contains(subject),
+			(Op::NotInSet, Pattern::Exact(pat)) => subject != pat,
 			(op, pat) => {
-				warn!("trying to match pattern {:?} with op {:?}, that cannot work", pat, op);
-				Ok(false)
+				warn!(
+					"trying to match pattern {:?} with op {:?}, that cannot work",
+					pat, op
+				);
+				false
 			}
-		}
+		})
 	}
 }
 
