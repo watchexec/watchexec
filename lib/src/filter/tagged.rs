@@ -11,6 +11,7 @@ use crate::event::{Event, Tag};
 use crate::filter::Filterer;
 
 mod parse;
+pub mod swaplock;
 
 pub struct TaggedFilterer {
 	/// The directory the project is in, its "root".
@@ -102,6 +103,14 @@ pub struct Filter {
 }
 
 impl TaggedFilterer {
+	pub fn new(root: impl Into<PathBuf>, workdir: impl Into<PathBuf>) -> Arc<Self> {
+		Arc::new(Self {
+			root: root.into(),
+			workdir: workdir.into(),
+			filters: swaplock::SwapLock::new(HashMap::new()),
+		})
+	}
+
 	fn match_tag(&self, filter: &Filter, tag: &Tag) -> Result<Option<bool>, RuntimeError> {
 		trace!(?tag, matcher=?filter.on, "matching filter to tag");
 		match (tag, filter.on) {
@@ -124,6 +133,44 @@ impl TaggedFilterer {
 		.map(Some)
 	}
 
+	pub async fn add_filter(&self, filter: Filter) -> Result<(), RuntimeError> {
+		debug!(?filter, "adding filter to filterer");
+		self.filters
+			.change(|filters| {
+				filters.entry(filter.on).or_default().push(filter);
+			})
+			.await
+			.map_err(|err| RuntimeError::FilterChange { action: "add", err })?;
+		Ok(())
+	}
+
+	pub async fn remove_filter(&self, filter: &Filter) -> Result<(), RuntimeError> {
+		debug!(?filter, "removing filter from filterer");
+		self.filters
+			.change(|filters| {
+				filters
+					.entry(filter.on)
+					.or_default()
+					.retain(|f| f != filter);
+			})
+			.await
+			.map_err(|err| RuntimeError::FilterChange {
+				action: "remove",
+				err,
+			})?;
+		Ok(())
+	}
+
+	pub async fn clear_filters(&self) -> Result<(), RuntimeError> {
+		debug!("removing all filters from filterer");
+		self.filters
+			.replace(Default::default())
+			.await
+			.map_err(|err| RuntimeError::FilterChange {
+				action: "clear all",
+				err,
+			})?;
+		Ok(())
 	}
 }
 
