@@ -201,7 +201,8 @@ impl Supervisor {
 		} else {
 			#[cfg(debug_assertions)]
 			panic!("waiter is None but ongoing was true, this should never happen");
-			#[cfg(not(debug_assertions))] {
+			#[cfg(not(debug_assertions))]
+			{
 				self.ongoing.store(false, Ordering::SeqCst);
 				tracing::warn!("waiter is None but ongoing was true, this should never happen");
 			}
