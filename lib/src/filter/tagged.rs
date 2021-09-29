@@ -5,6 +5,7 @@ use std::sync::Arc;
 use globset::GlobMatcher;
 use regex::Regex;
 use tracing::{debug, trace, warn};
+use unicase::UniCase;
 
 use crate::error::RuntimeError;
 use crate::event::{Event, Tag};
@@ -180,8 +181,8 @@ impl Filter {
 
 		trace!(op=?self.op, pat=?self.pat, ?subject, "performing filter match");
 		Ok(match (self.op, &self.pat) {
-			(Op::Equal, Pattern::Exact(pat)) => subject == pat,
-			(Op::NotEqual, Pattern::Exact(pat)) => subject != pat,
+			(Op::Equal, Pattern::Exact(pat)) => UniCase::new(subject) == UniCase::new(pat),
+			(Op::NotEqual, Pattern::Exact(pat)) => UniCase::new(subject) != UniCase::new(pat),
 			(Op::Regex, Pattern::Regex(pat)) => pat.is_match(subject),
 			(Op::NotRegex, Pattern::Regex(pat)) => !pat.is_match(subject),
 			(Op::Glob, Pattern::Glob(pat)) => pat.is_match(subject),
