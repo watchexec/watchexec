@@ -93,7 +93,7 @@ fn runtime(args: &ArgMatches<'static>) -> Result<(RuntimeConfig, Arc<TaggedFilte
 	let print_events = args.is_present("print-events");
 	let once = args.is_present("once");
 
-	let filterer = TaggedFilterer::new(".", ".");
+	let filterer = TaggedFilterer::new(".", ".")?;
 	config.filterer(filterer.clone());
 
 	config.on_action(move |action: Action| {

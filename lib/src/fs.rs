@@ -62,9 +62,13 @@ pub struct WorkingData {
 ///
 /// While you can run several, you should only have one.
 ///
-/// This only does a bare minimum of setup; to actually start the work, you need to set a non-empty pathset on the
-/// [`WorkingData`] with the [`watch`] channel, and send a notification. Take care _not_ to drop the watch sender:
-/// this will cause the worker to stop gracefully, which may not be what was expected.
+/// This only does a bare minimum of setup; to actually start the work, you need to set a non-empty
+/// pathset on the [`WorkingData`] with the [`watch`] channel, and send a notification. Take care
+/// _not_ to drop the watch sender: this will cause the worker to stop gracefully, which may not be
+/// what was expected.
+///
+/// Note that the paths emitted by the watcher are canonicalised. No guarantee is made about the
+/// implementation or output of that canonicalisation (i.e. it might not be `std`'s).
 ///
 /// # Examples
 ///
@@ -146,7 +150,7 @@ pub async fn worker(
 				}
 			}) {
 				Ok(w) => {
-					watcher.insert(w);
+					watcher = Some(w);
 					watcher_type = kind;
 				}
 				Err(e) => {

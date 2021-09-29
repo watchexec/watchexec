@@ -41,6 +41,7 @@ impl fmt::Debug for WorkingData {
 			.field("shell", &self.shell)
 			.field("command", &self.command)
 			.field("grouped", &self.grouped)
+			.field("filterer", &self.filterer)
 			.finish_non_exhaustive()
 	}
 }

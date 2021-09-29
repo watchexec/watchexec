@@ -1,7 +1,9 @@
+use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use dunce::canonicalize;
 use globset::GlobMatcher;
 use regex::Regex;
 use tracing::{debug, trace, warn};
@@ -14,6 +16,7 @@ use crate::filter::Filterer;
 mod parse;
 pub mod swaplock;
 
+#[derive(Debug)]
 pub struct TaggedFilterer {
 	/// The directory the project is in, its "root".
 	///
@@ -104,19 +107,50 @@ pub struct Filter {
 }
 
 impl TaggedFilterer {
-	pub fn new(root: impl Into<PathBuf>, workdir: impl Into<PathBuf>) -> Arc<Self> {
-		Arc::new(Self {
-			root: root.into(),
-			workdir: workdir.into(),
+	pub fn new(
+		root: impl Into<PathBuf>,
+		workdir: impl Into<PathBuf>,
+	) -> Result<Arc<Self>, RuntimeError> {
+		// TODO: make it criticalerror
+		Ok(Arc::new(Self {
+			root: canonicalize(root.into())?,
+			workdir: canonicalize(workdir.into())?,
 			filters: swaplock::SwapLock::new(HashMap::new()),
-		})
+		}))
 	}
 
+	// filter ctx              event path                filter                 outcome
+	// /foo/bar                /foo/bar/baz.txt          baz.txt                pass
+	// /foo/bar                /foo/bar/baz.txt          /baz.txt               pass
+	// /foo/bar                /foo/bar/baz.txt          /baz.*                 pass
+	// /foo/bar                /foo/bar/baz.txt          /blah                  fail
+	// /foo/quz                /foo/bar/baz.txt          /baz.*                 skip
+	// TODO: lots of tests
+
+	// Ok(Some(bool)) => the match was applied, bool is the result
+	// Ok(None) => for some precondition, the match was not done (mismatched tag, out of context, …)
 	fn match_tag(&self, filter: &Filter, tag: &Tag) -> Result<Option<bool>, RuntimeError> {
 		trace!(?tag, matcher=?filter.on, "matching filter to tag");
 		match (tag, filter.on) {
 			(tag, Matcher::Tag) => filter.matches(tag.discriminant_name()),
-			(Tag::Path(_path), Matcher::Path) => todo!("tagged filterer: path matcher"),
+			(Tag::Path(path), Matcher::Path) => {
+				let resolved = if let Some(ctx) = &filter.in_path {
+					if let Ok(suffix) = path.strip_prefix(ctx) {
+						suffix.strip_prefix("/").unwrap_or(suffix)
+					} else {
+						return Ok(None);
+					}
+				} else if let Ok(suffix) = path.strip_prefix(&self.workdir) {
+					suffix.strip_prefix("/").unwrap_or(suffix)
+				} else if let Ok(suffix) = path.strip_prefix(&self.root) {
+					suffix.strip_prefix("/").unwrap_or(suffix)
+				} else {
+					path.strip_prefix("/").unwrap_or(path)
+				};
+
+				trace!(?resolved, "resolved path to match filter against");
+				filter.matches(resolved.to_string_lossy())
+			}
 			(Tag::FileEventKind(kind), Matcher::FileEventKind) => {
 				filter.matches(format!("{:?}", kind))
 			}
@@ -134,8 +168,14 @@ impl TaggedFilterer {
 		.map(Some)
 	}
 
-	pub async fn add_filter(&self, filter: Filter) -> Result<(), RuntimeError> {
+	pub async fn add_filter(&self, mut filter: Filter) -> Result<(), RuntimeError> {
 		debug!(?filter, "adding filter to filterer");
+
+		if let Some(ctx) = &mut filter.in_path {
+			*ctx = canonicalize(&ctx)?;
+			trace!(canon=?ctx, "canonicalised in_path");
+		}
+
 		self.filters
 			.change(|filters| {
 				filters.entry(filter.on).or_default().push(filter);
@@ -146,13 +186,23 @@ impl TaggedFilterer {
 	}
 
 	pub async fn remove_filter(&self, filter: &Filter) -> Result<(), RuntimeError> {
+		let filter = if let Some(ctx) = &filter.in_path {
+			let f = filter.clone();
+			Cow::Owned(Filter {
+				in_path: Some(canonicalize(ctx)?),
+				..f
+			})
+		} else {
+			Cow::Borrowed(filter)
+		};
+
 		debug!(?filter, "removing filter from filterer");
 		self.filters
 			.change(|filters| {
 				filters
 					.entry(filter.on)
 					.or_default()
-					.retain(|f| f != filter);
+					.retain(|f| f != filter.as_ref());
 			})
 			.await
 			.map_err(|err| RuntimeError::FilterChange {
@@ -176,6 +226,7 @@ impl TaggedFilterer {
 }
 
 impl Filter {
+	// TODO non-unicode matching
 	pub fn matches(&self, subject: impl AsRef<str>) -> Result<bool, RuntimeError> {
 		let subject = subject.as_ref();
 

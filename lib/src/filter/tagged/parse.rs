@@ -96,19 +96,26 @@ impl FromStr for Filter {
 						},
 						pat: match (o, m) {
 							// TODO: carry regex/glob errors through
-							(Op::Auto | Op::Glob, Matcher::Path) => {
-								Pattern::Glob(Glob::new(p).map_err(drop)?.compile_matcher())
-							}
-							(Op::Equal | Op::NotEqual, _) => Pattern::Exact(p.to_string()),
-							(Op::Glob | Op::NotGlob, _) => {
-								Pattern::Glob(Glob::new(p).map_err(drop)?.compile_matcher())
-							}
-							(Op::Regex | Op::NotRegex, _) => {
-								Pattern::Regex(Regex::new(p).map_err(drop)?)
+							(Op::Auto | Op::Glob, Matcher::Path) | (Op::Glob | Op::NotGlob, _) => {
+								Pattern::Glob(
+									if let Some(bare) = p.strip_prefix('/') {
+										trace!(original=?p, ?bare, "glob pattern is absolute, stripping prefix /");
+										Glob::new(bare)
+									} else {
+										trace!(original=?p, "glob pattern is relative, so prefixing with `**/`");
+										Glob::new(&format!("**/{}", p))
+									}
+									.map_err(drop)?
+									.compile_matcher(),
+								)
 							}
 							(Op::Auto | Op::InSet | Op::NotInSet, _) => {
 								Pattern::Set(p.split(',').map(|s| s.trim().to_string()).collect())
 							}
+							(Op::Regex | Op::NotRegex, _) => {
+								Pattern::Regex(Regex::new(p).map_err(drop)?)
+							}
+							(Op::Equal | Op::NotEqual, _) => Pattern::Exact(p.to_string()),
 						},
 						negate: n.is_some(),
 					})

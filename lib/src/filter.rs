@@ -5,7 +5,7 @@ use crate::{error::RuntimeError, event::Event};
 pub mod globset;
 pub mod tagged;
 
-pub trait Filterer: Send + Sync {
+pub trait Filterer: std::fmt::Debug + Send + Sync {
 	fn check_event(&self, event: &Event) -> Result<bool, RuntimeError>;
 }
 

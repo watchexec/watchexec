@@ -6,6 +6,7 @@ use crate::error::RuntimeError;
 use crate::event::Event;
 use crate::filter::Filterer;
 
+#[derive(Debug)]
 pub struct GlobsetFilterer {
 	_root: PathBuf,
 }
