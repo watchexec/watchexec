@@ -4,7 +4,7 @@ use std::{
 };
 
 use clap::ArgMatches;
-use color_eyre::eyre::{eyre, Result};
+use miette::{IntoDiagnostic, Result};
 use watchexec::{
 	action::{Action, Outcome, Signal},
 	command::Shell,
@@ -31,21 +31,21 @@ fn runtime(args: &ArgMatches<'static>) -> Result<(RuntimeConfig, Arc<TaggedFilte
 
 	config.command(
 		args.values_of_lossy("command")
-			.ok_or_else(|| eyre!("(clap) Bug: command is not present"))?
+			.expect("(clap) Bug: command is not present")
 			.iter(),
 	);
 
 	config.pathset(match args.values_of_os("paths") {
 		Some(paths) => paths.map(|os| Path::new(os).to_owned()).collect(),
-		None => vec![current_dir()?],
+		None => vec![current_dir().into_diagnostic()?],
 	});
 
 	config.action_throttle(Duration::from_millis(
-		args.value_of("debounce").unwrap_or("100").parse()?,
+		args.value_of("debounce").unwrap_or("100").parse().into_diagnostic()?,
 	));
 
 	if let Some(interval) = args.value_of("poll") {
-		config.file_watcher(Watcher::Poll(Duration::from_millis(interval.parse()?)));
+		config.file_watcher(Watcher::Poll(Duration::from_millis(interval.parse().into_diagnostic()?)));
 	}
 
 	config.command_shell(if args.is_present("no-shell") {
@@ -81,7 +81,7 @@ fn runtime(args: &ArgMatches<'static>) -> Result<(RuntimeConfig, Arc<TaggedFilte
 	let mut signal = args
 		.value_of("signal")
 		.map(|s| Signal::from_str(s))
-		.transpose()?
+		.transpose().into_diagnostic()?
 		.unwrap_or(Signal::SIGTERM);
 
 	if args.is_present("kill") {

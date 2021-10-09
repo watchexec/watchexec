@@ -1,15 +1,12 @@
 use std::env::var;
 
-use color_eyre::eyre::Result;
-use watchexec::{event::Event, Watchexec};
+use miette::{IntoDiagnostic, Result};
 
 mod args;
 mod config;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-	color_eyre::install()?;
-
 	#[cfg(feature = "dev-console")]
 	console_subscriber::init();
 
@@ -43,7 +40,7 @@ async fn main() -> Result<()> {
 		wx.send_event(Event::default()).await?;
 	}
 
-	wx.main().await??;
+	wx.main().await.into_diagnostic()??;
 
 	Ok(())
 }

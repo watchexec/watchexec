@@ -7,7 +7,7 @@ use std::{
 };
 
 use clap::{crate_version, App, Arg, ArgMatches};
-use color_eyre::eyre::{Context, Report, Result};
+use miette::{Context, IntoDiagnostic, Result};
 
 pub fn get_args() -> Result<ArgMatches<'static>> {
 	let app = App::new("watchexec")
@@ -18,7 +18,7 @@ pub fn get_args() -> Result<ArgMatches<'static>> {
 			.help("Command to execute")
 			.multiple(true)
 			.required(true))
-		.arg(Arg::with_name("extensions") // TODO
+		.arg(Arg::with_name("extensions")
 			.help("Comma-separated list of file extensions to watch (e.g. js,css,html)")
 			.short("e")
 			.long("exts")
@@ -143,12 +143,13 @@ pub fn get_args() -> Result<ArgMatches<'static>> {
 		if let Some(arg_path) = first.strip_prefix('@').map(Path::new) {
 			let arg_file = BufReader::new(
 				File::open(arg_path)
+					.into_diagnostic()
 					.wrap_err_with(|| format!("Failed to open argument file {:?}", arg_path))?,
 			);
 
 			let mut more_args: Vec<OsString> = arg_file
 				.lines()
-				.map(|l| l.map(OsString::from).map_err(Report::from))
+				.map(|l| l.map(OsString::from).into_diagnostic())
 				.collect::<Result<_>>()?;
 
 			more_args.insert(0, raw_args.remove(0));

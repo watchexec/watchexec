@@ -21,7 +21,7 @@ path = "src/main.rs"
 
 [dependencies]
 watchexec = { path = "../lib" }
-color-eyre = "0.5.11"
+miette = { version = "3.2.0", features = ["fancy"] }
 console-subscriber = { git = "https://github.com/tokio-rs/console", optional = true }
 notify-rust = "4.5.2"
 tokio = { version = "1.10.0", features = ["full"] }
