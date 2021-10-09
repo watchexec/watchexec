@@ -25,6 +25,14 @@ pub enum CriticalError {
 	#[diagnostic(code(watchexec::runtime::exit))]
 	Exit,
 
+	/// For custom critical errors.
+	///
+	/// This should be used for errors by external code which are not covered by the other error
+	/// types; watchexec-internal errors should never use this.
+	#[error("external(critical): {0}")]
+	#[diagnostic(code(watchexec::critical::external))]
+	External(#[from] Box<dyn std::error::Error + Send + Sync>),
+
 	/// A critical I/O error occurred.
 	#[error(transparent)]
 	#[diagnostic(code(watchexec::critical::io_error))]
@@ -62,6 +70,14 @@ pub enum RuntimeError {
 	#[error("this should never be printed (exit)")]
 	#[diagnostic(code(watchexec::runtime::exit))]
 	Exit,
+
+	/// For custom runtime errors.
+	///
+	/// This should be used for errors by external code which are not covered by the other error
+	/// types; watchexec-internal errors should never use this.
+	#[error("external(runtime): {0}")]
+	#[diagnostic(code(watchexec::runtime::external))]
+	External(#[from] Box<dyn std::error::Error + Send + Sync>),
 
 	/// Generic I/O error, with no additional context.
 	#[error(transparent)]
