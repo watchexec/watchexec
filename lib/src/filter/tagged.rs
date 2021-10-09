@@ -5,13 +5,17 @@ use std::sync::Arc;
 
 use dunce::canonicalize;
 use globset::GlobMatcher;
-use regex::Regex;
 use tracing::{debug, trace, warn};
 use unicase::UniCase;
 
 use crate::error::RuntimeError;
 use crate::event::{Event, Tag};
 use crate::filter::Filterer;
+use crate::project::ProjectType;
+
+// to make filters
+pub use globset::Glob;
+pub use regex::Regex;
 
 mod parse;
 pub mod swaplock;
@@ -19,10 +23,10 @@ pub mod error;
 
 #[derive(Debug)]
 pub struct TaggedFilterer {
-	/// The directory the project is in, its "root".
+	/// The directory the project is in, its origin.
 	///
 	/// This is used to resolve absolute paths without an `in_path` context.
-	root: PathBuf,
+	origin: PathBuf,
 
 	/// Where the program is running from.
 	///
@@ -94,25 +98,6 @@ impl TaggedFilterer {
 	}
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Filter {
-	/// Path the filter applies from.
-	pub in_path: Option<PathBuf>,
-
-	/// Which tag the filter applies to.
-	pub on: Matcher,
-
-	/// The operation to perform on the tag's value.
-	pub op: Op,
-
-	/// The pattern to match against the tag's value.
-	pub pat: Pattern,
-
-	/// If true, a positive match with this filter will override negative matches from previous
-	/// filters on the same tag, and negative matches will be ignored.
-	pub negate: bool,
-}
-
 impl TaggedFilterer {
 	pub fn new(
 		root: impl Into<PathBuf>,
@@ -120,7 +105,7 @@ impl TaggedFilterer {
 	) -> Result<Arc<Self>, error::TaggedFiltererError> {
 		// TODO: make it criticalerror
 		Ok(Arc::new(Self {
-			root: canonicalize(root.into())?,
+			origin: canonicalize(root.into())?,
 			workdir: canonicalize(workdir.into())?,
 			filters: swaplock::SwapLock::new(HashMap::new()),
 		}))
@@ -149,7 +134,7 @@ impl TaggedFilterer {
 					}
 				} else if let Ok(suffix) = path.strip_prefix(&self.workdir) {
 					suffix.strip_prefix("/").unwrap_or(suffix)
-				} else if let Ok(suffix) = path.strip_prefix(&self.root) {
+				} else if let Ok(suffix) = path.strip_prefix(&self.origin) {
 					suffix.strip_prefix("/").unwrap_or(suffix)
 				} else {
 					path.strip_prefix("/").unwrap_or(path)
@@ -230,6 +215,32 @@ impl TaggedFilterer {
 			})?;
 		Ok(())
 	}
+
+	/// Convenience function to create a glob pattern from a string.
+	///
+	/// This parses and compiles the glob, and wraps any error with nice [miette] diagnostics.
+	pub fn glob(s: &str) -> Result<Pattern, error::TaggedFiltererError> {
+		Glob::new(s).map_err(error::TaggedFiltererError::GlobParse).map(|g| Pattern::Glob(g.compile_matcher()))
+	}
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Filter {
+	/// Path the filter applies from.
+	pub in_path: Option<PathBuf>,
+
+	/// Which tag the filter applies to.
+	pub on: Matcher,
+
+	/// The operation to perform on the tag's value.
+	pub op: Op,
+
+	/// The pattern to match against the tag's value.
+	pub pat: Pattern,
+
+	/// If true, a positive match with this filter will override negative matches from previous
+	/// filters on the same tag, and negative matches will be ignored.
+	pub negate: bool,
 }
 
 impl Filter {
@@ -257,6 +268,38 @@ impl Filter {
 				false
 			}
 		})
+	}
+
+	/// Returns a set of ignores for the given project type.
+	pub fn for_project(project_type: ProjectType) -> Vec<Self> {
+		const ERR: &str = "static pattern";
+
+		// TODO: use gitignores
+
+		match project_type {
+			ProjectType::Git => vec![
+				Self::from_glob_ignore("/.git").expect(ERR),
+			],
+			ProjectType::Mercurial => todo!(),
+			ProjectType::Pijul => todo!(),
+			ProjectType::Fossil => todo!(),
+			ProjectType::Cargo => vec![
+				Self::from_glob_ignore("/debug").expect(ERR),
+				Self::from_glob_ignore("/target").expect(ERR),
+				Self::from_glob_ignore("Cargo.lock").expect(ERR),
+				Self::from_glob_ignore("**/*.rs.bk").expect(ERR),
+				Self::from_glob_ignore("*.pdb").expect(ERR),
+			],
+			ProjectType::JavaScript => todo!(),
+			ProjectType::Bundler => todo!(),
+			ProjectType::RubyGem => todo!(),
+			ProjectType::Pip => todo!(),
+		}
+	}
+
+	pub(crate) fn from_glob_ignore(glob: impl AsRef<str>) -> Result<Self, error::TaggedFiltererError> {
+		let glob = Glob::new(glob.as_ref())?.compile_matcher();
+		Ok(Self { in_path: None, on: Matcher::Path, op: Op::NotGlob, pat: Pattern::Glob(glob), negate: false })
 	}
 }
 
