@@ -15,7 +15,7 @@ async fn main() -> color_eyre::eyre::Result<()> {
 	tracing_subscriber::fmt::init();
 	color_eyre::install()?;
 
-	let mut init = InitConfig::builder();
+	let mut init = InitConfig::default();
 	init.on_error(|err| async move {
 		eprintln!("Watchexec Runtime Error: {}", err);
 		Ok::<(), std::convert::Infallible>(())
@@ -25,7 +25,7 @@ async fn main() -> color_eyre::eyre::Result<()> {
 	runtime.pathset(["src", "dontexist", "examples"]);
 	runtime.command(["date"]);
 
-	let wx = Watchexec::new(init.build()?, runtime.clone())?;
+	let wx = Watchexec::new(init, runtime.clone())?;
 	let w = wx.clone();
 
 	let config = runtime.clone();

@@ -21,11 +21,9 @@ pub fn new(args: &ArgMatches<'static>) -> Result<(InitConfig, RuntimeConfig, Arc
 }
 
 fn init(_args: &ArgMatches<'static>) -> Result<InitConfig> {
-	let mut config = InitConfig::builder();
-
+	let mut config = InitConfig::default();
 	config.on_error(PrintDisplay(stderr()));
-
-	Ok(config.build()?)
+	Ok(config)
 }
 
 fn runtime(args: &ArgMatches<'static>) -> Result<(RuntimeConfig, Arc<TaggedFilterer>)> {

@@ -11,7 +11,7 @@ async fn main() -> color_eyre::eyre::Result<()> {
 	tracing_subscriber::fmt::init();
 	color_eyre::install()?;
 
-	let mut init = InitConfig::builder();
+	let mut init = InitConfig::default();
 	init.on_error(|err| async move {
 		eprintln!("Watchexec Runtime Error: {}", err);
 		Ok::<(), std::convert::Infallible>(())
@@ -19,7 +19,7 @@ async fn main() -> color_eyre::eyre::Result<()> {
 
 	let runtime = RuntimeConfig::default();
 
-	let wx = Watchexec::new(init.build()?, runtime)?;
+	let wx = Watchexec::new(init, runtime)?;
 	wx.main();
 
 	// TODO: induce an error here

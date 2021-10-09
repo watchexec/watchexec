@@ -3,7 +3,6 @@
 use std::{fmt, path::Path, sync::Arc, time::Duration};
 
 use atomic_take::AtomicTake;
-use derive_builder::Builder;
 
 use crate::{
 	action::{Action, PostSpawn, PreSpawn},
@@ -147,11 +146,8 @@ impl RuntimeConfig {
 ///
 /// This is used only for constructing the instance.
 ///
-/// Use [`InitConfigBuilder`] to build a new one, or modify an existing one. This struct is marked
-/// non-exhaustive such that new options may be added without breaking change. Note that this
-/// builder uses a different style (consuming `self`) for technical reasons (cannot be `Clone`d).
-#[derive(Builder)]
-#[builder(pattern = "owned")]
+/// Use [`InitConfig::default()`] to build a new one, and the inherent methods to change values.
+/// This struct is marked non-exhaustive such that new options may be added without breaking change.
 #[non_exhaustive]
 pub struct InitConfig {
 	/// Runtime error handler.
@@ -166,45 +162,60 @@ pub struct InitConfig {
 	///
 	/// ```
 	/// # use std::convert::Infallible;
-	/// # use watchexec::config::InitConfigBuilder;
-	/// let mut init = InitConfigBuilder::default();
+	/// # use watchexec::config::InitConfig;
+	/// let mut init = InitConfig::default();
 	/// init.on_error(|err| async move {
 	///     tracing::error!("{}", err);
 	///     Ok::<(), Infallible>(())
 	/// });
 	/// ```
-	#[builder(private, default = "Box::new(()) as _")]
-	// TODO: figure out how to remove the builder setter entirely
 	pub error_handler: Box<dyn Handler<RuntimeError> + Send>,
 
 	/// Internal: the buffer size of the channel which carries runtime errors.
 	///
 	/// The default (64) is usually fine. If you expect a much larger throughput of runtime errors,
 	/// or if your `error_handler` is slow, adjusting this value may help.
-	#[builder(default = "64")]
 	pub error_channel_size: usize,
 
 	/// Internal: the buffer size of the channel which carries events.
 	///
 	/// The default (1024) is usually fine. If you expect a much larger throughput of events,
 	/// adjusting this value may help.
-	#[builder(default = "1024")]
 	pub event_channel_size: usize,
 }
 
-impl InitConfig {
-	/// Returns a new [`InitConfigBuilder`] for builder the initial configuration.
-	pub fn builder() -> InitConfigBuilder {
-		InitConfigBuilder::default()
-	}
+impl Default for InitConfig {
+    fn default() -> Self {
+        Self {
+			error_handler: Box::new(()) as _,
+			error_channel_size: 64,
+			event_channel_size: 1024,
+		}
+    }
 }
 
-impl InitConfigBuilder {
+impl InitConfig {
 	/// Set the runtime error handler.
 	///
-	/// See the [documentation on the field][InitConfig#structfield.error_handler] for more details.
+	/// See the [documentation on the field](InitConfig#structfield.error_handler) for more details.
 	pub fn on_error(&mut self, handler: impl Handler<RuntimeError> + Send + 'static) -> &mut Self {
-		self.error_handler = Some(Box::new(handler) as _);
+		self.error_handler = Box::new(handler) as _;
+		self
+	}
+
+	/// Set the buffer size of the channel which carries runtime errors.
+	///
+	/// See the [documentation on the field](InitConfig#structfield.error_channel_size) for more details.
+	pub fn error_channel_size(&mut self, size: usize) -> &mut Self {
+		self.error_channel_size = size;
+		self
+	}
+
+	/// Set the buffer size of the channel which carries events.
+	///
+	/// See the [documentation on the field](InitConfig#structfield.event_channel_size) for more details.
+	pub fn event_channel_size(&mut self, size: usize) -> &mut Self {
+		self.event_channel_size = size;
 		self
 	}
 }

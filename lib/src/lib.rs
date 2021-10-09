@@ -23,7 +23,7 @@
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Report> {
-//!     let mut init = InitConfig::builder();
+//!     let mut init = InitConfig::default();
 //!     init.on_error(PrintDebug(std::io::stderr()));
 //!
 //!     let mut runtime = RuntimeConfig::default();
@@ -32,7 +32,7 @@
 //!     let conf = YourConfigFormat::load_from_file("watchexec.conf").await?;
 //!     conf.apply(&mut runtime);
 //!
-//!     let we = Watchexec::new(init.build().unwrap(), runtime.clone())?;
+//!     let we = Watchexec::new(init, runtime.clone())?;
 //!     let w = we.clone();
 //!
 //!     let c = runtime.clone();
