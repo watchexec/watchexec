@@ -1,6 +1,6 @@
 //! Error types for critical, runtime, and specialised errors.
 
-use std::{collections::HashMap, path::PathBuf};
+use std::{path::PathBuf};
 
 use miette::Diagnostic;
 use thiserror::Error;
@@ -9,12 +9,7 @@ use tokio::{
 	task::JoinError,
 };
 
-use crate::{
-	action,
-	event::Event,
-	filter::tagged::{Filter, Matcher},
-	fs::{self, Watcher},
-};
+use crate::{action, event::Event, fs::{self, Watcher}};
 
 /// Errors which are not recoverable and stop watchexec execution.
 #[derive(Debug, Diagnostic, Error)]
@@ -175,22 +170,19 @@ pub enum RuntimeError {
 	#[diagnostic(code(watchexec::runtime::clearscreen))]
 	Clearscreen(#[from] clearscreen::Error),
 
-	/// Error received when a tagged filter cannot be parsed.
-	#[error("cannot parse filter `{src}`: {err:?}")]
-	#[diagnostic(code(watchexec::runtime::filter_parse))]
-	FilterParse {
-		src: String,
-		err: nom::error::ErrorKind,
-		// TODO: use miette's source snippet feature
-	},
+	/// Error emitted by a [`Filterer`](crate::filter::Filterer).
+	///
+	/// With built-in filterers this will be a dynbox of
+	/// [`TaggedFiltererError`](crate::filter::TaggedFiltererError) or TODO, but it is possible to
+	/// use a custom filterer which emits a different error type.
+	#[error("{kind} filterer: {err}")]
+	#[diagnostic(code(watchexec::runtime::filterer))]
+	Filterer {
+		kind: &'static str,
 
-	/// Error received when a filter cannot be added or removed from a tagged filter list.
-	#[error("cannot {action} filter: {err:?}")]
-	#[diagnostic(code(watchexec::runtime::filter_change))]
-	FilterChange {
-		action: &'static str,
 		#[source]
-		err: watch::error::SendError<HashMap<Matcher, Vec<Filter>>>,
+		err: Box<dyn std::error::Error + Send + Sync>,
+		// FIXME: can we have dyn Diagnostic here or downcast it somehow?
 	},
 }
 

@@ -15,6 +15,7 @@ use crate::filter::Filterer;
 
 mod parse;
 pub mod swaplock;
+pub mod error;
 
 #[derive(Debug)]
 pub struct TaggedFilterer {
@@ -34,6 +35,12 @@ pub struct TaggedFilterer {
 
 impl Filterer for TaggedFilterer {
 	fn check_event(&self, event: &Event) -> Result<bool, RuntimeError> {
+		self.check(event).map_err(|e| e.into())
+	}
+}
+
+impl TaggedFilterer {
+	fn check(&self, event: &Event) -> Result<bool, error::TaggedFiltererError> {
 		// TODO: trace logging
 		if self.filters.borrow().is_empty() {
 			trace!("no filters, skipping entire check (pass)");
@@ -110,7 +117,7 @@ impl TaggedFilterer {
 	pub fn new(
 		root: impl Into<PathBuf>,
 		workdir: impl Into<PathBuf>,
-	) -> Result<Arc<Self>, RuntimeError> {
+	) -> Result<Arc<Self>, error::TaggedFiltererError> {
 		// TODO: make it criticalerror
 		Ok(Arc::new(Self {
 			root: canonicalize(root.into())?,
@@ -129,7 +136,7 @@ impl TaggedFilterer {
 
 	// Ok(Some(bool)) => the match was applied, bool is the result
 	// Ok(None) => for some precondition, the match was not done (mismatched tag, out of context, …)
-	fn match_tag(&self, filter: &Filter, tag: &Tag) -> Result<Option<bool>, RuntimeError> {
+	fn match_tag(&self, filter: &Filter, tag: &Tag) -> Result<Option<bool>, error::TaggedFiltererError> {
 		trace!(?tag, matcher=?filter.on, "matching filter to tag");
 		match (tag, filter.on) {
 			(tag, Matcher::Tag) => filter.matches(tag.discriminant_name()),
@@ -168,7 +175,7 @@ impl TaggedFilterer {
 		.map(Some)
 	}
 
-	pub async fn add_filter(&self, mut filter: Filter) -> Result<(), RuntimeError> {
+	pub async fn add_filter(&self, mut filter: Filter) -> Result<(), error::TaggedFiltererError> {
 		debug!(?filter, "adding filter to filterer");
 
 		if let Some(ctx) = &mut filter.in_path {
@@ -181,11 +188,11 @@ impl TaggedFilterer {
 				filters.entry(filter.on).or_default().push(filter);
 			})
 			.await
-			.map_err(|err| RuntimeError::FilterChange { action: "add", err })?;
+			.map_err(|err| error::TaggedFiltererError::FilterChange { action: "add", err })?;
 		Ok(())
 	}
 
-	pub async fn remove_filter(&self, filter: &Filter) -> Result<(), RuntimeError> {
+	pub async fn remove_filter(&self, filter: &Filter) -> Result<(), error::TaggedFiltererError> {
 		let filter = if let Some(ctx) = &filter.in_path {
 			let f = filter.clone();
 			Cow::Owned(Filter {
@@ -205,19 +212,19 @@ impl TaggedFilterer {
 					.retain(|f| f != filter.as_ref());
 			})
 			.await
-			.map_err(|err| RuntimeError::FilterChange {
+			.map_err(|err| error::TaggedFiltererError::FilterChange {
 				action: "remove",
 				err,
 			})?;
 		Ok(())
 	}
 
-	pub async fn clear_filters(&self) -> Result<(), RuntimeError> {
+	pub async fn clear_filters(&self) -> Result<(), error::TaggedFiltererError> {
 		debug!("removing all filters from filterer");
 		self.filters
 			.replace(Default::default())
 			.await
-			.map_err(|err| RuntimeError::FilterChange {
+			.map_err(|err| error::TaggedFiltererError::FilterChange {
 				action: "clear all",
 				err,
 			})?;
@@ -227,7 +234,7 @@ impl TaggedFilterer {
 
 impl Filter {
 	// TODO non-unicode matching
-	pub fn matches(&self, subject: impl AsRef<str>) -> Result<bool, RuntimeError> {
+	pub fn matches(&self, subject: impl AsRef<str>) -> Result<bool, error::TaggedFiltererError> {
 		let subject = subject.as_ref();
 
 		trace!(op=?self.op, pat=?self.pat, ?subject, "performing filter match");

@@ -13,10 +13,9 @@ use regex::Regex;
 use tracing::trace;
 
 use super::*;
-use crate::error::RuntimeError;
 
 impl FromStr for Filter {
-	type Err = RuntimeError;
+	type Err = error::TaggedFiltererError;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		fn matcher(i: &str) -> IResult<&str, Matcher> {
@@ -130,7 +129,7 @@ impl FromStr for Filter {
 				trace!(src=?s, filter=?f, "parsed tagged filter");
 				f
 			})
-			.map_err(|e| RuntimeError::FilterParse {
+			.map_err(|e| error::TaggedFiltererError::Parse {
 				src: s.to_string(),
 				err: e.code,
 			})
