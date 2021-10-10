@@ -127,8 +127,42 @@ pub async fn origins(path: impl AsRef<Path>) -> Vec<PathBuf> {
 ///
 /// This should be called with a result of [`origins()`], or a project origin if already known; it
 /// will not find the origin itself.
-pub async fn types(path: impl AsRef<Path>) -> Result<Vec<ProjectType>, Error> {
-	todo!()
+///
+/// The returned list may be empty.
+///
+/// Note that this only detects project types listed in the [`ProjectType`] enum, and may not detect
+/// anything for some paths returned by [`origins()`].
+pub async fn types(path: impl AsRef<Path>) -> HashSet<ProjectType> {
+	let list = DirList::obtain(path.as_ref()).await;
+	IntoIterator::into_iter([
+		list.if_has_dir("_darcs", ProjectType::Darcs),
+		list.if_has_dir(".bzr", ProjectType::Bazaar),
+		list.if_has_dir(".fossil-settings", ProjectType::Fossil),
+		list.if_has_dir(".git", ProjectType::Git),
+		list.if_has_dir(".hg", ProjectType::Mercurial),
+		list.if_has_file(".bzrignore", ProjectType::Bazaar),
+		list.if_has_file(".ctags", ProjectType::C),
+		list.if_has_file(".gitattributes", ProjectType::Git),
+		list.if_has_file(".gitmodules", ProjectType::Git),
+		list.if_has_file(".hgignore", ProjectType::Mercurial),
+		list.if_has_file(".hgtags", ProjectType::Mercurial),
+		list.if_has_file(".perltidyrc", ProjectType::Perl),
+		list.if_has_file("build.gradle", ProjectType::Gradle),
+		list.if_has_file("Cargo.toml", ProjectType::Cargo),
+		list.if_has_file("cgmanifest.json", ProjectType::JavaScript),
+		list.if_has_file("composer.json", ProjectType::PHP),
+		list.if_has_file("Dockerfile", ProjectType::Docker),
+		list.if_has_file("Gemfile", ProjectType::Bundler),
+		list.if_has_file("Makefile.PL", ProjectType::Perl),
+		list.if_has_file("mix.exs", ProjectType::Elixir),
+		list.if_has_file("package.json", ProjectType::JavaScript),
+		list.if_has_file("pom.xml", ProjectType::Maven),
+		list.if_has_file("project.clj", ProjectType::Leiningen),
+		list.if_has_file("requirements.txt", ProjectType::Pip),
+		list.if_has_file("v.mod", ProjectType::V),
+	])
+	.flatten()
+	.collect()
 }
 
 #[derive(Debug, Default)]
@@ -163,15 +197,15 @@ impl DirList {
 	#[inline]
 	fn is_empty(&self) -> bool {
 		self.0.is_empty()
-}
+	}
 
-#[inline]
+	#[inline]
 	fn has_file(&self, name: impl AsRef<Path>) -> bool {
 		let name = name.as_ref();
 		self.0.get(name).map(|x| x.is_file()).unwrap_or(false)
-}
+	}
 
-#[inline]
+	#[inline]
 	fn has_dir(&self, name: impl AsRef<Path>) -> bool {
 		let name = name.as_ref();
 		self.0.get(name).map(|x| x.is_dir()).unwrap_or(false)
@@ -183,15 +217,15 @@ impl DirList {
 			Some(project)
 		} else {
 			None
+		}
 	}
-}
 
-#[inline]
+	#[inline]
 	fn if_has_dir(&self, name: impl AsRef<Path>, project: ProjectType) -> Option<ProjectType> {
 		if self.has_dir(name) {
 			Some(project)
 		} else {
 			None
-	}
+		}
 	}
 }
