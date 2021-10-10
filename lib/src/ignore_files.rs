@@ -218,21 +218,43 @@ pub async fn from_environment() -> (Vec<IgnoreFile>, Vec<Error>) {
 		}
 	}
 
-	let mut homes = Vec::with_capacity(5);
-	if let Ok(home) = env::var("XDG_CONFIG_HOME") {
-		homes.push(Path::new(&home).join("watchexec/ignore"));
-	}
+	let mut bzrs = Vec::with_capacity(5);
 	if let Ok(home) = env::var("APPDATA") {
-		homes.push(Path::new(&home).join("watchexec/ignore"));
-	}
-	if let Ok(home) = env::var("USERPROFILE") {
-		homes.push(Path::new(&home).join(".watchexec/ignore"));
+		bzrs.push(Path::new(&home).join("Bazzar/2.0/ignore"));
 	}
 	if let Ok(home) = env::var("HOME") {
-		homes.push(Path::new(&home).join(".watchexec/ignore"));
+		bzrs.push(Path::new(&home).join(".bazarr/ignore"));
 	}
 
-	for path in homes {
+	for path in bzrs {
+		if discover_file(
+			&mut files,
+			&mut errors,
+			None,
+			Some(ProjectType::Bazaar),
+			path,
+		)
+		.await
+		{
+			break;
+		}
+	}
+
+	let mut wgis = Vec::with_capacity(5);
+	if let Ok(home) = env::var("XDG_CONFIG_HOME") {
+		wgis.push(Path::new(&home).join("watchexec/ignore"));
+	}
+	if let Ok(home) = env::var("APPDATA") {
+		wgis.push(Path::new(&home).join("watchexec/ignore"));
+	}
+	if let Ok(home) = env::var("USERPROFILE") {
+		wgis.push(Path::new(&home).join(".watchexec/ignore"));
+	}
+	if let Ok(home) = env::var("HOME") {
+		wgis.push(Path::new(&home).join(".watchexec/ignore"));
+	}
+
+	for path in wgis {
 		if discover_file(&mut files, &mut errors, None, None, path).await {
 			break;
 		}
