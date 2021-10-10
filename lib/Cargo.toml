@@ -29,6 +29,8 @@ regex = "1.5.4"
 thiserror = "1.0.26"
 tracing = "0.1.26"
 unicase = "2.6.0"
+async-stream = "0.3.2"
+git2 = "0.13.22"
 
 [dependencies.command-group]
 version = "1.0.5"

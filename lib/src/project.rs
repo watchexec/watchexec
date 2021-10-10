@@ -1,31 +1,35 @@
 //! Detect project type and origin.
 
-use std::path::{Path, PathBuf};
+use std::{
+	io::Error,
+	path::{Path, PathBuf},
+};
 
-use crate::error::CriticalError;
-
-pub async fn origin(path: impl AsRef<Path>) -> Result<PathBuf, CriticalError> {
+pub async fn origins(path: impl AsRef<Path>) -> Result<Vec<PathBuf>, Error> {
 	todo!()
 }
 
 /// Returns all project types detected at this given origin.
 ///
-/// This should be called with the result of [`origin()`], or a project origin if already known; it
+/// This should be called with a result of [`origins()`], or a project origin if already known; it
 /// will not find the origin itself.
-pub async fn types(path: impl AsRef<Path>) -> Result<Vec<ProjectType>, CriticalError> {
+pub async fn types(path: impl AsRef<Path>) -> Result<Vec<ProjectType>, Error> {
 	todo!()
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum ProjectType {
+	Bazaar,
+	Darcs,
+	Fossil,
 	Git,
 	Mercurial,
 	Pijul,
-	Fossil,
 
+	Bundler,
 	Cargo,
 	JavaScript,
-	Bundler,
-	RubyGem,
 	Pip,
+	RubyGem,
 }

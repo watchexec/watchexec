@@ -11,15 +11,14 @@ use unicase::UniCase;
 use crate::error::RuntimeError;
 use crate::event::{Event, Tag};
 use crate::filter::Filterer;
-use crate::project::ProjectType;
 
 // to make filters
 pub use globset::Glob;
 pub use regex::Regex;
 
+pub mod error;
 mod parse;
 pub mod swaplock;
-pub mod error;
 
 #[derive(Debug)]
 pub struct TaggedFilterer {
@@ -121,7 +120,11 @@ impl TaggedFilterer {
 
 	// Ok(Some(bool)) => the match was applied, bool is the result
 	// Ok(None) => for some precondition, the match was not done (mismatched tag, out of context, …)
-	fn match_tag(&self, filter: &Filter, tag: &Tag) -> Result<Option<bool>, error::TaggedFiltererError> {
+	fn match_tag(
+		&self,
+		filter: &Filter,
+		tag: &Tag,
+	) -> Result<Option<bool>, error::TaggedFiltererError> {
 		trace!(?tag, matcher=?filter.on, "matching filter to tag");
 		match (tag, filter.on) {
 			(tag, Matcher::Tag) => filter.matches(tag.discriminant_name()),
@@ -220,7 +223,9 @@ impl TaggedFilterer {
 	///
 	/// This parses and compiles the glob, and wraps any error with nice [miette] diagnostics.
 	pub fn glob(s: &str) -> Result<Pattern, error::TaggedFiltererError> {
-		Glob::new(s).map_err(error::TaggedFiltererError::GlobParse).map(|g| Pattern::Glob(g.compile_matcher()))
+		Glob::new(s)
+			.map_err(error::TaggedFiltererError::GlobParse)
+			.map(|g| Pattern::Glob(g.compile_matcher()))
 	}
 }
 
@@ -268,38 +273,6 @@ impl Filter {
 				false
 			}
 		})
-	}
-
-	/// Returns a set of ignores for the given project type.
-	pub fn for_project(project_type: ProjectType) -> Vec<Self> {
-		const ERR: &str = "static pattern";
-
-		// TODO: use gitignores
-
-		match project_type {
-			ProjectType::Git => vec![
-				Self::from_glob_ignore("/.git").expect(ERR),
-			],
-			ProjectType::Mercurial => todo!(),
-			ProjectType::Pijul => todo!(),
-			ProjectType::Fossil => todo!(),
-			ProjectType::Cargo => vec![
-				Self::from_glob_ignore("/debug").expect(ERR),
-				Self::from_glob_ignore("/target").expect(ERR),
-				Self::from_glob_ignore("Cargo.lock").expect(ERR),
-				Self::from_glob_ignore("**/*.rs.bk").expect(ERR),
-				Self::from_glob_ignore("*.pdb").expect(ERR),
-			],
-			ProjectType::JavaScript => todo!(),
-			ProjectType::Bundler => todo!(),
-			ProjectType::RubyGem => todo!(),
-			ProjectType::Pip => todo!(),
-		}
-	}
-
-	pub(crate) fn from_glob_ignore(glob: impl AsRef<str>) -> Result<Self, error::TaggedFiltererError> {
-		let glob = Glob::new(glob.as_ref())?.compile_matcher();
-		Ok(Self { in_path: None, on: Matcher::Path, op: Op::NotGlob, pat: Pattern::Glob(glob), negate: false })
 	}
 }
 

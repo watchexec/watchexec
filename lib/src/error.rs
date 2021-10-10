@@ -1,6 +1,6 @@
 //! Error types for critical, runtime, and specialised errors.
 
-use std::{path::PathBuf};
+use std::path::PathBuf;
 
 use miette::Diagnostic;
 use thiserror::Error;
@@ -9,7 +9,11 @@ use tokio::{
 	task::JoinError,
 };
 
-use crate::{action, event::Event, fs::{self, Watcher}};
+use crate::{
+	action,
+	event::Event,
+	fs::{self, Watcher},
+};
 
 /// Errors which are not recoverable and stop watchexec execution.
 #[derive(Debug, Diagnostic, Error)]

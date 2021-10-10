@@ -1,12 +1,15 @@
 //! Error type for TaggedFilterer.
 
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
 use miette::Diagnostic;
 use thiserror::Error;
-use tokio::sync::watch::{error::SendError};
+use tokio::sync::watch::error::SendError;
 
-use crate::{error::RuntimeError, filter::tagged::{Filter, Matcher}};
+use crate::{
+	error::RuntimeError,
+	filter::tagged::{Filter, Matcher},
+};
 
 /// Errors emitted by the TaggedFilterer.
 #[derive(Debug, Diagnostic, Error)]
@@ -42,10 +45,10 @@ pub enum TaggedFiltererError {
 }
 
 impl From<TaggedFiltererError> for RuntimeError {
-    fn from(err: TaggedFiltererError) -> Self {
-        Self::Filterer {
+	fn from(err: TaggedFiltererError) -> Self {
+		Self::Filterer {
 			kind: "tagged",
 			err: Box::new(err) as _,
 		}
-    }
+	}
 }

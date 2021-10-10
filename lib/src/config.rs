@@ -185,13 +185,13 @@ pub struct InitConfig {
 }
 
 impl Default for InitConfig {
-    fn default() -> Self {
-        Self {
+	fn default() -> Self {
+		Self {
 			error_handler: Box::new(()) as _,
 			error_channel_size: 64,
 			event_channel_size: 1024,
 		}
-    }
+	}
 }
 
 impl InitConfig {
