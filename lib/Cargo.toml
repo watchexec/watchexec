@@ -16,10 +16,12 @@ edition = "2018"
 
 [dependencies]
 async-recursion = "0.3.2"
+async-stream = "0.3.2"
 atomic-take = "1.0.0"
 clearscreen = "1.0.6"
 dunce = "1.0.2"
 futures = "0.3.16"
+git2 = "0.13.22"
 globset = "0.4.8"
 miette = "3.2.0"
 nom = "7.0.0"
@@ -29,8 +31,6 @@ regex = "1.5.4"
 thiserror = "1.0.26"
 tracing = "0.1.26"
 unicase = "2.6.0"
-async-stream = "0.3.2"
-git2 = "0.13.22"
 
 [dependencies.command-group]
 version = "1.0.5"
@@ -39,6 +39,10 @@ features = ["with-tokio"]
 [dependencies.tokio]
 version = "1.10.0"
 features = ["full"]
+
+[dependencies.tokio-stream]
+version = "0.1.7"
+features = ["fs"]
 
 [dev-dependencies]
 tracing-subscriber = "0.2.19"
