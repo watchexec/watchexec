@@ -1,5 +1,6 @@
 use std::process::exit;
 
+use miette::Result;
 use tokio::sync::mpsc;
 use watchexec::{
 	event::{Event, Tag},
@@ -10,9 +11,8 @@ use watchexec::{
 // then issue some signals to the printed PID, or hit e.g. Ctrl-C.
 // Send a SIGTERM (unix) or Ctrl-Break (windows) to exit.
 #[tokio::main]
-async fn main() -> color_eyre::eyre::Result<()> {
+async fn main() -> Result<()> {
 	tracing_subscriber::fmt::init();
-	color_eyre::install()?;
 
 	let (ev_s, mut ev_r) = mpsc::channel::<Event>(1024);
 	let (er_s, mut er_r) = mpsc::channel(64);

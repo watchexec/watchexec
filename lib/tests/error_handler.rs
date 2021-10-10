@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use miette::Result;
 use tokio::time::sleep;
 use watchexec::{
 	config::{InitConfig, RuntimeConfig},
@@ -7,9 +8,8 @@ use watchexec::{
 };
 
 #[tokio::main]
-async fn main() -> color_eyre::eyre::Result<()> {
+async fn main() -> Result<()> {
 	tracing_subscriber::fmt::init();
-	color_eyre::install()?;
 
 	let mut init = InitConfig::default();
 	init.on_error(|err| async move {

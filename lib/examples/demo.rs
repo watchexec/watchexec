@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use miette::{IntoDiagnostic, Result};
 use watchexec::{
 	action::{Action, Outcome},
 	config::{InitConfig, RuntimeConfig},
@@ -11,9 +12,8 @@ use watchexec::{
 
 // Run with: `env RUST_LOG=debug cargo run --example print_out`
 #[tokio::main]
-async fn main() -> color_eyre::eyre::Result<()> {
+async fn main() -> Result<()> {
 	tracing_subscriber::fmt::init();
-	color_eyre::install()?;
 
 	let mut init = InitConfig::default();
 	init.on_error(|err| async move {
@@ -65,7 +65,7 @@ async fn main() -> color_eyre::eyre::Result<()> {
 	});
 
 	wx.reconfigure(runtime)?;
-	wx.main().await??;
+	wx.main().await.into_diagnostic()??;
 
 	Ok(())
 }

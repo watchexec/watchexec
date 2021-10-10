@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use miette::{IntoDiagnostic, Result};
 use tokio::{
 	sync::{mpsc, watch},
 	time::sleep,
@@ -9,9 +10,8 @@ use watchexec::{event::Event, fs};
 // Run with: `env RUST_LOG=debug cargo run --example fs`,
 // then touch some files within the first 15 seconds, and afterwards.
 #[tokio::main]
-async fn main() -> color_eyre::eyre::Result<()> {
+async fn main() -> Result<()> {
 	tracing_subscriber::fmt::init();
-	color_eyre::install()?;
 
 	let (ev_s, mut ev_r) = mpsc::channel::<Event>(1024);
 	let (er_s, mut er_r) = mpsc::channel(64);
@@ -19,7 +19,7 @@ async fn main() -> color_eyre::eyre::Result<()> {
 
 	let mut wkd = fs::WorkingData::default();
 	wkd.pathset = vec![".".into()];
-	wd_s.send(wkd.clone())?;
+	wd_s.send(wkd.clone()).into_diagnostic()?;
 
 	tokio::spawn(async move {
 		while let Some(e) = ev_r.recv().await {
@@ -42,7 +42,7 @@ async fn main() -> color_eyre::eyre::Result<()> {
 	});
 
 	fs::worker(wd_r, er_s, ev_s).await?;
-	wd_sh.await?;
+	wd_sh.await.into_diagnostic()?;
 
 	Ok(())
 }
