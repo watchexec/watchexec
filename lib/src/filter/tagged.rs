@@ -1,16 +1,15 @@
-use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use dunce::canonicalize;
-use globset::GlobMatcher;
 use tracing::{debug, trace, warn};
 use unicase::UniCase;
 
 use crate::error::RuntimeError;
 use crate::event::{Event, Tag};
 use crate::filter::Filterer;
+use crate::ignore_files::IgnoreFile;
 
 // to make filters
 pub use globset::Glob;
@@ -180,31 +179,15 @@ impl TaggedFilterer {
 		Ok(())
 	}
 
-	pub async fn remove_filter(&self, filter: &Filter) -> Result<(), error::TaggedFiltererError> {
-		let filter = if let Some(ctx) = &filter.in_path {
-			let f = filter.clone();
-			Cow::Owned(Filter {
-				in_path: Some(canonicalize(ctx)?),
-				..f
-			})
-		} else {
-			Cow::Borrowed(filter)
-		};
+	pub async fn add_glob_ignore(&self, glob: &str) -> Result<(), error::TaggedFiltererError> {
+		todo!()
+	}
 
-		debug!(?filter, "removing filter from filterer");
-		self.filters
-			.change(|filters| {
-				filters
-					.entry(filter.on)
-					.or_default()
-					.retain(|f| f != filter.as_ref());
-			})
-			.await
-			.map_err(|err| error::TaggedFiltererError::FilterChange {
-				action: "remove",
-				err,
-			})?;
-		Ok(())
+	pub async fn add_ignore_file(
+		&self,
+		file: &IgnoreFile,
+	) -> Result<(), error::TaggedFiltererError> {
+		todo!()
 	}
 
 	pub async fn clear_filters(&self) -> Result<(), error::TaggedFiltererError> {
@@ -219,13 +202,12 @@ impl TaggedFilterer {
 		Ok(())
 	}
 
-	/// Convenience function to create a glob pattern from a string.
+	/// Convenience function to check a glob pattern from a string.
 	///
-	/// This parses and compiles the glob, and wraps any error with nice [miette] diagnostics.
+	/// This parses the glob and wraps any error with nice [miette] diagnostics.
 	pub fn glob(s: &str) -> Result<Pattern, error::TaggedFiltererError> {
-		Glob::new(s)
-			.map_err(error::TaggedFiltererError::GlobParse)
-			.map(|g| Pattern::Glob(g.compile_matcher()))
+		Glob::new(s).map_err(error::TaggedFiltererError::GlobParse)?;
+		Ok(Pattern::Glob(s.to_string()))
 	}
 }
 
@@ -259,12 +241,13 @@ impl Filter {
 			(Op::NotEqual, Pattern::Exact(pat)) => UniCase::new(subject) != UniCase::new(pat),
 			(Op::Regex, Pattern::Regex(pat)) => pat.is_match(subject),
 			(Op::NotRegex, Pattern::Regex(pat)) => !pat.is_match(subject),
-			(Op::Glob, Pattern::Glob(pat)) => pat.is_match(subject),
-			(Op::NotGlob, Pattern::Glob(pat)) => !pat.is_match(subject),
 			(Op::InSet, Pattern::Set(set)) => set.contains(subject),
 			(Op::InSet, Pattern::Exact(pat)) => subject == pat,
 			(Op::NotInSet, Pattern::Set(set)) => !set.contains(subject),
 			(Op::NotInSet, Pattern::Exact(pat)) => subject != pat,
+			(Op::Glob | Op::NotGlob, Pattern::Glob(_)) => {
+				panic!("globs are handled outside of Filter::matches")
+			}
 			(op, pat) => {
 				warn!(
 					"trying to match pattern {:?} with op {:?}, that cannot work",
@@ -315,21 +298,26 @@ pub enum Op {
 	NotInSet, // :!
 }
 
+// globs:
+// - use ignore's impl
+// - on adding a filter, compile the gitignorebuilder and store the gitignore
+// - use two gitignores: one for NotGlob (which is used for gitignores) and one for Glob (invert results from its matches)
+// - store the globs as strings
+
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub enum Pattern {
 	Exact(String),
 	Regex(Regex),
-	Glob(GlobMatcher),
+	Glob(String),
 	Set(HashSet<String>),
 }
 
 impl PartialEq<Self> for Pattern {
 	fn eq(&self, other: &Self) -> bool {
 		match (self, other) {
-			(Self::Exact(l), Self::Exact(r)) => l == r,
+			(Self::Exact(l), Self::Exact(r)) | (Self::Glob(l), Self::Glob(r)) => l == r,
 			(Self::Regex(l), Self::Regex(r)) => l.as_str() == r.as_str(),
-			(Self::Glob(l), Self::Glob(r)) => l.glob() == r.glob(),
 			(Self::Set(l), Self::Set(r)) => l == r,
 			_ => false,
 		}

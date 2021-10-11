@@ -1,6 +1,5 @@
 use std::str::FromStr;
 
-use globset::Glob;
 use nom::{
 	branch::alt,
 	bytes::complete::{is_not, tag, tag_no_case, take_while1},
@@ -96,17 +95,7 @@ impl FromStr for Filter {
 						pat: match (o, m) {
 							// TODO: carry regex/glob errors through
 							(Op::Auto | Op::Glob, Matcher::Path) | (Op::Glob | Op::NotGlob, _) => {
-								Pattern::Glob(
-									if let Some(bare) = p.strip_prefix('/') {
-										trace!(original=?p, ?bare, "glob pattern is absolute, stripping prefix /");
-										Glob::new(bare)
-									} else {
-										trace!(original=?p, "glob pattern is relative, so prefixing with `**/`");
-										Glob::new(&format!("**/{}", p))
-									}
-									.map_err(drop)?
-									.compile_matcher(),
-								)
+								Pattern::Glob(p.to_string())
 							}
 							(Op::Auto | Op::InSet | Op::NotInSet, _) => {
 								Pattern::Set(p.split(',').map(|s| s.trim().to_string()).collect())
