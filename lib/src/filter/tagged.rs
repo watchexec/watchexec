@@ -203,6 +203,21 @@ impl TaggedFilterer {
 					filter.matches(resolved.to_string_lossy())
 				}
 			}
+			(
+				Tag::Path {
+					file_type: Some(ft),
+					..
+				},
+				Matcher::FileType,
+			) => filter.matches(if ft.is_dir() {
+				"dir"
+			} else if ft.is_file() {
+				"file"
+			} else if ft.is_symlink() {
+				"symlink"
+			} else {
+				"special"
+			}),
 			(Tag::FileEventKind(kind), Matcher::FileEventKind) => {
 				filter.matches(format!("{:?}", kind))
 			}
@@ -405,6 +420,7 @@ impl Filter {
 pub enum Matcher {
 	Tag,
 	Path,
+	FileType,
 	FileEventKind,
 	Source,
 	Process,

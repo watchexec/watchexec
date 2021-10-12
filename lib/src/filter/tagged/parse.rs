@@ -22,6 +22,7 @@ impl FromStr for Filter {
 				alt((
 					tag_no_case("tag"),
 					tag_no_case("path"),
+					tag_no_case("type"),
 					tag_no_case("kind"),
 					tag_no_case("source"),
 					tag_no_case("src"),
@@ -32,6 +33,7 @@ impl FromStr for Filter {
 				|m: &str| match m.to_ascii_lowercase().as_str() {
 					"tag" => Ok(Matcher::Tag),
 					"path" => Ok(Matcher::Path),
+					"type" => Ok(Matcher::FileType),
 					"kind" => Ok(Matcher::FileEventKind),
 					"source" => Ok(Matcher::Source),
 					"src" => Ok(Matcher::Source),
