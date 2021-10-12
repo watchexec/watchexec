@@ -9,6 +9,7 @@ use unicase::UniCase;
 
 use crate::error::RuntimeError;
 use crate::event::{Event, Tag};
+use crate::filter::tagged::error::TaggedFiltererError;
 use crate::filter::Filterer;
 use crate::ignore_files::IgnoreFile;
 
@@ -43,7 +44,7 @@ impl Filterer for TaggedFilterer {
 }
 
 impl TaggedFilterer {
-	fn check(&self, event: &Event) -> Result<bool, error::TaggedFiltererError> {
+	fn check(&self, event: &Event) -> Result<bool, TaggedFiltererError> {
 		// TODO: trace logging
 		if self.filters.borrow().is_empty() {
 			trace!("no filters, skipping entire check (pass)");
@@ -99,12 +100,12 @@ impl TaggedFilterer {
 
 impl TaggedFilterer {
 	pub fn new(
-		root: impl Into<PathBuf>,
+		origin: impl Into<PathBuf>,
 		workdir: impl Into<PathBuf>,
-	) -> Result<Arc<Self>, error::TaggedFiltererError> {
+	) -> Result<Arc<Self>, TaggedFiltererError> {
 		// TODO: make it criticalerror
 		Ok(Arc::new(Self {
-			origin: canonicalize(root.into())?,
+			origin: canonicalize(origin.into())?,
 			workdir: canonicalize(workdir.into())?,
 			filters: swaplock::SwapLock::new(HashMap::new()),
 		}))
@@ -120,11 +121,7 @@ impl TaggedFilterer {
 
 	// Ok(Some(bool)) => the match was applied, bool is the result
 	// Ok(None) => for some precondition, the match was not done (mismatched tag, out of context, …)
-	fn match_tag(
-		&self,
-		filter: &Filter,
-		tag: &Tag,
-	) -> Result<Option<bool>, error::TaggedFiltererError> {
+	fn match_tag(&self, filter: &Filter, tag: &Tag) -> Result<Option<bool>, TaggedFiltererError> {
 		trace!(?tag, matcher=?filter.on, "matching filter to tag");
 		match (tag, filter.on) {
 			(tag, Matcher::Tag) => filter.matches(tag.discriminant_name()),
@@ -163,7 +160,7 @@ impl TaggedFilterer {
 		.map(Some)
 	}
 
-	pub async fn add_filters(&self, filters: &[Filter]) -> Result<(), error::TaggedFiltererError> {
+	pub async fn add_filters(&self, filters: &[Filter]) -> Result<(), TaggedFiltererError> {
 		debug!(?filters, "adding filters to filterer");
 
 		let mut recompile_globs = false;
@@ -214,10 +211,7 @@ impl TaggedFilterer {
 		// - use two gitignores: one for NotGlob (which is used for gitignores) and one for Glob (invert results from its matches)
 	}
 
-	pub async fn add_ignore_file(
-		&self,
-		file: &IgnoreFile,
-	) -> Result<(), error::TaggedFiltererError> {
+	pub async fn add_ignore_file(&self, file: &IgnoreFile) -> Result<(), TaggedFiltererError> {
 		let content = read_to_string(&file.path).await?;
 		let lines = content.lines();
 		let mut ignores = Vec::with_capacity(lines.size_hint().0);
@@ -233,12 +227,12 @@ impl TaggedFilterer {
 		self.add_filters(&ignores).await
 	}
 
-	pub async fn clear_filters(&self) -> Result<(), error::TaggedFiltererError> {
+	pub async fn clear_filters(&self) -> Result<(), TaggedFiltererError> {
 		debug!("removing all filters from filterer");
 		self.filters
 			.replace(Default::default())
 			.await
-			.map_err(|err| error::TaggedFiltererError::FilterChange {
+			.map_err(|err| TaggedFiltererError::FilterChange {
 				action: "clear all",
 				err,
 			})?;
@@ -267,7 +261,7 @@ pub struct Filter {
 
 impl Filter {
 	// TODO non-unicode matching
-	pub fn matches(&self, subject: impl AsRef<str>) -> Result<bool, error::TaggedFiltererError> {
+	pub fn matches(&self, subject: impl AsRef<str>) -> Result<bool, TaggedFiltererError> {
 		let subject = subject.as_ref();
 
 		trace!(op=?self.op, pat=?self.pat, ?subject, "performing filter match");
@@ -305,7 +299,7 @@ impl Filter {
 		}
 	}
 
-	fn canonicalised(mut self) -> Result<Self, error::TaggedFiltererError> {
+	fn canonicalised(mut self) -> Result<Self, TaggedFiltererError> {
 		if let Some(ctx) = self.in_path {
 			self.in_path = Some(canonicalize(&ctx)?);
 			trace!(canon=?ctx, "canonicalised in_path");
