@@ -216,8 +216,6 @@ impl TaggedFilterer {
 		Ok(())
 	}
 
-	// TODO: globs for non-paths???
-
 	async fn recompile_globs(&self, op_filter: Op) -> Result<(), TaggedFiltererError> {
 		let target = match op_filter {
 			Op::Glob => &self.glob_compiled,
@@ -322,7 +320,7 @@ impl Filter {
 			(Op::NotInSet, Pattern::Set(set)) => !set.contains(subject),
 			(Op::NotInSet, Pattern::Exact(pat)) => subject != pat,
 			(Op::Glob | Op::NotGlob, Pattern::Glob(_)) => {
-				panic!("globs are handled outside of Filter::matches")
+				todo!("glob matching for non paths???")
 			}
 			(op, pat) => {
 				warn!(
