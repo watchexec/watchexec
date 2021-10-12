@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 
+use ignore::gitignore::Gitignore;
 use miette::Diagnostic;
 use thiserror::Error;
 use tokio::sync::watch::error::SendError;
@@ -31,7 +32,7 @@ pub enum TaggedFiltererError {
 
 	/// Error received when a filter cannot be added or removed from a tagged filter list.
 	#[error("cannot {action} filter: {err:?}")]
-	#[diagnostic(code(watchexec::filter::tagged::change))]
+	#[diagnostic(code(watchexec::filter::tagged::filter_change))]
 	FilterChange {
 		action: &'static str,
 		#[source]
@@ -41,7 +42,12 @@ pub enum TaggedFiltererError {
 	/// Error received when a glob cannot be parsed.
 	#[error("cannot parse glob: {0}")]
 	#[diagnostic(code(watchexec::filter::tagged::glob_parse))]
-	GlobParse(#[from] globset::Error),
+	GlobParse(#[source] ignore::Error),
+
+	/// Error received when a compiled globset cannot be changed.
+	#[error("cannot change compiled globset: {0:?}")]
+	#[diagnostic(code(watchexec::filter::tagged::globset_change))]
+	GlobsetChange(#[source] SendError<Option<Gitignore>>),
 }
 
 impl From<TaggedFiltererError> for RuntimeError {

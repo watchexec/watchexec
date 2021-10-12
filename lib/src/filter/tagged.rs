@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use dunce::canonicalize;
+use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use tokio::fs::read_to_string;
 use tracing::{debug, trace, warn};
 use unicase::UniCase;
@@ -35,6 +36,12 @@ pub struct TaggedFilterer {
 
 	/// All filters that are applied, in order, by matcher.
 	filters: swaplock::SwapLock<HashMap<Matcher, Vec<Filter>>>,
+
+	/// Compiled matcher for Glob filters.
+	glob_compiled: swaplock::SwapLock<Option<Gitignore>>,
+
+	/// Compiled matcher for NotGlob filters.
+	not_glob_compiled: swaplock::SwapLock<Option<Gitignore>>,
 }
 
 impl Filterer for TaggedFilterer {
@@ -108,6 +115,8 @@ impl TaggedFilterer {
 			origin: canonicalize(origin.into())?,
 			workdir: canonicalize(workdir.into())?,
 			filters: swaplock::SwapLock::new(HashMap::new()),
+			glob_compiled: swaplock::SwapLock::new(None),
+			not_glob_compiled: swaplock::SwapLock::new(None),
 		}))
 	}
 
@@ -141,7 +150,12 @@ impl TaggedFilterer {
 				};
 
 				trace!(?resolved, "resolved path to match filter against");
-				filter.matches(resolved.to_string_lossy())
+
+				if matches!(filter.op, Op::Glob | Op::NotGlob) {
+					todo!("glob match using compiled ignores");
+				} else {
+					filter.matches(resolved.to_string_lossy())
+				}
 			}
 			(Tag::FileEventKind(kind), Matcher::FileEventKind) => {
 				filter.matches(format!("{:?}", kind))
@@ -189,7 +203,7 @@ impl TaggedFilterer {
 				}
 			})
 			.await
-			.map_err(|err| error::TaggedFiltererError::FilterChange { action: "add", err })?;
+			.map_err(|err| TaggedFiltererError::FilterChange { action: "add", err })?;
 
 		if recompile_globs {
 			self.recompile_globs(Op::Glob).await?;
@@ -202,13 +216,46 @@ impl TaggedFilterer {
 		Ok(())
 	}
 
-	async fn recompile_globs(&self, op_filter: Op) -> Result<(), error::TaggedFiltererError> {
-		todo!()
+	// TODO: globs for non-paths???
 
-		// globs:
-		// - use ignore's impl
-		// - after adding some filters, recompile by making a gitignorebuilder and storing the gitignore
-		// - use two gitignores: one for NotGlob (which is used for gitignores) and one for Glob (invert results from its matches)
+	async fn recompile_globs(&self, op_filter: Op) -> Result<(), TaggedFiltererError> {
+		let target = match op_filter {
+			Op::Glob => &self.glob_compiled,
+			Op::NotGlob => &self.not_glob_compiled,
+			_ => unreachable!("recompile_globs called with invalid op"),
+		};
+
+		let globs = {
+			let filters = self.filters.borrow();
+			if let Some(fs) = filters.get(&Matcher::Path) {
+				// we want to hold the lock as little as possible, so we clone the filters
+				fs.iter()
+					.cloned()
+					.filter(|f| f.op == op_filter)
+					.collect::<Vec<_>>()
+			} else {
+				return target
+					.replace(None)
+					.await
+					.map_err(TaggedFiltererError::GlobsetChange);
+			}
+		};
+
+		let mut builder = GitignoreBuilder::new(&self.origin);
+		for filter in globs {
+			if let Pattern::Glob(glob) = filter.pat {
+				builder
+					.add_line(filter.in_path, &glob)
+					.map_err(TaggedFiltererError::GlobParse)?;
+			}
+		}
+
+		let compiled = builder.build().map_err(TaggedFiltererError::GlobParse)?;
+
+		target
+			.replace(Some(compiled))
+			.await
+			.map_err(TaggedFiltererError::GlobsetChange)
 	}
 
 	pub async fn add_ignore_file(&self, file: &IgnoreFile) -> Result<(), TaggedFiltererError> {
