@@ -20,3 +20,10 @@ impl<T: Filterer> Filterer for Arc<T> {
 		Arc::as_ref(self).check_event(event)
 	}
 }
+
+/// Convenience function to check a glob pattern from a string.
+///
+/// This parses the glob and wraps any error with nice [miette] diagnostics.
+pub fn check_glob(s: &str) -> Result<&str, ()> {
+	todo!()
+}

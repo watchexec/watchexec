@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use dunce::canonicalize;
+use tokio::fs::read_to_string;
 use tracing::{debug, trace, warn};
 use unicase::UniCase;
 
@@ -162,32 +163,74 @@ impl TaggedFilterer {
 		.map(Some)
 	}
 
-	pub async fn add_filter(&self, mut filter: Filter) -> Result<(), error::TaggedFiltererError> {
-		debug!(?filter, "adding filter to filterer");
+	pub async fn add_filters(&self, filters: &[Filter]) -> Result<(), error::TaggedFiltererError> {
+		debug!(?filters, "adding filters to filterer");
 
-		if let Some(ctx) = &mut filter.in_path {
-			*ctx = canonicalize(&ctx)?;
-			trace!(canon=?ctx, "canonicalised in_path");
-		}
+		let mut recompile_globs = false;
+		let mut recompile_not_globs = false;
+
+		let filters = filters
+			.iter()
+			.cloned()
+			.inspect(|f| match f.op {
+				Op::Glob => {
+					recompile_globs = true;
+				}
+				Op::NotGlob => {
+					recompile_not_globs = true;
+				}
+				_ => {}
+			})
+			.map(Filter::canonicalised)
+			.collect::<Result<Vec<_>, _>>()?;
+		// TODO: use miette's related and issue canonicalisation errors for all of them
 
 		self.filters
-			.change(|filters| {
-				filters.entry(filter.on).or_default().push(filter);
+			.change(|fs| {
+				for filter in filters {
+					fs.entry(filter.on).or_default().push(filter);
+				}
 			})
 			.await
 			.map_err(|err| error::TaggedFiltererError::FilterChange { action: "add", err })?;
+
+		if recompile_globs {
+			self.recompile_globs(Op::Glob).await?;
+		}
+
+		if recompile_not_globs {
+			self.recompile_globs(Op::NotGlob).await?;
+		}
+
 		Ok(())
 	}
 
-	pub async fn add_glob_ignore(&self, glob: &str) -> Result<(), error::TaggedFiltererError> {
+	async fn recompile_globs(&self, op_filter: Op) -> Result<(), error::TaggedFiltererError> {
 		todo!()
+
+		// globs:
+		// - use ignore's impl
+		// - after adding some filters, recompile by making a gitignorebuilder and storing the gitignore
+		// - use two gitignores: one for NotGlob (which is used for gitignores) and one for Glob (invert results from its matches)
 	}
 
 	pub async fn add_ignore_file(
 		&self,
 		file: &IgnoreFile,
 	) -> Result<(), error::TaggedFiltererError> {
-		todo!()
+		let content = read_to_string(&file.path).await?;
+		let lines = content.lines();
+		let mut ignores = Vec::with_capacity(lines.size_hint().0);
+
+		for line in lines {
+			if line.is_empty() || line.starts_with('#') {
+				continue;
+			}
+
+			ignores.push(Filter::from_glob_ignore(file.applies_in.clone(), line));
+		}
+
+		self.add_filters(&ignores).await
 	}
 
 	pub async fn clear_filters(&self) -> Result<(), error::TaggedFiltererError> {
@@ -200,14 +243,6 @@ impl TaggedFilterer {
 				err,
 			})?;
 		Ok(())
-	}
-
-	/// Convenience function to check a glob pattern from a string.
-	///
-	/// This parses the glob and wraps any error with nice [miette] diagnostics.
-	pub fn glob(s: &str) -> Result<Pattern, error::TaggedFiltererError> {
-		Glob::new(s).map_err(error::TaggedFiltererError::GlobParse)?;
-		Ok(Pattern::Glob(s.to_string()))
 	}
 }
 
@@ -257,6 +292,27 @@ impl Filter {
 			}
 		})
 	}
+
+	pub fn from_glob_ignore(in_path: Option<PathBuf>, glob: &str) -> Self {
+		let (glob, negate) = glob.strip_prefix('!').map_or((glob, false), |g| (g, true));
+
+		Self {
+			in_path,
+			on: Matcher::Path,
+			op: Op::NotGlob,
+			pat: Pattern::Glob(glob.to_string()),
+			negate,
+		}
+	}
+
+	fn canonicalised(mut self) -> Result<Self, error::TaggedFiltererError> {
+		if let Some(ctx) = self.in_path {
+			self.in_path = Some(canonicalize(&ctx)?);
+			trace!(canon=?ctx, "canonicalised in_path");
+		}
+
+		Ok(self)
+	}
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
@@ -297,12 +353,6 @@ pub enum Op {
 	InSet,    // :=
 	NotInSet, // :!
 }
-
-// globs:
-// - use ignore's impl
-// - on adding a filter, compile the gitignorebuilder and store the gitignore
-// - use two gitignores: one for NotGlob (which is used for gitignores) and one for Glob (invert results from its matches)
-// - store the globs as strings
 
 #[derive(Debug, Clone)]
 #[non_exhaustive]

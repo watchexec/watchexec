@@ -29,22 +29,25 @@ async fn main() -> Result<()> {
 			.ok();
 	}
 
-	let (init, runtime, filterer) = config::new(&args)?;
+	let mut filters = Vec::new();
 
 	// TODO: move into config?
 	for filter in args.values_of("filter").unwrap_or_default() {
-		filterer.add_filter(filter.parse()?).await?;
+		filters.push(filter.parse()?);
 	}
 
 	for ext in args.values_of("extensions").unwrap_or_default().map(|s| s.split(',').map(|s| s.trim())).flatten() {
-		filterer.add_filter(Filter {
+		filters.push(Filter {
 			in_path: None,
 			on: Matcher::Path,
 			op: Op::Glob,
 			pat: TaggedFilterer::glob(&format!("**/*.{}", ext))?,
 			negate: false,
-		}).await?;
+		});
 	}
+
+	let (init, runtime, filterer) = config::new(&args)?;
+	filterer.add_filters(&filters).await?;
 
 	let wx = Watchexec::new(init, runtime)?;
 
