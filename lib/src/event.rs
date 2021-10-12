@@ -9,6 +9,7 @@
 use std::{
 	collections::HashMap,
 	fmt,
+	fs::FileType,
 	path::{Path, PathBuf},
 	process::ExitStatus,
 };
@@ -28,7 +29,10 @@ pub struct Event {
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum Tag {
-	Path(PathBuf),
+	Path {
+		path: PathBuf,
+		file_type: Option<FileType>,
+	},
 	FileEventKind(EventKind),
 	Source(Source),
 	Process(u32),
@@ -39,7 +43,7 @@ pub enum Tag {
 impl Tag {
 	pub const fn discriminant_name(&self) -> &'static str {
 		match self {
-			Tag::Path(_) => "Path",
+			Tag::Path { .. } => "Path",
 			Tag::FileEventKind(_) => "FileEventKind",
 			Tag::Source(_) => "Source",
 			Tag::Process(_) => "Process",
@@ -94,7 +98,7 @@ impl Event {
 	/// Return all paths in the event's tags.
 	pub fn paths(&self) -> impl Iterator<Item = &Path> {
 		self.tags.iter().filter_map(|p| match p {
-			Tag::Path(p) => Some(p.as_path()),
+			Tag::Path { path, .. } => Some(path.as_path()),
 			_ => None,
 		})
 	}
@@ -121,7 +125,24 @@ impl fmt::Display for Event {
 		write!(f, "Event")?;
 		for p in &self.tags {
 			match p {
-				Tag::Path(p) => write!(f, " path={}", p.display())?,
+				Tag::Path { path, file_type } => {
+					write!(f, " path={}", path.display())?;
+					if let Some(ft) = file_type {
+						write!(
+							f,
+							" filetype={}",
+							if ft.is_file() {
+								"file"
+							} else if ft.is_dir() {
+								"dir"
+							} else if ft.is_symlink() {
+								"symlink"
+							} else {
+								"special"
+							}
+						)?;
+					}
+				}
 				Tag::FileEventKind(kind) => write!(f, " kind={:?}", kind)?,
 				Tag::Source(s) => write!(f, " source={:?}", s)?,
 				Tag::Process(p) => write!(f, " process={}", p)?,

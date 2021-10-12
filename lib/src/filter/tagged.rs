@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use dunce::canonicalize;
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
+use ignore::Match;
 use tokio::fs::read_to_string;
 use tracing::{debug, trace, warn};
 use unicase::UniCase;
@@ -52,7 +53,8 @@ impl Filterer for TaggedFilterer {
 
 impl TaggedFilterer {
 	fn check(&self, event: &Event) -> Result<bool, TaggedFiltererError> {
-		// TODO: trace logging
+		// TODO: tracing with spans
+
 		if self.filters.borrow().is_empty() {
 			trace!("no filters, skipping entire check (pass)");
 			return Ok(true);
@@ -72,6 +74,48 @@ impl TaggedFilterer {
 				trace!(?tag, filters=%tag_filters.len(), "found some filters for this tag");
 
 				let mut tag_match = true;
+
+				if let Tag::Path { path, file_type } = tag {
+					let is_dir = file_type.map_or(false, |ft| ft.is_dir());
+
+					let gc = self.glob_compiled.borrow();
+					if let Some(igs) = gc.as_ref() {
+						trace!(?tag, "checking against compiled Glob filters");
+						match igs.matched(path, is_dir) {
+							Match::None => {
+								trace!(?tag, "no match (fail)");
+								tag_match = false;
+							}
+							Match::Ignore(glob) => {
+								trace!(?tag, ?glob, "positive match (pass)");
+								tag_match = true;
+							}
+							Match::Whitelist(glob) => {
+								trace!(?tag, ?glob, "negative match (ignore)");
+							}
+						}
+					}
+
+					let ngc = self.not_glob_compiled.borrow();
+					if let Some(ngs) = ngc.as_ref() {
+						trace!(?tag, "checking against compiled NotGlob filters");
+						match ngs.matched(path, is_dir) {
+							Match::None => {
+								trace!(?tag, "no match (pass)");
+								tag_match = true;
+							}
+							Match::Ignore(glob) => {
+								trace!(?tag, ?glob, "positive match (fail)");
+								tag_match = false;
+							}
+							Match::Whitelist(glob) => {
+								trace!(?tag, ?glob, "negative match (pass)");
+								tag_match = true;
+							}
+						}
+					}
+				}
+
 				for filter in &tag_filters {
 					trace!(?filter, ?tag, "checking filter againt tag");
 					if let Some(app) = self.match_tag(filter, tag)? {
@@ -134,7 +178,7 @@ impl TaggedFilterer {
 		trace!(?tag, matcher=?filter.on, "matching filter to tag");
 		match (tag, filter.on) {
 			(tag, Matcher::Tag) => filter.matches(tag.discriminant_name()),
-			(Tag::Path(path), Matcher::Path) => {
+			(Tag::Path { path, .. }, Matcher::Path) => {
 				let resolved = if let Some(ctx) = &filter.in_path {
 					if let Ok(suffix) = path.strip_prefix(ctx) {
 						suffix.strip_prefix("/").unwrap_or(suffix)
@@ -152,7 +196,9 @@ impl TaggedFilterer {
 				trace!(?resolved, "resolved path to match filter against");
 
 				if matches!(filter.op, Op::Glob | Op::NotGlob) {
-					todo!("glob match using compiled ignores");
+					unreachable!(
+						"path glob match with match_tag is too late; should be handled above"
+					);
 				} else {
 					filter.matches(resolved.to_string_lossy())
 				}
@@ -369,7 +415,7 @@ pub enum Matcher {
 impl From<&Tag> for Matcher {
 	fn from(tag: &Tag) -> Self {
 		match tag {
-			Tag::Path(_) => Matcher::Path,
+			Tag::Path { .. } => Matcher::Path,
 			Tag::FileEventKind(_) => Matcher::FileEventKind,
 			Tag::Source(_) => Matcher::Source,
 			Tag::Process(_) => Matcher::Process,

@@ -2,6 +2,7 @@
 
 use std::{
 	collections::{HashMap, HashSet},
+	fs::metadata,
 	mem::take,
 	path::PathBuf,
 	sync::{Arc, Mutex},
@@ -236,7 +237,11 @@ fn process_event(
 	tags.push(Tag::FileEventKind(nev.kind));
 
 	for path in nev.paths {
-		tags.push(Tag::Path(dunce::canonicalize(path)?));
+		// possibly pull file_type from whatever notify (or the native driver) returns?
+		tags.push(Tag::Path {
+			file_type: metadata(&path).ok().map(|m| m.file_type()),
+			path: dunce::canonicalize(path)?,
+		});
 	}
 
 	if let Some(pid) = nev.attrs.process_id() {
