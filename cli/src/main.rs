@@ -1,4 +1,8 @@
-use std::{collections::HashSet, env::var, path::PathBuf};
+use std::{
+	collections::HashSet,
+	env::{self, var},
+	path::PathBuf,
+};
 
 use dunce::canonicalize;
 use miette::{IntoDiagnostic, Result};
@@ -116,9 +120,14 @@ async fn main() -> Result<()> {
 
 	let mut filters = Vec::new();
 
-	// TODO: move into config?
+	// TODO: move into config
+	let workdir = env::current_dir()
+		.and_then(|wd| wd.canonicalize())
+		.into_diagnostic()?;
 	for filter in args.values_of("filter").unwrap_or_default() {
-		filters.push(filter.parse()?);
+		let mut filter: Filter = filter.parse()?;
+		filter.in_path = Some(workdir.clone());
+		filters.push(filter);
 	}
 
 	for ext in args
@@ -135,6 +144,8 @@ async fn main() -> Result<()> {
 			negate: false,
 		});
 	}
+
+	debug!(?filters, "parsed filters and extensions");
 
 	let (init, runtime, filterer) = config::new(&args)?;
 	filterer.add_filters(&filters).await?;

@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use dunce::canonicalize;
+use globset::Glob;
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use ignore::Match;
 use tokio::fs::read_to_string;
@@ -16,7 +17,6 @@ use crate::filter::Filterer;
 use crate::ignore_files::IgnoreFile;
 
 // to make filters
-pub use globset::Glob;
 pub use regex::Regex;
 
 pub mod error;
@@ -62,85 +62,116 @@ impl TaggedFilterer {
 
 		trace!(tags=%event.tags.len(), "checking all tags on the event");
 		for tag in &event.tags {
-			let filters = self.filters.borrow().get(&tag.into()).cloned();
-			if let Some(tag_filters) = filters {
-				trace!(?tag, "checking tag");
+			trace!(?tag, "checking tag");
+			for matcher in Matcher::from_tag(tag) {
+				let filters = self.filters.borrow().get(matcher).cloned();
+				if let Some(tag_filters) = filters {
+					if tag_filters.is_empty() {
+						trace!(?tag, ?matcher, "no filters for this tag, skipping (pass)");
+						continue;
+					}
 
-				if tag_filters.is_empty() {
-					trace!(?tag, "no filters for this tag, skipping (pass)");
-					continue;
-				}
+					trace!(?tag, ?matcher, filters=%tag_filters.len(), "found some filters for this tag");
 
-				trace!(?tag, filters=%tag_filters.len(), "found some filters for this tag");
+					let mut tag_match = true;
 
-				let mut tag_match = true;
+					if let (Matcher::Path, Tag::Path { path, file_type }) = (matcher, tag) {
+						let is_dir = file_type.map_or(false, |ft| ft.is_dir());
 
-				if let Tag::Path { path, file_type } = tag {
-					let is_dir = file_type.map_or(false, |ft| ft.is_dir());
-
-					let gc = self.glob_compiled.borrow();
-					if let Some(igs) = gc.as_ref() {
-						trace!(?tag, "checking against compiled Glob filters");
-						match igs.matched(path, is_dir) {
-							Match::None => {
-								trace!(?tag, "no match (fail)");
-								tag_match = false;
+						let gc = self.glob_compiled.borrow();
+						if let Some(igs) = gc.as_ref() {
+							trace!(?tag, ?matcher, "checking against compiled Glob filters");
+							match igs.matched(path, is_dir) {
+								Match::None => {
+									trace!(?tag, ?matcher, "no match (fail)");
+									tag_match = false;
+								}
+								Match::Ignore(glob) => {
+									trace!(?tag, ?matcher, ?glob, "positive match (pass)");
+									tag_match = true;
+								}
+								Match::Whitelist(glob) => {
+									trace!(?tag, ?matcher, ?glob, "negative match (ignore)");
+								}
 							}
-							Match::Ignore(glob) => {
-								trace!(?tag, ?glob, "positive match (pass)");
-								tag_match = true;
-							}
-							Match::Whitelist(glob) => {
-								trace!(?tag, ?glob, "negative match (ignore)");
+						}
+
+						let ngc = self.not_glob_compiled.borrow();
+						if let Some(ngs) = ngc.as_ref() {
+							trace!(?tag, ?matcher, "checking against compiled NotGlob filters");
+							match ngs.matched(path, is_dir) {
+								Match::None => {
+									trace!(?tag, ?matcher, "no match (pass)");
+									tag_match = true;
+								}
+								Match::Ignore(glob) => {
+									trace!(?tag, ?matcher, ?glob, "positive match (fail)");
+									tag_match = false;
+								}
+								Match::Whitelist(glob) => {
+									trace!(?tag, ?matcher, ?glob, "negative match (pass)");
+									tag_match = true;
+								}
 							}
 						}
 					}
 
-					let ngc = self.not_glob_compiled.borrow();
-					if let Some(ngs) = ngc.as_ref() {
-						trace!(?tag, "checking against compiled NotGlob filters");
-						match ngs.matched(path, is_dir) {
-							Match::None => {
-								trace!(?tag, "no match (pass)");
-								tag_match = true;
-							}
-							Match::Ignore(glob) => {
-								trace!(?tag, ?glob, "positive match (fail)");
-								tag_match = false;
-							}
-							Match::Whitelist(glob) => {
-								trace!(?tag, ?glob, "negative match (pass)");
-								tag_match = true;
-							}
-						}
+					// those are handled with the compiled ignore filters above
+					let tag_filters = tag_filters
+						.into_iter()
+						.filter(|f| {
+							!matches!(
+								(tag, matcher, f),
+								(
+									Tag::Path { .. },
+									Matcher::Path,
+									Filter {
+										on: Matcher::Path,
+										op: Op::Glob | Op::NotGlob,
+										pat: Pattern::Glob(_),
+										..
+									}
+								)
+							)
+						})
+						.collect::<Vec<_>>();
+					if tag_filters.is_empty() {
+						trace!(
+							?tag,
+							?matcher,
+							"no more filters for this tag, skipping (pass)"
+						);
+						continue;
 					}
-				}
 
-				for filter in &tag_filters {
-					trace!(?filter, ?tag, "checking filter againt tag");
-					if let Some(app) = self.match_tag(filter, tag)? {
-						if filter.negate {
-							if app {
-								trace!(prev=%tag_match, now=%true, "negate filter passes, resetting tag to pass");
-								tag_match = true;
+					trace!(?tag, ?matcher, filters=%tag_filters.len(), "got some filters to check still");
+
+					for filter in &tag_filters {
+						trace!(?filter, ?tag, "checking filter againt tag");
+						if let Some(app) = self.match_tag(filter, tag)? {
+							if filter.negate {
+								if app {
+									trace!(prev=%tag_match, now=%true, "negate filter passes, resetting tag to pass");
+									tag_match = true;
+								} else {
+									trace!(prev=%tag_match, now=%tag_match, "negate filter fails, ignoring");
+								}
 							} else {
-								trace!(prev=%tag_match, now=%tag_match, "negate filter fails, ignoring");
+								trace!(prev=%tag_match, this=%app, now=%(tag_match&app), "filter applies to this tag");
+								tag_match &= app;
 							}
-						} else {
-							trace!(prev=%tag_match, this=%app, now=%(tag_match&app), "filter applies to this tag");
-							tag_match &= app;
 						}
 					}
-				}
 
-				if !tag_match {
-					trace!(?tag, "tag fails check, failing entire event");
-					return Ok(false);
-				}
+					if !tag_match {
+						trace!(?tag, ?matcher, "tag fails check, failing entire event");
+						return Ok(false);
+					}
 
-				trace!(?tag, "tag passes check, continuing");
-			} else {
-				trace!(?tag, "no filters for this tag, skipping (pass)");
+					trace!(?tag, ?matcher, "tag passes check, continuing");
+				} else {
+					trace!(?tag, ?matcher, "no filters for this tag, skipping (pass)");
+				}
 			}
 		}
 
@@ -379,8 +410,25 @@ impl Filter {
 			(Op::InSet, Pattern::Exact(pat)) => subject == pat,
 			(Op::NotInSet, Pattern::Set(set)) => !set.contains(subject),
 			(Op::NotInSet, Pattern::Exact(pat)) => subject != pat,
-			(Op::Glob | Op::NotGlob, Pattern::Glob(_)) => {
-				todo!("glob matching for non paths???")
+			(op @ Op::Glob | op @ Op::NotGlob, Pattern::Glob(glob)) => {
+				// FIXME: someway that isn't this horrible
+				match Glob::new(glob) {
+					Ok(glob) => {
+						let matches = glob.compile_matcher().is_match(subject);
+						match op {
+							Op::Glob => matches,
+							Op::NotGlob => !matches,
+							_ => unreachable!(),
+						}
+					}
+					Err(err) => {
+						warn!(
+							"failed to compile glob for non-path match, skipping (pass): {}",
+							err
+						);
+						true
+					}
+				}
 			}
 			(op, pat) => {
 				warn!(
@@ -427,15 +475,18 @@ pub enum Matcher {
 	ProcessCompletion,
 }
 
-impl From<&Tag> for Matcher {
-	fn from(tag: &Tag) -> Self {
+impl Matcher {
+	fn from_tag(tag: &Tag) -> &'static [Self] {
 		match tag {
-			Tag::Path { .. } => Matcher::Path,
-			Tag::FileEventKind(_) => Matcher::FileEventKind,
-			Tag::Source(_) => Matcher::Source,
-			Tag::Process(_) => Matcher::Process,
-			Tag::Signal(_) => Matcher::Signal,
-			Tag::ProcessCompletion(_) => Matcher::ProcessCompletion,
+			Tag::Path {
+				file_type: None, ..
+			} => &[Matcher::Path],
+			Tag::Path { .. } => &[Matcher::Path, Matcher::FileType],
+			Tag::FileEventKind(_) => &[Matcher::FileEventKind],
+			Tag::Source(_) => &[Matcher::Source],
+			Tag::Process(_) => &[Matcher::Process],
+			Tag::Signal(_) => &[Matcher::Signal],
+			Tag::ProcessCompletion(_) => &[Matcher::ProcessCompletion],
 		}
 	}
 }
