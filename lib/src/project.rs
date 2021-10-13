@@ -43,6 +43,31 @@ pub enum ProjectType {
 	V,
 }
 
+impl ProjectType {
+	/// Returns true if the project type is a VCS.
+	pub fn is_vcs(self) -> bool {
+		matches!(
+			self,
+			Self::Bazaar | Self::Darcs | Self::Fossil | Self::Git | Self::Mercurial | Self::Pijul
+		)
+	}
+
+	/// Returns true if the project type is a software suite.
+	pub fn is_soft(self) -> bool {
+		matches!(
+			self,
+			Self::Bundler
+				| Self::C | Self::Cargo
+				| Self::Docker | Self::Elixir
+				| Self::Gradle | Self::JavaScript
+				| Self::Leiningen
+				| Self::Maven | Self::Perl
+				| Self::PHP | Self::Pip
+				| Self::RubyGem | Self::V
+		)
+	}
+}
+
 /// Traverses the parents of the given path and returns _all_ that are project origins.
 ///
 /// This checks for the presence of a wide range of files and directories that are likely to be
@@ -163,6 +188,46 @@ pub async fn types(path: impl AsRef<Path>) -> HashSet<ProjectType> {
 	])
 	.flatten()
 	.collect()
+}
+
+/// Returns the longest common prefix of all given paths.
+///
+/// This is a utility function which is useful for finding the common root of a set of origins.
+///
+/// Returns `None` if zero paths are given or paths share no common prefix.
+pub fn common_prefix(paths: &[PathBuf]) -> Option<PathBuf> {
+	match paths.len() {
+		0 => return None,
+		1 => return Some(paths[0].to_owned()),
+		_ => {}
+	};
+
+	let mut longest_path: Vec<_> = paths[0].components().collect();
+
+	for path in &paths[1..] {
+		let mut greatest_distance = 0;
+		for component_pair in path.components().zip(longest_path.iter()) {
+			if component_pair.0 != *component_pair.1 {
+				break;
+			}
+
+			greatest_distance += 1;
+		}
+
+		if greatest_distance != longest_path.len() {
+			longest_path.truncate(greatest_distance);
+		}
+	}
+
+	if longest_path.is_empty() {
+		None
+	} else {
+		let mut result = PathBuf::new();
+		for component in longest_path {
+			result.push(component.as_os_str());
+		}
+		Some(result)
+	}
 }
 
 #[derive(Debug, Default)]
