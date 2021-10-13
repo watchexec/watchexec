@@ -196,9 +196,8 @@ impl TaggedFilterer {
 				trace!(?resolved, "resolved path to match filter against");
 
 				if matches!(filter.op, Op::Glob | Op::NotGlob) {
-					unreachable!(
-						"path glob match with match_tag is too late; should be handled above"
-					);
+					trace!("path glob match with match_tag is already handled");
+					return Ok(None);
 				} else {
 					filter.matches(resolved.to_string_lossy())
 				}
