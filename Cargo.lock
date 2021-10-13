@@ -2690,11 +2690,13 @@ dependencies = [
  "assert_cmd",
  "clap",
  "console-subscriber",
+ "dunce",
  "embed-resource",
  "insta",
  "miette",
  "notify-rust",
  "tokio",
+ "tracing",
  "tracing-subscriber",
  "watchexec",
 ]

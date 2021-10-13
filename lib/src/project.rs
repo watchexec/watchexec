@@ -74,8 +74,8 @@ impl ProjectType {
 /// present and indicative of the root or origin path of a project. It's entirely possible to have
 /// multiple such origins show up: for example, a member of a Cargo workspace will list both the
 /// member project and the workspace root as origins.
-pub async fn origins(path: impl AsRef<Path>) -> Vec<PathBuf> {
-	let mut origins = Vec::new();
+pub async fn origins(path: impl AsRef<Path>) -> HashSet<PathBuf> {
+	let mut origins = HashSet::new();
 
 	fn check_list(list: DirList) -> bool {
 		if list.is_empty() {
@@ -134,13 +134,13 @@ pub async fn origins(path: impl AsRef<Path>) -> Vec<PathBuf> {
 
 	let mut current = path.as_ref();
 	if check_list(DirList::obtain(current).await) {
-		origins.push(current.to_owned());
+		origins.insert(current.to_owned());
 	}
 
 	while let Some(parent) = current.parent() {
 		current = parent;
 		if check_list(DirList::obtain(current).await) {
-			origins.push(current.to_owned());
+			origins.insert(current.to_owned());
 			continue;
 		}
 	}
@@ -195,18 +195,22 @@ pub async fn types(path: impl AsRef<Path>) -> HashSet<ProjectType> {
 /// This is a utility function which is useful for finding the common root of a set of origins.
 ///
 /// Returns `None` if zero paths are given or paths share no common prefix.
-pub fn common_prefix(paths: &[PathBuf]) -> Option<PathBuf> {
-	match paths.len() {
-		0 => return None,
-		1 => return Some(paths[0].to_owned()),
-		_ => {}
+pub fn common_prefix<I, P>(paths: I) -> Option<PathBuf>
+where
+	I: IntoIterator<Item = P>,
+	P: AsRef<Path>,
+{
+	let mut paths = paths.into_iter();
+	let first_path = paths.next().map(|p| p.as_ref().to_owned());
+	let mut longest_path = if let Some(ref p) = first_path {
+		p.components().collect::<Vec<_>>()
+	} else {
+		return None;
 	};
 
-	let mut longest_path: Vec<_> = paths[0].components().collect();
-
-	for path in &paths[1..] {
+	for path in paths {
 		let mut greatest_distance = 0;
-		for component_pair in path.components().zip(longest_path.iter()) {
+		for component_pair in path.as_ref().components().zip(longest_path.iter()) {
 			if component_pair.0 != *component_pair.1 {
 				break;
 			}

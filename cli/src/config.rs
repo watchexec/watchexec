@@ -41,11 +41,16 @@ fn runtime(args: &ArgMatches<'static>) -> Result<(RuntimeConfig, Arc<TaggedFilte
 	});
 
 	config.action_throttle(Duration::from_millis(
-		args.value_of("debounce").unwrap_or("100").parse().into_diagnostic()?,
+		args.value_of("debounce")
+			.unwrap_or("100")
+			.parse()
+			.into_diagnostic()?,
 	));
 
 	if let Some(interval) = args.value_of("poll") {
-		config.file_watcher(Watcher::Poll(Duration::from_millis(interval.parse().into_diagnostic()?)));
+		config.file_watcher(Watcher::Poll(Duration::from_millis(
+			interval.parse().into_diagnostic()?,
+		)));
 	}
 
 	config.command_shell(if args.is_present("no-shell") {
@@ -81,7 +86,8 @@ fn runtime(args: &ArgMatches<'static>) -> Result<(RuntimeConfig, Arc<TaggedFilte
 	let mut signal = args
 		.value_of("signal")
 		.map(|s| Signal::from_str(s))
-		.transpose().into_diagnostic()?
+		.transpose()
+		.into_diagnostic()?
 		.unwrap_or(Signal::SIGTERM);
 
 	if args.is_present("kill") {
