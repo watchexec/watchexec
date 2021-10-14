@@ -4,7 +4,7 @@ use std::{
 	collections::{HashMap, HashSet},
 	fs::metadata,
 	mem::take,
-	path::PathBuf,
+	path::{Path, PathBuf},
 	sync::{Arc, Mutex},
 	time::Duration,
 };
@@ -55,8 +55,38 @@ impl Watcher {
 #[derive(Clone, Debug, Default)]
 #[non_exhaustive]
 pub struct WorkingData {
-	pub pathset: Vec<PathBuf>,
+	pub pathset: Vec<WatchedPath>,
 	pub watcher: Watcher,
+}
+
+/// A path to watch.
+///
+/// This is currently only a wrapper around a [`PathBuf`], but may be augmented in the future.
+#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct WatchedPath(PathBuf);
+
+impl From<PathBuf> for WatchedPath {
+	fn from(path: PathBuf) -> Self {
+		Self(path)
+	}
+}
+
+impl From<&Path> for WatchedPath {
+	fn from(path: &Path) -> Self {
+		Self(path.into())
+	}
+}
+
+impl From<WatchedPath> for PathBuf {
+	fn from(path: WatchedPath) -> Self {
+		path.0
+	}
+}
+
+impl AsRef<Path> for WatchedPath {
+	fn as_ref(&self) -> &Path {
+		self.0.as_ref()
+	}
 }
 
 /// Launch the filesystem event worker.
@@ -165,7 +195,7 @@ pub async fn worker(
 
 			for path in to_drop {
 				trace!(?path, "removing path from the watcher");
-				if let Err(err) = w.unwatch(&path) {
+				if let Err(err) = w.unwatch(path.as_ref()) {
 					error!(?err, "notify unwatch() error");
 					for e in notify_multi_path_errors(watcher_type, path, err, true) {
 						errors.send(e).await?;
@@ -177,7 +207,7 @@ pub async fn worker(
 
 			for path in to_watch {
 				trace!(?path, "adding path to the watcher");
-				if let Err(err) = w.watch(&path, notify::RecursiveMode::Recursive) {
+				if let Err(err) = w.watch(path.as_ref(), notify::RecursiveMode::Recursive) {
 					error!(?err, "notify watch() error");
 					for e in notify_multi_path_errors(watcher_type, path, err, false) {
 						errors.send(e).await?;
@@ -196,13 +226,13 @@ pub async fn worker(
 
 fn notify_multi_path_errors(
 	kind: Watcher,
-	path: PathBuf,
+	path: WatchedPath,
 	mut err: notify::Error,
 	rm: bool,
 ) -> Vec<RuntimeError> {
 	let mut paths = take(&mut err.paths);
 	if paths.is_empty() {
-		paths.push(path);
+		paths.push(path.into());
 	}
 
 	let generic = err.to_string();
