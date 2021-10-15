@@ -49,6 +49,9 @@ features = [ # TODO: test which of these are actually needed
     "time",
 ]
 
+[target.'cfg(target_env = "musl")'.dependencies]
+mimalloc = "0.1.26"
+
 [build-dependencies]
 embed-resource = "1.6.1"
 
