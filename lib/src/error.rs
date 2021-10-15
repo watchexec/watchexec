@@ -186,7 +186,6 @@ pub enum RuntimeError {
 
 		#[source]
 		err: Box<dyn std::error::Error + Send + Sync>,
-		// FIXME: can we have dyn Diagnostic here or downcast it somehow?
 	},
 }
 

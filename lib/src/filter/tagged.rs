@@ -185,7 +185,6 @@ impl TaggedFilterer {
 		origin: impl Into<PathBuf>,
 		workdir: impl Into<PathBuf>,
 	) -> Result<Arc<Self>, TaggedFiltererError> {
-		// TODO: make it criticalerror
 		Ok(Arc::new(Self {
 			origin: canonicalize(origin.into())?,
 			workdir: canonicalize(workdir.into())?,
@@ -396,7 +395,7 @@ pub struct Filter {
 }
 
 impl Filter {
-	// TODO non-unicode matching
+	// TODO: non-unicode matching
 	pub fn matches(&self, subject: impl AsRef<str>) -> Result<bool, TaggedFiltererError> {
 		let subject = subject.as_ref();
 

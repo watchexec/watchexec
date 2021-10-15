@@ -226,7 +226,7 @@ async fn apply_outcome(
 					.handle(post_spawn)
 					.map_err(|e| rte("action post-spawn", e))?;
 
-				// TODO: consider what we want to do for processes still running here?
+				// TODO: consider what we want to do for (previous) process if it's still running here?
 				*process = Some(sup);
 			}
 		}

@@ -163,7 +163,6 @@ async fn imp_worker(
 }
 
 // TODO: figure out how to prioritise signals.
-// TODO: also, figure out why event processing is stalling when the channel limit is reached (when there are lots of fs events).
 async fn send_event(
 	errors: mpsc::Sender<RuntimeError>,
 	events: mpsc::Sender<Event>,

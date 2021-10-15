@@ -213,6 +213,7 @@ pub async fn worker(
 						errors.send(e).await?;
 					}
 				// TODO: unwatch and re-watch manually while ignoring all the erroring paths
+				// See https://github.com/watchexec/watchexec/issues/218
 				} else {
 					pathset.insert(path);
 				}
