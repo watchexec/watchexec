@@ -71,6 +71,12 @@ impl From<PathBuf> for WatchedPath {
 	}
 }
 
+impl From<&str> for WatchedPath {
+	fn from(path: &str) -> Self {
+		Self(path.into())
+	}
+}
+
 impl From<&Path> for WatchedPath {
 	fn from(path: &Path) -> Self {
 		Self(path.into())
