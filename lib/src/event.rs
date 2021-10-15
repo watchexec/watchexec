@@ -16,7 +16,7 @@ use std::{
 
 use notify::EventKind;
 
-use crate::signal::Signal;
+use crate::signal::source::MainSignal;
 
 /// An event, as far as watchexec cares about.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -36,7 +36,7 @@ pub enum Tag {
 	FileEventKind(EventKind),
 	Source(Source),
 	Process(u32),
-	Signal(Signal),
+	Signal(MainSignal),
 	ProcessCompletion(Option<ExitStatus>),
 }
 
@@ -104,7 +104,7 @@ impl Event {
 	}
 
 	/// Return all signals in the event's tags.
-	pub fn signals(&self) -> impl Iterator<Item = Signal> + '_ {
+	pub fn signals(&self) -> impl Iterator<Item = MainSignal> + '_ {
 		self.tags.iter().filter_map(|p| match p {
 			Tag::Signal(s) => Some(*s),
 			_ => None,

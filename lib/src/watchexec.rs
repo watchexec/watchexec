@@ -86,7 +86,7 @@ impl Watchexec {
 				action::worker(ac_r, er_s.clone(), ev_s.clone(), ev_r)
 			);
 			let fs = subtask!(fs, fs::worker(fs_r, er_s.clone(), ev_s.clone()));
-			let signal = subtask!(signal, signal::worker(er_s.clone(), ev_s.clone()));
+			let signal = subtask!(signal, signal::source::worker(er_s.clone(), ev_s.clone()));
 
 			let error_hook = subtask!(error_hook, error_hook(er_r, eh));
 

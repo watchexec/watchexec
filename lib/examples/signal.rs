@@ -4,7 +4,7 @@ use miette::Result;
 use tokio::sync::mpsc;
 use watchexec::{
 	event::{Event, Tag},
-	signal::{self, Signal},
+	signal::{self, source::MainSignal},
 };
 
 // Run with: `env RUST_LOG=debug cargo run --example signal`,
@@ -21,7 +21,7 @@ async fn main() -> Result<()> {
 		while let Some(e) = ev_r.recv().await {
 			tracing::info!("event: {:?}", e);
 
-			if e.tags.contains(&Tag::Signal(Signal::Terminate)) {
+			if e.tags.contains(&Tag::Signal(MainSignal::Terminate)) {
 				exit(0);
 			}
 		}
@@ -34,7 +34,7 @@ async fn main() -> Result<()> {
 	});
 
 	tracing::info!("PID is {}", std::process::id());
-	signal::worker(er_s.clone(), ev_s.clone()).await?;
+	signal::source::worker(er_s.clone(), ev_s.clone()).await?;
 
 	Ok(())
 }

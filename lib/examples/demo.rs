@@ -6,7 +6,7 @@ use watchexec::{
 	config::{InitConfig, RuntimeConfig},
 	error::ReconfigError,
 	fs::Watcher,
-	signal::Signal,
+	signal::source::MainSignal,
 	Watchexec,
 };
 
@@ -41,13 +41,13 @@ async fn main() -> Result<()> {
 				.flat_map(|event| event.signals())
 				.collect::<Vec<_>>();
 
-			if sigs.iter().any(|sig| sig == &Signal::Interrupt) {
+			if sigs.iter().any(|sig| sig == &MainSignal::Interrupt) {
 				action.outcome(Outcome::Exit);
-			} else if sigs.iter().any(|sig| sig == &Signal::User1) {
+			} else if sigs.iter().any(|sig| sig == &MainSignal::User1) {
 				eprintln!("Switching to native for funsies");
 				config.file_watcher(Watcher::Native).keep_action();
 				w.reconfigure(config)?;
-			} else if sigs.iter().any(|sig| sig == &Signal::User2) {
+			} else if sigs.iter().any(|sig| sig == &MainSignal::User2) {
 				eprintln!("Switching to polling for funsies");
 				config
 					.file_watcher(Watcher::Poll(Duration::from_millis(50)))

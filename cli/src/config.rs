@@ -12,7 +12,7 @@ use watchexec::{
 	filter::tagged::TaggedFilterer,
 	fs::Watcher,
 	handler::PrintDisplay,
-	signal::Signal as InputSignal,
+	signal::source::MainSignal,
 };
 
 pub fn new(args: &ArgMatches<'static>) -> Result<(InitConfig, RuntimeConfig, Arc<TaggedFilterer>)> {
@@ -114,7 +114,7 @@ fn runtime(args: &ArgMatches<'static>) -> Result<(RuntimeConfig, Arc<TaggedFilte
 			return fut;
 		}
 
-		let signals: Vec<InputSignal> = action.events.iter().flat_map(|e| e.signals()).collect();
+		let signals: Vec<MainSignal> = action.events.iter().flat_map(|e| e.signals()).collect();
 		let has_paths = action
 			.events
 			.iter()
@@ -122,12 +122,12 @@ fn runtime(args: &ArgMatches<'static>) -> Result<(RuntimeConfig, Arc<TaggedFilte
 			.next()
 			.is_some();
 
-		if signals.contains(&InputSignal::Terminate) {
+		if signals.contains(&MainSignal::Terminate) {
 			action.outcome(Outcome::both(Outcome::Stop, Outcome::Exit));
 			return fut;
 		}
 
-		if signals.contains(&InputSignal::Interrupt) {
+		if signals.contains(&MainSignal::Interrupt) {
 			action.outcome(Outcome::both(Outcome::Stop, Outcome::Exit));
 			return fut;
 		}
@@ -139,12 +139,12 @@ fn runtime(args: &ArgMatches<'static>) -> Result<(RuntimeConfig, Arc<TaggedFilte
 					out = Outcome::both(
 						out,
 						Outcome::Signal(match sig {
-							InputSignal::Hangup => Signal::SIGHUP,
-							InputSignal::Interrupt => Signal::SIGINT,
-							InputSignal::Quit => Signal::SIGQUIT,
-							InputSignal::Terminate => Signal::SIGTERM,
-							InputSignal::User1 => Signal::SIGUSR1,
-							InputSignal::User2 => Signal::SIGUSR2,
+							MainSignal::Hangup => Signal::SIGHUP,
+							MainSignal::Interrupt => Signal::SIGINT,
+							MainSignal::Quit => Signal::SIGQUIT,
+							MainSignal::Terminate => Signal::SIGTERM,
+							MainSignal::User1 => Signal::SIGUSR1,
+							MainSignal::User2 => Signal::SIGUSR2,
 						}),
 					);
 				}
