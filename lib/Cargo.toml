@@ -21,7 +21,6 @@ atomic-take = "1.0.0"
 clearscreen = "1.0.6"
 dunce = "1.0.2"
 futures = "0.3.16"
-git2 = "0.13.22"
 globset = "0.4.8"
 ignore = "0.4.18"
 miette = "3.2.0"
@@ -37,9 +36,25 @@ unicase = "2.6.0"
 version = "1.0.5"
 features = ["with-tokio"]
 
+[dependencies.git2]
+version = "0.13.22"
+default-features = false
+
 [dependencies.tokio]
 version = "1.10.0"
-features = ["full"]
+features = [ # TODO: test which of these are actually needed
+	"fs",
+    "io-util",
+    "io-std",
+    "macros",
+    "parking_lot",
+    "process",
+    "rt",
+    "rt-multi-thread",
+    "signal",
+    "sync",
+    "time",
+]
 
 [dependencies.tokio-stream]
 version = "0.1.7"
