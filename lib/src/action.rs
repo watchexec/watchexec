@@ -12,8 +12,6 @@ use tokio::{
 };
 use tracing::{debug, trace, warn};
 
-pub use command_group::Signal;
-
 use crate::{
 	command::Supervisor,
 	error::{CriticalError, RuntimeError},
@@ -232,8 +230,16 @@ async fn apply_outcome(
 		}
 
 		(Some(p), Outcome::Signal(sig)) => {
-			// TODO: windows
-			p.signal(sig).await;
+			#[cfg(unix)]
+			if let Some(sig) = sig.to_nix() {
+				p.signal(sig).await;
+			}
+
+			#[cfg(windows)]
+			if let SubSignal::Terminate = sig {
+				p.kill().await;
+			}
+			// else: https://github.com/watchexec/watchexec/issues/219
 		}
 
 		(Some(p), Outcome::Wait) => {

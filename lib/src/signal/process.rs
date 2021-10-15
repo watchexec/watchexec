@@ -95,24 +95,24 @@ pub enum SubSignal {
 
 impl SubSignal {
 	#[cfg(unix)]
-    pub fn to_nix(self) -> Option<NixSignal> {
+	pub fn to_nix(self) -> Option<NixSignal> {
 		use std::convert::TryFrom;
 
-        match self {
-            Self::Hangup => Some(NixSignal::SIGHUP),
-            Self::ForceStop => Some(NixSignal::SIGKILL),
-            Self::Interrupt => Some(NixSignal::SIGINT),
-            Self::Quit => Some(NixSignal::SIGQUIT),
-            Self::Terminate => Some(NixSignal::SIGTERM),
-            Self::User1 => Some(NixSignal::SIGUSR1),
-            Self::User2 => Some(NixSignal::SIGUSR2),
-            Self::Custom(sig) => NixSignal::try_from(sig).ok(),
-        }
-    }
+		match self {
+			Self::Hangup => Some(NixSignal::SIGHUP),
+			Self::ForceStop => Some(NixSignal::SIGKILL),
+			Self::Interrupt => Some(NixSignal::SIGINT),
+			Self::Quit => Some(NixSignal::SIGQUIT),
+			Self::Terminate => Some(NixSignal::SIGTERM),
+			Self::User1 => Some(NixSignal::SIGUSR1),
+			Self::User2 => Some(NixSignal::SIGUSR2),
+			Self::Custom(sig) => NixSignal::try_from(sig).ok(),
+		}
+	}
 
 	#[cfg(unix)]
 	pub fn from_nix(sig: NixSignal) -> Self {
-        match sig {
+		match sig {
 			NixSignal::SIGHUP => Self::Hangup,
 			NixSignal::SIGKILL => Self::ForceStop,
 			NixSignal::SIGINT => Self::Interrupt,
@@ -126,24 +126,24 @@ impl SubSignal {
 }
 
 impl From<MainSignal> for SubSignal {
-    fn from(main: MainSignal) -> Self {
-        match main {
-            MainSignal::Hangup => Self::Hangup,
-            MainSignal::Interrupt => Self::Interrupt,
-            MainSignal::Quit => Self::Quit,
-            MainSignal::Terminate => Self::Terminate,
-            MainSignal::User1 => Self::User1,
-            MainSignal::User2 => Self::User2,
-        }
-    }
+	fn from(main: MainSignal) -> Self {
+		match main {
+			MainSignal::Hangup => Self::Hangup,
+			MainSignal::Interrupt => Self::Interrupt,
+			MainSignal::Quit => Self::Quit,
+			MainSignal::Terminate => Self::Terminate,
+			MainSignal::User1 => Self::User1,
+			MainSignal::User2 => Self::User2,
+		}
+	}
 }
 
 impl FromStr for SubSignal {
-    type Err = ParseSignalError;
+	type Err = ParseSignalError;
 
 	#[cfg(unix)]
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        use std::convert::TryFrom;
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		use std::convert::TryFrom;
 
 		if let Ok(sig) = i32::from_str(s) {
 			if let Ok(sig) = NixSignal::try_from(sig) {
@@ -151,23 +151,25 @@ impl FromStr for SubSignal {
 			}
 		}
 
-        if let Ok(sig) = NixSignal::from_str(&s.to_ascii_uppercase()).or_else(|_| NixSignal::from_str(&format!("SIG{}", s.to_ascii_uppercase()))) {
+		if let Ok(sig) = NixSignal::from_str(&s.to_ascii_uppercase())
+			.or_else(|_| NixSignal::from_str(&format!("SIG{}", s.to_ascii_uppercase())))
+		{
 			return Ok(Self::from_nix(sig));
 		}
 
 		Err(ParseSignalError::new(s, "unsupported signal"))
-    }
+	}
 
 	#[cfg(windows)]
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_ascii_uppercase().as_str() {
+		match s.to_ascii_uppercase().as_str() {
 			"CTRL-CLOSE" | "CTRL+CLOSE" | "CLOSE" => Ok(Self::Hangup),
 			"CTRL-BREAK" | "CTRL+BREAK" | "BREAK" => Ok(Self::Terminate),
 			"CTRL-C" | "CTRL+C" | "C" => Ok(Self::Interrupt),
 			"KILL" | "SIGKILL" | "FORCE-STOP" | "STOP" => Ok(Self::ForceStop),
 			_ => Err(ParseSignalError::new(s, "unknown control name")),
 		}
-    }
+	}
 
 	#[cfg(not(any(unix, windows)))]
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -181,8 +183,8 @@ impl FromStr for SubSignal {
 #[diagnostic(code(watchexec::signal::process::parse), url(docsrs))]
 pub struct ParseSignalError {
 	// The string that was parsed.
-    #[source_code]
-    src: String,
+	#[source_code]
+	src: String,
 
 	// The error that occurred.
 	err: String,

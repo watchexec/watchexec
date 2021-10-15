@@ -1,4 +1,4 @@
-use command_group::Signal;
+use crate::signal::process::SubSignal;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
@@ -16,7 +16,7 @@ pub enum Outcome {
 	Wait,
 
 	/// Send this signal to the command.
-	Signal(Signal),
+	Signal(SubSignal),
 
 	/// Clear the (terminal) screen.
 	Clear,
