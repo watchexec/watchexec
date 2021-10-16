@@ -1,14 +1,16 @@
 //! A simple filterer in the style of the watchexec v1 filter.
 
 use std::ffi::{OsStr, OsString};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
+use tokio::fs::read_to_string;
 use tracing::{debug, trace};
 
 use crate::error::RuntimeError;
 use crate::event::Event;
 use crate::filter::Filterer;
+use crate::ignore_files::IgnoreFile;
 
 /// A path-only filterer based on globsets.
 ///
@@ -81,6 +83,25 @@ impl GlobsetFilterer {
 			ignores,
 			extensions,
 		})
+	}
+
+	/// Produces a list of ignore patterns compatible with [`new`][GlobsetFilterer::new()] from an [`IgnoreFile`].
+	pub async fn list_from_ignore_file(
+		ig: &IgnoreFile,
+	) -> Result<Vec<(String, Option<PathBuf>)>, RuntimeError> {
+		let content = read_to_string(&ig.path).await?;
+		let lines = content.lines();
+		let mut ignores = Vec::with_capacity(lines.size_hint().0);
+
+		for line in lines {
+			if line.is_empty() || line.starts_with('#') {
+				continue;
+			}
+
+			ignores.push((line.to_owned(), Some(ig.path.clone())));
+		}
+
+		Ok(ignores)
 	}
 }
 
