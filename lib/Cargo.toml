@@ -25,7 +25,7 @@ globset = "0.4.8"
 ignore = "0.4.18"
 miette = "3.2.0"
 nom = "7.0.0"
-notify = "5.0.0-pre.12"
+notify = "5.0.0-pre.13"
 once_cell = "1.8.0"
 regex = "1.5.4"
 thiserror = "1.0.26"
@@ -42,18 +42,15 @@ default-features = false
 
 [dependencies.tokio]
 version = "1.10.0"
-features = [ # TODO: test which of these are actually needed
+features = [
 	"fs",
-    "io-util",
-    "io-std",
-    "macros",
-    "parking_lot",
-    "process",
-    "rt",
-    "rt-multi-thread",
-    "signal",
-    "sync",
-    "time",
+	"io-std",
+	"parking_lot",
+	"process",
+	"rt",
+	"rt-multi-thread",
+	"signal",
+	"sync",
 ]
 
 [dependencies.tokio-stream]

@@ -34,19 +34,16 @@ default-features = false
 features = ["wrap_help"]
 
 [dependencies.tokio]
-version = "1.10.0"
-features = [ # TODO: test which of these are actually needed
+version = "1.12.0"
+features = [
 	"fs",
-    "io-util",
-    "io-std",
-    "macros",
-    "parking_lot",
-    "process",
-    "rt",
-    "rt-multi-thread",
-    "signal",
-    "sync",
-    "time",
+	"io-std",
+	"parking_lot",
+	"process",
+	"rt",
+	"rt-multi-thread",
+	"signal",
+	"sync",
 ]
 
 [target.'cfg(target_env = "musl")'.dependencies]
