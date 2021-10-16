@@ -1,6 +1,6 @@
 use std::process::ExitStatus;
 
-use command_group::{AsyncGroupChild, Signal};
+use command_group::AsyncGroupChild;
 use tokio::process::Child;
 use tracing::{debug, trace};
 
@@ -34,7 +34,7 @@ impl Process {
 	///
 	/// Does nothing if the process is not running.
 	#[cfg(unix)]
-	pub fn signal(&mut self, sig: Signal) -> Result<(), RuntimeError> {
+	pub fn signal(&mut self, sig: command_group::Signal) -> Result<(), RuntimeError> {
 		use command_group::UnixChildExt;
 
 		match self {
