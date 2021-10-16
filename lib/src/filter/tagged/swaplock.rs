@@ -1,3 +1,5 @@
+//! A value that is always available, but can be swapped out.
+
 use std::fmt;
 
 use tokio::sync::watch::{channel, error::SendError, Receiver, Ref, Sender};

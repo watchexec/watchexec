@@ -1,3 +1,5 @@
+//! A complex filterer that can match any event tag and supports different matching operators.
+
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;

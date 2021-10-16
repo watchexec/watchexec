@@ -1,3 +1,5 @@
+//! The `Filterer` trait, two implementations, and some helper functions.
+
 use std::sync::Arc;
 
 use ignore::gitignore::GitignoreBuilder;
