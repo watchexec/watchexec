@@ -20,26 +20,63 @@ use tokio_stream::wrappers::ReadDirStream;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum ProjectType {
+	/// VCS: [Bazaar](https://bazaar.canonical.com/).
 	Bazaar,
+
+	/// VCS: [Darcs](http://darcs.net/).
 	Darcs,
+
+	/// VCS: [Fossil](https://www.fossil-scm.org/).
 	Fossil,
+
+	/// VCS: [Git](https://git-scm.com/).
 	Git,
+
+	/// VCS: [Mercurial](https://www.mercurial-scm.org/).
 	Mercurial,
+
+	/// VCS: [Pijul](https://pijul.org/).
 	Pijul,
 
+	/// Soft: [Ruby](https://www.ruby-lang.org/)’s [Bundler](https://bundler.io/).
 	Bundler,
+
+	/// Soft: the [C programming language](https://en.wikipedia.org/wiki/C_(programming_language)).
 	C,
+
+	/// Soft: [Rust](https://www.rust-lang.org/)’s [Cargo](https://doc.rust-lang.org/cargo/).
 	Cargo,
+
+	/// Soft: the [Docker](https://www.docker.com/) container runtime.
 	Docker,
+
+	/// Soft: the [Elixir](https://elixir-lang.org/) language.
 	Elixir,
+
+	/// Soft: [Java](https://www.java.com/)’s [Gradle](https://gradle.org/).
 	Gradle,
+
+	/// Soft: [EcmaScript](https://www.ecmascript.org/) (aka JavaScript).
+	///
+	/// This is a catch-all for all `package.json`-based projects.
 	JavaScript,
+
+	/// Soft: [Clojure](https://clojure.org/)’s [Leiningen](https://leiningen.org/).
 	Leiningen,
+
+	/// Soft: [Java](https://www.java.com/)’s [Maven](https://maven.apache.org/).
 	Maven,
+
+	/// Soft: the [Perl](https://www.perl.org/) language.
 	Perl,
+
+	/// Soft: the [PHP](https://www.php.net/) language.
 	PHP,
+
+	/// Soft: [Python](https://www.python.org/)’s [Pip](https://www.pip.org/).
 	Pip,
-	RubyGem,
+
+	/// Soft: the [V](https://www.v-lang.org/) language.
 	V,
 }
 
@@ -63,7 +100,7 @@ impl ProjectType {
 				| Self::Leiningen
 				| Self::Maven | Self::Perl
 				| Self::PHP | Self::Pip
-				| Self::RubyGem | Self::V
+				| Self::V
 		)
 	}
 }
