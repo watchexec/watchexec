@@ -57,7 +57,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.45.0
+          toolchain: 1.55.0
           override: true
       - uses: actions-rs/cargo@v1
         with:

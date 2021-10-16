@@ -1,7 +1,7 @@
 [![Crates.io page](https://badgen.net/crates/v/watchexec)](https://crates.io/crates/watchexec)
 [![API Docs](https://docs.rs/watchexec/badge.svg)][docs]
 [![Crate license: Apache 2.0](https://badgen.net/badge/license/Apache%202.0)][license]
-![MSRV: 1.45.0 (breaking)](https://badgen.net/badge/MSRV/1.45.0%20%28breaking%29/green)
+![MSRV: 1.55.0 (breaking)](https://badgen.net/badge/MSRV/1.55.0%20%28breaking%29/green)
 [![CI status](https://github.com/watchexec/watchexec/actions/workflows/check.yml/badge.svg)](https://github.com/watchexec/watchexec/actions/workflows/check.yml)
 
 # Watchexec library
@@ -10,7 +10,7 @@ _The library which powers [Watchexec CLI](https://watchexec.github.io) and other
 
 - **[API documentation][docs]**.
 - Licensed under [Apache 2.0][license].
-- Minimum Supported Rust Version: 1.45.0.
+- Minimum Supported Rust Version: 1.55.0.
 - Status: in preview (`2.0.0-pre.N` series).
 
 [docs]: https://docs.rs/watchexec
