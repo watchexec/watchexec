@@ -13,6 +13,7 @@ use crate::{
 	action,
 	event::Event,
 	fs::{self, Watcher},
+	signal::process::SubSignal,
 };
 
 /// Errors which are not recoverable and stop watchexec execution.
@@ -168,6 +169,14 @@ pub enum RuntimeError {
 	#[error("process was dead on arrival")]
 	#[diagnostic(code(watchexec::runtime::process_doa))]
 	ProcessDeadOnArrival,
+
+	/// Error received when a [`SubSignal`] is unsupported
+	///
+	/// This may happen if the signal is not supported on the current platform, or if Watchexec
+	/// doesn't support sending the signal.
+	#[error("unsupported signal: {0:?}")]
+	#[diagnostic(code(watchexec::runtime::unsupported_signal))]
+	UnsupportedSignal(SubSignal),
 
 	/// Error received when clearing the screen.
 	#[error("clear screen: {0}")]

@@ -6,21 +6,33 @@ use tracing::{debug, trace};
 
 use crate::error::RuntimeError;
 
+/// Low-level wrapper around a process child, be it grouped or ungrouped.
 #[derive(Debug)]
 pub enum Process {
+	/// The initial state of the process, before it's spawned.
 	None,
+
+	/// A grouped process that's been spawned.
 	Grouped(AsyncGroupChild),
+
+	/// An ungrouped process that's been spawned.
 	Ungrouped(Child),
+
+	/// The cached exit status of the process.
 	Done(ExitStatus),
 }
 
 impl Default for Process {
+	/// Returns [`Process::None`].
 	fn default() -> Self {
 		Process::None
 	}
 }
 
 impl Process {
+	/// Sends a Unix signal to the process.
+	///
+	/// Does nothing if the process is not running.
 	#[cfg(unix)]
 	pub fn signal(&mut self, sig: Signal) -> Result<(), RuntimeError> {
 		use command_group::UnixChildExt;
@@ -39,6 +51,12 @@ impl Process {
 		.map_err(RuntimeError::Process)
 	}
 
+	/// Kills the process.
+	///
+	/// Does nothing if the process is not running.
+	///
+	/// Note that this has different behaviour for grouped and ungrouped processes due to Tokio's
+	/// API: it waits on ungrouped processes, but not for grouped processes.
 	pub async fn kill(&mut self) -> Result<(), RuntimeError> {
 		match self {
 			Self::None | Self::Done(_) => Ok(()),
@@ -54,6 +72,15 @@ impl Process {
 		.map_err(RuntimeError::Process)
 	}
 
+	/// Checks the status of the process.
+	///
+	/// Returns `true` if the process is still running.
+	///
+	/// This takes `&mut self` as it transitions the [`Process`] state to [`Process::Done`] if it
+	/// finds the process has ended, such that it will cache the exit status. Otherwise that status
+	/// would be lost.
+	///
+	/// Does nothing and returns `false` immediately if the `Process` is `Done` or `None`.
 	pub fn is_running(&mut self) -> Result<bool, RuntimeError> {
 		match self {
 			Self::None | Self::Done(_) => Ok(false),
@@ -81,6 +108,16 @@ impl Process {
 		.map_err(RuntimeError::Process)
 	}
 
+	/// Waits for the process to exit, and returns its exit status.
+	///
+	/// This takes `&mut self` as it transitions the [`Process`] state to [`Process::Done`] if it
+	/// finds the process has ended, such that it will cache the exit status.
+	///
+	/// This makes it possible to call `wait` on a process multiple times, without losing the exit
+	/// status.
+	///
+	/// Returns immediately with the cached exit status if the `Process` is `Done`, and with `None`
+	/// if the `Process` is `None`.
 	pub async fn wait(&mut self) -> Result<Option<ExitStatus>, RuntimeError> {
 		match self {
 			Self::None => Ok(None),

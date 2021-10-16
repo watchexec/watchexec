@@ -3,7 +3,7 @@ use std::sync::{
 	Arc,
 };
 
-use command_group::{AsyncCommandGroup, Signal};
+use command_group::AsyncCommandGroup;
 use tokio::{
 	process::Command,
 	select, spawn,
@@ -18,6 +18,7 @@ use tracing::{debug, error, trace};
 use crate::{
 	error::RuntimeError,
 	event::{Event, Source, Tag},
+	signal::process::SubSignal,
 };
 
 use super::Process;
@@ -25,10 +26,14 @@ use super::Process;
 #[derive(Clone, Copy, Debug)]
 enum Intervention {
 	Kill,
-	#[cfg(unix)]
-	Signal(Signal),
+	Signal(SubSignal),
 }
 
+/// A task which supervises a process.
+///
+/// This spawns a process from a [`Command`] and waits for it to complete while handling
+/// interventions to it: orders to terminate it, or to send a signal to it. It also immediately
+/// issues a [`Tag::ProcessCompletion`] event when the process completes.
 #[derive(Debug)]
 pub struct Supervisor {
 	id: u32,
@@ -43,6 +48,7 @@ pub struct Supervisor {
 }
 
 impl Supervisor {
+	/// Spawns the command, the supervision task, and returns a new control object.
 	pub fn spawn(
 		errors: Sender<RuntimeError>,
 		events: Sender<Event>,
@@ -100,11 +106,26 @@ impl Supervisor {
 							}
 							#[cfg(unix)]
 							Intervention::Signal(sig) => {
-								if let Err(err) = process.signal(sig) {
+								if let Some(sig) = sig.to_nix() {
+									if let Err(err) = process.signal(sig) {
+										error!(%err, "while sending signal to process");
+										errors.send(err).await.ok();
+										trace!("continuing to watch command");
+									}
+								} else {
+									let err = RuntimeError::UnsupportedSignal(sig);
 									error!(%err, "while sending signal to process");
 									errors.send(err).await.ok();
 									trace!("continuing to watch command");
 								}
+							}
+							#[cfg(windows)]
+							Intervention::Signal(sig) => {
+								// https://github.com/watchexec/watchexec/issues/219
+								let err = RuntimeError::UnsupportedSignal(sig);
+								error!(%err, "while sending signal to process");
+								errors.send(err).await.ok();
+								trace!("continuing to watch command");
 							}
 						}
 					}
@@ -156,29 +177,58 @@ impl Supervisor {
 		})
 	}
 
+	/// Get the PID of the process or process group.
+	///
+	/// This always successfully returns a PID, even if the process has already exited, as the PID
+	/// is held as soon as the process spawns. Take care not to use this for process manipulation
+	/// once the process has exited, as the ID may have been reused already.
 	pub fn id(&self) -> u32 {
 		self.id
 	}
 
-	#[cfg(unix)]
-	pub async fn signal(&self, signal: Signal) {
-		trace!(?signal, "sending signal intervention");
-		self.intervene.send(Intervention::Signal(signal)).await.ok();
+	/// Issues a signal to the process.
+	///
+	/// On Windows, this currently only supports [`SubSignal::ForceStop`].
+	///
+	/// While this is async, it returns once the signal intervention has been sent internally, not
+	/// when the signal has been delivered.
+	pub async fn signal(&self, signal: SubSignal) {
+		if cfg!(windows) {
+			if let SubSignal::ForceStop = signal {
+				self.intervene.send(Intervention::Kill).await.ok();
+			}
+		// else: https://github.com/watchexec/watchexec/issues/219
+		} else {
+			trace!(?signal, "sending signal intervention");
+			self.intervene.send(Intervention::Signal(signal)).await.ok();
+		}
 		// only errors on channel closed, and that only happens if the process is dead
 	}
 
+	/// Stops the process.
+	///
+	/// While this is async, it returns once the signal intervention has been sent internally, not
+	/// when the signal has been delivered.
 	pub async fn kill(&self) {
 		trace!("sending kill intervention");
 		self.intervene.send(Intervention::Kill).await.ok();
 		// only errors on channel closed, and that only happens if the process is dead
 	}
 
+	/// Returns true if the supervisor is still running.
+	///
+	/// This is almost always equivalent to whether the _process_ is still running, but may not be
+	/// 100% in sync.
 	pub fn is_running(&self) -> bool {
 		let ongoing = self.ongoing.load(Ordering::SeqCst);
 		trace!(?ongoing, "supervisor state");
 		ongoing
 	}
 
+	/// Returns only when the supervisor completes.
+	///
+	/// This is almost always equivalent to waiting for the _process_ to complete, but may not be
+	/// 100% in sync.
 	pub async fn wait(&mut self) -> Result<(), RuntimeError> {
 		if !self.ongoing.load(Ordering::SeqCst) {
 			trace!("supervisor already completed");

@@ -235,16 +235,7 @@ async fn apply_outcome(
 		}
 
 		(Some(p), Outcome::Signal(sig)) => {
-			#[cfg(unix)]
-			if let Some(sig) = sig.to_nix() {
-				p.signal(sig).await;
-			}
-
-			#[cfg(windows)]
-			if let SubSignal::Terminate = sig {
-				p.kill().await;
-			}
-			// else: https://github.com/watchexec/watchexec/issues/219
+			p.signal(sig).await;
 		}
 
 		(Some(p), Outcome::Wait) => {
