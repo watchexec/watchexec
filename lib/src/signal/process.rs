@@ -85,10 +85,25 @@ pub enum SubSignal {
 	/// # // we don't have a direct nix dependency, so we fake it... rather horribly
 	/// # mod nix { pub mod sys { pub mod signal {
 	/// # #[cfg(unix)] pub use command_group::Signal;
-	/// # #[cfg(not(unix))] #[repr(i32)] pub enum Signal { SIGABRT = 7 }
+	/// # #[cfg(not(unix))] #[repr(i32)] pub enum Signal { SIGABRT = 6 }
 	/// # } } }
+	/// use watchexec::signal::process::SubSignal;
 	/// use nix::sys::signal::Signal;
-	/// assert_eq!(SubSignal::Custom(7), SubSignal::from(Signal::SIGABRT as _));
+	/// assert_eq!(SubSignal::Custom(6), SubSignal::from(Signal::SIGABRT as i32));
+	/// ```
+	///
+	/// On Unix the [`from_nix`][SubSignal::from_nix] method should be preferred if converting from
+	/// Nix's `Signal` type:
+	///
+	/// ```
+	/// # #[cfg(unix)]
+	/// # {
+	/// # // we don't have a direct nix dependency, so we fake it... rather horribly
+	/// # mod nix { pub mod sys { pub mod signal { pub use command_group::Signal; } } }
+	/// use watchexec::signal::process::SubSignal;
+	/// use nix::sys::signal::Signal;
+	/// assert_eq!(SubSignal::Custom(6), SubSignal::from_nix(Signal::SIGABRT));
+	/// # }
 	/// ```
 	Custom(i32),
 }
@@ -134,6 +149,21 @@ impl From<MainSignal> for SubSignal {
 			MainSignal::Terminate => Self::Terminate,
 			MainSignal::User1 => Self::User1,
 			MainSignal::User2 => Self::User2,
+		}
+	}
+}
+
+impl From<i32> for SubSignal {
+	fn from(raw: i32) -> Self {
+		match raw {
+			1 => Self::Hangup,
+			2 => Self::Interrupt,
+			3 => Self::Quit,
+			9 => Self::ForceStop,
+			10 => Self::User1,
+			12 => Self::User2,
+			15 => Self::Terminate,
+			_ => Self::Custom(raw),
 		}
 	}
 }

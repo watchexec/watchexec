@@ -33,7 +33,7 @@ tracing = "0.1.26"
 unicase = "2.6.0"
 
 [dependencies.command-group]
-version = "1.0.5"
+version = "1.0.8"
 features = ["with-tokio"]
 
 [dependencies.git2]

@@ -11,9 +11,11 @@
 //! it. [`Handler`][handler::Handler]s are used to hook into watchexec at various points. The
 //! runtime config can be changed at any time with the [`Watchexec::reconfigure()`] method.
 //!
+//! It's recommended to use the [miette] erroring library in applications, but all errors implement
+//! [`std::error::Error`] so your favourite error handling library can of course be used.
+//!
 //! ```no_run
-//! # use color_eyre::eyre::Report;
-//! # use std::convert::Infallible;
+//! use miette::{IntoDiagnostic, Result};
 //! use watchexec::{
 //!     Watchexec,
 //!     action::{Action, Outcome},
@@ -22,7 +24,7 @@
 //! };
 //!
 //! #[tokio::main]
-//! async fn main() -> Result<(), Report> {
+//! async fn main() -> Result<()> {
 //!     let mut init = InitConfig::default();
 //!     init.on_error(PrintDebug(std::io::stderr()));
 //!
@@ -41,7 +43,7 @@
 //!         let w = w.clone();
 //!         async move {
 //!             for event in &action.events {
-//!                 if event.paths().any(|p| p.ends_with("/watchexec.conf")) {
+//!                 if event.paths().any(|(p, _)| p.ends_with("/watchexec.conf")) {
 //!                     let conf = YourConfigFormat::load_from_file("watchexec.conf").await?;
 //!
 //!                     conf.apply(&mut c);
@@ -58,18 +60,23 @@
 //!             ));
 //!
 //!             Ok(())
-//! #           as Result<_, Infallible>
+//! #           as std::result::Result<_, MietteStub>
 //!         }
 //!     });
 //!
-//!     we.main().await?;
+//!     we.main().await.into_diagnostic()?;
 //!     Ok(())
 //! }
 //! # struct YourConfigFormat;
 //! # impl YourConfigFormat {
-//! # async fn load_from_file(_: &str) -> Result<Self, Infallible> { Ok::<_, Infallible>(Self) }
+//! # async fn load_from_file(_: &str) -> std::result::Result<Self, MietteStub> { Ok(Self) }
 //! # fn apply(&self, _: &mut RuntimeConfig) { }
 //! # }
+//! # use miette::Diagnostic;
+//! # use thiserror::Error;
+//! # #[derive(Debug, Error, Diagnostic)]
+//! # #[error("stub")]
+//! # struct MietteStub;
 //! ```
 //!
 //! Alternatively, one can use the modules exposed by the crate and the external crates such as

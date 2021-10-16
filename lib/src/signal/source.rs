@@ -76,7 +76,7 @@ pub enum MainSignal {
 ///
 /// ```no_run
 /// use tokio::sync::mpsc;
-/// use watchexec::signal::worker;
+/// use watchexec::signal::source::worker;
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
