@@ -220,8 +220,8 @@ pub enum RuntimeError {
 	/// Error emitted by a [`Filterer`](crate::filter::Filterer).
 	///
 	/// With built-in filterers this will probably be a dynbox of
-	/// [`TaggedFiltererError`](crate::filter::tagged::TaggedFiltererError), but it is possible to
-	/// use a custom filterer which emits a different error type.
+	/// [`TaggedFiltererError`](crate::filter::tagged::error::TaggedFiltererError), but it is
+	/// possible to use a custom filterer which emits a different error type.
 	#[error("{kind} filterer: {err}")]
 	#[diagnostic(code(watchexec::runtime::filterer))]
 	Filterer {

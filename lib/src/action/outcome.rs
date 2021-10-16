@@ -36,9 +36,11 @@ pub enum Outcome {
 
 	/// Reset the (terminal) screen.
 	///
-	/// This invokes (in order): [`WindowsCooked`][ClearScreen::WindowsCooked],
-	/// [`WindowsVt`][ClearScreen::WindowsVt], [`VtLeaveAlt`][ClearScreen::VtLeaveAlt],
-	/// [`VtWellDone`][ClearScreen::VtWellDone], and [the default clear][ClearScreen::default()].
+	/// This invokes (in order): [`WindowsCooked`][clearscreen::ClearScreen::WindowsCooked],
+	/// [`WindowsVt`][clearscreen::ClearScreen::WindowsVt],
+	/// [`VtLeaveAlt`][clearscreen::ClearScreen::VtLeaveAlt],
+	/// [`VtWellDone`][clearscreen::ClearScreen::VtWellDone],
+	/// and [the default clear][clearscreen::ClearScreen::default()].
 	Reset,
 
 	/// Exit watchexec.
