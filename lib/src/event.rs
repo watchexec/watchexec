@@ -21,7 +21,10 @@ use crate::signal::source::MainSignal;
 /// An event, as far as watchexec cares about.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Event {
+	/// Structured, classified information which can be used to filter or classify the event.
 	pub tags: Vec<Tag>,
+
+	/// Arbitrary other information, cannot be used for filtering.
 	pub metadata: HashMap<String, Vec<String>>,
 }
 
@@ -29,18 +32,33 @@ pub struct Event {
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum Tag {
+	/// The event is about a path or file in the filesystem.
 	Path {
+		/// Path to the file or directory.
 		path: PathBuf,
+
+		/// Optional file type, if known.
 		file_type: Option<FileType>,
 	},
+
+	/// Kind of a filesystem event (create, remove, modify, etc).
 	FileEventKind(EventKind),
+
+	/// The general source of the event.
 	Source(Source),
+
+	/// The event was caused by a particular process.
 	Process(u32),
+
+	/// The event is about a signal being delivered to the main process.
 	Signal(MainSignal),
+
+	/// The event is about the subprocess exiting.
 	ProcessCompletion(Option<ExitStatus>),
 }
 
 impl Tag {
+	/// The name of the variant.
 	pub const fn discriminant_name(&self) -> &'static str {
 		match self {
 			Tag::Path { .. } => "Path",
@@ -54,14 +72,27 @@ impl Tag {
 }
 
 /// The general origin of the event.
+///
+/// This is set by the event source. Note that not all of these are currently used.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum Source {
+	/// Event comes from a file change.
 	Filesystem,
+
+	/// Event comes from a keyboard input.
 	Keyboard,
+
+	/// Event comes from a mouse click.
 	Mouse,
+
+	/// Event comes from the OS.
 	Os,
+
+	/// Event is time based.
 	Time,
+
+	/// Event is internal to Watchexec.
 	Internal,
 }
 
