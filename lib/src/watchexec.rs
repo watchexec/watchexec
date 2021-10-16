@@ -24,6 +24,13 @@ use crate::{
 	signal,
 };
 
+/// The main watchexec runtime.
+///
+/// All this really does is tie the pieces together in one convenient interface.
+///
+/// It creates the correct channels, spawns every available event sources, the action worker, the
+/// error hook, and provides an interface to change the runtime configuration during the runtime,
+/// inject synthetic events, and wait for graceful shutdown.
 pub struct Watchexec {
 	handle: Arc<AtomicTake<JoinHandle<Result<(), CriticalError>>>>,
 	start_lock: Arc<Notify>,
@@ -41,7 +48,7 @@ impl fmt::Debug for Watchexec {
 }
 
 impl Watchexec {
-	/// TODO
+	/// Instantiates a new `Watchexec` runtime from configuration.
 	///
 	/// Returns an [`Arc`] for convenience; use [`try_unwrap`][Arc::try_unwrap()] to get the value
 	/// directly if needed.
@@ -117,6 +124,7 @@ impl Watchexec {
 		}))
 	}
 
+	/// Applies a new [`RuntimeConfig`] to the runtime.
 	pub fn reconfigure(&self, config: RuntimeConfig) -> Result<(), ReconfigError> {
 		debug!(?config, "reconfiguring");
 		self.action_watch.send(config.action)?;
