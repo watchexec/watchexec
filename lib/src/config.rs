@@ -21,6 +21,10 @@ use crate::{
 /// Use [`RuntimeConfig::default()`] to build a new one, or modify an existing one. This struct is
 /// marked non-exhaustive such that new options may be added without breaking change. You can make
 /// changes through the fields directly, or use the convenience (chainable!) methods instead.
+///
+/// You should see the detailed documentation on [fs::WorkingData][crate::fs::WorkingData] and
+/// [action::WorkingData][crate::action::WorkingData] for important information and particulars
+/// about each field, especially the handlers.
 #[derive(Clone, Debug, Default)]
 #[non_exhaustive]
 pub struct RuntimeConfig {
@@ -81,14 +85,13 @@ impl RuntimeConfig {
 		self
 	}
 
+	/// Set the filterer implementation to use.
 	pub fn filterer(&mut self, filterer: Arc<dyn Filterer>) -> &mut Self {
 		self.action.filterer = filterer;
 		self
 	}
 
 	/// Set the action handler.
-	///
-	/// TODO: notes on how outcome is read immediately after handler returns
 	pub fn on_action(&mut self, handler: impl Handler<Action> + Send + 'static) -> &mut Self {
 		self.action.action_handler = Arc::new(AtomicTake::new(Box::new(handler) as _));
 		self
@@ -98,15 +101,14 @@ impl RuntimeConfig {
 	///
 	/// This is especially useful when reconfiguring _within_ the action handler.
 	///
-	/// Passing this config to `Watchexec::new()` will cause a `CriticalError::MissingHandler`.
+	/// Passing this config to [`Watchexec::new()`][crate::Watchexec::new()] will cause a
+	/// [`CriticalError::MissingHandler`][crate::error::CriticalError::MissingHandler].
 	pub fn keep_action(&mut self) -> &mut Self {
 		self.action.action_handler = Arc::new(AtomicTake::empty());
 		self
 	}
 
 	/// Set the pre-spawn handler.
-	///
-	/// TODO: notes on locks held by handler
 	pub fn on_pre_spawn(&mut self, handler: impl Handler<PreSpawn> + Send + 'static) -> &mut Self {
 		self.action.pre_spawn_handler = Arc::new(AtomicTake::new(Box::new(handler) as _));
 		self
@@ -116,7 +118,8 @@ impl RuntimeConfig {
 	///
 	/// This is especially useful when reconfiguring _within_ the action handler.
 	///
-	/// Passing this config to `Watchexec::new()` will cause a `CriticalError::MissingHandler`.
+	/// Passing this config to [`Watchexec::new()`][crate::Watchexec::new()] will cause a
+	/// [`CriticalError::MissingHandler`][crate::error::CriticalError::MissingHandler].
 	pub fn keep_pre_spawn(&mut self) -> &mut Self {
 		self.action.pre_spawn_handler = Arc::new(AtomicTake::empty());
 		self
@@ -135,7 +138,8 @@ impl RuntimeConfig {
 	///
 	/// This is especially useful when reconfiguring _within_ the action handler.
 	///
-	/// Passing this config to `Watchexec::new()` will cause a `CriticalError::MissingHandler`.
+	/// Passing this config to [`Watchexec::new()`][crate::Watchexec::new()] will cause a
+	/// [`CriticalError::MissingHandler`][crate::error::CriticalError::MissingHandler].
 	pub fn keep_post_spawn(&mut self) -> &mut Self {
 		self.action.post_spawn_handler = Arc::new(AtomicTake::empty());
 		self

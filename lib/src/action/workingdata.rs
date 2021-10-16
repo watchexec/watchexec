@@ -16,6 +16,8 @@ use crate::{command::Shell, event::Event, filter::Filterer, handler::Handler};
 use super::Outcome;
 
 /// The configuration of the [action][crate::action] worker.
+///
+/// This is marked non-exhaustive so new configuration can be added without breaking.
 #[derive(Clone)]
 #[non_exhaustive]
 pub struct WorkingData {

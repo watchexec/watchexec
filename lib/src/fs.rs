@@ -55,7 +55,7 @@ impl Watcher {
 	}
 }
 
-/// The working data set of the filesystem worker.
+/// The configuration of the [fs][self] worker.
 ///
 /// This is marked non-exhaustive so new configuration can be added without breaking.
 #[derive(Clone, Debug, Default)]
