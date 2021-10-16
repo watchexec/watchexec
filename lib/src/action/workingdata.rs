@@ -15,20 +15,79 @@ use crate::{command::Shell, event::Event, filter::Filterer, handler::Handler};
 
 use super::Outcome;
 
+/// The configuration of the [action][crate::action] worker.
 #[derive(Clone)]
 #[non_exhaustive]
 pub struct WorkingData {
+	/// How long to wait for events to build up before executing an action.
+	///
+	/// This is sometimes called "debouncing." We debounce on the trailing edge: an action is
+	/// triggered only after that amount of time has passed since the first event in the cycle. The
+	/// action is called with all the collected events in the cycle.
 	pub throttle: Duration,
 
+	/// The main handler to define: what to do when an action is triggered.
+	///
+	/// This handler is called with the [`Action`] environment, which has a certain way of returning
+	/// the desired outcome, check out the [`Action::outcome()`] method. The handler checks for the
+	/// outcome as soon as the handler returns, which means that if the handler returns before the
+	/// outcome is set, you'll get unexpected results. For this reason, it's a bad idea to use ex. a
+	/// channel as the handler.
+	///
+	/// If this handler is not provided, it defaults to a no-op, which does absolutely nothing, not
+	/// even quit. Hence, you really need to provide a handler.
+	///
+	/// It is possible to change the handler or any other configuration inside the previous handler.
+	/// It's useful to know that the handlers are updated from this working data before any of them
+	/// run in any given cycle, so changing the pre-spawn and post-spawn handlers from this handler
+	/// will not affect the running action.
 	pub action_handler: Arc<AtomicTake<Box<dyn Handler<Action> + Send>>>,
+
+	/// A handler triggered before a command is spawned.
+	///
+	/// This handler is called with the [`PreSpawn`] environment, which provides mutable access to
+	/// the [`Command`] which is about to be run. See the notes on the [`PreSpawn::command()`]
+	/// method for important information on what you can do with it.
+	///
+	/// Returning an error from the handler will stop the action from processing further, and issue
+	/// a [`RuntimeError`][crate::error::RuntimeError] to the error channel.
 	pub pre_spawn_handler: Arc<AtomicTake<Box<dyn Handler<PreSpawn> + Send>>>,
+
+	/// A handler triggered immediately after a command is spawned.
+	///
+	/// This handler is called with the [`PostSpawn`] environment, which provides details on the
+	/// spawned command, including its PID.
+	///
+	/// Returning an error from the handler will drop the [`Child`][tokio::process::Child], which
+	/// will terminate the command without triggering any of the normal Watchexec behaviour, and
+	/// issue a [`RuntimeError`][crate::error::RuntimeError] to the error channel.
 	pub post_spawn_handler: Arc<AtomicTake<Box<dyn Handler<PostSpawn> + Send>>>,
 
-	/// TODO: notes for command construction ref Shell and old src
+	/// Command to execute.
+	///
+	/// When `shell` is [`Shell::None`], this is expected to be in “execvp(3)” format: first
+	/// program, rest arguments. Otherwise, all elements will be joined together with a single space
+	/// and passed to the shell. More control can then be obtained by providing a 1-element vec, and
+	/// doing your own joining and/or escaping there.
 	pub command: Vec<String>,
+
+	/// Whether to use process groups (on Unix) or job control (on Windows) to run the command.
+	///
+	/// This makes use of [command_group] under the hood.
+	///
+	/// If you want to known whether a spawned command was run in a process group, you should use
+	/// the value in [`PostSpawn`] instead of reading this one, as it may have changed in the
+	/// meantime.
 	pub grouped: bool,
+
+	/// The shell to use to run the command.
+	///
+	/// See the [`Shell`] enum documentation for more details.
 	pub shell: Shell,
 
+	/// The filterer implementation to use when filtering events.
+	///
+	/// The default is a no-op, which will always pass every event.
 	pub filterer: Arc<dyn Filterer>,
 }
 
@@ -60,8 +119,16 @@ impl Default for WorkingData {
 	}
 }
 
+/// The environment given to the action handler.
+///
+/// This deliberately does not implement Clone to make it hard to move it out of the handler, which
+/// you should not do.
+///
+/// The [`Action::outcome()`] method is the only way to set the outcome of the action, and it _must_
+/// be called before the handler returns.
 #[derive(Debug, Default)]
 pub struct Action {
+	/// The collected events which triggered the action.
 	pub events: Vec<Event>,
 	pub(super) outcome: Arc<OnceCell<Outcome>>,
 }
@@ -86,9 +153,19 @@ impl Action {
 	}
 }
 
+/// The environment given to the pre-spawn handler.
+///
+/// This deliberately does not implement Clone to make it hard to move it out of the handler, which
+/// you should not do.
+///
+/// The [`PreSpawn::command()`] method is the only way to mutate the command, and the mutex guard it
+/// returns _must_ be dropped before the handler returns.
 #[derive(Debug)]
 #[non_exhaustive]
 pub struct PreSpawn {
+	/// The command which is about to be spawned.
+	///
+	/// This is the final command, after the [`Shell`] has been applied.
 	pub command: Vec<String>,
 	command_w: Weak<Mutex<Command>>,
 }
@@ -121,10 +198,20 @@ impl PreSpawn {
 	}
 }
 
-#[derive(Debug)]
+/// The environment given to the post-spawn handler.
+///
+/// This is Clone, as there's nothing (except returning an error) that can be done to the command
+/// now that it's spawned, as far as Watchexec is concerned. Nevertheless, you should return from
+/// this handler quickly, to avoid holding up anything else.
+#[derive(Clone, Debug)]
 #[non_exhaustive]
 pub struct PostSpawn {
+	/// The final command the process was spawned with.
 	pub command: Vec<String>,
+
+	/// The process ID or the process group ID.
 	pub id: u32,
+
+	/// Whether the command was run in a process group.
 	pub grouped: bool,
 }

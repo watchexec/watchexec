@@ -27,6 +27,11 @@ pub use workingdata::*;
 mod outcome;
 mod workingdata;
 
+/// The main worker of a Watchexec process.
+///
+/// This is the main loop of the process. It receives events from the event channel, filters them,
+/// debounces them, obtains the desired outcome of an actioned event, calls the appropriate handlers
+/// and schedules processes as needed.
 pub async fn worker(
 	working: watch::Receiver<WorkingData>,
 	errors: mpsc::Sender<RuntimeError>,
