@@ -10,7 +10,6 @@ USAGE:
     watchexec.exe [FLAGS] [OPTIONS] <command>...
 
 FLAGS:
-        --changes-only         Only print path change information. Overridden by --verbose
     -c, --clear                Clear screen before executing command
     -h, --help                 Prints help information
         --no-default-ignore    Skip auto-ignoring of commonly ignored globs
