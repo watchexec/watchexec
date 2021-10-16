@@ -98,7 +98,7 @@ impl GlobsetFilterer {
 				continue;
 			}
 
-			ignores.push((line.to_owned(), Some(ig.path.clone())));
+			ignores.push((line.to_owned(), ig.applies_in.clone()));
 		}
 
 		Ok(ignores)
