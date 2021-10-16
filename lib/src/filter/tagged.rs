@@ -46,7 +46,7 @@ pub mod swaplock;
 /// ```
 ///
 /// There is a set of [operators][Op]:
-/// - `==` and `!=`: exact match and exact not match
+/// - `==` and `!=`: exact match and exact not match (case insensitive)
 /// - `~=` and `~!`: regex match and regex not match
 /// - `*=` and `*!`: glob match and glob not match
 /// - `:=` and `:!`: set match and set not match
@@ -647,7 +647,7 @@ impl Matcher {
 
 /// How a filter value is interpreted.
 ///
-/// - `==` and `!=` match on the exact value as string equality,
+/// - `==` and `!=` match on the exact value as string equality (case-insensitively),
 /// - `~=` and `~!` match using a [regex],
 /// - `*=` and `*!` match using a glob, either via [globset] or [ignore]
 /// - `:=` and `:!` match via exact string comparisons, but on any of the list of values separated
