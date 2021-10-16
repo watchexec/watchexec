@@ -15,6 +15,7 @@ use crate::{
 /// Errors emitted by the TaggedFilterer.
 #[derive(Debug, Diagnostic, Error)]
 #[non_exhaustive]
+#[diagnostic(url(docsrs))]
 pub enum TaggedFiltererError {
 	/// Generic I/O error, with no additional context.
 	#[error(transparent)]
@@ -25,16 +26,22 @@ pub enum TaggedFiltererError {
 	#[error("cannot parse filter `{src}`: {err:?}")]
 	#[diagnostic(code(watchexec::filter::tagged::parse))]
 	Parse {
+		/// The source of the filter.
+		#[source_code]
 		src: String,
+
+		/// What went wrong.
 		err: nom::error::ErrorKind,
-		// TODO: use miette's source snippet feature
 	},
 
 	/// Error received when a filter cannot be added or removed from a tagged filter list.
 	#[error("cannot {action} filter: {err:?}")]
 	#[diagnostic(code(watchexec::filter::tagged::filter_change))]
 	FilterChange {
+		/// The action that was attempted.
 		action: &'static str,
+
+		/// The underlying error.
 		#[source]
 		err: SendError<HashMap<Matcher, Vec<Filter>>>,
 	},

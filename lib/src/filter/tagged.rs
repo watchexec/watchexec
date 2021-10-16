@@ -25,6 +25,55 @@ pub mod error;
 mod parse;
 pub mod swaplock;
 
+/// A filterer implementation that exposes the full capabilities of Watchexec.
+///
+/// Filters match again [event tags][Tag]; can be exact matches, glob matches, regex matches, or set
+/// matches; can reverse the match (equal/not equal, etc); and can be negated.
+///
+/// [Filters][Filter] can be generated from your application and inserted directly, or they can be
+/// parsed from a textual format:
+///
+/// ```text
+/// {Matcher}{Op}{Value}
+/// ```
+///
+/// For example:
+///
+/// ```text
+/// path==/foo/bar
+/// path*=**/bar
+/// path~=bar$
+/// ```
+///
+/// There is a set of [operators][Op]:
+/// - `==` and `!=`: exact match and exact not match
+/// - `~=` and `~!`: regex match and regex not match
+/// - `*=` and `*!`: glob match and glob not match
+/// - `:=` and `:!`: set match and set not match
+///
+/// Sets are a list of values separated by `,`.
+///
+/// In addition to the two-symbol operators, there is the `=` "auto" operator, which attempts to
+/// figure out which operator to use based on the _matcher_: glob for paths, exact for anything else.
+/// Note that this detection may change, with a semver approach: whenever possible existing usage
+/// should keep working.
+///
+/// [Matchers][Matcher] correspond to Tags, but are not one-to-one: the `path` matcher operates on
+/// the `path` part of the `Path` tag, and the `type` matcher operates on the `file_type`, for
+/// example.
+///
+/// Filters are checked in order, grouped per tag and per matcher. Filter groups may be checked in
+/// any order, but the filters in the groups are checked in add order. Path glob filters are always
+/// checked first, for internal reasons.
+///
+/// The `negate` boolean field behaves specially: it is not operator negation, but rather the same
+/// kind of behaviour that is applied to `!`-prefixed globs in gitignore files: if a negated filter
+/// matches the event, the result of the event checking for that matcher is reverted to `true`, even
+/// if a previous filter set it to `false`. Unmatched negated filters are ignored.
+///
+/// Glob syntax is as supported by the [ignore] crate for Paths, and by [globset] otherwise. (As of
+/// writing, the ignore crate uses globset internally). Regex syntax is the default syntax of the
+/// [regex] crate.
 #[derive(Debug)]
 pub struct TaggedFilterer {
 	/// The directory the project is in, its origin.
@@ -69,11 +118,15 @@ impl TaggedFilterer {
 				let filters = self.filters.borrow().get(matcher).cloned();
 				if let Some(tag_filters) = filters {
 					if tag_filters.is_empty() {
-						trace!(?tag, ?matcher, "no filters for this tag, skipping (pass)");
+						trace!(
+							?tag,
+							?matcher,
+							"no filters for this matcher, skipping (pass)"
+						);
 						continue;
 					}
 
-					trace!(?tag, ?matcher, filters=%tag_filters.len(), "found some filters for this tag");
+					trace!(?tag, ?matcher, filters=%tag_filters.len(), "found some filters for this matcher");
 
 					let mut tag_match = true;
 
@@ -141,7 +194,7 @@ impl TaggedFilterer {
 						trace!(
 							?tag,
 							?matcher,
-							"no more filters for this tag, skipping (pass)"
+							"no more filters for this matcher, skipping (pass)"
 						);
 						continue;
 					}
@@ -153,8 +206,9 @@ impl TaggedFilterer {
 						if let Some(app) = self.match_tag(filter, tag)? {
 							if filter.negate {
 								if app {
-									trace!(prev=%tag_match, now=%true, "negate filter passes, resetting tag to pass");
+									trace!(prev=%tag_match, now=%true, "negate filter passes, passing this matcher");
 									tag_match = true;
+									break;
 								} else {
 									trace!(prev=%tag_match, now=%tag_match, "negate filter fails, ignoring");
 								}
@@ -166,13 +220,17 @@ impl TaggedFilterer {
 					}
 
 					if !tag_match {
-						trace!(?tag, ?matcher, "tag fails check, failing entire event");
+						trace!(?tag, ?matcher, "matcher fails check, failing entire event");
 						return Ok(false);
 					}
 
-					trace!(?tag, ?matcher, "tag passes check, continuing");
+					trace!(?tag, ?matcher, "matcher passes check, continuing");
 				} else {
-					trace!(?tag, ?matcher, "no filters for this tag, skipping (pass)");
+					trace!(
+						?tag,
+						?matcher,
+						"no filters for this matcher, skipping (pass)"
+					);
 				}
 			}
 		}
@@ -180,9 +238,22 @@ impl TaggedFilterer {
 		trace!(?event, "passing event");
 		Ok(true)
 	}
-}
 
-impl TaggedFilterer {
+	/// Initialise a new tagged filterer with no filters.
+	///
+	/// This takes two paths: the project origin, and the current directory. The current directory
+	/// is not obtained from the environment so you can customise it; generally you should use
+	/// [`std::env::current_dir()`] though.
+	///
+	/// The origin is the directory the main project that is being watched is in. This is used to
+	/// resolve absolute paths given in filters without an `in_path` field (e.g. all filters parsed
+	/// from text).
+	///
+	/// The workdir is used to resolve relative paths given in filters without an `in_path` field.
+	///
+	/// So, if origin is `/path/to/project` and workdir is `/path/to/project/subtree`:
+	/// - `path=foo.bar` is resolved to `/path/to/project/subtree/foo.bar`
+	/// - `path=/foo.bar` is resolved to `/path/to/project/foo.bar`
 	pub fn new(
 		origin: impl Into<PathBuf>,
 		workdir: impl Into<PathBuf>,
@@ -254,7 +325,7 @@ impl TaggedFilterer {
 			}
 			(Tag::Source(src), Matcher::Source) => filter.matches(src.to_string()),
 			(Tag::Process(pid), Matcher::Process) => filter.matches(pid.to_string()),
-			(Tag::Signal(_sig), Matcher::Signal) => todo!("tagged filterer: signal matcher"),
+			(Tag::Signal(_sig), Matcher::Signal) => todo!("tagged filterer: signal matcher"), // TODO
 			(Tag::ProcessCompletion(_oes), Matcher::ProcessCompletion) => {
 				todo!("tagged filterer: completion matcher")
 			}
@@ -266,6 +337,14 @@ impl TaggedFilterer {
 		.map(Some)
 	}
 
+	/// Add some filters to the filterer.
+	///
+	/// This is async as it submits the new filters to the live filterer, which may be holding a
+	/// read lock. It takes a slice of filters so it can efficiently add a large number of filters
+	/// with a single write, without needing to acquire the lock repeatedly.
+	///
+	/// If filters with glob operations are added, the filterer's glob matchers are recompiled after
+	/// the new filters are added, in this method.
 	pub async fn add_filters(&self, filters: &[Filter]) -> Result<(), TaggedFiltererError> {
 		debug!(?filters, "adding filters to filterer");
 
@@ -348,6 +427,12 @@ impl TaggedFilterer {
 			.map_err(TaggedFiltererError::GlobsetChange)
 	}
 
+	/// Reads a gitignore-style [`IgnoreFile`] and adds all of its contents to the filterer.
+	///
+	/// Empty lines and lines starting with `#` are ignored. The `applies_in` field of the
+	/// [`IgnoreFile`] is used for the `in_path` field of each [`Filter`].
+	///
+	/// This method reads the entire file into memory.
 	pub async fn add_ignore_file(&self, file: &IgnoreFile) -> Result<(), TaggedFiltererError> {
 		let content = read_to_string(&file.path).await?;
 		let lines = content.lines();
@@ -364,6 +449,9 @@ impl TaggedFilterer {
 		self.add_filters(&ignores).await
 	}
 
+	/// Clears all filters from the filterer.
+	///
+	/// This also recompiles the glob matchers, so essentially it resets the entire filterer state.
 	pub async fn clear_filters(&self) -> Result<(), TaggedFiltererError> {
 		debug!("removing all filters from filterer");
 		self.filters
@@ -373,10 +461,15 @@ impl TaggedFilterer {
 				action: "clear all",
 				err,
 			})?;
+
+		self.recompile_globs(Op::Glob).await?;
+		self.recompile_globs(Op::NotGlob).await?;
+
 		Ok(())
 	}
 }
 
+/// A tagged filter.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Filter {
 	/// Path the filter applies from.
@@ -397,7 +490,11 @@ pub struct Filter {
 }
 
 impl Filter {
-	// TODO: non-unicode matching
+	/// Matches the filter against a subject.
+	///
+	/// This is really an internal method to the tagged filterer machinery, exposed so you can build
+	/// your own filterer using the same types or the textual syntax. As such its behaviour is not
+	/// guaranteed to be stable (its signature is, though).
 	pub fn matches(&self, subject: impl AsRef<str>) -> Result<bool, TaggedFiltererError> {
 		let subject = subject.as_ref();
 
@@ -441,6 +538,13 @@ impl Filter {
 		})
 	}
 
+	/// Create a filter from a gitignore-style glob pattern.
+	///
+	/// The optional path is for the `in_path` field of the filter. When parsing gitignore files, it
+	/// should be set to the path of the _directory_ the ignore file is in.
+	///
+	/// The resulting filter matches on [`Path`][Matcher::Path], with the [`NotGlob`][Op::NotGlob]
+	/// op, and a [`Glob`][Pattern::Glob] pattern. If it starts with a `!`, it is negated.
 	pub fn from_glob_ignore(in_path: Option<PathBuf>, glob: &str) -> Self {
 		let (glob, negate) = glob.strip_prefix('!').map_or((glob, false), |g| (g, true));
 
@@ -453,7 +557,8 @@ impl Filter {
 		}
 	}
 
-	fn canonicalised(mut self) -> Result<Self, TaggedFiltererError> {
+	/// Returns the filter with its `in_path` canonicalised.
+	pub fn canonicalised(mut self) -> Result<Self, TaggedFiltererError> {
 		if let Some(ctx) = self.in_path {
 			self.in_path = Some(canonicalize(&ctx)?);
 			trace!(canon=?ctx, "canonicalised in_path");
@@ -463,16 +568,64 @@ impl Filter {
 	}
 }
 
+/// What a filter matches on.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 #[non_exhaustive]
 pub enum Matcher {
+	/// The presence of a tag on an event.
+	///
+	/// You should be extremely careful using this, as it's possible to make it impossible to quit
+	/// Watchexec by e.g. not allowing signals to go through and thus ignoring Ctrl-C.
 	Tag,
+
+	/// A path in a filesystem event. Paths are always canonicalised.
+	///
+	/// Note that there may be multiple paths in an event (e.g. both source and destination for renames), and filters
+	/// will be matched on all of them.
 	Path,
+
+	/// The file type of an object in a filesystem event.
+	///
+	/// This is not guaranteed to be present for every filesystem event.
+	///
+	/// It can be any of these values: `file`, `dir`, `symlink`, `special`. That last one means
+	/// "not any of the first three," it does not mean "a special file" as defined by the OS.
 	FileType,
+
+	/// The [`EventKind`][notify::event::EventKind] of a filesystem event.
+	///
+	/// This is the Debug representation of the event kind. Examples:
+	/// - `Access(Close(Write))`
+	/// - `Modify(Data(Any))`
+	/// - `Modify(Metadata(Permissions))`
+	/// - `Remove(Folder)`
+	///
+	/// You should probably use globs or regexes to match these, ex:
+	/// - `Create(*)`
+	/// - `Modify\(Name\(.+`
 	FileEventKind,
+
+	/// The [event source][crate::event::Source] the event came from.
+	///
+	/// These are the lowercase names of the variants.
 	Source,
+
+	/// The ID of the process which caused the event.
+	///
+	/// Note that it's rare for events to carry this information.
 	Process,
+
+	/// A signal sent to the main process.
+	///
+	/// This can be matched both on the signal number as an integer, and on the signal name as a
+	/// string. On Windows, only these signal names is supported: `BREAK`, and `CTRL_C`. Matching is
+	/// on both uppercase and lowercase forms.
 	Signal,
+
+	/// The exit status of a subprocess.
+	///
+	/// This is only present for events issued when the subprocess exits. The value is matched on
+	/// both the exit code as an integer, and either `success` or `fail`, whichever succeeds.
 	ProcessCompletion,
 }
 
@@ -492,26 +645,61 @@ impl Matcher {
 	}
 }
 
+/// How a filter value is interpreted.
+///
+/// - `==` and `!=` match on the exact value as string equality,
+/// - `~=` and `~!` match using a [regex],
+/// - `*=` and `*!` match using a glob, either via [globset] or [ignore]
+/// - `:=` and `:!` match via exact string comparisons, but on any of the list of values separated
+///   by `,`
+/// - `=`, the "auto" operator, behaves as `*=` if the matcher is `Path`, and as `==` otherwise.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Op {
-	Auto,     // =
-	Equal,    // ==
-	NotEqual, // !=
-	Regex,    // ~=
-	NotRegex, // ~!
-	Glob,     // *=
-	NotGlob,  // *!
-	InSet,    // :=
-	NotInSet, // :!
+	/// The auto operator, `=`, resolves to `*=` or `==` depending on the matcher.
+	Auto,
+
+	/// The `==` operator, matches on exact string equality.
+	Equal,
+
+	/// The `!=` operator, matches on exact string inequality.
+	NotEqual,
+
+	/// The `~=` operator, matches on a regex.
+	Regex,
+
+	/// The `~!` operator, matches on a regex (matches are fails).
+	NotRegex,
+
+	/// The `*=` operator, matches on a glob.
+	Glob,
+
+	/// The `*!` operator, matches on a glob (matches are fails).
+	NotGlob,
+
+	/// The `:=` operator, matches (with string compares) on a set of values (belongs are passes).
+	InSet,
+
+	/// The `:!` operator, matches on a set of values (belongs are fails).
+	NotInSet,
 }
 
+/// A filter value (pattern to match with).
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub enum Pattern {
+	/// An exact string.
 	Exact(String),
+
+	/// A regex.
 	Regex(Regex),
+
+	/// A glob.
+	///
+	/// This is stored as a string as globs are compiled together rather than on a per-filter basis.
 	Glob(String),
+
+	/// A set of exact strings.
 	Set(HashSet<String>),
 }
 
