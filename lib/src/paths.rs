@@ -115,10 +115,19 @@ where
 				_ => "OTHERWISE_CHANGED",
 			}))
 			.or_insert_with(Vec::new)
-			.extend(paths.into_iter().map(|p| p.into_os_string()));
+			.extend(paths.into_iter().map(|p| {
+				if let Some(suffix) = common_path
+					.as_ref()
+					.and_then(|prefix| p.strip_prefix(prefix).ok())
+				{
+					suffix.as_os_str().to_owned()
+				} else {
+					p.into_os_string()
+				}
+			}));
 	}
 
-	grouped_buckets
+	let mut res: HashMap<&'static OsStr, OsString> = grouped_buckets
 		.into_iter()
 		.map(|(kind, paths)| {
 			let mut joined =
@@ -133,5 +142,11 @@ where
 
 			(kind, joined)
 		})
-		.collect()
+		.collect();
+
+	if let Some(common_path) = common_path {
+		res.insert(OsStr::new("COMMON_PATH"), common_path.into_os_string());
+	}
+
+	res
 }
