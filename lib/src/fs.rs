@@ -25,7 +25,13 @@ use crate::{
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Watcher {
+	/// The Notify-recommended watcher on the platform.
+	///
+	/// For platforms Notify supports, that's a [native implementation][notify::RecommendedWatcher],
+	/// for others it's polling with a default interval.
 	Native,
+
+	/// Notify’s [poll watcher][notify::PollWatcher] with a custom interval.
 	Poll(Duration),
 }
 
@@ -55,7 +61,10 @@ impl Watcher {
 #[derive(Clone, Debug, Default)]
 #[non_exhaustive]
 pub struct WorkingData {
+	/// The set of paths to be watched.
 	pub pathset: Vec<WatchedPath>,
+
+	/// The kind of watcher to be used.
 	pub watcher: Watcher,
 }
 
