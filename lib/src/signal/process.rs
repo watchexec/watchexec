@@ -109,6 +109,10 @@ pub enum SubSignal {
 }
 
 impl SubSignal {
+	/// Converts to a [`nix::Signal`][command_group::Signal] if possible.
+	///
+	/// This will return `None` if the signal is not supported on the current platform (only for
+	/// [`Custom`][SubSignal::Custom], as the first-class ones are always supported).
 	#[cfg(unix)]
 	pub fn to_nix(self) -> Option<NixSignal> {
 		use std::convert::TryFrom;
@@ -125,6 +129,7 @@ impl SubSignal {
 		}
 	}
 
+	/// Converts from a [`nix::Signal`][command_group::Signal].
 	#[cfg(unix)]
 	pub fn from_nix(sig: NixSignal) -> Self {
 		match sig {
@@ -154,6 +159,9 @@ impl From<MainSignal> for SubSignal {
 }
 
 impl From<i32> for SubSignal {
+	/// Converts from a raw signal number.
+	///
+	/// This uses hardcoded numbers for the first-class signals.
 	fn from(raw: i32) -> Self {
 		match raw {
 			1 => Self::Hangup,
