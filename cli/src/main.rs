@@ -11,6 +11,7 @@ use watchexec::{
 	event::Event,
 	filter::tagged::{Filter, Matcher, Op, Pattern, Regex},
 	ignore_files::{self, IgnoreFile},
+	paths::common_prefix,
 	project::{self, ProjectType},
 	Watchexec,
 };
@@ -51,7 +52,7 @@ async fn main() -> Result<()> {
 
 	debug!(?origins, "resolved all project origins");
 
-	let project_origin = project::common_prefix(&origins).unwrap_or_else(|| PathBuf::from("."));
+	let project_origin = common_prefix(&origins).unwrap_or_else(|| PathBuf::from("."));
 	debug!(?project_origin, "resolved common/project origin");
 
 	let vcs_types = project::types(&project_origin)

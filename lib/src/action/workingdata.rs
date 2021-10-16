@@ -11,8 +11,6 @@ use tokio::{
 	sync::{Mutex, OwnedMutexGuard},
 };
 
-pub use command_group::Signal;
-
 use crate::{command::Shell, event::Event, filter::Filterer, handler::Handler};
 
 use super::Outcome;

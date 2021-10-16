@@ -6,13 +6,13 @@ use std::{
 use clap::ArgMatches;
 use miette::{IntoDiagnostic, Result};
 use watchexec::{
-	action::{Action, Outcome, Signal},
+	action::{Action, Outcome},
 	command::Shell,
 	config::{InitConfig, RuntimeConfig},
 	filter::tagged::TaggedFilterer,
 	fs::Watcher,
 	handler::PrintDisplay,
-	signal::source::MainSignal,
+	signal::{process::SubSignal, source::MainSignal},
 };
 
 pub fn new(args: &ArgMatches<'static>) -> Result<(InitConfig, RuntimeConfig, Arc<TaggedFilterer>)> {
@@ -85,13 +85,13 @@ fn runtime(args: &ArgMatches<'static>) -> Result<(RuntimeConfig, Arc<TaggedFilte
 
 	let mut signal = args
 		.value_of("signal")
-		.map(|s| Signal::from_str(s))
+		.map(|s| SubSignal::from_str(s))
 		.transpose()
 		.into_diagnostic()?
-		.unwrap_or(Signal::SIGTERM);
+		.unwrap_or(SubSignal::Terminate);
 
 	if args.is_present("kill") {
-		signal = Signal::SIGKILL;
+		signal = SubSignal::ForceStop;
 	}
 
 	let print_events = args.is_present("print-events");
@@ -136,17 +136,7 @@ fn runtime(args: &ArgMatches<'static>) -> Result<(RuntimeConfig, Arc<TaggedFilte
 			if !signals.is_empty() {
 				let mut out = Outcome::DoNothing;
 				for sig in signals {
-					out = Outcome::both(
-						out,
-						Outcome::Signal(match sig {
-							MainSignal::Hangup => Signal::SIGHUP,
-							MainSignal::Interrupt => Signal::SIGINT,
-							MainSignal::Quit => Signal::SIGQUIT,
-							MainSignal::Terminate => Signal::SIGTERM,
-							MainSignal::User1 => Signal::SIGUSR1,
-							MainSignal::User2 => Signal::SIGUSR2,
-						}),
-					);
+					out = Outcome::both(out, Outcome::Signal(sig.into()));
 				}
 
 				action.outcome(out);
