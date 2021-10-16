@@ -84,6 +84,11 @@
 //! at the cost of reimplementing the glue code. See the examples folder for some basic/demo tools
 //! written with the individual modules.
 //!
+//! Note that the library generates a _lot_ of debug messaging with [tracing]. You should not enable
+//! printing even error log messages for this crate unless it's for debugging. Instead, make use of
+//! the [`InitConfig::on_error()`][config::InitConfig::on_error()] method to define a handler for
+//! errors occurring at runtime that are _meant_ for you to handle (by printing out or otherwise).
+//!
 //! This crate does not itself use `unsafe`. However, it depends on a number of libraries which do,
 //! most because they interact with the operating system.
 
