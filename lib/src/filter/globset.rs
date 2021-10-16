@@ -1,5 +1,6 @@
 //! A simple filterer in the style of the watchexec v1 filter.
 
+use std::ffi::{OsStr, OsString};
 use std::path::Path;
 
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
@@ -19,26 +20,32 @@ use crate::filter::Filterer;
 pub struct GlobsetFilterer {
 	filters: Gitignore,
 	ignores: Gitignore,
+	extensions: Vec<OsString>,
 }
 
 impl GlobsetFilterer {
-	/// Create a new `GlobsetFilterer` from a project origin and two lists of glob patterns.
+	/// Create a new `GlobsetFilterer` from a project origin, allowed extensions, and lists of globs.
 	///
 	/// The first list is used to filter paths (only matching paths will pass the filter), the
 	/// second is used to ignore paths (matching paths will fail the pattern). If the filter list is
 	/// empty, only the ignore list will be used. If both lists are empty, the filter always passes.
 	///
+	/// The extensions list is used to filter files by extension.
+	///
 	/// Non-path events are always passed.
-	pub fn new<FI, F, II, P>(
+	pub fn new<FI, F, II, P, EI, O>(
 		origin: impl AsRef<Path>,
 		filters: FI,
 		ignores: II,
+		extensions: EI,
 	) -> Result<Self, ignore::Error>
 	where
 		FI: IntoIterator<Item = (F, Option<P>)>,
 		F: AsRef<str>,
 		II: IntoIterator<Item = (F, Option<P>)>,
 		P: AsRef<Path>,
+		EI: IntoIterator<Item = O>,
+		O: AsRef<OsStr>,
 	{
 		let mut filters_builder = GitignoreBuilder::new(origin);
 		let mut ignores_builder = filters_builder.clone();
@@ -57,14 +64,23 @@ impl GlobsetFilterer {
 
 		let filters = filters_builder.build()?;
 		let ignores = ignores_builder.build()?;
+		let extensions: Vec<OsString> = extensions
+			.into_iter()
+			.map(|e| e.as_ref().to_owned())
+			.collect();
 		debug!(
 			num_filters=%filters.num_ignores(),
 			num_neg_filters=%filters.num_whitelists(),
 			num_ignores=%ignores.num_ignores(),
 			num_neg_ignores=%ignores.num_whitelists(),
+			num_extensions=%extensions.len(),
 		"globset filterer built");
 
-		Ok(Self { filters, ignores })
+		Ok(Self {
+			filters,
+			ignores,
+			extensions,
+		})
 	}
 }
 
@@ -81,6 +97,26 @@ impl Filterer for GlobsetFilterer {
 			if self.filters.num_ignores() > 0 && !self.filters.matched(path, is_dir).is_ignore() {
 				trace!(?path, "ignored by globset filters");
 				return Ok(false);
+			}
+
+			if !self.extensions.is_empty() {
+				if is_dir {
+					trace!(?path, "omitted from extension check due to being a dir");
+					continue;
+				}
+
+				if let Some(ext) = path.extension() {
+					if !self.extensions.iter().any(|e| e == ext) {
+						trace!(?path, "ignored by extension filter");
+						return Ok(false);
+					}
+				} else {
+					trace!(
+						?path,
+						"omitted from extension check due to having no extension"
+					);
+					continue;
+				}
 			}
 		}
 
