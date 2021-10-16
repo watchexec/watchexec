@@ -83,7 +83,7 @@ to make anything else you may want:
   build a command with an arbitrary shell, deal with grouped and ungrouped processes the same way,
   and supervise a process while also listening for & acting on interventions such as sending signals.
 
-- **Event sources**: [Filesystem](https://docs.rs/watchexec/2.0.0-pre.0/watchexec/fs/index.html)**,
+- **Event sources**: [Filesystem](https://docs.rs/watchexec/2.0.0-pre.0/watchexec/fs/index.html),
   [Signals](https://docs.rs/watchexec/2.0.0-pre.0/watchexec/signal/source/index.html), (more to come).
 
 - Finding **[a common prefix](https://docs.rs/watchexec/2.0.0-pre.0/watchexec/paths/fn.common_prefix.html)**
