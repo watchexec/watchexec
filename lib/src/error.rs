@@ -91,7 +91,10 @@ pub enum RuntimeError {
 		help("perhaps retry with the poll watcher")
 	)]
 	FsWatcherCreate {
+		/// The kind of watcher that failed to instantiate.
 		kind: Watcher,
+
+		/// The underlying error.
 		#[source]
 		err: notify::Error,
 	},
@@ -100,7 +103,10 @@ pub enum RuntimeError {
 	#[error("{kind:?} watcher received an event that we could not read: {err}")]
 	#[diagnostic(code(watchexec::runtime::fs_watcher_event))]
 	FsWatcherEvent {
+		/// The kind of watcher that failed to read an event.
 		kind: Watcher,
+
+		/// The underlying error.
 		#[source]
 		err: notify::Error,
 	},
@@ -109,8 +115,13 @@ pub enum RuntimeError {
 	#[error("while adding {path:?} to the {kind:?} watcher: {err}")]
 	#[diagnostic(code(watchexec::runtime::fs_watcher_path_add))]
 	FsWatcherPathAdd {
+		/// The path that was attempted to be added.
 		path: PathBuf,
+
+		/// The kind of watcher that failed to add a path.
 		kind: Watcher,
+
+		/// The underlying error.
 		#[source]
 		err: notify::Error,
 	},
@@ -119,8 +130,13 @@ pub enum RuntimeError {
 	#[error("while removing {path:?} from the {kind:?} watcher: {err}")]
 	#[diagnostic(code(watchexec::runtime::fs_watcher_path_remove))]
 	FsWatcherPathRemove {
+		/// The path that was attempted to be removed.
 		path: PathBuf,
+
+		/// The kind of watcher that failed to remove a path.
 		kind: Watcher,
+
+		/// The underlying error.
 		#[source]
 		err: notify::Error,
 	},
@@ -134,7 +150,12 @@ pub enum RuntimeError {
 	#[error("cannot send event from {ctx}: {err}")]
 	#[diagnostic(code(watchexec::runtime::event_channel_send))]
 	EventChannelSend {
+		/// The context in which this error happened.
+		///
+		/// This is not stable and its value should not be relied on except for printing the error.
 		ctx: &'static str,
+
+		/// The underlying error.
 		#[source]
 		err: mpsc::error::SendError<Event>,
 	},
@@ -143,7 +164,12 @@ pub enum RuntimeError {
 	#[error("cannot send event from {ctx}: {err}")]
 	#[diagnostic(code(watchexec::runtime::event_channel_try_send))]
 	EventChannelTrySend {
+		/// The context in which this error happened.
+		///
+		/// This is not stable and its value should not be relied on except for printing the error.
 		ctx: &'static str,
+
+		/// The underlying error.
 		#[source]
 		err: mpsc::error::TrySendError<Event>,
 	},
@@ -153,7 +179,15 @@ pub enum RuntimeError {
 	/// The error is completely opaque, having been flattened into a string at the error point.
 	#[error("handler error while {ctx}: {err}")]
 	#[diagnostic(code(watchexec::runtime::handler))]
-	Handler { ctx: &'static str, err: String },
+	Handler {
+		/// The context in which this error happened.
+		///
+		/// This is not stable and its value should not be relied on except for printing the error.
+		ctx: &'static str,
+
+		/// The underlying error, as the Display representation of the original error.
+		err: String,
+	},
 
 	/// Error received when a [`Handler`][crate::handler::Handler] which has been passed a lock has kept that lock open after the handler has completed.
 	#[error("{0} handler returned while holding a lock alive")]
@@ -185,14 +219,20 @@ pub enum RuntimeError {
 
 	/// Error emitted by a [`Filterer`](crate::filter::Filterer).
 	///
-	/// With built-in filterers this will be a dynbox of
-	/// [`TaggedFiltererError`](crate::filter::TaggedFiltererError) or TODO, but it is possible to
+	/// With built-in filterers this will probably be a dynbox of
+	/// [`TaggedFiltererError`](crate::filter::tagged::TaggedFiltererError), but it is possible to
 	/// use a custom filterer which emits a different error type.
 	#[error("{kind} filterer: {err}")]
 	#[diagnostic(code(watchexec::runtime::filterer))]
 	Filterer {
+		/// The kind of filterer that failed.
+		///
+		/// This should be set by the filterer itself to a short name for the filterer.
+		///
+		/// This is not stable and its value should not be relied on except for printing the error.
 		kind: &'static str,
 
+		/// The underlying error.
 		#[source]
 		err: Box<dyn std::error::Error + Send + Sync>,
 	},

@@ -106,6 +106,9 @@ impl GlobsetFilterer {
 }
 
 impl Filterer for GlobsetFilterer {
+	/// Filter an event.
+	///
+	/// This implementation never errors.
 	fn check_event(&self, event: &Event) -> Result<bool, RuntimeError> {
 		for (path, file_type) in event.paths() {
 			let is_dir = file_type.map(|t| t.is_dir()).unwrap_or(false);
