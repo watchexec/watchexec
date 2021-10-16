@@ -60,6 +60,8 @@ where
 /// - `CREATED` -> `Create(_)`
 /// - `RENAMED` -> `Modify(Name(_))`
 /// - `OTHERWISE_CHANGED` -> anything else
+/// - plus `COMMON_PATH` if there is a common prefix of all paths, in which case all paths are also
+///   truncated to omit that common prefix.
 ///
 /// It ignores non-path events and pathed events without event kind.
 pub fn summarise_events_to_env<I, E>(events: I) -> HashMap<&'static OsStr, OsString>
@@ -72,13 +74,16 @@ where
 	#[cfg(not(unix))]
 	const ENV_SEP: &str = ";";
 
+	let mut all_paths = Vec::new();
 	let mut kind_buckets = HashMap::new();
 	for event in events {
 		let event = event.as_ref();
-		let paths = event.paths().map(|p| p.to_owned()).collect::<Vec<_>>();
+		let paths = event.paths().map(|(p, _)| p.to_owned()).collect::<Vec<_>>();
 		if paths.is_empty() {
 			continue;
 		}
+
+		all_paths.extend(paths.clone());
 
 		// usually there's only one but just in case
 		for kind in event.tags.iter().filter_map(|t| {
@@ -94,6 +99,8 @@ where
 				.extend(paths.clone());
 		}
 	}
+
+	let common_path = common_prefix(all_paths);
 
 	let mut grouped_buckets = HashMap::new();
 	for (kind, paths) in kind_buckets {

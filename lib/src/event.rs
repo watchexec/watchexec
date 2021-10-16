@@ -96,9 +96,9 @@ impl Event {
 	}
 
 	/// Return all paths in the event's tags.
-	pub fn paths(&self) -> impl Iterator<Item = &Path> {
+	pub fn paths(&self) -> impl Iterator<Item = (&Path, Option<&FileType>)> {
 		self.tags.iter().filter_map(|p| match p {
-			Tag::Path { path, .. } => Some(path.as_path()),
+			Tag::Path { path, file_type } => Some((path.as_path(), file_type.as_ref())),
 			_ => None,
 		})
 	}
