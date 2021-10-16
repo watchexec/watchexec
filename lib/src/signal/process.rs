@@ -139,7 +139,7 @@ impl From<MainSignal> for SubSignal {
 }
 
 impl FromStr for SubSignal {
-	type Err = ParseSignalError;
+	type Err = SignalParseError;
 
 	#[cfg(unix)]
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -157,7 +157,7 @@ impl FromStr for SubSignal {
 			return Ok(Self::from_nix(sig));
 		}
 
-		Err(ParseSignalError::new(s, "unsupported signal"))
+		Err(SignalParseError::new(s, "unsupported signal"))
 	}
 
 	#[cfg(windows)]
@@ -167,13 +167,13 @@ impl FromStr for SubSignal {
 			"CTRL-BREAK" | "CTRL+BREAK" | "BREAK" => Ok(Self::Terminate),
 			"CTRL-C" | "CTRL+C" | "C" => Ok(Self::Interrupt),
 			"KILL" | "SIGKILL" | "FORCE-STOP" | "STOP" => Ok(Self::ForceStop),
-			_ => Err(ParseSignalError::new(s, "unknown control name")),
+			_ => Err(SignalParseError::new(s, "unknown control name")),
 		}
 	}
 
 	#[cfg(not(any(unix, windows)))]
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		Err(ParseSignalError::new(s, "no signals supported"))
+		Err(SignalParseError::new(s, "no signals supported"))
 	}
 }
 
@@ -181,7 +181,7 @@ impl FromStr for SubSignal {
 #[derive(Debug, Diagnostic, Error)]
 #[error("invalid signal `{src}`: {err}")]
 #[diagnostic(code(watchexec::signal::process::parse), url(docsrs))]
-pub struct ParseSignalError {
+pub struct SignalParseError {
 	// The string that was parsed.
 	#[source_code]
 	src: String,
@@ -194,7 +194,7 @@ pub struct ParseSignalError {
 	span: (usize, usize),
 }
 
-impl ParseSignalError {
+impl SignalParseError {
 	fn new(src: &str, err: &str) -> Self {
 		Self {
 			src: src.to_owned(),
