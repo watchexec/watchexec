@@ -1,6 +1,6 @@
 //! A simple filterer in the style of the watchexec v1 filter.
 
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
@@ -35,41 +35,28 @@ impl GlobsetFilterer {
 	/// The extensions list is used to filter files by extension.
 	///
 	/// Non-path events are always passed.
-	pub fn new<FI, F, II, P, EI, O>(
+	pub fn new(
 		origin: impl AsRef<Path>,
-		filters: FI,
-		ignores: II,
-		extensions: EI,
-	) -> Result<Self, ignore::Error>
-	where
-		FI: IntoIterator<Item = (F, Option<P>)>,
-		F: AsRef<str>,
-		II: IntoIterator<Item = (F, Option<P>)>,
-		P: AsRef<Path>,
-		EI: IntoIterator<Item = O>,
-		O: AsRef<OsStr>,
-	{
+		filters: impl IntoIterator<Item = (String, Option<PathBuf>)>,
+		ignores: impl IntoIterator<Item = (String, Option<PathBuf>)>,
+		extensions: impl IntoIterator<Item = OsString>,
+	) -> Result<Self, ignore::Error> {
 		let mut filters_builder = GitignoreBuilder::new(origin);
 		let mut ignores_builder = filters_builder.clone();
 
 		for (filter, in_path) in filters {
-			let filter = filter.as_ref();
-			trace!(filter, "add filter to globset filterer");
-			filters_builder.add_line(in_path.map(|p| p.as_ref().to_owned()), filter)?;
+			trace!(filter=?&filter, "add filter to globset filterer");
+			filters_builder.add_line(in_path, &filter)?;
 		}
 
 		for (ignore, in_path) in ignores {
-			let ignore = ignore.as_ref();
-			trace!(ignore, "add ignore to globset filterer");
-			ignores_builder.add_line(in_path.map(|p| p.as_ref().to_owned()), ignore)?;
+			trace!(ignore=?&ignore, "add ignore to globset filterer");
+			ignores_builder.add_line(in_path, &ignore)?;
 		}
 
 		let filters = filters_builder.build()?;
 		let ignores = ignores_builder.build()?;
-		let extensions: Vec<OsString> = extensions
-			.into_iter()
-			.map(|e| e.as_ref().to_owned())
-			.collect();
+		let extensions: Vec<OsString> = extensions.into_iter().collect();
 		debug!(
 			num_filters=%filters.num_ignores(),
 			num_neg_filters=%filters.num_whitelists(),
