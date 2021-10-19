@@ -115,8 +115,6 @@ impl SubSignal {
 	/// [`Custom`][SubSignal::Custom], as the first-class ones are always supported).
 	#[cfg(unix)]
 	pub fn to_nix(self) -> Option<NixSignal> {
-		use std::convert::TryFrom;
-
 		match self {
 			Self::Hangup => Some(NixSignal::SIGHUP),
 			Self::ForceStop => Some(NixSignal::SIGKILL),
@@ -181,8 +179,6 @@ impl FromStr for SubSignal {
 
 	#[cfg(unix)]
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		use std::convert::TryFrom;
-
 		if let Ok(sig) = i32::from_str(s) {
 			if let Ok(sig) = NixSignal::try_from(sig) {
 				return Ok(Self::from_nix(sig));

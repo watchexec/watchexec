@@ -119,7 +119,7 @@ pub async fn origins(path: impl AsRef<Path>) -> HashSet<PathBuf> {
 			return false;
 		}
 
-		IntoIterator::into_iter([
+		[
 			list.has_dir("_darcs"),
 			list.has_dir(".bzr"),
 			list.has_dir(".fossil-settings"),
@@ -165,7 +165,8 @@ pub async fn origins(path: impl AsRef<Path>) -> HashSet<PathBuf> {
 			list.has_file("README"),
 			list.has_file("requirements.txt"),
 			list.has_file("v.mod"),
-		])
+		]
+		.into_iter()
 		.any(|f| f)
 	}
 
@@ -196,7 +197,7 @@ pub async fn origins(path: impl AsRef<Path>) -> HashSet<PathBuf> {
 /// anything for some paths returned by [`origins()`].
 pub async fn types(path: impl AsRef<Path>) -> HashSet<ProjectType> {
 	let list = DirList::obtain(path.as_ref()).await;
-	IntoIterator::into_iter([
+	[
 		list.if_has_dir("_darcs", ProjectType::Darcs),
 		list.if_has_dir(".bzr", ProjectType::Bazaar),
 		list.if_has_dir(".fossil-settings", ProjectType::Fossil),
@@ -222,7 +223,8 @@ pub async fn types(path: impl AsRef<Path>) -> HashSet<ProjectType> {
 		list.if_has_file("project.clj", ProjectType::Leiningen),
 		list.if_has_file("requirements.txt", ProjectType::Pip),
 		list.if_has_file("v.mod", ProjectType::V),
-	])
+	]
+	.into_iter()
 	.flatten()
 	.collect()
 }
