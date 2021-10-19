@@ -13,7 +13,7 @@ use tracing::{debug, trace, warn};
 use unicase::UniCase;
 
 use crate::error::RuntimeError;
-use crate::event::{Event, Tag};
+use crate::event::{Event, FileType, Tag};
 use crate::filter::tagged::error::TaggedFiltererError;
 use crate::filter::Filterer;
 use crate::ignore_files::IgnoreFile;
@@ -131,7 +131,7 @@ impl TaggedFilterer {
 					let mut tag_match = true;
 
 					if let (Matcher::Path, Tag::Path { path, file_type }) = (matcher, tag) {
-						let is_dir = file_type.map_or(false, |ft| ft.is_dir());
+						let is_dir = file_type.map_or(false, |ft| matches!(ft, FileType::Dir));
 
 						let gc = self.glob_compiled.borrow();
 						if let Some(igs) = gc.as_ref() {
@@ -311,15 +311,7 @@ impl TaggedFilterer {
 					..
 				},
 				Matcher::FileType,
-			) => filter.matches(if ft.is_dir() {
-				"dir"
-			} else if ft.is_file() {
-				"file"
-			} else if ft.is_symlink() {
-				"symlink"
-			} else {
-				"special"
-			}),
+			) => filter.matches(ft.to_string()),
 			(Tag::FileEventKind(kind), Matcher::FileEventKind) => {
 				filter.matches(format!("{:?}", kind))
 			}
@@ -588,8 +580,8 @@ pub enum Matcher {
 	///
 	/// This is not guaranteed to be present for every filesystem event.
 	///
-	/// It can be any of these values: `file`, `dir`, `symlink`, `special`. That last one means
-	/// "not any of the first three," it does not mean "a special file" as defined by the OS.
+	/// It can be any of these values: `file`, `dir`, `symlink`, `other`. That last one means
+	/// "not any of the first three."
 	FileType,
 
 	/// The [`EventKind`][notify::event::EventKind] of a filesystem event.

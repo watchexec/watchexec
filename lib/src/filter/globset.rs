@@ -8,7 +8,7 @@ use tokio::fs::read_to_string;
 use tracing::{debug, trace};
 
 use crate::error::RuntimeError;
-use crate::event::Event;
+use crate::event::{Event, FileType};
 use crate::filter::Filterer;
 use crate::ignore_files::IgnoreFile;
 
@@ -98,7 +98,9 @@ impl Filterer for GlobsetFilterer {
 	/// This implementation never errors.
 	fn check_event(&self, event: &Event) -> Result<bool, RuntimeError> {
 		for (path, file_type) in event.paths() {
-			let is_dir = file_type.map(|t| t.is_dir()).unwrap_or(false);
+			let is_dir = file_type
+				.map(|t| matches!(t, FileType::Dir))
+				.unwrap_or(false);
 
 			if self.ignores.matched(path, is_dir).is_ignore() {
 				trace!(?path, "ignored by globset ignore");

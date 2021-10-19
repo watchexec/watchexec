@@ -285,7 +285,7 @@ fn process_event(
 	for path in nev.paths {
 		// possibly pull file_type from whatever notify (or the native driver) returns?
 		tags.push(Tag::Path {
-			file_type: metadata(&path).ok().map(|m| m.file_type()),
+			file_type: metadata(&path).ok().map(|m| m.file_type().into()),
 			path: dunce::canonicalize(path)?,
 		});
 	}

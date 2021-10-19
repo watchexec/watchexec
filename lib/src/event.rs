@@ -9,7 +9,6 @@
 use std::{
 	collections::HashMap,
 	fmt,
-	fs::FileType,
 	path::{Path, PathBuf},
 	process::ExitStatus,
 };
@@ -54,6 +53,7 @@ pub enum Tag {
 	Signal(MainSignal),
 
 	/// The event is about the subprocess exiting.
+	// TODO: replace ExitStatus with something we can de/serialize.
 	ProcessCompletion(Option<ExitStatus>),
 }
 
@@ -67,6 +67,51 @@ impl Tag {
 			Tag::Process(_) => "Process",
 			Tag::Signal(_) => "Signal",
 			Tag::ProcessCompletion(_) => "ProcessCompletion",
+		}
+	}
+}
+
+/// The type of a file.
+///
+/// This is a simplification of the [`std::fs::FileType`] type, which is not constructable and may
+/// differ on different platforms.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[non_exhaustive]
+pub enum FileType {
+	/// A regular file.
+	File,
+
+	/// A directory.
+	Dir,
+
+	/// A symbolic link.
+	Symlink,
+
+	/// Something else.
+	Other,
+}
+
+impl From<std::fs::FileType> for FileType {
+	fn from(ft: std::fs::FileType) -> Self {
+		if ft.is_file() {
+			Self::File
+		} else if ft.is_dir() {
+			Self::Dir
+		} else if ft.is_symlink() {
+			Self::Symlink
+		} else {
+			Self::Other
+		}
+	}
+}
+
+impl fmt::Display for FileType {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		match self {
+			Self::File => write!(f, "file"),
+			Self::Dir => write!(f, "dir"),
+			Self::Symlink => write!(f, "symlink"),
+			Self::Other => write!(f, "other"),
 		}
 	}
 }
@@ -159,19 +204,7 @@ impl fmt::Display for Event {
 				Tag::Path { path, file_type } => {
 					write!(f, " path={}", path.display())?;
 					if let Some(ft) = file_type {
-						write!(
-							f,
-							" filetype={}",
-							if ft.is_file() {
-								"file"
-							} else if ft.is_dir() {
-								"dir"
-							} else if ft.is_symlink() {
-								"symlink"
-							} else {
-								"special"
-							}
-						)?;
+						write!(f, " filetype={}", ft)?;
 					}
 				}
 				Tag::FileEventKind(kind) => write!(f, " kind={:?}", kind)?,
