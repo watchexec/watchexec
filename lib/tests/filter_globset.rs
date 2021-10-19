@@ -7,7 +7,7 @@ use watchexec::{
 trait Harness {
 	fn check_path(&self, path: &str) -> std::result::Result<bool, RuntimeError>;
 
-	fn does_pass(&self, path: &str) {
+	fn file_does_pass(&self, path: &str) {
 		assert!(
 			matches!(self.check_path(path), Ok(true)),
 			"path {:?} (expected pass)",
@@ -15,7 +15,7 @@ trait Harness {
 		);
 	}
 
-	fn doesnt_pass(&self, path: &str) {
+	fn file_doesnt_pass(&self, path: &str) {
 		assert!(
 			matches!(self.check_path(path), Ok(false)),
 			"path {:?} (expected fail)",
@@ -48,9 +48,21 @@ fn exact_filename() {
 	)
 	.unwrap();
 
-	filterer.does_pass("Cargo.toml");
-	filterer.doesnt_pass("Cargo.json");
-	filterer.doesnt_pass("Gemfile.toml");
-	filterer.doesnt_pass("FINAL-FINAL.docx");
-	filterer.doesnt_pass("/a/folder");
+	filterer.file_does_pass("Cargo.toml");
+	filterer.file_doesnt_pass("Cargo.json");
+	filterer.file_doesnt_pass("Gemfile.toml");
+	filterer.file_doesnt_pass("FINAL-FINAL.docx");
+	filterer.file_doesnt_pass("/a/folder");
+}
+
+#[test]
+fn glob_filename() {
+	let filterer =
+		GlobsetFilterer::new("/test", vec![("Cargo.*".to_owned(), None)], vec![], vec![]).unwrap();
+
+	filterer.file_does_pass("Cargo.toml");
+	filterer.file_does_pass("Cargo.json");
+	filterer.file_doesnt_pass("Gemfile.toml");
+	filterer.file_doesnt_pass("FINAL-FINAL.docx");
+	filterer.file_doesnt_pass("/a/folder");
 }
