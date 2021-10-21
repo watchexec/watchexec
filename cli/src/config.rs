@@ -9,6 +9,7 @@ use watchexec::{
 	action::{Action, Outcome},
 	command::Shell,
 	config::{InitConfig, RuntimeConfig},
+	event::ProcessEnd,
 	filter::tagged::TaggedFilterer,
 	fs::Watcher,
 	handler::PrintDisplay,
@@ -146,8 +147,20 @@ fn runtime(args: &ArgMatches<'static>) -> Result<(RuntimeConfig, Arc<TaggedFilte
 			let completion = action.events.iter().flat_map(|e| e.completions()).next();
 			if let Some(status) = completion {
 				match status {
-					Some(ex) if !ex.success() => {
-						eprintln!("[Command exited with {}]", ex);
+					Some(ProcessEnd::ExitError(code)) => {
+						eprintln!("[Command exited with {}]", code);
+					}
+					Some(ProcessEnd::ExitSignal(sig)) => {
+						eprintln!("[Command killed by {:?}]", sig);
+					}
+					Some(ProcessEnd::ExitStop(sig)) => {
+						eprintln!("[Command stopped by {:?}]", sig);
+					}
+					Some(ProcessEnd::Continued) => {
+						eprintln!("[Command continued]");
+					}
+					Some(ProcessEnd::Exception(ex)) => {
+						eprintln!("[Command ended by exception {:#x}]", ex);
 					}
 					_ => {}
 				}
