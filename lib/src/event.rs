@@ -197,7 +197,7 @@ impl From<ExitStatus> for ProcessEnd {
 	fn from(es: ExitStatus) -> Self {
 		match es.code().map(NonZeroI32::try_from) {
 			None | Some(Err(_)) => Self::Success,
-			Some(Ok(code)) if code & 0x80000000 != 0 => Self::Exception(code),
+			Some(Ok(code)) if code.get() & 0x80000000 != 0 => Self::Exception(code),
 			Some(Ok(code)) => Self::ExitError(code.into()),
 		}
 	}
