@@ -58,5 +58,8 @@ features = [
 version = "0.1.7"
 features = ["fs"]
 
+[target.'cfg(unix)'.dependencies]
+libc = "0.2.104"
+
 [dev-dependencies]
 tracing-subscriber = "0.2.19"

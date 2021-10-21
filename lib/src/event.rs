@@ -9,13 +9,14 @@
 use std::{
 	collections::HashMap,
 	fmt,
+	num::{NonZeroI32, NonZeroI64},
 	path::{Path, PathBuf},
 	process::ExitStatus,
 };
 
 use notify::EventKind;
 
-use crate::signal::source::MainSignal;
+use crate::signal::{process::SubSignal, source::MainSignal};
 
 /// An event, as far as watchexec cares about.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -53,8 +54,7 @@ pub enum Tag {
 	Signal(MainSignal),
 
 	/// The event is about the subprocess exiting.
-	// TODO: replace ExitStatus with something we can de/serialize.
-	ProcessCompletion(Option<ExitStatus>),
+	ProcessCompletion(Option<ProcessEnd>),
 }
 
 impl Tag {
@@ -76,7 +76,6 @@ impl Tag {
 /// This is a simplification of the [`std::fs::FileType`] type, which is not constructable and may
 /// differ on different platforms.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum FileType {
 	/// A regular file.
 	File,
@@ -112,6 +111,103 @@ impl fmt::Display for FileType {
 			Self::Dir => write!(f, "dir"),
 			Self::Symlink => write!(f, "symlink"),
 			Self::Other => write!(f, "other"),
+		}
+	}
+}
+
+/// The end status of a process.
+///
+/// This is a sort-of equivalent of the [`std::process::ExitStatus`] type, which is while
+/// constructable, differs on various platforms. The native type is an integer that is interpreted
+/// either through convention or via platform-dependent libc or kernel calls; our type is a more
+/// structured representation for the purpose of being clearer and transportable.
+///
+/// On Unix, one can tell whether a process dumped core from the exit status; this is not replicated
+/// in this structure; if that's desirable you can obtain it manually via `libc::WCOREDUMP` and the
+/// `ExitSignal` variant.
+///
+/// On Unix and Windows, the exit status is a 32-bit integer; on Fuchsia it's a 64-bit integer. For
+/// portability, we use `i64`. On all platforms, the "success" value is zero, so we special-case
+/// that as a variant and use `NonZeroI*` to niche the other values.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ProcessEnd {
+	/// The process ended successfully, with exit status = 0.
+	Success,
+
+	/// The process exited with a non-zero exit status.
+	ExitError(NonZeroI64),
+
+	/// The process exited due to a signal.
+	ExitSignal(SubSignal),
+
+	/// The process was stopped (but not terminated) (`libc::WIFSTOPPED`).
+	ExitStop(NonZeroI32),
+
+	/// The process suffered an unhandled exception or warning (typically Windows only).
+	Exception(NonZeroI32),
+
+	/// The process was continued (`libc::WIFCONTINUED`).
+	Continued,
+}
+
+impl From<ExitStatus> for ProcessEnd {
+	#[cfg(target_os = "fuchsia")]
+	fn from(es: ExitStatus) -> Self {
+		// Once https://github.com/rust-lang/rust/pull/88300 (unix_process_wait_more) lands, use
+		// that API instead of doing the transmute, and clean up the forbid condition at crate root.
+		let raw: i64 = unsafe { std::mem::transmute(es) };
+		NonZeroI64::try_from(raw)
+			.map(Self::ExitError)
+			.unwrap_or(Self::Success)
+	}
+
+	#[cfg(all(unix, not(target_os = "fuchsia")))]
+	fn from(es: ExitStatus) -> Self {
+		use std::os::unix::process::ExitStatusExt;
+		match (es.code(), es.signal()) {
+			(Some(_), Some(_)) => {
+				unreachable!("exitstatus cannot both be code and signal?!")
+			}
+			(Some(code), None) => match NonZeroI64::try_from(i64::from(code)) {
+				Ok(code) => Self::ExitError(code),
+				Err(_) if cfg!(debug_assertions) => {
+					unreachable!("exitstatus code cannot be zero?!")
+				}
+				Err(_) => Self::Success,
+			},
+			// TODO: once unix_process_wait_more lands, use stopped_signal() instead and clear the libc dep
+			(None, Some(signal)) if libc::WIFSTOPPED(-signal) => {
+				match NonZeroI32::try_from(libc::WSTOPSIG(-signal)) {
+					Ok(signal) => Self::ExitStop(signal),
+					Err(_) if cfg!(debug_assertions) => {
+						unreachable!("exitsignal code cannot be zero?!")
+					}
+					Err(_) => Self::Success,
+				}
+			}
+			// TODO: once unix_process_wait_more lands, use continued() instead and clear the libc dep
+			#[cfg(not(target_os = "vxworks"))]
+			(None, Some(signal)) if libc::WIFCONTINUED(-signal) => Self::Continued,
+			(None, Some(signal)) => Self::ExitSignal(signal.into()),
+			(None, None) => Self::Success,
+		}
+	}
+
+	#[cfg(windows)]
+	fn from(es: ExitStatus) -> Self {
+		match es.code().map(NonZeroI32::try_from) {
+			None | Some(Err(_)) => Self::Success,
+			Some(Ok(code)) if code & 0x80000000 != 0 => Self::Exception(code),
+			Some(Ok(code)) => Self::ExitError(code.into()),
+		}
+	}
+
+	#[cfg(not(any(unix, windows)))]
+	fn from(es: ExitStatus) -> Self {
+		if es.success() {
+			Self::Success
+		} else {
+			Self::ExitError(NonZeroI64::new(1).unwrap())
 		}
 	}
 }
@@ -188,7 +284,7 @@ impl Event {
 	}
 
 	/// Return all process completions in the event's tags.
-	pub fn completions(&self) -> impl Iterator<Item = Option<ExitStatus>> + '_ {
+	pub fn completions(&self) -> impl Iterator<Item = Option<ProcessEnd>> + '_ {
 		self.tags.iter().filter_map(|p| match p {
 			Tag::ProcessCompletion(s) => Some(*s),
 			_ => None,
@@ -212,7 +308,7 @@ impl fmt::Display for Event {
 				Tag::Process(p) => write!(f, " process={}", p)?,
 				Tag::Signal(s) => write!(f, " signal={:?}", s)?,
 				Tag::ProcessCompletion(None) => write!(f, " command-completed")?,
-				Tag::ProcessCompletion(Some(c)) => write!(f, " command-completed({})", c)?,
+				Tag::ProcessCompletion(Some(c)) => write!(f, " command-completed({:?})", c)?,
 			}
 		}
 

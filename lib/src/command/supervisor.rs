@@ -143,7 +143,7 @@ impl Supervisor {
 					let event = Event {
 						tags: vec![
 							Tag::Source(Source::Internal),
-							Tag::ProcessCompletion(status),
+							Tag::ProcessCompletion(status.map(|s| s.into())),
 						],
 						metadata: Default::default(),
 					};

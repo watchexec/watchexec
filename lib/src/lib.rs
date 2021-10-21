@@ -95,7 +95,8 @@
 #![doc(html_favicon_url = "https://watchexec.github.io/logo:watchexec.svg")]
 #![doc(html_logo_url = "https://watchexec.github.io/logo:watchexec.svg")]
 #![warn(clippy::unwrap_used, missing_docs)]
-#![forbid(unsafe_code)]
+#![cfg_attr(not(target_os = "fuchsia"), forbid(unsafe_code))]
+// see event::ProcessEnd for why this is disabled on fuchsia
 
 // the toolkit to make your own
 pub mod action;
