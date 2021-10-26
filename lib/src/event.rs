@@ -53,7 +53,7 @@ pub enum Tag {
 	/// The event is about a signal being delivered to the main process.
 	Signal(MainSignal),
 
-	/// The event is about the subprocess exiting.
+	/// The event is about the subprocess ending.
 	ProcessCompletion(Option<ProcessEnd>),
 }
 
