@@ -170,18 +170,12 @@ impl From<ExitStatus> for ProcessEnd {
 			}
 			(Some(code), None) => match NonZeroI64::try_from(i64::from(code)) {
 				Ok(code) => Self::ExitError(code),
-				Err(_) if cfg!(debug_assertions) => {
-					unreachable!("exitstatus code cannot be zero?!")
-				}
 				Err(_) => Self::Success,
 			},
 			// TODO: once unix_process_wait_more lands, use stopped_signal() instead and clear the libc dep
 			(None, Some(signal)) if libc::WIFSTOPPED(-signal) => {
 				match NonZeroI32::try_from(libc::WSTOPSIG(-signal)) {
 					Ok(signal) => Self::ExitStop(signal),
-					Err(_) if cfg!(debug_assertions) => {
-						unreachable!("exitsignal code cannot be zero?!")
-					}
 					Err(_) => Self::Success,
 				}
 			}
