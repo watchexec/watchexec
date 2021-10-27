@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use tokio::fs::read_to_string;
-use tracing::{debug, trace};
+use tracing::{debug, trace, trace_span};
 
 use crate::error::RuntimeError;
 use crate::event::{Event, FileType};
@@ -97,30 +97,32 @@ impl Filterer for GlobsetFilterer {
 	///
 	/// This implementation never errors.
 	fn check_event(&self, event: &Event) -> Result<bool, RuntimeError> {
+		let _span = trace_span!("filterer_check").entered();
 		for (path, file_type) in event.paths() {
+			let _span = trace_span!("path", ?path).entered();
 			let is_dir = file_type
 				.map(|t| matches!(t, FileType::Dir))
 				.unwrap_or(false);
 
 			if self.ignores.matched(path, is_dir).is_ignore() {
-				trace!(?path, "ignored by globset ignore");
+				trace!("ignored by globset ignore");
 				return Ok(false);
 			}
 
 			if self.filters.num_ignores() > 0 && !self.filters.matched(path, is_dir).is_ignore() {
-				trace!(?path, "ignored by globset filters");
+				trace!("ignored by globset filters");
 				return Ok(false);
 			}
 
 			if !self.extensions.is_empty() {
 				if is_dir {
-					trace!(?path, "omitted from extension check due to being a dir");
+					trace!("omitted from extension check due to being a dir");
 					continue;
 				}
 
 				if let Some(ext) = path.extension() {
 					if !self.extensions.iter().any(|e| e == ext) {
-						trace!(?path, "ignored by extension filter");
+						trace!("ignored by extension filter");
 						return Ok(false);
 					}
 				} else {
