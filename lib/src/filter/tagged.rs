@@ -9,7 +9,7 @@ use globset::Glob;
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use ignore::Match;
 use tokio::fs::read_to_string;
-use tracing::{debug, trace, warn};
+use tracing::{debug, trace, trace_span, warn};
 use unicase::UniCase;
 
 use crate::error::RuntimeError;
@@ -104,7 +104,8 @@ impl Filterer for TaggedFilterer {
 
 impl TaggedFilterer {
 	fn check(&self, event: &Event) -> Result<bool, TaggedFiltererError> {
-		// TODO: tracing with spans
+		let _span = trace_span!("filterer_check").entered();
+		trace!(?event, "checking event");
 
 		if self.filters.borrow().is_empty() {
 			trace!("no filters, skipping entire check (pass)");
@@ -113,20 +114,20 @@ impl TaggedFilterer {
 
 		trace!(tags=%event.tags.len(), "checking all tags on the event");
 		for tag in &event.tags {
-			trace!(?tag, "checking tag");
+			let _span = trace_span!("check_tag", ?tag).entered();
+
+			trace!("checking tag");
 			for matcher in Matcher::from_tag(tag) {
+				let _span = trace_span!("check_matcher", ?matcher).entered();
+
 				let filters = self.filters.borrow().get(matcher).cloned();
 				if let Some(tag_filters) = filters {
 					if tag_filters.is_empty() {
-						trace!(
-							?tag,
-							?matcher,
-							"no filters for this matcher, skipping (pass)"
-						);
+						trace!("no filters for this matcher, skipping (pass)");
 						continue;
 					}
 
-					trace!(?tag, ?matcher, filters=%tag_filters.len(), "found some filters for this matcher");
+					trace!(filters=%tag_filters.len(), "found some filters for this matcher");
 
 					let mut tag_match = true;
 
@@ -135,36 +136,36 @@ impl TaggedFilterer {
 
 						let gc = self.glob_compiled.borrow();
 						if let Some(igs) = gc.as_ref() {
-							trace!(?tag, ?matcher, "checking against compiled Glob filters");
+							trace!("checking against compiled Glob filters");
 							match igs.matched(path, is_dir) {
 								Match::None => {
-									trace!(?tag, ?matcher, "no match (fail)");
+									trace!("no match (fail)");
 									tag_match = false;
 								}
 								Match::Ignore(glob) => {
-									trace!(?tag, ?matcher, ?glob, "positive match (pass)");
+									trace!(?glob, "positive match (pass)");
 									tag_match = true;
 								}
 								Match::Whitelist(glob) => {
-									trace!(?tag, ?matcher, ?glob, "negative match (ignore)");
+									trace!(?glob, "negative match (ignore)");
 								}
 							}
 						}
 
 						let ngc = self.not_glob_compiled.borrow();
 						if let Some(ngs) = ngc.as_ref() {
-							trace!(?tag, ?matcher, "checking against compiled NotGlob filters");
+							trace!("checking against compiled NotGlob filters");
 							match ngs.matched(path, is_dir) {
 								Match::None => {
-									trace!(?tag, ?matcher, "no match (pass)");
+									trace!("no match (pass)");
 									tag_match = true;
 								}
 								Match::Ignore(glob) => {
-									trace!(?tag, ?matcher, ?glob, "positive match (fail)");
+									trace!(?glob, "positive match (fail)");
 									tag_match = false;
 								}
 								Match::Whitelist(glob) => {
-									trace!(?tag, ?matcher, ?glob, "negative match (pass)");
+									trace!(?glob, "negative match (pass)");
 									tag_match = true;
 								}
 							}
@@ -191,18 +192,14 @@ impl TaggedFilterer {
 						})
 						.collect::<Vec<_>>();
 					if tag_filters.is_empty() {
-						trace!(
-							?tag,
-							?matcher,
-							"no more filters for this matcher, skipping (pass)"
-						);
+						trace!("no more filters for this matcher, skipping (pass)");
 						continue;
 					}
 
-					trace!(?tag, ?matcher, filters=%tag_filters.len(), "got some filters to check still");
+					trace!(filters=%tag_filters.len(), "got some filters to check still");
 
 					for filter in &tag_filters {
-						trace!(?filter, ?tag, "checking filter againt tag");
+						trace!(?filter, "checking filter againt tag");
 						if let Some(app) = self.match_tag(filter, tag)? {
 							if filter.negate {
 								if app {
@@ -220,22 +217,18 @@ impl TaggedFilterer {
 					}
 
 					if !tag_match {
-						trace!(?tag, ?matcher, "matcher fails check, failing entire event");
+						trace!("matcher fails check, failing entire event");
 						return Ok(false);
 					}
 
-					trace!(?tag, ?matcher, "matcher passes check, continuing");
+					trace!("matcher passes check, continuing");
 				} else {
-					trace!(
-						?tag,
-						?matcher,
-						"no filters for this matcher, skipping (pass)"
-					);
+					trace!("no filters for this matcher, skipping (pass)");
 				}
 			}
 		}
 
-		trace!(?event, "passing event");
+		trace!("passing event");
 		Ok(true)
 	}
 
@@ -278,7 +271,7 @@ impl TaggedFilterer {
 	// Ok(Some(bool)) => the match was applied, bool is the result
 	// Ok(None) => for some precondition, the match was not done (mismatched tag, out of context, …)
 	fn match_tag(&self, filter: &Filter, tag: &Tag) -> Result<Option<bool>, TaggedFiltererError> {
-		trace!(?tag, matcher=?filter.on, "matching filter to tag");
+		trace!(matcher=?filter.on, "matching filter to tag");
 		match (tag, filter.on) {
 			(tag, Matcher::Tag) => filter.matches(tag.discriminant_name()),
 			(Tag::Path { path, .. }, Matcher::Path) => {
@@ -319,10 +312,10 @@ impl TaggedFilterer {
 			(Tag::Process(pid), Matcher::Process) => filter.matches(pid.to_string()),
 			(Tag::Signal(_sig), Matcher::Signal) => todo!("tagged filterer: signal matcher"), // TODO
 			(Tag::ProcessCompletion(_oes), Matcher::ProcessCompletion) => {
-				todo!("tagged filterer: completion matcher")
+				todo!("tagged filterer: completion matcher") // TODO
 			}
-			(tag, matcher) => {
-				trace!(?tag, ?matcher, "no match for tag, skipping");
+			(_, _) => {
+				trace!("no match for tag, skipping");
 				return Ok(None);
 			}
 		}
