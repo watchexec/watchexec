@@ -9,21 +9,42 @@ use std::{
 use clap::{crate_version, App, Arg, ArgMatches};
 use miette::{Context, IntoDiagnostic, Result};
 
+trait Clap3Compat {
+	/// Does nothing for clap2, but remove this trait for clap3, and get cool new option groups!
+	fn help_heading(self, _heading: impl Into<Option<&'static str>>) -> Self
+	where
+		Self: Sized,
+	{
+		self
+	}
+}
+
+impl Clap3Compat for Arg<'_, '_> {}
+
+const OPTSET_FILTERING: &str = "Filtering options:";
+const OPTSET_COMMAND: &str = "Command options:";
+const OPTSET_DEBUGGING: &str = "Debugging options:";
+const OPTSET_OUTPUT: &str = "Output options:";
+const OPTSET_BEHAVIOUR: &str = "Behaviour options:";
+
 pub fn get_args() -> Result<ArgMatches<'static>> {
 	let app = App::new("watchexec")
 		.version(crate_version!())
 		.about("Execute commands when watched files change")
 		.after_help("Use @argfile as first argument to load arguments from the file `argfile` (one argument per line) which will be inserted in place of the @argfile (further arguments on the CLI will override or add onto those in the file).")
 		.arg(Arg::with_name("command")
+			.help_heading(Some(OPTSET_COMMAND))
 			.help("Command to execute")
 			.multiple(true)
 			.required(true))
 		.arg(Arg::with_name("extensions")
+			.help_heading(Some(OPTSET_FILTERING))
 			.help("Comma-separated list of file extensions to watch (e.g. js,css,html)")
 			.short("e")
 			.long("exts")
 			.takes_value(true))
 		.arg(Arg::with_name("paths")
+			.help_heading(Some(OPTSET_FILTERING))
 			.help("Watch a specific file or directory")
 			.short("w")
 			.long("watch")
@@ -32,19 +53,23 @@ pub fn get_args() -> Result<ArgMatches<'static>> {
 			.multiple(true)
 			.takes_value(true))
 		.arg(Arg::with_name("clear")
+			.help_heading(Some(OPTSET_BEHAVIOUR))
 			.help("Clear screen before executing command")
 			.short("c")
 			.long("clear"))
 		.arg(Arg::with_name("on-busy-update")
+			.help_heading(Some(OPTSET_BEHAVIOUR))
 			.help("Select the behaviour to use when receiving events while the command is running. Current default is queue, will change to do-nothing in 2.0.")
 			.takes_value(true)
 			.possible_values(&["do-nothing", "queue", "restart", "signal"])
 			.long("on-busy-update"))
 		.arg(Arg::with_name("restart")
+			.help_heading(Some(OPTSET_BEHAVIOUR))
 			.help("Restart the process if it's still running. Shorthand for --on-busy-update=restart")
 			.short("r")
 			.long("restart"))
 		.arg(Arg::with_name("signal")
+			.help_heading(Some(OPTSET_BEHAVIOUR))
 			.help("Specify the signal to send when using --on-busy-update=signal")
 			.short("s")
 			.long("signal")
@@ -53,25 +78,30 @@ pub fn get_args() -> Result<ArgMatches<'static>> {
 			.default_value("SIGTERM")
 			.hidden(cfg!(windows)))
 		.arg(Arg::with_name("kill")
+			.help_heading(Some(OPTSET_BEHAVIOUR))
 			.hidden(true)
 			.short("k")
 			.long("kill"))
 		.arg(Arg::with_name("debounce")
+			.help_heading(Some(OPTSET_BEHAVIOUR))
 			.help("Set the timeout between detected change and command execution, defaults to 100ms")
 			.takes_value(true)
 			.value_name("milliseconds")
 			.short("d")
 			.long("debounce"))
 		.arg(Arg::with_name("verbose")
+			.help_heading(Some(OPTSET_DEBUGGING))
 			.help("Print debugging messages (-v, -vv, -vvv; use -vvv for bug reports)")
 			.multiple(true)
 			.short("v")
 			.long("verbose"))
 		.arg(Arg::with_name("print-events")
+			.help_heading(Some(OPTSET_DEBUGGING))
 			.help("Print events that trigger actions")
 			.long("print-events")
 			.alias("changes-only")) // --changes-only is deprecated (remove at v2)
 		.arg(Arg::with_name("filter") // TODO
+			.help_heading(Some(OPTSET_FILTERING))
 			.help("Ignore all modifications except those matching the pattern")
 			.short("f")
 			.long("filter")
@@ -80,6 +110,7 @@ pub fn get_args() -> Result<ArgMatches<'static>> {
 			.takes_value(true)
 			.value_name("pattern"))
 		.arg(Arg::with_name("ignore") // TODO
+			.help_heading(Some(OPTSET_FILTERING))
 			.help("Ignore modifications to paths matching the pattern")
 			.short("i")
 			.long("ignore")
@@ -88,23 +119,29 @@ pub fn get_args() -> Result<ArgMatches<'static>> {
 			.takes_value(true)
 			.value_name("pattern"))
 		.arg(Arg::with_name("no-vcs-ignore") // TODO
+			.help_heading(Some(OPTSET_FILTERING))
 			.help("Skip auto-loading of .gitignore files for filtering")
 			.long("no-vcs-ignore"))
 		.arg(Arg::with_name("no-ignore") // TODO
+			.help_heading(Some(OPTSET_FILTERING))
 			.help("Skip auto-loading of ignore files (.gitignore, .ignore, etc.) for filtering")
 			.long("no-ignore"))
 		.arg(Arg::with_name("no-default-ignore") // TODO
+			.help_heading(Some(OPTSET_FILTERING))
 			.help("Skip auto-ignoring of commonly ignored globs")
 			.long("no-default-ignore"))
 		.arg(Arg::with_name("postpone")
+			.help_heading(Some(OPTSET_BEHAVIOUR))
 			.help("Wait until first change to execute command")
 			.short("p")
 			.long("postpone"))
 		.arg(Arg::with_name("poll")
+			.help_heading(Some(OPTSET_BEHAVIOUR))
 			.help("Force polling mode (interval in milliseconds)")
 			.long("force-poll")
 			.value_name("interval"))
 		.arg(Arg::with_name("shell")
+			.help_heading(Some(OPTSET_COMMAND))
 			.help(if cfg!(windows) {
 				"Use a different shell, or `none`. Try --shell=powershell, which will become the default in 2.0."
 			} else {
@@ -114,25 +151,31 @@ pub fn get_args() -> Result<ArgMatches<'static>> {
 			.long("shell"))
 		// -n short form will not be removed, and instead become a shorthand for --shell=none
 		.arg(Arg::with_name("no-shell")
+			.help_heading(Some(OPTSET_COMMAND))
 			.help("Do not wrap command in a shell. Deprecated: use --shell=none instead.")
 			.short("n")
 			.long("no-shell"))
 		.arg(Arg::with_name("no-meta") // TODO
+			.help_heading(Some(OPTSET_FILTERING))
 			.help("Ignore metadata changes")
 			.long("no-meta"))
 		.arg(Arg::with_name("no-environment") // TODO
+			.help_heading(Some(OPTSET_OUTPUT))
 			.help("Do not set WATCHEXEC_*_PATH environment variables for the command")
 			.long("no-environment"))
 		.arg(Arg::with_name("no-process-group") // TODO
+			.help_heading(Some(OPTSET_COMMAND))
 			.help("Do not use a process group when running the command")
 			.long("no-process-group"))
 		.arg(Arg::with_name("once").short("1").hidden(true))
 		.arg(Arg::with_name("watch-when-idle")
+			.help_heading(Some(OPTSET_BEHAVIOUR))
 			.help("Deprecated alias for --on-busy-update=do-nothing, which will become the default in 2.0.")
 			.short("W")
 			.hidden(true)
 			.long("watch-when-idle"))
 		.arg(Arg::with_name("notif") // TODO
+			.help_heading(Some(OPTSET_OUTPUT))
 			.help("Send a desktop notification when watchexec notices a change (experimental, behaviour may change)")
 			.short("N")
 			.long("notify"));
