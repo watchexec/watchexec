@@ -191,7 +191,7 @@ impl TaggedFilterer {
 							)
 						})
 						.collect::<Vec<_>>();
-					if tag_filters.is_empty() {
+					if tag_filters.is_empty() && tag_match {
 						trace!("no more filters for this matcher, skipping (pass)");
 						continue;
 					}
