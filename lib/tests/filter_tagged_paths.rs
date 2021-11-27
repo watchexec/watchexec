@@ -425,6 +425,7 @@ async fn ignores_take_precedence() {
 // is no longer present.
 
 #[tokio::test]
+#[ignore]
 async fn ignore_folder_with_bare_match() {
 	let filterer = filt(&[not_filter("prunes")]).await;
 
@@ -454,6 +455,7 @@ async fn ignore_folder_with_bare_match() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn ignore_folder_with_bare_and_leading_slash() {
 	let filterer = filt(&[not_filter("/prunes")]).await;
 
@@ -483,6 +485,7 @@ async fn ignore_folder_with_bare_and_leading_slash() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn ignore_folder_with_bare_and_trailing_slash() {
 	let filterer = filt(&[not_filter("prunes/")]).await;
 
@@ -512,6 +515,7 @@ async fn ignore_folder_with_bare_and_trailing_slash() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn ignore_folder_with_only_double_double_glob() {
 	let filterer = filt(&[not_filter("**/prunes/**")]).await;
 
@@ -541,6 +545,7 @@ async fn ignore_folder_with_only_double_double_glob() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn ignore_folder_with_double_and_double_double_globs() {
 	let filterer = filt(&[not_filter("**/prunes"), not_filter("**/prunes/**")]).await;
 
