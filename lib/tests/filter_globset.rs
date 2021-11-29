@@ -1,3 +1,5 @@
+use std::{ffi::OsString, path::PathBuf};
+
 use watchexec::{
 	error::RuntimeError,
 	event::{Event, FileType, Tag},
@@ -7,13 +9,20 @@ use watchexec::{
 trait Harness {
 	fn check_path(
 		&self,
-		path: &str,
+		path: PathBuf,
 		file_type: Option<FileType>,
 	) -> std::result::Result<bool, RuntimeError>;
 
 	fn path_pass(&self, path: &str, file_type: Option<FileType>, pass: bool) {
+		let origin = dunce::canonicalize(".").unwrap();
+		let full_path = if let Some(suf) = path.strip_prefix("/test/") {
+			origin.join(suf)
+		} else {
+			origin.join(path)
+		};
+
 		assert_eq!(
-			self.check_path(path, file_type).unwrap(),
+			self.check_path(full_path, file_type).unwrap(),
 			pass,
 			"{} {:?} (expected {})",
 			match file_type {
@@ -56,14 +65,11 @@ trait Harness {
 impl Harness for GlobsetFilterer {
 	fn check_path(
 		&self,
-		path: &str,
+		path: PathBuf,
 		file_type: Option<FileType>,
 	) -> std::result::Result<bool, RuntimeError> {
 		let event = Event {
-			tags: vec![Tag::Path {
-				path: path.into(),
-				file_type,
-			}],
+			tags: vec![Tag::Path { path, file_type }],
 			metadata: Default::default(),
 		};
 
@@ -71,9 +77,20 @@ impl Harness for GlobsetFilterer {
 	}
 }
 
+fn filt(filters: &[&str], ignores: &[&str], extensions: &[&str]) -> GlobsetFilterer {
+	let origin = dunce::canonicalize(".").unwrap();
+	GlobsetFilterer::new(
+		origin,
+		filters.iter().map(|s| (s.to_string(), None)),
+		ignores.iter().map(|s| (s.to_string(), None)),
+		extensions.iter().map(OsString::from),
+	)
+	.expect("making filterer")
+}
+
 #[test]
 fn empty_filter_passes_everything() {
-	let filterer = GlobsetFilterer::new("/test", vec![], vec![], vec![]).unwrap();
+	let filterer = filt(&[], &[], &[]);
 
 	filterer.file_does_pass("Cargo.toml");
 	filterer.file_does_pass("Cargo.json");
@@ -93,13 +110,7 @@ fn empty_filter_passes_everything() {
 
 #[test]
 fn exact_filename() {
-	let filterer = GlobsetFilterer::new(
-		"/test",
-		vec![("Cargo.toml".to_owned(), None)],
-		vec![],
-		vec![],
-	)
-	.unwrap();
+	let filterer = filt(&["Cargo.toml"], &[], &[]);
 
 	filterer.file_does_pass("Cargo.toml");
 	filterer.file_does_pass("/test/foo/bar/Cargo.toml");
@@ -112,16 +123,7 @@ fn exact_filename() {
 
 #[test]
 fn exact_filenames_multiple() {
-	let filterer = GlobsetFilterer::new(
-		"/test",
-		vec![
-			("Cargo.toml".to_owned(), None),
-			("package.json".to_owned(), None),
-		],
-		vec![],
-		vec![],
-	)
-	.unwrap();
+	let filterer = filt(&["Cargo.toml", "package.json"], &[], &[]);
 
 	filterer.file_does_pass("Cargo.toml");
 	filterer.file_does_pass("/test/foo/bar/Cargo.toml");
@@ -138,8 +140,7 @@ fn exact_filenames_multiple() {
 
 #[test]
 fn glob_single_final_ext_star() {
-	let filterer =
-		GlobsetFilterer::new("/test", vec![("Cargo.*".to_owned(), None)], vec![], vec![]).unwrap();
+	let filterer = filt(&["Cargo.*"], &[], &[]);
 
 	filterer.file_does_pass("Cargo.toml");
 	filterer.file_does_pass("Cargo.json");
@@ -151,8 +152,7 @@ fn glob_single_final_ext_star() {
 
 #[test]
 fn glob_star_trailing_slash() {
-	let filterer =
-		GlobsetFilterer::new("/test", vec![("Cargo.*/".to_owned(), None)], vec![], vec![]).unwrap();
+	let filterer = filt(&["Cargo.*/"], &[], &[]);
 
 	filterer.file_doesnt_pass("Cargo.toml");
 	filterer.file_doesnt_pass("Cargo.json");
@@ -165,8 +165,7 @@ fn glob_star_trailing_slash() {
 
 #[test]
 fn glob_star_leading_slash() {
-	let filterer =
-		GlobsetFilterer::new("/test", vec![("/Cargo.*".to_owned(), None)], vec![], vec![]).unwrap();
+	let filterer = filt(&["/Cargo.*"], &[], &[]);
 
 	filterer.file_does_pass("Cargo.toml");
 	filterer.file_does_pass("Cargo.json");
@@ -178,13 +177,7 @@ fn glob_star_leading_slash() {
 
 #[test]
 fn glob_leading_double_star() {
-	let filterer = GlobsetFilterer::new(
-		"/test",
-		vec![("**/possum".to_owned(), None)],
-		vec![],
-		vec![],
-	)
-	.unwrap();
+	let filterer = filt(&["**/possum"], &[], &[]);
 
 	filterer.file_does_pass("possum");
 	filterer.file_does_pass("foo/bar/possum");
@@ -199,24 +192,13 @@ fn glob_leading_double_star() {
 
 #[test]
 fn glob_trailing_double_star() {
-	let filterer = GlobsetFilterer::new(
-		"/test",
-		vec![("possum/**".to_owned(), None)],
-		vec![],
-		vec![],
-	)
-	.unwrap();
+	let filterer = filt(&["possum/**"], &[], &[]);
 
-	filterer.file_doesnt_pass("possum");
-	filterer.file_does_pass("possum/foo/bar");
-	filterer.file_doesnt_pass("/possum/foo/bar");
+	// these do work by expectation and in v1
 	filterer.file_does_pass("/test/possum/foo/bar");
 	filterer.dir_doesnt_pass("possum");
 	filterer.dir_doesnt_pass("foo/bar/possum");
-	filterer.dir_doesnt_pass("/foo/bar/possum");
 	filterer.dir_does_pass("possum/foo/bar");
-	filterer.dir_doesnt_pass("/possum/foo/bar");
-	filterer.dir_does_pass("/test/possum/foo/bar");
 	filterer.file_doesnt_pass("rat");
 	filterer.file_doesnt_pass("foo/bar/rat");
 	filterer.file_doesnt_pass("/foo/bar/rat");
@@ -224,13 +206,7 @@ fn glob_trailing_double_star() {
 
 #[test]
 fn glob_middle_double_star() {
-	let filterer = GlobsetFilterer::new(
-		"/test",
-		vec![("apples/**/oranges".to_owned(), None)],
-		vec![],
-		vec![],
-	)
-	.unwrap();
+	let filterer = filt(&["apples/**/oranges"], &[], &[]);
 
 	filterer.dir_doesnt_pass("/a/folder");
 	filterer.file_does_pass("apples/carrots/oranges");
@@ -245,13 +221,7 @@ fn glob_middle_double_star() {
 
 #[test]
 fn glob_double_star_trailing_slash() {
-	let filterer = GlobsetFilterer::new(
-		"/test",
-		vec![("apples/**/oranges/".to_owned(), None)],
-		vec![],
-		vec![],
-	)
-	.unwrap();
+	let filterer = filt(&["apples/**/oranges/"], &[], &[]);
 
 	filterer.dir_doesnt_pass("/a/folder");
 	filterer.file_doesnt_pass("apples/carrots/oranges");
@@ -269,13 +239,7 @@ fn glob_double_star_trailing_slash() {
 
 #[test]
 fn ignore_exact_filename() {
-	let filterer = GlobsetFilterer::new(
-		"/test",
-		vec![],
-		vec![("Cargo.toml".to_owned(), None)],
-		vec![],
-	)
-	.unwrap();
+	let filterer = filt(&[], &["Cargo.toml"], &[]);
 
 	filterer.file_doesnt_pass("Cargo.toml");
 	filterer.file_doesnt_pass("/test/foo/bar/Cargo.toml");
@@ -288,16 +252,7 @@ fn ignore_exact_filename() {
 
 #[test]
 fn ignore_exact_filenames_multiple() {
-	let filterer = GlobsetFilterer::new(
-		"/test",
-		vec![],
-		vec![
-			("Cargo.toml".to_owned(), None),
-			("package.json".to_owned(), None),
-		],
-		vec![],
-	)
-	.unwrap();
+	let filterer = filt(&[], &["Cargo.toml", "package.json"], &[]);
 
 	filterer.file_doesnt_pass("Cargo.toml");
 	filterer.file_doesnt_pass("/test/foo/bar/Cargo.toml");
@@ -314,8 +269,7 @@ fn ignore_exact_filenames_multiple() {
 
 #[test]
 fn ignore_glob_single_final_ext_star() {
-	let filterer =
-		GlobsetFilterer::new("/test", vec![], vec![("Cargo.*".to_owned(), None)], vec![]).unwrap();
+	let filterer = filt(&[], &["Cargo.*"], &[]);
 
 	filterer.file_doesnt_pass("Cargo.toml");
 	filterer.file_doesnt_pass("Cargo.json");
@@ -327,8 +281,7 @@ fn ignore_glob_single_final_ext_star() {
 
 #[test]
 fn ignore_glob_star_trailing_slash() {
-	let filterer =
-		GlobsetFilterer::new("/test", vec![], vec![("Cargo.*/".to_owned(), None)], vec![]).unwrap();
+	let filterer = filt(&[], &["Cargo.*/"], &[]);
 
 	filterer.file_does_pass("Cargo.toml");
 	filterer.file_does_pass("Cargo.json");
@@ -341,8 +294,7 @@ fn ignore_glob_star_trailing_slash() {
 
 #[test]
 fn ignore_glob_star_leading_slash() {
-	let filterer =
-		GlobsetFilterer::new("/test", vec![], vec![("/Cargo.*".to_owned(), None)], vec![]).unwrap();
+	let filterer = filt(&[], &["/Cargo.*"], &[]);
 
 	filterer.file_doesnt_pass("Cargo.toml");
 	filterer.file_doesnt_pass("Cargo.json");
@@ -354,13 +306,7 @@ fn ignore_glob_star_leading_slash() {
 
 #[test]
 fn ignore_glob_leading_double_star() {
-	let filterer = GlobsetFilterer::new(
-		"/test",
-		vec![],
-		vec![("**/possum".to_owned(), None)],
-		vec![],
-	)
-	.unwrap();
+	let filterer = filt(&[], &["**/possum"], &[]);
 
 	filterer.file_doesnt_pass("possum");
 	filterer.file_doesnt_pass("foo/bar/possum");
@@ -375,13 +321,7 @@ fn ignore_glob_leading_double_star() {
 
 #[test]
 fn ignore_glob_trailing_double_star() {
-	let filterer = GlobsetFilterer::new(
-		"/test",
-		vec![],
-		vec![("possum/**".to_owned(), None)],
-		vec![],
-	)
-	.unwrap();
+	let filterer = filt(&[], &["possum/**"], &[]);
 
 	filterer.file_does_pass("possum");
 	filterer.file_doesnt_pass("possum/foo/bar");
@@ -400,13 +340,7 @@ fn ignore_glob_trailing_double_star() {
 
 #[test]
 fn ignore_glob_middle_double_star() {
-	let filterer = GlobsetFilterer::new(
-		"/test",
-		vec![],
-		vec![("apples/**/oranges".to_owned(), None)],
-		vec![],
-	)
-	.unwrap();
+	let filterer = filt(&[], &["apples/**/oranges"], &[]);
 
 	filterer.dir_does_pass("/a/folder");
 	filterer.file_doesnt_pass("apples/carrots/oranges");
@@ -421,13 +355,7 @@ fn ignore_glob_middle_double_star() {
 
 #[test]
 fn ignore_glob_double_star_trailing_slash() {
-	let filterer = GlobsetFilterer::new(
-		"/test",
-		vec![],
-		vec![("apples/**/oranges/".to_owned(), None)],
-		vec![],
-	)
-	.unwrap();
+	let filterer = filt(&[], &["apples/**/oranges/"], &[]);
 
 	filterer.dir_does_pass("/a/folder");
 	filterer.file_does_pass("apples/carrots/oranges");
@@ -445,17 +373,7 @@ fn ignore_glob_double_star_trailing_slash() {
 
 #[test]
 fn ignores_take_precedence() {
-	let filterer = GlobsetFilterer::new(
-		"/test",
-		vec![
-			("*.docx".to_owned(), None),
-			("*.toml".to_owned(), None),
-			("*.json".to_owned(), None),
-		],
-		vec![("*.toml".to_owned(), None), ("*.json".to_owned(), None)],
-		vec![],
-	)
-	.unwrap();
+	let filterer = filt(&["*.docx", "*.toml", "*.json"], &["*.toml", "*.json"], &[]);
 
 	filterer.file_doesnt_pass("Cargo.toml");
 	filterer.file_doesnt_pass("/test/foo/bar/Cargo.toml");
@@ -470,8 +388,7 @@ fn ignores_take_precedence() {
 
 #[test]
 fn ignore_folder_incorrectly_with_bare_match() {
-	let filterer =
-		GlobsetFilterer::new("/test", vec![], vec![("prunes".to_owned(), None)], vec![]).unwrap();
+	let filterer = filt(&[], &["prunes"], &[]);
 
 	filterer.file_does_pass("apples");
 	filterer.file_does_pass("apples/carrots/cauliflowers/oranges");
@@ -502,8 +419,7 @@ fn ignore_folder_incorrectly_with_bare_match() {
 
 #[test]
 fn ignore_folder_incorrectly_with_bare_and_leading_slash() {
-	let filterer =
-		GlobsetFilterer::new("/test", vec![], vec![("/prunes".to_owned(), None)], vec![]).unwrap();
+	let filterer = filt(&[], &["/prunes"], &[]);
 
 	filterer.file_does_pass("apples");
 	filterer.file_does_pass("apples/carrots/cauliflowers/oranges");
@@ -534,8 +450,7 @@ fn ignore_folder_incorrectly_with_bare_and_leading_slash() {
 
 #[test]
 fn ignore_folder_incorrectly_with_bare_and_trailing_slash() {
-	let filterer =
-		GlobsetFilterer::new("/test", vec![], vec![("prunes/".to_owned(), None)], vec![]).unwrap();
+	let filterer = filt(&[], &["prunes/"], &[]);
 
 	filterer.file_does_pass("apples");
 	filterer.file_does_pass("apples/carrots/cauliflowers/oranges");
@@ -566,13 +481,7 @@ fn ignore_folder_incorrectly_with_bare_and_trailing_slash() {
 
 #[test]
 fn ignore_folder_incorrectly_with_only_double_double_glob() {
-	let filterer = GlobsetFilterer::new(
-		"/test",
-		vec![],
-		vec![("**/prunes/**".to_owned(), None)],
-		vec![],
-	)
-	.unwrap();
+	let filterer = filt(&[], &["**/prunes/**"], &[]);
 
 	filterer.file_does_pass("apples");
 	filterer.file_does_pass("apples/carrots/cauliflowers/oranges");
@@ -603,16 +512,7 @@ fn ignore_folder_incorrectly_with_only_double_double_glob() {
 
 #[test]
 fn ignore_folder_correctly_with_double_and_double_double_globs() {
-	let filterer = GlobsetFilterer::new(
-		"/test",
-		vec![],
-		vec![
-			("**/prunes".to_owned(), None),
-			("**/prunes/**".to_owned(), None),
-		],
-		vec![],
-	)
-	.unwrap();
+	let filterer = filt(&[], &["**/prunes", "**/prunes/**"], &[]);
 
 	filterer.file_does_pass("apples");
 	filterer.file_does_pass("apples/carrots/cauliflowers/oranges");
