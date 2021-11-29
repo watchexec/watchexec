@@ -350,6 +350,7 @@ impl TaggedFilterer {
 			})
 			.map(Filter::canonicalised)
 			.collect::<Result<Vec<_>, _>>()?;
+		trace!(?filters, "canonicalised filters");
 		// TODO: use miette's related and issue canonicalisation errors for all of them
 
 		self.filters
@@ -360,6 +361,7 @@ impl TaggedFilterer {
 			})
 			.await
 			.map_err(|err| TaggedFiltererError::FilterChange { action: "add", err })?;
+		trace!("inserted filters into swaplock");
 
 		if recompile_globs {
 			self.recompile_globs(Op::Glob).await?;
@@ -373,6 +375,7 @@ impl TaggedFilterer {
 	}
 
 	async fn recompile_globs(&self, op_filter: Op) -> Result<(), TaggedFiltererError> {
+		trace!(?op_filter, "recompiling globs");
 		let target = match op_filter {
 			Op::Glob => &self.glob_compiled,
 			Op::NotGlob => &self.not_glob_compiled,
@@ -382,12 +385,14 @@ impl TaggedFilterer {
 		let globs = {
 			let filters = self.filters.borrow();
 			if let Some(fs) = filters.get(&Matcher::Path) {
+				trace!(?op_filter, "pulling filters from swaplock");
 				// we want to hold the lock as little as possible, so we clone the filters
 				fs.iter()
 					.cloned()
 					.filter(|f| f.op == op_filter)
 					.collect::<Vec<_>>()
 			} else {
+				trace!(?op_filter, "no filters, erasing compiled glob");
 				return target
 					.replace(None)
 					.await
@@ -398,14 +403,17 @@ impl TaggedFilterer {
 		let mut builder = GitignoreBuilder::new(&self.origin);
 		for filter in globs {
 			if let Pattern::Glob(glob) = filter.pat {
+				trace!(?op_filter, in_path=?filter.in_path, ?glob, "adding new glob line");
 				builder
 					.add_line(filter.in_path, &glob)
 					.map_err(TaggedFiltererError::GlobParse)?;
 			}
 		}
 
+		trace!(?op_filter, "finalising compiled glob");
 		let compiled = builder.build().map_err(TaggedFiltererError::GlobParse)?;
 
+		trace!(?op_filter, "swapping in new compiled glob");
 		target
 			.replace(Some(compiled))
 			.await
