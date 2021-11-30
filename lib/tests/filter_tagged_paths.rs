@@ -17,7 +17,7 @@ trait Harness {
 	) -> std::result::Result<bool, RuntimeError>;
 
 	fn path_pass(&self, path: &str, file_type: Option<FileType>, pass: bool) {
-			let origin = dunce::canonicalize(".").unwrap();
+		let origin = dunce::canonicalize(".").unwrap();
 		let full_path = if let Some(suf) = path.strip_prefix("/test/") {
 			origin.join(suf)
 		} else {
@@ -251,11 +251,13 @@ async fn glob_middle_double_star() {
 	filterer.file_does_pass("apples/carrots/oranges");
 	filterer.file_does_pass("apples/carrots/cauliflowers/oranges");
 	filterer.file_does_pass("apples/carrots/cauliflowers/artichokes/oranges");
-	filterer.file_doesnt_pass("apples/oranges/bananas");
 	filterer.dir_does_pass("apples/carrots/oranges");
 	filterer.dir_does_pass("apples/carrots/cauliflowers/oranges");
 	filterer.dir_does_pass("apples/carrots/cauliflowers/artichokes/oranges");
-	filterer.dir_doesnt_pass("apples/oranges/bananas");
+
+	// different from globset/v1 behaviour, but correct:
+	filterer.file_does_pass("apples/oranges/bananas");
+	filterer.dir_does_pass("apples/oranges/bananas");
 }
 
 #[tokio::test]
@@ -266,14 +268,16 @@ async fn glob_double_star_trailing_slash() {
 	filterer.file_doesnt_pass("apples/carrots/oranges");
 	filterer.file_doesnt_pass("apples/carrots/cauliflowers/oranges");
 	filterer.file_doesnt_pass("apples/carrots/cauliflowers/artichokes/oranges");
-	filterer.file_doesnt_pass("apples/oranges/bananas");
 	filterer.dir_does_pass("apples/carrots/oranges");
 	filterer.dir_does_pass("apples/carrots/cauliflowers/oranges");
 	filterer.dir_does_pass("apples/carrots/cauliflowers/artichokes/oranges");
-	filterer.dir_doesnt_pass("apples/oranges/bananas");
 	filterer.unk_doesnt_pass("apples/carrots/oranges");
 	filterer.unk_doesnt_pass("apples/carrots/cauliflowers/oranges");
 	filterer.unk_doesnt_pass("apples/carrots/cauliflowers/artichokes/oranges");
+
+	// different from globset/v1 behaviour, but correct:
+	filterer.file_does_pass("apples/oranges/bananas");
+	filterer.dir_does_pass("apples/oranges/bananas");
 }
 
 #[tokio::test]
@@ -385,11 +389,13 @@ async fn ignore_glob_middle_double_star() {
 	filterer.file_doesnt_pass("apples/carrots/oranges");
 	filterer.file_doesnt_pass("apples/carrots/cauliflowers/oranges");
 	filterer.file_doesnt_pass("apples/carrots/cauliflowers/artichokes/oranges");
-	filterer.file_does_pass("apples/oranges/bananas");
 	filterer.dir_doesnt_pass("apples/carrots/oranges");
 	filterer.dir_doesnt_pass("apples/carrots/cauliflowers/oranges");
 	filterer.dir_doesnt_pass("apples/carrots/cauliflowers/artichokes/oranges");
-	filterer.dir_does_pass("apples/oranges/bananas");
+
+	// different from globset/v1 behaviour, but correct:
+	filterer.file_doesnt_pass("apples/oranges/bananas");
+	filterer.dir_doesnt_pass("apples/oranges/bananas");
 }
 
 #[tokio::test]
@@ -400,14 +406,16 @@ async fn ignore_glob_double_star_trailing_slash() {
 	filterer.file_does_pass("apples/carrots/oranges");
 	filterer.file_does_pass("apples/carrots/cauliflowers/oranges");
 	filterer.file_does_pass("apples/carrots/cauliflowers/artichokes/oranges");
-	filterer.file_does_pass("apples/oranges/bananas");
 	filterer.dir_doesnt_pass("apples/carrots/oranges");
 	filterer.dir_doesnt_pass("apples/carrots/cauliflowers/oranges");
 	filterer.dir_doesnt_pass("apples/carrots/cauliflowers/artichokes/oranges");
-	filterer.dir_does_pass("apples/oranges/bananas");
 	filterer.unk_does_pass("apples/carrots/oranges");
 	filterer.unk_does_pass("apples/carrots/cauliflowers/oranges");
 	filterer.unk_does_pass("apples/carrots/cauliflowers/artichokes/oranges");
+
+	// different from globset/v1 behaviour, but correct:
+	filterer.file_doesnt_pass("apples/oranges/bananas");
+	filterer.dir_doesnt_pass("apples/oranges/bananas");
 }
 
 #[tokio::test]
