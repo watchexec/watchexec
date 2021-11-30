@@ -137,7 +137,11 @@ impl TaggedFilterer {
 						let gc = self.glob_compiled.borrow();
 						if let Some(igs) = gc.as_ref() {
 							trace!("checking against compiled Glob filters");
-							match igs.matched(path, is_dir) {
+							match if path.strip_prefix(&self.origin).is_ok() {
+								igs.matched_path_or_any_parents(path, is_dir)
+							} else {
+								igs.matched(path, is_dir)
+							} {
 								Match::None => {
 									trace!("no match (fail)");
 									tag_match = false;
@@ -155,7 +159,11 @@ impl TaggedFilterer {
 						let ngc = self.not_glob_compiled.borrow();
 						if let Some(ngs) = ngc.as_ref() {
 							trace!("checking against compiled NotGlob filters");
-							match ngs.matched(path, is_dir) {
+							match if path.strip_prefix(&self.origin).is_ok() {
+								ngs.matched_path_or_any_parents(path, is_dir)
+							} else {
+								ngs.matched(path, is_dir)
+							} {
 								Match::None => {
 									trace!("no match (pass)");
 									tag_match = true;

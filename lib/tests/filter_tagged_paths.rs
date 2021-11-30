@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 
 use watchexec::{
 	error::RuntimeError,
@@ -12,22 +12,22 @@ use watchexec::{
 trait Harness {
 	fn check_path(
 		&self,
-		path: &str,
+		path: PathBuf,
 		file_type: Option<FileType>,
 	) -> std::result::Result<bool, RuntimeError>;
 
 	fn path_pass(&self, path: &str, file_type: Option<FileType>, pass: bool) {
-		let path = if let Some(suf) = path.strip_prefix("/test/") {
 			let origin = dunce::canonicalize(".").unwrap();
-			origin.join(suf).to_string_lossy().to_string()
+		let full_path = if let Some(suf) = path.strip_prefix("/test/") {
+			origin.join(suf)
 		} else {
-			path.to_string()
+			origin.join(path)
 		};
 
 		tracing::info!(?path, ?file_type, ?pass, "check");
 
 		assert_eq!(
-			self.check_path(&path, file_type).unwrap(),
+			self.check_path(full_path, file_type).unwrap(),
 			pass,
 			"{} {:?} (expected {})",
 			match file_type {
@@ -70,14 +70,11 @@ trait Harness {
 impl Harness for TaggedFilterer {
 	fn check_path(
 		&self,
-		path: &str,
+		path: PathBuf,
 		file_type: Option<FileType>,
 	) -> std::result::Result<bool, RuntimeError> {
 		let event = Event {
-			tags: vec![Tag::Path {
-				path: path.into(),
-				file_type,
-			}],
+			tags: vec![Tag::Path { path, file_type }],
 			metadata: Default::default(),
 		};
 
@@ -110,6 +107,18 @@ fn not_filter(pat: &str) -> Filter {
 		op: Op::NotGlob,
 		pat: Pattern::Glob(pat.into()),
 		negate: false,
+	}
+}
+
+trait FilterExt {
+	fn in_path(self) -> Self;
+}
+
+impl FilterExt for Filter {
+	fn in_path(mut self) -> Self {
+		let origin = dunce::canonicalize(".").unwrap();
+		self.in_path = Some(origin);
+		self
 	}
 }
 
@@ -424,152 +433,75 @@ async fn ignores_take_precedence() {
 // The following tests check that the "buggy"/"confusing" watchexec v1 behaviour
 // is no longer present.
 
+fn watchexec_v1_confusing_suite(filterer: Arc<TaggedFilterer>) {
+	filterer.file_does_pass("apples");
+	filterer.file_does_pass("apples/carrots/cauliflowers/oranges");
+	filterer.file_does_pass("apples/carrots/cauliflowers/artichokes/oranges");
+	filterer.file_does_pass("apples/oranges/bananas");
+	filterer.dir_does_pass("apples");
+	filterer.dir_does_pass("apples/carrots/cauliflowers/oranges");
+	filterer.dir_does_pass("apples/carrots/cauliflowers/artichokes/oranges");
+
+	filterer.file_does_pass("raw-prunes");
+	filterer.dir_does_pass("raw-prunes");
+	filterer.file_does_pass("raw-prunes/carrots/cauliflowers/oranges");
+	filterer.file_does_pass("raw-prunes/carrots/cauliflowers/artichokes/oranges");
+	filterer.file_does_pass("raw-prunes/oranges/bananas");
+	filterer.dir_does_pass("raw-prunes/carrots/cauliflowers/oranges");
+	filterer.dir_does_pass("raw-prunes/carrots/cauliflowers/artichokes/oranges");
+
+	filterer.dir_doesnt_pass("prunes/carrots/cauliflowers/oranges");
+	filterer.dir_doesnt_pass("prunes/carrots/cauliflowers/artichokes/oranges");
+	filterer.file_doesnt_pass("prunes/carrots/cauliflowers/oranges");
+	filterer.file_doesnt_pass("prunes/carrots/cauliflowers/artichokes/oranges");
+	filterer.file_doesnt_pass("prunes/oranges/bananas");
+}
+
 #[tokio::test]
-#[ignore]
 async fn ignore_folder_with_bare_match() {
-	let filterer = filt(&[not_filter("prunes")]).await;
-
-	filterer.file_does_pass("apples");
-	filterer.file_does_pass("apples/carrots/cauliflowers/oranges");
-	filterer.file_does_pass("apples/carrots/cauliflowers/artichokes/oranges");
-	filterer.file_does_pass("apples/oranges/bananas");
-	filterer.dir_does_pass("apples");
-	filterer.dir_does_pass("apples/carrots/cauliflowers/oranges");
-	filterer.dir_does_pass("apples/carrots/cauliflowers/artichokes/oranges");
-
-	filterer.file_does_pass("raw-prunes");
-	filterer.dir_does_pass("raw-prunes");
-	filterer.file_does_pass("raw-prunes/carrots/cauliflowers/oranges");
-	filterer.file_does_pass("raw-prunes/carrots/cauliflowers/artichokes/oranges");
-	filterer.file_does_pass("raw-prunes/oranges/bananas");
-	filterer.dir_does_pass("raw-prunes/carrots/cauliflowers/oranges");
-	filterer.dir_does_pass("raw-prunes/carrots/cauliflowers/artichokes/oranges");
+	let filterer = filt(&[not_filter("prunes").in_path()]).await;
 
 	filterer.file_doesnt_pass("prunes");
-	filterer.file_doesnt_pass("prunes/carrots/cauliflowers/oranges");
-	filterer.file_doesnt_pass("prunes/carrots/cauliflowers/artichokes/oranges");
-	filterer.file_doesnt_pass("prunes/oranges/bananas");
 	filterer.dir_doesnt_pass("prunes");
-	filterer.dir_doesnt_pass("prunes/carrots/cauliflowers/oranges");
-	filterer.dir_doesnt_pass("prunes/carrots/cauliflowers/artichokes/oranges");
+	watchexec_v1_confusing_suite(filterer);
 }
 
 #[tokio::test]
-#[ignore]
 async fn ignore_folder_with_bare_and_leading_slash() {
-	let filterer = filt(&[not_filter("/prunes")]).await;
-
-	filterer.file_does_pass("apples");
-	filterer.file_does_pass("apples/carrots/cauliflowers/oranges");
-	filterer.file_does_pass("apples/carrots/cauliflowers/artichokes/oranges");
-	filterer.file_does_pass("apples/oranges/bananas");
-	filterer.dir_does_pass("apples");
-	filterer.dir_does_pass("apples/carrots/cauliflowers/oranges");
-	filterer.dir_does_pass("apples/carrots/cauliflowers/artichokes/oranges");
-
-	filterer.file_does_pass("raw-prunes");
-	filterer.dir_does_pass("raw-prunes");
-	filterer.file_does_pass("raw-prunes/carrots/cauliflowers/oranges");
-	filterer.file_does_pass("raw-prunes/carrots/cauliflowers/artichokes/oranges");
-	filterer.file_does_pass("raw-prunes/oranges/bananas");
-	filterer.dir_does_pass("raw-prunes/carrots/cauliflowers/oranges");
-	filterer.dir_does_pass("raw-prunes/carrots/cauliflowers/artichokes/oranges");
+	let filterer = filt(&[not_filter("/prunes").in_path()]).await;
 
 	filterer.file_doesnt_pass("prunes");
-	filterer.file_doesnt_pass("prunes/carrots/cauliflowers/oranges");
-	filterer.file_doesnt_pass("prunes/carrots/cauliflowers/artichokes/oranges");
-	filterer.file_doesnt_pass("prunes/oranges/bananas");
 	filterer.dir_doesnt_pass("prunes");
-	filterer.dir_doesnt_pass("prunes/carrots/cauliflowers/oranges");
-	filterer.dir_doesnt_pass("prunes/carrots/cauliflowers/artichokes/oranges");
+	watchexec_v1_confusing_suite(filterer);
 }
 
 #[tokio::test]
-#[ignore]
 async fn ignore_folder_with_bare_and_trailing_slash() {
-	let filterer = filt(&[not_filter("prunes/")]).await;
+	let filterer = filt(&[not_filter("prunes/").in_path()]).await;
 
-	filterer.file_does_pass("apples");
-	filterer.file_does_pass("apples/carrots/cauliflowers/oranges");
-	filterer.file_does_pass("apples/carrots/cauliflowers/artichokes/oranges");
-	filterer.file_does_pass("apples/oranges/bananas");
-	filterer.dir_does_pass("apples");
-	filterer.dir_does_pass("apples/carrots/cauliflowers/oranges");
-	filterer.dir_does_pass("apples/carrots/cauliflowers/artichokes/oranges");
-
-	filterer.file_does_pass("raw-prunes");
-	filterer.dir_does_pass("raw-prunes");
-	filterer.file_does_pass("raw-prunes/carrots/cauliflowers/oranges");
-	filterer.file_does_pass("raw-prunes/carrots/cauliflowers/artichokes/oranges");
-	filterer.file_does_pass("raw-prunes/oranges/bananas");
-	filterer.dir_does_pass("raw-prunes/carrots/cauliflowers/oranges");
-	filterer.dir_does_pass("raw-prunes/carrots/cauliflowers/artichokes/oranges");
-
-	filterer.file_doesnt_pass("prunes");
-	filterer.file_doesnt_pass("prunes/carrots/cauliflowers/oranges");
-	filterer.file_doesnt_pass("prunes/carrots/cauliflowers/artichokes/oranges");
-	filterer.file_doesnt_pass("prunes/oranges/bananas");
+	filterer.file_does_pass("prunes");
 	filterer.dir_doesnt_pass("prunes");
-	filterer.dir_doesnt_pass("prunes/carrots/cauliflowers/oranges");
-	filterer.dir_doesnt_pass("prunes/carrots/cauliflowers/artichokes/oranges");
+	watchexec_v1_confusing_suite(filterer);
 }
 
 #[tokio::test]
-#[ignore]
 async fn ignore_folder_with_only_double_double_glob() {
-	let filterer = filt(&[not_filter("**/prunes/**")]).await;
+	let filterer = filt(&[not_filter("**/prunes/**").in_path()]).await;
 
-	filterer.file_does_pass("apples");
-	filterer.file_does_pass("apples/carrots/cauliflowers/oranges");
-	filterer.file_does_pass("apples/carrots/cauliflowers/artichokes/oranges");
-	filterer.file_does_pass("apples/oranges/bananas");
-	filterer.dir_does_pass("apples");
-	filterer.dir_does_pass("apples/carrots/cauliflowers/oranges");
-	filterer.dir_does_pass("apples/carrots/cauliflowers/artichokes/oranges");
-
-	filterer.file_does_pass("raw-prunes");
-	filterer.dir_does_pass("raw-prunes");
-	filterer.file_does_pass("raw-prunes/carrots/cauliflowers/oranges");
-	filterer.file_does_pass("raw-prunes/carrots/cauliflowers/artichokes/oranges");
-	filterer.file_does_pass("raw-prunes/oranges/bananas");
-	filterer.dir_does_pass("raw-prunes/carrots/cauliflowers/oranges");
-	filterer.dir_does_pass("raw-prunes/carrots/cauliflowers/artichokes/oranges");
-
-	filterer.file_doesnt_pass("prunes");
-	filterer.file_doesnt_pass("prunes/carrots/cauliflowers/oranges");
-	filterer.file_doesnt_pass("prunes/carrots/cauliflowers/artichokes/oranges");
-	filterer.file_doesnt_pass("prunes/oranges/bananas");
-	filterer.dir_doesnt_pass("prunes");
-	filterer.dir_doesnt_pass("prunes/carrots/cauliflowers/oranges");
-	filterer.dir_doesnt_pass("prunes/carrots/cauliflowers/artichokes/oranges");
+	filterer.file_does_pass("prunes");
+	filterer.dir_does_pass("prunes");
+	watchexec_v1_confusing_suite(filterer);
 }
 
 #[tokio::test]
-#[ignore]
 async fn ignore_folder_with_double_and_double_double_globs() {
-	let filterer = filt(&[not_filter("**/prunes"), not_filter("**/prunes/**")]).await;
-
-	filterer.file_does_pass("apples");
-	filterer.file_does_pass("apples/carrots/cauliflowers/oranges");
-	filterer.file_does_pass("apples/carrots/cauliflowers/artichokes/oranges");
-	filterer.file_does_pass("apples/oranges/bananas");
-	filterer.dir_does_pass("apples");
-	filterer.dir_does_pass("apples/carrots/cauliflowers/oranges");
-	filterer.dir_does_pass("apples/carrots/cauliflowers/artichokes/oranges");
-
-	filterer.file_does_pass("raw-prunes");
-	filterer.dir_does_pass("raw-prunes");
-	filterer.file_does_pass("raw-prunes/carrots/cauliflowers/oranges");
-	filterer.file_does_pass("raw-prunes/carrots/cauliflowers/artichokes/oranges");
-	filterer.file_does_pass("raw-prunes/oranges/bananas");
-	filterer.dir_does_pass("raw-prunes/carrots/cauliflowers/oranges");
-	filterer.dir_does_pass("raw-prunes/carrots/cauliflowers/artichokes/oranges");
+	let filterer = filt(&[
+		not_filter("**/prunes").in_path(),
+		not_filter("**/prunes/**").in_path(),
+	])
+	.await;
 
 	filterer.file_doesnt_pass("prunes");
-	filterer.file_doesnt_pass("prunes/carrots/cauliflowers/oranges");
-	filterer.file_doesnt_pass("prunes/carrots/cauliflowers/artichokes/oranges");
-	filterer.file_doesnt_pass("prunes/oranges/bananas");
 	filterer.dir_doesnt_pass("prunes");
-	filterer.dir_doesnt_pass("prunes/carrots/cauliflowers/oranges");
-	filterer.dir_doesnt_pass("prunes/carrots/cauliflowers/artichokes/oranges");
+	watchexec_v1_confusing_suite(filterer);
 }
