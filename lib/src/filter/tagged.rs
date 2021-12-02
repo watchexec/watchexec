@@ -138,8 +138,10 @@ impl TaggedFilterer {
 						if let Some(igs) = gc.as_ref() {
 							trace!("checking against compiled Glob filters");
 							match if path.strip_prefix(&self.origin).is_ok() {
+								trace!("checking against path or parents");
 								igs.matched_path_or_any_parents(path, is_dir)
 							} else {
+								trace!("checking against path only");
 								igs.matched(path, is_dir)
 							} {
 								Match::None => {
@@ -147,8 +149,12 @@ impl TaggedFilterer {
 									tag_match = false;
 								}
 								Match::Ignore(glob) => {
-									trace!(?glob, "positive match (pass)");
-									tag_match = true;
+									if glob.from().map_or(true, |f| path.strip_prefix(f).is_ok()) {
+										trace!(?glob, "positive match (pass)");
+										tag_match = true;
+									} else {
+										trace!(?glob, "positive match, but not in scope (ignore)");
+									}
 								}
 								Match::Whitelist(glob) => {
 									trace!(?glob, "negative match (ignore)");
@@ -160,8 +166,10 @@ impl TaggedFilterer {
 						if let Some(ngs) = ngc.as_ref() {
 							trace!("checking against compiled NotGlob filters");
 							match if path.strip_prefix(&self.origin).is_ok() {
+								trace!("checking against path or parents");
 								ngs.matched_path_or_any_parents(path, is_dir)
 							} else {
+								trace!("checking against path only");
 								ngs.matched(path, is_dir)
 							} {
 								Match::None => {
@@ -169,8 +177,12 @@ impl TaggedFilterer {
 									tag_match = true;
 								}
 								Match::Ignore(glob) => {
-									trace!(?glob, "positive match (fail)");
-									tag_match = false;
+									if glob.from().map_or(true, |f| path.strip_prefix(f).is_ok()) {
+										trace!(?glob, "positive match (fail)");
+										tag_match = false;
+									} else {
+										trace!(?glob, "positive match, but not in scope (ignore)");
+									}
 								}
 								Match::Whitelist(glob) => {
 									trace!(?glob, "negative match (pass)");

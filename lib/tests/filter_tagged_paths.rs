@@ -1,4 +1,7 @@
-use std::{path::PathBuf, sync::Arc};
+use std::{
+	path::{Path, PathBuf},
+	sync::Arc,
+};
 
 use watchexec::{
 	error::RuntimeError,
@@ -20,6 +23,8 @@ trait Harness {
 		let origin = dunce::canonicalize(".").unwrap();
 		let full_path = if let Some(suf) = path.strip_prefix("/test/") {
 			origin.join(suf)
+		} else if Path::new(path).has_root() {
+			path.into()
 		} else {
 			origin.join(path)
 		};
@@ -111,13 +116,20 @@ fn not_filter(pat: &str) -> Filter {
 }
 
 trait FilterExt {
-	fn in_path(self) -> Self;
+	fn in_path(self) -> Self
+	where
+		Self: Sized,
+	{
+		self.in_subpath("")
+	}
+
+	fn in_subpath(self, sub: impl AsRef<Path>) -> Self;
 }
 
 impl FilterExt for Filter {
-	fn in_path(mut self) -> Self {
+	fn in_subpath(mut self, sub: impl AsRef<Path>) -> Self {
 		let origin = dunce::canonicalize(".").unwrap();
-		self.in_path = Some(origin);
+		self.in_path = Some(origin.join(sub));
 		self
 	}
 }
@@ -435,6 +447,62 @@ async fn ignores_take_precedence() {
 	filterer.file_doesnt_pass("/test/foo/bar/package.json");
 	filterer.dir_doesnt_pass("/test/Cargo.toml");
 	filterer.dir_doesnt_pass("/test/package.json");
+	filterer.file_does_pass("FINAL-FINAL.docx");
+}
+
+#[tokio::test]
+async fn scopes_global() {
+	let filterer = filt(&[not_filter("*.toml")]).await;
+
+	filterer.file_doesnt_pass("Cargo.toml");
+	filterer.dir_doesnt_pass("Cargo.toml");
+
+	filterer.file_doesnt_pass("/outside/Cargo.toml");
+	filterer.dir_doesnt_pass("/outside/Cargo.toml");
+
+	filterer.file_does_pass("/outside/package.json");
+	filterer.dir_does_pass("/outside/package.json");
+
+	filterer.file_does_pass("package.json");
+	filterer.file_does_pass("FINAL-FINAL.docx");
+}
+
+#[tokio::test]
+async fn scopes_local() {
+	let filterer = filt(&[not_filter("*.toml").in_path()]).await;
+
+	filterer.file_doesnt_pass("/test/Cargo.toml");
+	filterer.dir_doesnt_pass("/test/Cargo.toml");
+
+	filterer.file_does_pass("/outside/Cargo.toml");
+	filterer.dir_does_pass("/outside/Cargo.toml");
+
+	filterer.file_does_pass("/outside/package.json");
+	filterer.dir_does_pass("/outside/package.json");
+
+	filterer.file_does_pass("package.json");
+	filterer.file_does_pass("FINAL-FINAL.docx");
+}
+
+#[tokio::test]
+async fn scopes_sublocal() {
+	let filterer = filt(&[not_filter("*.toml").in_subpath("src")]).await;
+
+	filterer.file_doesnt_pass("/test/src/Cargo.toml");
+	filterer.dir_doesnt_pass("/test/src/Cargo.toml");
+
+	filterer.file_does_pass("/test/Cargo.toml");
+	filterer.dir_does_pass("/test/Cargo.toml");
+	filterer.file_does_pass("/test/tests/Cargo.toml");
+	filterer.dir_does_pass("/test/tests/Cargo.toml");
+
+	filterer.file_does_pass("/outside/Cargo.toml");
+	filterer.dir_does_pass("/outside/Cargo.toml");
+
+	filterer.file_does_pass("/outside/package.json");
+	filterer.dir_does_pass("/outside/package.json");
+
+	filterer.file_does_pass("package.json");
 	filterer.file_does_pass("FINAL-FINAL.docx");
 }
 
