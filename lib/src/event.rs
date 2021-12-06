@@ -14,9 +14,17 @@ use std::{
 	process::ExitStatus,
 };
 
-use notify::EventKind;
+use filekind::FileEventKind;
 
 use crate::signal::{process::SubSignal, source::MainSignal};
+
+/// Re-export of the Notify file event types.
+pub mod filekind {
+	pub use notify::event::{
+		AccessKind, AccessMode, CreateKind, DataChange, EventKind as FileEventKind, MetadataKind,
+		ModifyKind, RemoveKind, RenameMode,
+	};
+}
 
 /// An event, as far as watchexec cares about.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -42,7 +50,7 @@ pub enum Tag {
 	},
 
 	/// Kind of a filesystem event (create, remove, modify, etc).
-	FileEventKind(EventKind),
+	FileEventKind(FileEventKind),
 
 	/// The general source of the event.
 	Source(Source),
