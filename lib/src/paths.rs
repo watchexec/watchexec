@@ -6,7 +6,7 @@ use std::{
 	path::{Path, PathBuf},
 };
 
-use crate::event::{Event, Tag};
+use crate::event::{Event, FileType, Tag};
 
 /// Returns the longest common prefix of all given paths.
 ///
@@ -72,15 +72,30 @@ pub fn summarise_events_to_env<'events>(
 	#[cfg(not(unix))]
 	const ENV_SEP: &str = ";";
 
-	let mut all_paths = Vec::new();
+	let mut all_trunks = Vec::new();
 	let mut kind_buckets = HashMap::new();
 	for event in events {
-		let paths = event.paths().map(|(p, _)| p.to_owned()).collect::<Vec<_>>();
+		let (paths, trunks): (Vec<_>, Vec<_>) = event
+			.paths()
+			.map(|(p, ft)| {
+				(
+					p.to_owned(),
+					match ft {
+						Some(FileType::Dir) => None,
+						_ => p.parent(),
+					}
+					.unwrap_or(p)
+					.to_owned(),
+				)
+			})
+			.unzip();
+		tracing::trace!(?paths, ?trunks, "event paths");
+
 		if paths.is_empty() {
 			continue;
 		}
 
-		all_paths.extend(paths.clone());
+		all_trunks.extend(trunks.clone());
 
 		// usually there's only one but just in case
 		for kind in event.tags.iter().filter_map(|t| {
@@ -97,7 +112,7 @@ pub fn summarise_events_to_env<'events>(
 		}
 	}
 
-	let common_path = common_prefix(all_paths);
+	let common_path = common_prefix(all_trunks);
 
 	let mut grouped_buckets = HashMap::new();
 	for (kind, paths) in kind_buckets {
