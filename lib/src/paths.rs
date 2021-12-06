@@ -54,21 +54,19 @@ where
 
 /// Summarise [`Event`]s as a set of environment variables by category.
 ///
-/// - `WRITTEN` -> `Modify(Data(_))`, `Access(Close(Write))`
+/// - `CREATED` -> `Create(_)`
 /// - `META_CHANGED` -> `Modify(Metadata(_))`
 /// - `REMOVED` -> `Remove(_)`
-/// - `CREATED` -> `Create(_)`
 /// - `RENAMED` -> `Modify(Name(_))`
+/// - `WRITTEN` -> `Modify(Data(_))`, `Access(Close(Write))`
 /// - `OTHERWISE_CHANGED` -> anything else
 /// - plus `COMMON_PATH` if there is a common prefix of all paths, in which case all paths are also
 ///   truncated to omit that common prefix.
 ///
 /// It ignores non-path events and pathed events without event kind.
-pub fn summarise_events_to_env<I, E>(events: I) -> HashMap<&'static OsStr, OsString>
-where
-	I: IntoIterator<Item = E>,
-	E: AsRef<Event>,
-{
+pub fn summarise_events_to_env<'events>(
+	events: impl IntoIterator<Item = &'events Event>,
+) -> HashMap<&'static OsStr, OsString> {
 	#[cfg(unix)]
 	const ENV_SEP: &str = ":";
 	#[cfg(not(unix))]
@@ -77,7 +75,6 @@ where
 	let mut all_paths = Vec::new();
 	let mut kind_buckets = HashMap::new();
 	for event in events {
-		let event = event.as_ref();
 		let paths = event.paths().map(|(p, _)| p.to_owned()).collect::<Vec<_>>();
 		if paths.is_empty() {
 			continue;
