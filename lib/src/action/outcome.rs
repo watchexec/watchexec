@@ -85,3 +85,38 @@ impl Outcome {
 		}
 	}
 }
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	#[test]
+	fn simple_if_running() {
+		assert_eq!(
+			Outcome::if_running(Outcome::Stop, Outcome::Start).resolve(true),
+			Outcome::Stop
+		);
+		assert_eq!(
+			Outcome::if_running(Outcome::Stop, Outcome::Start).resolve(false),
+			Outcome::Start
+		);
+	}
+
+	#[test]
+	fn simple_passthrough() {
+		assert_eq!(Outcome::Wait.resolve(true), Outcome::Wait);
+		assert_eq!(Outcome::Clear.resolve(false), Outcome::Clear);
+	}
+
+	#[test]
+	fn nested_if_runnings() {
+		assert_eq!(
+			Outcome::both(
+				Outcome::if_running(Outcome::Stop, Outcome::Start),
+				Outcome::if_running(Outcome::Wait, Outcome::Exit)
+			)
+			.resolve(true),
+			Outcome::Both(Box::new(Outcome::Stop), Box::new(Outcome::Wait))
+		);
+	}
+}
