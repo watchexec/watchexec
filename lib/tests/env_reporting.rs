@@ -25,12 +25,10 @@ fn ospath(path: &str) -> OsString {
 }
 
 fn event(path: &str, kind: FileEventKind) -> Event {
-	tracing_subscriber::fmt::try_init().ok();
-	let path = dunce::canonicalize(".").unwrap().join(path);
 	Event {
 		tags: vec![
 			Tag::Path {
-				path,
+				path: ospath(path).into(),
 				file_type: None,
 			},
 			Tag::FileEventKind(kind),
@@ -177,9 +175,10 @@ fn single_type_multipath() {
 				OsStr::new("CREATED"),
 				OsString::from(
 					"".to_string()
-						+ "root.txt" + ENV_SEP + "sub/folder.txt"
+						+ "deeper/sub/folder.txt"
 						+ ENV_SEP + "dom/folder.txt"
-						+ ENV_SEP + "deeper/sub/folder.txt"
+						+ ENV_SEP + "root.txt" + ENV_SEP
+						+ "sub/folder.txt"
 				)
 			),
 			(OsStr::new("COMMON_PATH"), ospath("")),
@@ -198,7 +197,7 @@ fn single_type_divergent_paths() {
 		HashMap::from([
 			(
 				OsStr::new("CREATED"),
-				OsString::from("".to_string() + "sub/folder.txt" + ENV_SEP + "dom/folder.txt")
+				OsString::from("".to_string() + "dom/folder.txt" + ENV_SEP + "sub/folder.txt")
 			),
 			(OsStr::new("COMMON_PATH"), ospath("")),
 		])
@@ -229,6 +228,101 @@ fn multitype_multipath() {
 			(
 				OsStr::new("OTHERWISE_CHANGED"),
 				OsString::from("deeper/sub/folder.txt"),
+			),
+			(OsStr::new("COMMON_PATH"), ospath("")),
+		])
+	);
+}
+
+#[test]
+fn multiple_paths_in_one_event() {
+	let events = vec![Event {
+		tags: vec![
+			Tag::Path {
+				path: ospath("one.txt").into(),
+				file_type: None,
+			},
+			Tag::Path {
+				path: ospath("two.txt").into(),
+				file_type: None,
+			},
+			Tag::FileEventKind(FileEventKind::Any),
+		],
+		metadata: Default::default(),
+	}];
+	assert_eq!(
+		summarise_events_to_env(&events),
+		HashMap::from([
+			(
+				OsStr::new("OTHERWISE_CHANGED"),
+				OsString::from("".to_string() + "one.txt" + ENV_SEP + "two.txt")
+			),
+			(OsStr::new("COMMON_PATH"), ospath("")),
+		])
+	);
+}
+
+#[test]
+fn mixed_non_paths_events() {
+	let events = vec![
+		event("one.txt", FileEventKind::Any),
+		Event {
+			tags: vec![Tag::Process(1234)],
+			metadata: Default::default(),
+		},
+		event("two.txt", FileEventKind::Any),
+		Event {
+			tags: vec![Tag::FileEventKind(FileEventKind::Any)],
+			metadata: Default::default(),
+		},
+	];
+	assert_eq!(
+		summarise_events_to_env(&events),
+		HashMap::from([
+			(
+				OsStr::new("OTHERWISE_CHANGED"),
+				OsString::from("".to_string() + "one.txt" + ENV_SEP + "two.txt")
+			),
+			(OsStr::new("COMMON_PATH"), ospath("")),
+		])
+	);
+}
+
+#[test]
+fn only_non_paths_events() {
+	let events = vec![
+		Event {
+			tags: vec![Tag::Process(1234)],
+			metadata: Default::default(),
+		},
+		Event {
+			tags: vec![Tag::FileEventKind(FileEventKind::Any)],
+			metadata: Default::default(),
+		},
+	];
+	assert_eq!(summarise_events_to_env(&events), HashMap::new());
+}
+
+#[test]
+fn multipath_is_sorted() {
+	let events = vec![
+		event("0123.txt", FileEventKind::Any),
+		event("a.txt", FileEventKind::Any),
+		event("b.txt", FileEventKind::Any),
+		event("c.txt", FileEventKind::Any),
+		event("ᄁ.txt", FileEventKind::Any),
+	];
+	assert_eq!(
+		summarise_events_to_env(&events),
+		HashMap::from([
+			(
+				OsStr::new("OTHERWISE_CHANGED"),
+				OsString::from(
+					"".to_string()
+						+ "0123.txt" + ENV_SEP + "a.txt"
+						+ ENV_SEP + "b.txt" + ENV_SEP
+						+ "c.txt" + ENV_SEP + "ᄁ.txt"
+				)
 			),
 			(OsStr::new("COMMON_PATH"), ospath("")),
 		])

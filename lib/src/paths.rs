@@ -60,10 +60,10 @@ where
 /// - `RENAMED` -> `Modify(Name(_))`
 /// - `WRITTEN` -> `Modify(Data(_))`, `Access(Close(Write))`
 /// - `OTHERWISE_CHANGED` -> anything else
-/// - plus `COMMON_PATH` if there is a common prefix of all paths, in which case all paths are also
-///   truncated to omit that common prefix.
+/// - plus `COMMON_PATH` with the common prefix of all paths (even if there's only one path).
 ///
-/// It ignores non-path events and pathed events without event kind.
+/// It ignores non-path events and pathed events without event kind. Multiple events are sorted in
+/// byte order and joined with the platform-specific path separator (`:` for unix, `;` for Windows).
 pub fn summarise_events_to_env<'events>(
 	events: impl IntoIterator<Item = &'events Event>,
 ) -> HashMap<&'static OsStr, OsString> {
@@ -141,16 +141,17 @@ pub fn summarise_events_to_env<'events>(
 
 	let mut res: HashMap<&'static OsStr, OsString> = grouped_buckets
 		.into_iter()
-		.map(|(kind, paths)| {
+		.map(|(kind, mut paths)| {
 			let mut joined =
 				OsString::with_capacity(paths.iter().map(|p| p.len()).sum::<usize>() + paths.len());
 
-			for (i, path) in paths.into_iter().enumerate() {
+			paths.sort();
+			paths.into_iter().enumerate().for_each(|(i, path)| {
 				if i > 0 {
 					joined.push(ENV_SEP);
 				}
 				joined.push(path);
-			}
+			});
 
 			(kind, joined)
 		})
