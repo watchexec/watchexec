@@ -38,7 +38,9 @@ enum Intervention {
 pub struct Supervisor {
 	id: u32,
 	intervene: Sender<Intervention>,
-	handle: JoinHandle<()>,
+
+	#[allow(dead_code)]
+	handle: JoinHandle<()>, // see TODO in ::spawn()
 
 	// why this and not a watch::channel? two reasons:
 	// 1. I tried the watch and ran into some race conditions???
