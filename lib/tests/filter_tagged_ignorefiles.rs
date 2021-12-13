@@ -1,0 +1,279 @@
+use std::{
+	path::{Path, PathBuf},
+	sync::Arc,
+};
+
+use watchexec::{
+	error::RuntimeError,
+	event::{Event, FileType, Tag},
+	filter::{tagged::TaggedFilterer, Filterer},
+	ignore_files::IgnoreFile,
+	project::ProjectType,
+};
+
+trait Harness {
+	fn check_path(
+		&self,
+		path: PathBuf,
+		file_type: Option<FileType>,
+	) -> std::result::Result<bool, RuntimeError>;
+
+	fn path_pass(&self, path: &str, file_type: Option<FileType>, pass: bool) {
+		let origin = dunce::canonicalize(".").unwrap();
+		let full_path = if let Some(suf) = path.strip_prefix("/test/") {
+			origin.join(suf)
+		} else if Path::new(path).has_root() {
+			path.into()
+		} else {
+			origin.join(path)
+		};
+
+		tracing::info!(?path, ?file_type, ?pass, "check");
+
+		assert_eq!(
+			self.check_path(full_path, file_type).unwrap(),
+			pass,
+			"{} {:?} (expected {})",
+			match file_type {
+				Some(FileType::File) => "file",
+				Some(FileType::Dir) => "dir",
+				Some(FileType::Symlink) => "symlink",
+				Some(FileType::Other) => "other",
+				None => "path",
+			},
+			path,
+			if pass { "pass" } else { "fail" }
+		);
+	}
+
+	fn file_does_pass(&self, path: &str) {
+		self.path_pass(path, Some(FileType::File), true);
+	}
+
+	fn file_doesnt_pass(&self, path: &str) {
+		self.path_pass(path, Some(FileType::File), false);
+	}
+
+	fn dir_does_pass(&self, path: &str) {
+		self.path_pass(path, Some(FileType::Dir), true);
+	}
+
+	fn dir_doesnt_pass(&self, path: &str) {
+		self.path_pass(path, Some(FileType::Dir), false);
+	}
+
+	fn unk_does_pass(&self, path: &str) {
+		self.path_pass(path, None, true);
+	}
+
+	fn unk_doesnt_pass(&self, path: &str) {
+		self.path_pass(path, None, false);
+	}
+}
+
+impl Harness for TaggedFilterer {
+	fn check_path(
+		&self,
+		path: PathBuf,
+		file_type: Option<FileType>,
+	) -> std::result::Result<bool, RuntimeError> {
+		let event = Event {
+			tags: vec![Tag::Path { path, file_type }],
+			metadata: Default::default(),
+		};
+
+		self.check_event(&event)
+	}
+}
+
+async fn filt(origin: &str, ignore_files: &[IgnoreFile]) -> Arc<TaggedFilterer> {
+	let origin = dunce::canonicalize(".").unwrap().join(origin);
+	let filterer = TaggedFilterer::new(origin.clone(), origin).expect("creating filterer");
+	for file in ignore_files {
+		filterer
+			.add_ignore_file(file)
+			.await
+			.expect("adding ignore file");
+	}
+	tracing_subscriber::fmt::try_init().ok();
+	filterer
+}
+
+fn file(name: &str) -> IgnoreFile {
+	let path = dunce::canonicalize(".")
+		.unwrap()
+		.join("tests")
+		.join("ignores")
+		.join(name);
+	IgnoreFile {
+		path,
+		applies_in: None,
+		applies_to: None,
+	}
+}
+
+trait Applies {
+	fn applies_in(self, origin: &str) -> Self;
+	fn applies_to(self, project_type: ProjectType) -> Self;
+}
+
+impl Applies for IgnoreFile {
+	fn applies_in(mut self, origin: &str) -> Self {
+		self.applies_in = Some(origin.into());
+		self
+	}
+
+	fn applies_to(mut self, project_type: ProjectType) -> Self {
+		self.applies_to = Some(project_type);
+		self
+	}
+}
+
+#[tokio::test]
+async fn folders() {
+	let filterer = filt("", &[file("folders")]).await;
+
+	filterer.file_doesnt_pass("prunes");
+	filterer.dir_doesnt_pass("prunes");
+	folders_suite(&filterer, "prunes");
+
+	filterer.file_doesnt_pass("apricots");
+	filterer.dir_doesnt_pass("apricots");
+	folders_suite(&filterer, "apricots");
+
+	filterer.file_does_pass("cherries");
+	filterer.dir_doesnt_pass("cherries");
+	folders_suite(&filterer, "cherries");
+
+	filterer.file_does_pass("grapes");
+	filterer.dir_does_pass("grapes");
+	folders_suite(&filterer, "grapes");
+
+	filterer.file_doesnt_pass("feijoa");
+	filterer.dir_doesnt_pass("feijoa");
+	folders_suite(&filterer, "feijoa");
+}
+
+fn folders_suite(filterer: &TaggedFilterer, name: &str) {
+	filterer.file_does_pass("apples");
+	filterer.file_does_pass("apples/carrots/cauliflowers/oranges");
+	filterer.file_does_pass("apples/carrots/cauliflowers/artichokes/oranges");
+	filterer.file_does_pass("apples/oranges/bananas");
+	filterer.dir_does_pass("apples");
+	filterer.dir_does_pass("apples/carrots/cauliflowers/oranges");
+	filterer.dir_does_pass("apples/carrots/cauliflowers/artichokes/oranges");
+
+	filterer.file_does_pass(&format!("raw-{}", name));
+	filterer.dir_does_pass(&format!("raw-{}", name));
+	filterer.file_does_pass(&format!("raw-{}/carrots/cauliflowers/oranges", name));
+	filterer.file_does_pass(&format!("raw-{}/oranges/bananas", name));
+	filterer.dir_does_pass(&format!("raw-{}/carrots/cauliflowers/oranges", name));
+	filterer.file_does_pass(&format!(
+		"raw-{}/carrots/cauliflowers/artichokes/oranges",
+		name
+	));
+	filterer.dir_does_pass(&format!(
+		"raw-{}/carrots/cauliflowers/artichokes/oranges",
+		name
+	));
+
+	filterer.dir_doesnt_pass(&format!("{}/carrots/cauliflowers/oranges", name));
+	filterer.dir_doesnt_pass(&format!("{}/carrots/cauliflowers/artichokes/oranges", name));
+	filterer.file_doesnt_pass(&format!("{}/carrots/cauliflowers/oranges", name));
+	filterer.file_doesnt_pass(&format!("{}/carrots/cauliflowers/artichokes/oranges", name));
+	filterer.file_doesnt_pass(&format!("{}/oranges/bananas", name));
+}
+
+#[tokio::test]
+async fn globs() {
+	let filterer = filt("", &[file("globs")]).await;
+
+	// Unmatched
+	filterer.file_does_pass("FINAL-FINAL.docx");
+	filterer.dir_does_pass("/a/folder");
+	filterer.file_does_pass("rat");
+	filterer.file_does_pass("foo/bar/rat");
+	filterer.file_does_pass("/foo/bar/rat");
+
+	// Cargo.toml
+	filterer.file_doesnt_pass("Cargo.toml");
+	filterer.dir_doesnt_pass("Cargo.toml");
+	filterer.file_does_pass("Cargo.json");
+
+	// package.json
+	filterer.file_doesnt_pass("package.json");
+	filterer.dir_doesnt_pass("package.json");
+	filterer.file_does_pass("package.toml");
+
+	// *.gemspec
+	filterer.file_doesnt_pass("pearl.gemspec");
+	filterer.dir_doesnt_pass("sapphire.gemspec");
+	filterer.file_doesnt_pass(".gemspec");
+	filterer.file_does_pass("diamond.gemspecial");
+
+	// test-*
+	filterer.file_doesnt_pass("test-unit");
+	filterer.dir_doesnt_pass("test-integration");
+	filterer.file_does_pass("tester-helper");
+
+	// *.sw*
+	filterer.file_doesnt_pass("source.file.swa");
+	filterer.file_doesnt_pass(".source.file.swb");
+	filterer.dir_doesnt_pass("source.folder.swd");
+	filterer.file_does_pass("other.thing.s_w");
+
+	// sources.*/
+	filterer.file_does_pass("sources.waters");
+	filterer.dir_doesnt_pass("sources.rivers");
+
+	// /output.*
+	filterer.file_doesnt_pass("output.toml");
+	filterer.file_doesnt_pass("output.json");
+	filterer.dir_doesnt_pass("output.toml");
+	filterer.unk_doesnt_pass("output.toml");
+	filterer.file_does_pass("foo/output.toml");
+	filterer.dir_does_pass("foo/output.toml");
+
+	// **/possum
+	filterer.file_doesnt_pass("possum");
+	filterer.file_doesnt_pass("foo/bar/possum");
+	filterer.file_doesnt_pass("/foo/bar/possum");
+	filterer.dir_doesnt_pass("possum");
+	filterer.dir_doesnt_pass("foo/bar/possum");
+	filterer.dir_doesnt_pass("/foo/bar/possum");
+
+	// zebra/**
+	filterer.file_does_pass("zebra");
+	filterer.file_doesnt_pass("zebra/foo/bar");
+	filterer.file_does_pass("/zebra/foo/bar");
+	filterer.file_doesnt_pass("/test/zebra/foo/bar");
+	filterer.dir_does_pass("zebra");
+	filterer.dir_does_pass("foo/bar/zebra");
+	filterer.dir_does_pass("/foo/bar/zebra");
+	filterer.dir_doesnt_pass("zebra/foo/bar");
+	filterer.dir_does_pass("/zebra/foo/bar");
+	filterer.dir_doesnt_pass("/test/zebra/foo/bar");
+
+	// elep/**/hant
+	filterer.file_doesnt_pass("elep/carrots/hant");
+	filterer.file_doesnt_pass("elep/carrots/cauliflowers/hant");
+	filterer.file_doesnt_pass("elep/carrots/cauliflowers/artichokes/hant");
+	filterer.dir_doesnt_pass("elep/carrots/hant");
+	filterer.dir_doesnt_pass("elep/carrots/cauliflowers/hant");
+	filterer.dir_doesnt_pass("elep/carrots/cauliflowers/artichokes/hant");
+	filterer.file_doesnt_pass("elep/hant/bananas");
+	filterer.dir_doesnt_pass("elep/hant/bananas");
+
+	// song/**/bird/
+	filterer.file_does_pass("song/carrots/bird");
+	filterer.file_does_pass("song/carrots/cauliflowers/bird");
+	filterer.file_does_pass("song/carrots/cauliflowers/artichokes/bird");
+	filterer.dir_doesnt_pass("song/carrots/bird");
+	filterer.dir_doesnt_pass("song/carrots/cauliflowers/bird");
+	filterer.dir_doesnt_pass("song/carrots/cauliflowers/artichokes/bird");
+	filterer.unk_does_pass("song/carrots/bird");
+	filterer.unk_does_pass("song/carrots/cauliflowers/bird");
+	filterer.unk_does_pass("song/carrots/cauliflowers/artichokes/bird");
+	filterer.file_doesnt_pass("song/bird/bananas");
+	filterer.dir_doesnt_pass("song/bird/bananas");
+}
