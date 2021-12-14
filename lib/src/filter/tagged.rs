@@ -286,7 +286,6 @@ impl TaggedFilterer {
 	// /foo/bar                /foo/bar/baz.txt          /baz.*                 pass
 	// /foo/bar                /foo/bar/baz.txt          /blah                  fail
 	// /foo/quz                /foo/bar/baz.txt          /baz.*                 skip
-	// TODO: lots of tests
 
 	// Ok(Some(bool)) => the match was applied, bool is the result
 	// Ok(None) => for some precondition, the match was not done (mismatched tag, out of context, …)
@@ -422,7 +421,11 @@ impl TaggedFilterer {
 
 		let mut builder = GitignoreBuilder::new(&self.origin);
 		for filter in globs {
-			if let Pattern::Glob(glob) = filter.pat {
+			if let Pattern::Glob(mut glob) = filter.pat {
+				if filter.negate {
+					glob.insert(0, '!');
+				}
+
 				trace!(?op_filter, in_path=?filter.in_path, ?glob, "adding new glob line");
 				builder
 					.add_line(filter.in_path, &glob)

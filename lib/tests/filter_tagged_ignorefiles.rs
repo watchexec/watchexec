@@ -277,3 +277,33 @@ async fn globs() {
 	filterer.file_doesnt_pass("song/bird/bananas");
 	filterer.dir_doesnt_pass("song/bird/bananas");
 }
+
+#[tokio::test]
+async fn negate() {
+	let filterer = filt("", &[file("negate")]).await;
+
+	filterer.file_does_pass("yeah");
+	filterer.file_doesnt_pass("nah");
+	filterer.file_does_pass("nah.yeah");
+}
+
+#[tokio::test]
+async fn allowlist() {
+	let filterer = filt("", &[file("allowlist")]).await;
+
+	filterer.file_does_pass("mod.go");
+	filterer.file_does_pass("foo.go");
+	filterer.file_does_pass("go.sum");
+	filterer.file_does_pass("go.mod");
+	filterer.file_does_pass("README.md");
+	filterer.file_does_pass("LICENSE");
+	filterer.file_does_pass(".gitignore");
+
+	filterer.file_doesnt_pass("evil.sum");
+	filterer.file_doesnt_pass("evil.mod");
+	filterer.file_doesnt_pass("gofile.gone");
+	filterer.file_doesnt_pass("go.js");
+	filterer.file_doesnt_pass("README.asciidoc");
+	filterer.file_doesnt_pass("LICENSE.txt");
+	filterer.file_doesnt_pass("foo/.gitignore");
+}

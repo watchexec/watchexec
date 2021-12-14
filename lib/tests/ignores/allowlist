@@ -1,0 +1,14 @@
+# from https://github.com/github/gitignore
+
+*
+
+!/.gitignore
+
+!*.go
+!go.sum
+!go.mod
+
+!README.md
+!LICENSE
+
+!*/
