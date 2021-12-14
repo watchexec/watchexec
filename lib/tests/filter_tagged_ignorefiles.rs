@@ -88,14 +88,15 @@ impl Harness for TaggedFilterer {
 
 async fn filt(origin: &str, ignore_files: &[IgnoreFile]) -> Arc<TaggedFilterer> {
 	let origin = dunce::canonicalize(".").unwrap().join(origin);
+	tracing_subscriber::fmt::try_init().ok();
 	let filterer = TaggedFilterer::new(origin.clone(), origin).expect("creating filterer");
 	for file in ignore_files {
+		tracing::info!(?file, "loading ignore file");
 		filterer
 			.add_ignore_file(file)
 			.await
 			.expect("adding ignore file");
 	}
-	tracing_subscriber::fmt::try_init().ok();
 	filterer
 }
 
@@ -119,7 +120,8 @@ trait Applies {
 
 impl Applies for IgnoreFile {
 	fn applies_in(mut self, origin: &str) -> Self {
-		self.applies_in = Some(origin.into());
+		let origin = dunce::canonicalize(".").unwrap().join(origin);
+		self.applies_in = Some(origin);
 		self
 	}
 
@@ -306,4 +308,37 @@ async fn allowlist() {
 	filterer.file_doesnt_pass("README.asciidoc");
 	filterer.file_doesnt_pass("LICENSE.txt");
 	filterer.file_doesnt_pass("foo/.gitignore");
+}
+
+#[tokio::test]
+async fn scopes() {
+	let filterer = filt(
+		"",
+		&[
+			file("scopes-global"),
+			file("scopes-local").applies_in(""),
+			file("scopes-sublocal").applies_in("tests"),
+		],
+	)
+	.await;
+
+	filterer.file_doesnt_pass("global.a");
+	filterer.file_doesnt_pass("/global.b");
+	filterer.file_doesnt_pass("tests/global.c");
+
+	filterer.file_doesnt_pass("local.a");
+	filterer.file_does_pass("/local.b");
+	filterer.file_doesnt_pass("tests/local.c");
+
+	filterer.file_does_pass("sublocal.a");
+	filterer.file_does_pass("/sublocal.b");
+	filterer.file_doesnt_pass("tests/sublocal.c");
+}
+
+#[tokio::test]
+async fn self_ignored() {
+	let filterer = filt("", &[file("self.ignore").applies_in("tests/ignores")]).await;
+
+	filterer.file_doesnt_pass("tests/ignores/self.ignore");
+	filterer.file_does_pass("self.ignore");
 }
