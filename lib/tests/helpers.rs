@@ -3,12 +3,13 @@
 use std::{
 	ffi::OsString,
 	path::{Path, PathBuf},
+	str::FromStr,
 	sync::Arc,
 };
 
 use watchexec::{
 	error::RuntimeError,
-	event::{Event, FileType, Tag},
+	event::{filekind::FileEventKind, Event, FileType, ProcessEnd, Source, Tag},
 	filter::{
 		globset::GlobsetFilterer,
 		tagged::{Filter, Matcher, Op, Pattern, TaggedFilterer},
@@ -16,13 +17,14 @@ use watchexec::{
 	},
 	ignore_files::IgnoreFile,
 	project::ProjectType,
+	signal::source::MainSignal,
 };
 
 pub mod globset {
 	pub use super::file;
 	pub use super::globset_filt as filt;
 	pub use super::Applies;
-	pub use super::Harness;
+	pub use super::PathHarness;
 }
 
 pub mod globset_ig {
@@ -35,8 +37,9 @@ pub mod tagged {
 	pub use super::tagged_filt as filt;
 	pub use super::Applies;
 	pub use super::FilterExt;
-	pub use super::Harness;
-	pub use super::{filter, not_filter};
+	pub use super::PathHarness;
+	pub use super::TaggedHarness;
+	pub use super::{filter, glob_filter, notglob_filter};
 }
 
 pub mod tagged_ig {
@@ -44,7 +47,7 @@ pub mod tagged_ig {
 	pub use super::tagged_igfilt as filt;
 }
 
-pub trait Harness {
+pub trait PathHarness {
 	fn check_path(
 		&self,
 		path: PathBuf,
@@ -104,7 +107,7 @@ pub trait Harness {
 	}
 }
 
-impl Harness for GlobsetFilterer {
+impl PathHarness for GlobsetFilterer {
 	fn check_path(
 		&self,
 		path: PathBuf,
@@ -119,7 +122,7 @@ impl Harness for GlobsetFilterer {
 	}
 }
 
-impl Harness for TaggedFilterer {
+impl PathHarness for TaggedFilterer {
 	fn check_path(
 		&self,
 		path: PathBuf,
@@ -127,6 +130,73 @@ impl Harness for TaggedFilterer {
 	) -> std::result::Result<bool, RuntimeError> {
 		let event = Event {
 			tags: vec![Tag::Path { path, file_type }],
+			metadata: Default::default(),
+		};
+
+		self.check_event(&event)
+	}
+}
+
+pub trait TaggedHarness {
+	fn check_tag(&self, tag: Tag) -> std::result::Result<bool, RuntimeError>;
+
+	fn tag_pass(&self, tag: Tag, pass: bool) {
+		tracing::info!(?tag, ?pass, "check");
+
+		assert_eq!(
+			self.check_tag(tag.clone()).unwrap(),
+			pass,
+			"{:?} (expected {})",
+			tag,
+			if pass { "pass" } else { "fail" }
+		);
+	}
+
+	fn fek_does_pass(&self, fek: FileEventKind) {
+		self.tag_pass(Tag::FileEventKind(fek), true);
+	}
+
+	fn fek_doesnt_pass(&self, fek: FileEventKind) {
+		self.tag_pass(Tag::FileEventKind(fek), false);
+	}
+
+	fn source_does_pass(&self, source: Source) {
+		self.tag_pass(Tag::Source(source), true);
+	}
+
+	fn source_doesnt_pass(&self, source: Source) {
+		self.tag_pass(Tag::Source(source), false);
+	}
+
+	fn pid_does_pass(&self, pid: u32) {
+		self.tag_pass(Tag::Process(pid), true);
+	}
+
+	fn pid_doesnt_pass(&self, pid: u32) {
+		self.tag_pass(Tag::Process(pid), false);
+	}
+
+	fn signal_does_pass(&self, sig: MainSignal) {
+		self.tag_pass(Tag::Signal(sig), true);
+	}
+
+	fn signal_doesnt_pass(&self, sig: MainSignal) {
+		self.tag_pass(Tag::Signal(sig), false);
+	}
+
+	fn complete_does_pass(&self, exit: Option<ProcessEnd>) {
+		self.tag_pass(Tag::ProcessCompletion(exit), true);
+	}
+
+	fn complete_doesnt_pass(&self, exit: Option<ProcessEnd>) {
+		self.tag_pass(Tag::ProcessCompletion(exit), false);
+	}
+}
+
+impl TaggedHarness for TaggedFilterer {
+	fn check_tag(&self, tag: Tag) -> std::result::Result<bool, RuntimeError> {
+		let event = Event {
+			tags: vec![tag],
 			metadata: Default::default(),
 		};
 
@@ -213,7 +283,11 @@ impl Applies for IgnoreFile {
 	}
 }
 
-pub fn filter(pat: &str) -> Filter {
+pub fn filter(expr: &str) -> Filter {
+	Filter::from_str(expr).expect("parse filter")
+}
+
+pub fn glob_filter(pat: &str) -> Filter {
 	Filter {
 		in_path: None,
 		on: Matcher::Path,
@@ -223,7 +297,7 @@ pub fn filter(pat: &str) -> Filter {
 	}
 }
 
-pub fn not_filter(pat: &str) -> Filter {
+pub fn notglob_filter(pat: &str) -> Filter {
 	Filter {
 		in_path: None,
 		on: Matcher::Path,
