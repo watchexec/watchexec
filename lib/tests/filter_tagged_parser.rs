@@ -45,12 +45,26 @@ fn path_auto_op() {
 }
 
 #[test]
-fn other_auto_op() {
+fn fek_auto_op() {
 	assert_eq!(
-		filter("kind=foo"),
+		filter("fek=foo"),
 		Filter {
 			in_path: None,
 			on: Matcher::FileEventKind,
+			op: Op::Glob,
+			pat: Pattern::Glob("foo".to_string()),
+			negate: false,
+		}
+	);
+}
+
+#[test]
+fn other_auto_op() {
+	assert_eq!(
+		filter("type=foo"),
+		Filter {
+			in_path: None,
+			on: Matcher::FileType,
 			op: Op::InSet,
 			pat: Pattern::Set(HashSet::from(["foo".to_string()])),
 			negate: false,
