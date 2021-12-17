@@ -1,5 +1,6 @@
 use watchexec::{
 	event::{filekind::*, ProcessEnd, Source},
+	filter::tagged::TaggedFilterer,
 	signal::source::MainSignal,
 };
 
@@ -81,3 +82,46 @@ async fn source_set() {
 	filterer.source_doesnt_pass(Source::Mouse);
 	filterer.source_does_pass(Source::Internal);
 }
+
+#[tokio::test]
+async fn fek_glob_level_one() {
+	let f = filter("kind*=Create(*)");
+	assert_eq!(f, filter("fek*=Create(*)"));
+	assert_eq!(f, filter("kind=Create(*)"));
+	assert_eq!(f, filter("fek=Create(*)"));
+
+	let filterer = filt(&[f]).await;
+
+	filterer.fek_does_pass(FileEventKind::Create(CreateKind::Any));
+	filterer.fek_does_pass(FileEventKind::Create(CreateKind::File));
+	filterer.fek_doesnt_pass(FileEventKind::Modify(ModifyKind::Data(DataChange::Content)));
+}
+
+#[tokio::test]
+async fn fek_glob_level_two() {
+	let filterer = filt(&[filter("fek=Modify(Data(*))")]).await;
+
+	filterer.fek_does_pass(FileEventKind::Modify(ModifyKind::Data(DataChange::Content)));
+	filterer.fek_doesnt_pass(FileEventKind::Modify(ModifyKind::Other));
+	filterer.fek_doesnt_pass(FileEventKind::Modify(ModifyKind::Metadata(
+		MetadataKind::Permissions,
+	)));
+	filterer.fek_doesnt_pass(FileEventKind::Create(CreateKind::Any));
+}
+
+#[tokio::test]
+async fn fek_level_three() {
+	fn suite(filterer: &TaggedFilterer) {
+		filterer.fek_does_pass(FileEventKind::Modify(ModifyKind::Data(DataChange::Content)));
+		filterer.fek_doesnt_pass(FileEventKind::Modify(ModifyKind::Data(DataChange::Size)));
+		filterer.fek_doesnt_pass(FileEventKind::Modify(ModifyKind::Other));
+		filterer.fek_doesnt_pass(FileEventKind::Modify(ModifyKind::Metadata(
+			MetadataKind::Permissions,
+		)));
+		filterer.fek_doesnt_pass(FileEventKind::Create(CreateKind::Any));
+	}
+
+	suite(filt(&[filter("fek=Modify(Data(Content))")]).await.as_ref());
+	suite(filt(&[filter("fek==Modify(Data(Content))")]).await.as_ref());
+}
+
