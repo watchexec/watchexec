@@ -15,6 +15,22 @@ fn empty_filter() {
 }
 
 #[test]
+fn only_bang() {
+	assert!(matches!(
+		Filter::from_str("!"),
+		Err(TaggedFiltererError::Parse { .. })
+	));
+}
+
+#[test]
+fn no_op() {
+	assert!(matches!(
+		Filter::from_str("foobar"),
+		Err(TaggedFiltererError::Parse { .. })
+	));
+}
+
+#[test]
 fn path_auto_op() {
 	assert_eq!(
 		filter("path=foo"),
@@ -178,6 +194,20 @@ fn quoted_double() {
 			op: Op::Glob,
 			pat: Pattern::Glob("et les sept nains".to_string()),
 			negate: false,
+		}
+	);
+}
+
+#[test]
+fn negate() {
+	assert_eq!(
+		filter("!path~=^f[om]+$"),
+		Filter {
+			in_path: None,
+			on: Matcher::Path,
+			op: Op::Regex,
+			pat: Pattern::Regex(Regex::new("^f[om]+$").unwrap()),
+			negate: true,
 		}
 	);
 }
