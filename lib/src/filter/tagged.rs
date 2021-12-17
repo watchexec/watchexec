@@ -27,6 +27,9 @@ pub mod swaplock;
 
 /// A filterer implementation that exposes the full capabilities of Watchexec.
 ///
+/// **Note:** This filterer is experimental, and behaviour may change without semver notice. However,
+/// types and its API are held to semver. This notice will eventually be removed when it stabilises.
+///
 /// Filters match against [event tags][Tag]; can be exact matches, glob matches, regex matches, or
 /// set matches; can reverse the match (equal/not equal, etc); and can be negated.
 ///
