@@ -17,6 +17,7 @@ use crate::event::{Event, FileType, ProcessEnd, Tag};
 use crate::filter::tagged::error::TaggedFiltererError;
 use crate::filter::Filterer;
 use crate::ignore_files::IgnoreFile;
+use crate::signal::process::SubSignal;
 use crate::signal::source::MainSignal;
 
 // to make filters
@@ -372,7 +373,22 @@ impl TaggedFilterer {
 				None => filter.matches("_"),
 				Some(ProcessEnd::Success) => filter.matches("success"),
 				Some(ProcessEnd::ExitError(int)) => filter.matches(format!("error({})", int)),
-				Some(ProcessEnd::ExitSignal(sig)) => todo!("process completion: signal"),
+				Some(ProcessEnd::ExitSignal(sig)) => {
+					let (text, int) = match sig {
+						SubSignal::Hangup | SubSignal::Custom(1) => ("HUP", 1),
+						SubSignal::ForceStop | SubSignal::Custom(9) => ("KILL", 9),
+						SubSignal::Interrupt | SubSignal::Custom(2) => ("INT", 2),
+						SubSignal::Quit | SubSignal::Custom(3) => ("QUIT", 3),
+						SubSignal::Terminate | SubSignal::Custom(15) => ("TERM", 15),
+						SubSignal::User1 | SubSignal::Custom(10) => ("USR1", 10),
+						SubSignal::User2 | SubSignal::Custom(12) => ("USR2", 12),
+						SubSignal::Custom(n) => ("UNK", *n),
+					};
+
+					Ok(filter.matches(format!("signal({})", text))?
+						|| filter.matches(format!("signal(SIG{})", text))?
+						|| filter.matches(format!("signal({})", int))?)
+				}
 				Some(ProcessEnd::ExitStop(int)) => filter.matches(format!("stop({})", int)),
 				Some(ProcessEnd::Exception(int)) => filter.matches(format!("exception({})", int)),
 				Some(ProcessEnd::Continued) => filter.matches("continued"),
