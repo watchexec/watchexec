@@ -1,3 +1,5 @@
+use std::num::{NonZeroI32, NonZeroI64};
+
 use watchexec::{
 	event::{filekind::*, ProcessEnd, Source},
 	filter::tagged::TaggedFilterer,
@@ -268,4 +270,119 @@ async fn signal_set_all_mixed() {
 	filterer.signal_does_pass(MainSignal::Interrupt);
 	filterer.signal_does_pass(MainSignal::Terminate);
 	filterer.signal_doesnt_pass(MainSignal::User1);
+}
+
+#[tokio::test]
+async fn complete_empty() {
+	let f = filter("complete=_");
+	assert_eq!(f, filter("complete*=_"));
+	assert_eq!(f, filter("exit=_"));
+	assert_eq!(f, filter("exit*=_"));
+
+	let filterer = filt(&[f]).await;
+
+	filterer.complete_does_pass(None);
+	filterer.complete_doesnt_pass(Some(ProcessEnd::Success));
+	filterer.complete_doesnt_pass(Some(ProcessEnd::ExitError(NonZeroI64::new(1).unwrap())));
+}
+
+#[tokio::test]
+async fn complete_any() {
+	let filterer = filt(&[filter("complete=*")]).await;
+
+	filterer.complete_does_pass(Some(ProcessEnd::Success));
+	filterer.complete_does_pass(Some(ProcessEnd::ExitError(NonZeroI64::new(1).unwrap())));
+	filterer.complete_does_pass(None);
+	filterer.pid_doesnt_pass(0);
+}
+
+#[tokio::test]
+async fn complete_with_success() {
+	let filterer = filt(&[filter("complete*=success")]).await;
+
+	filterer.complete_does_pass(Some(ProcessEnd::Success));
+	filterer.complete_doesnt_pass(Some(ProcessEnd::ExitError(NonZeroI64::new(1).unwrap())));
+	filterer.complete_doesnt_pass(None);
+}
+
+#[tokio::test]
+async fn complete_with_continued() {
+	let filterer = filt(&[filter("complete*=continued")]).await;
+
+	filterer.complete_does_pass(Some(ProcessEnd::Continued));
+	filterer.complete_doesnt_pass(Some(ProcessEnd::Success));
+	filterer.complete_doesnt_pass(Some(ProcessEnd::ExitError(NonZeroI64::new(1).unwrap())));
+	filterer.complete_doesnt_pass(None);
+}
+
+#[tokio::test]
+async fn complete_with_specific_exit_error() {
+	let filterer = filt(&[filter("complete*=error(1)")]).await;
+
+	filterer.complete_does_pass(Some(ProcessEnd::ExitError(NonZeroI64::new(1).unwrap())));
+	filterer.complete_doesnt_pass(Some(ProcessEnd::Success));
+	filterer.complete_doesnt_pass(None);
+}
+
+#[tokio::test]
+async fn complete_with_any_exit_error() {
+	let filterer = filt(&[filter("complete*=error(*)")]).await;
+
+	filterer.complete_does_pass(Some(ProcessEnd::ExitError(NonZeroI64::new(1).unwrap())));
+	filterer.complete_does_pass(Some(ProcessEnd::ExitError(NonZeroI64::new(63).unwrap())));
+	filterer.complete_does_pass(Some(ProcessEnd::ExitError(
+		NonZeroI64::new(-12823912738).unwrap(),
+	)));
+	filterer.complete_doesnt_pass(Some(ProcessEnd::ExitStop(NonZeroI32::new(63).unwrap())));
+	filterer.complete_doesnt_pass(Some(ProcessEnd::Success));
+	filterer.complete_doesnt_pass(None);
+}
+
+// TODO: complete with signal (see above)
+
+#[tokio::test]
+async fn complete_with_specific_stop() {
+	let filterer = filt(&[filter("complete*=stop(19)")]).await;
+
+	filterer.complete_does_pass(Some(ProcessEnd::ExitStop(NonZeroI32::new(19).unwrap())));
+	filterer.complete_doesnt_pass(Some(ProcessEnd::Success));
+	filterer.complete_doesnt_pass(None);
+}
+
+#[tokio::test]
+async fn complete_with_any_stop() {
+	let filterer = filt(&[filter("complete*=stop(*)")]).await;
+
+	filterer.complete_does_pass(Some(ProcessEnd::ExitStop(NonZeroI32::new(1).unwrap())));
+	filterer.complete_does_pass(Some(ProcessEnd::ExitStop(NonZeroI32::new(63).unwrap())));
+	filterer.complete_does_pass(Some(ProcessEnd::ExitStop(
+		NonZeroI32::new(-128239127).unwrap(),
+	)));
+	filterer.complete_doesnt_pass(Some(ProcessEnd::ExitError(NonZeroI64::new(63).unwrap())));
+	filterer.complete_doesnt_pass(Some(ProcessEnd::Success));
+	filterer.complete_doesnt_pass(None);
+}
+
+#[tokio::test]
+async fn complete_with_specific_exception() {
+	let filterer = filt(&[filter("complete*=exception(19)")]).await;
+
+	filterer.complete_does_pass(Some(ProcessEnd::Exception(NonZeroI32::new(19).unwrap())));
+	filterer.complete_doesnt_pass(Some(ProcessEnd::Success));
+	filterer.complete_doesnt_pass(None);
+}
+
+#[tokio::test]
+async fn complete_with_any_exception() {
+	let filterer = filt(&[filter("complete*=exception(*)")]).await;
+
+	filterer.complete_does_pass(Some(ProcessEnd::Exception(NonZeroI32::new(1).unwrap())));
+	filterer.complete_does_pass(Some(ProcessEnd::Exception(NonZeroI32::new(63).unwrap())));
+	filterer.complete_does_pass(Some(ProcessEnd::Exception(
+		NonZeroI32::new(-128239127).unwrap(),
+	)));
+	filterer.complete_doesnt_pass(Some(ProcessEnd::ExitStop(NonZeroI32::new(63).unwrap())));
+	filterer.complete_doesnt_pass(Some(ProcessEnd::ExitError(NonZeroI64::new(63).unwrap())));
+	filterer.complete_doesnt_pass(Some(ProcessEnd::Success));
+	filterer.complete_doesnt_pass(None);
 }
