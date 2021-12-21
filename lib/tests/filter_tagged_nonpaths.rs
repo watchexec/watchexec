@@ -171,3 +171,102 @@ async fn pid_equals() {
 	filterer.pid_doesnt_pass(123);
 }
 
+#[tokio::test]
+async fn signal_set_single_without_sig() {
+	let f = filter("signal=INT");
+	assert_eq!(f, filter("sig=INT"));
+	assert_eq!(f, filter("signal:=INT"));
+	assert_eq!(f, filter("sig:=INT"));
+
+	let filterer = filt(&[f]).await;
+
+	filterer.signal_does_pass(MainSignal::Interrupt);
+	filterer.signal_doesnt_pass(MainSignal::Hangup);
+}
+
+#[tokio::test]
+async fn signal_set_single_with_sig() {
+	let filterer = filt(&[filter("signal:=SIGINT")]).await;
+
+	filterer.signal_does_pass(MainSignal::Interrupt);
+	filterer.signal_doesnt_pass(MainSignal::Hangup);
+}
+
+#[tokio::test]
+async fn signal_set_multiple_without_sig() {
+	let filterer = filt(&[filter("sig:=INT,TERM")]).await;
+
+	filterer.signal_does_pass(MainSignal::Interrupt);
+	filterer.signal_does_pass(MainSignal::Terminate);
+	filterer.signal_doesnt_pass(MainSignal::Hangup);
+}
+
+#[tokio::test]
+async fn signal_set_multiple_with_sig() {
+	let filterer = filt(&[filter("signal:=SIGINT,SIGTERM")]).await;
+
+	filterer.signal_does_pass(MainSignal::Interrupt);
+	filterer.signal_does_pass(MainSignal::Terminate);
+	filterer.signal_doesnt_pass(MainSignal::Hangup);
+}
+
+#[tokio::test]
+async fn signal_set_multiple_mixed_sig() {
+	let filterer = filt(&[filter("sig:=SIGINT,TERM")]).await;
+
+	filterer.signal_does_pass(MainSignal::Interrupt);
+	filterer.signal_does_pass(MainSignal::Terminate);
+	filterer.signal_doesnt_pass(MainSignal::Hangup);
+}
+
+#[tokio::test]
+async fn signal_equals_without_sig() {
+	let filterer = filt(&[filter("sig==INT")]).await;
+
+	filterer.signal_does_pass(MainSignal::Interrupt);
+	filterer.signal_doesnt_pass(MainSignal::Hangup);
+}
+
+#[tokio::test]
+async fn signal_equals_with_sig() {
+	let filterer = filt(&[filter("signal==SIGINT")]).await;
+
+	filterer.signal_does_pass(MainSignal::Interrupt);
+	filterer.signal_doesnt_pass(MainSignal::Hangup);
+}
+
+#[tokio::test]
+async fn signal_set_single_numbers() {
+	let filterer = filt(&[filter("signal:=2")]).await;
+
+	filterer.signal_does_pass(MainSignal::Interrupt);
+	filterer.signal_does_pass(MainSignal::Terminate);
+	filterer.signal_doesnt_pass(MainSignal::Hangup);
+}
+
+#[tokio::test]
+async fn signal_set_multiple_numbers() {
+	let filterer = filt(&[filter("sig:=2,15")]).await;
+
+	filterer.signal_does_pass(MainSignal::Interrupt);
+	filterer.signal_does_pass(MainSignal::Terminate);
+	filterer.signal_doesnt_pass(MainSignal::Hangup);
+}
+
+#[tokio::test]
+async fn signal_equals_numbers() {
+	let filterer = filt(&[filter("sig==2")]).await;
+
+	filterer.signal_does_pass(MainSignal::Interrupt);
+	filterer.signal_doesnt_pass(MainSignal::Hangup);
+}
+
+#[tokio::test]
+async fn signal_set_all_mixed() {
+	let filterer = filt(&[filter("signal==SIGHUG,INT,15")]).await;
+
+	filterer.signal_does_pass(MainSignal::Hangup);
+	filterer.signal_does_pass(MainSignal::Interrupt);
+	filterer.signal_does_pass(MainSignal::Terminate);
+	filterer.signal_doesnt_pass(MainSignal::User1);
+}
