@@ -125,3 +125,49 @@ async fn fek_level_three() {
 	suite(filt(&[filter("fek==Modify(Data(Content))")]).await.as_ref());
 }
 
+#[tokio::test]
+async fn pid_set_single() {
+	let f = filter("process:=1234");
+	assert_eq!(f, filter("pid:=1234"));
+	assert_eq!(f, filter("process=1234"));
+	assert_eq!(f, filter("pid=1234"));
+
+	let filterer = filt(&[f]).await;
+
+	filterer.pid_does_pass(1234);
+	filterer.pid_doesnt_pass(5678);
+	filterer.pid_doesnt_pass(12345);
+	filterer.pid_doesnt_pass(123);
+}
+
+#[tokio::test]
+async fn pid_set_multiple() {
+	let filterer = filt(&[filter("pid=123,456")]).await;
+
+	filterer.pid_does_pass(123);
+	filterer.pid_does_pass(456);
+	filterer.pid_doesnt_pass(123456);
+	filterer.pid_doesnt_pass(12);
+	filterer.pid_doesnt_pass(23);
+	filterer.pid_doesnt_pass(45);
+	filterer.pid_doesnt_pass(56);
+	filterer.pid_doesnt_pass(1234);
+	filterer.pid_doesnt_pass(3456);
+	filterer.pid_doesnt_pass(4567);
+	filterer.pid_doesnt_pass(34567);
+	filterer.pid_doesnt_pass(0);
+}
+
+#[tokio::test]
+async fn pid_equals() {
+	let f = filter("process==1234");
+	assert_eq!(f, filter("pid==1234"));
+
+	let filterer = filt(&[f]).await;
+
+	filterer.pid_does_pass(1234);
+	filterer.pid_doesnt_pass(5678);
+	filterer.pid_doesnt_pass(12345);
+	filterer.pid_doesnt_pass(123);
+}
+
