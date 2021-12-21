@@ -86,7 +86,7 @@ fn runtime(args: &ArgMatches<'static>) -> Result<(RuntimeConfig, Arc<TaggedFilte
 
 	let mut signal = args
 		.value_of("signal")
-		.map(|s| SubSignal::from_str(s))
+		.map(SubSignal::from_str)
 		.transpose()
 		.into_diagnostic()?
 		.unwrap_or(SubSignal::Terminate);
