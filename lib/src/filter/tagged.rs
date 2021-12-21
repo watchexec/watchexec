@@ -17,6 +17,7 @@ use crate::event::{Event, FileType, Tag};
 use crate::filter::tagged::error::TaggedFiltererError;
 use crate::filter::Filterer;
 use crate::ignore_files::IgnoreFile;
+use crate::signal::source::MainSignal;
 
 // to make filters
 pub use regex::Regex;
@@ -353,7 +354,20 @@ impl TaggedFilterer {
 			}
 			(Tag::Source(src), Matcher::Source) => filter.matches(src.to_string()),
 			(Tag::Process(pid), Matcher::Process) => filter.matches(pid.to_string()),
-			(Tag::Signal(_sig), Matcher::Signal) => todo!("tagged filterer: signal matcher"), // TODO
+			(Tag::Signal(sig), Matcher::Signal) => {
+				let (text, int) = match sig {
+					MainSignal::Hangup => ("HUP", 1),
+					MainSignal::Interrupt => ("INT", 2),
+					MainSignal::Quit => ("QUIT", 3),
+					MainSignal::Terminate => ("TERM", 15),
+					MainSignal::User1 => ("USR1", 10),
+					MainSignal::User2 => ("USR2", 12),
+				};
+
+				Ok(filter.matches(text)?
+					|| filter.matches(format!("SIG{}", text))?
+					|| filter.matches(int.to_string())?)
+			}
 			(Tag::ProcessCompletion(_oes), Matcher::ProcessCompletion) => {
 				todo!("tagged filterer: completion matcher") // TODO
 			}

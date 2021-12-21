@@ -240,7 +240,6 @@ async fn signal_set_single_numbers() {
 	let filterer = filt(&[filter("signal:=2")]).await;
 
 	filterer.signal_does_pass(MainSignal::Interrupt);
-	filterer.signal_does_pass(MainSignal::Terminate);
 	filterer.signal_doesnt_pass(MainSignal::Hangup);
 }
 
@@ -263,7 +262,7 @@ async fn signal_equals_numbers() {
 
 #[tokio::test]
 async fn signal_set_all_mixed() {
-	let filterer = filt(&[filter("signal==SIGHUG,INT,15")]).await;
+	let filterer = filt(&[filter("signal:=SIGHUP,INT,15")]).await;
 
 	filterer.signal_does_pass(MainSignal::Hangup);
 	filterer.signal_does_pass(MainSignal::Interrupt);
