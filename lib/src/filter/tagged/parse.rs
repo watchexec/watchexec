@@ -94,14 +94,19 @@ impl FromStr for Filter {
 						on: m,
 						op: match o {
 							Op::Auto => match m {
-								Matcher::Path | Matcher::FileEventKind => Op::Glob,
+								Matcher::Path
+								| Matcher::FileEventKind
+								| Matcher::ProcessCompletion => Op::Glob,
 								_ => Op::InSet,
 							},
 							o => o,
 						},
 						pat: match (o, m) {
 							// TODO: carry regex/glob errors through
-							(Op::Auto, Matcher::Path | Matcher::FileEventKind)
+							(
+								Op::Auto,
+								Matcher::Path | Matcher::FileEventKind | Matcher::ProcessCompletion,
+							)
 							| (Op::Glob | Op::NotGlob, _) => Pattern::Glob(p.to_string()),
 							(Op::Auto | Op::InSet | Op::NotInSet, _) => {
 								Pattern::Set(p.split(',').map(|s| s.trim().to_string()).collect())

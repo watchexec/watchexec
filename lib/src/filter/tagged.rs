@@ -70,7 +70,7 @@ pub mod swaplock;
 /// | [Source](Matcher::Source)                       | `:=` (in set) |
 /// | [Process](Matcher::Process)                     | `:=` (in set) |
 /// | [Signal](Matcher::Signal)                       | `:=` (in set) |
-/// | [ProcessCompletion](Matcher::ProcessCompletion) | `:=` (in set) |
+/// | [ProcessCompletion](Matcher::ProcessCompletion) | `*=` (glob) |
 ///
 /// [Matchers][Matcher] correspond to Tags, but are not one-to-one: the `path` matcher operates on
 /// the `path` part of the `Path` tag, and the `type` matcher operates on the `file_type`, for
