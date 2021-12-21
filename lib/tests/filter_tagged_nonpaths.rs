@@ -293,7 +293,6 @@ async fn complete_any() {
 	filterer.complete_does_pass(Some(ProcessEnd::Success));
 	filterer.complete_does_pass(Some(ProcessEnd::ExitError(NonZeroI64::new(1).unwrap())));
 	filterer.complete_does_pass(None);
-	filterer.pid_doesnt_pass(0);
 }
 
 #[tokio::test]

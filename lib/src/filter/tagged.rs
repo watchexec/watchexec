@@ -13,7 +13,7 @@ use tracing::{debug, trace, trace_span, warn};
 use unicase::UniCase;
 
 use crate::error::RuntimeError;
-use crate::event::{Event, FileType, Tag};
+use crate::event::{Event, FileType, ProcessEnd, Tag};
 use crate::filter::tagged::error::TaggedFiltererError;
 use crate::filter::Filterer;
 use crate::ignore_files::IgnoreFile;
@@ -368,9 +368,15 @@ impl TaggedFilterer {
 					|| filter.matches(format!("SIG{}", text))?
 					|| filter.matches(int.to_string())?)
 			}
-			(Tag::ProcessCompletion(_oes), Matcher::ProcessCompletion) => {
-				todo!("tagged filterer: completion matcher") // TODO
-			}
+			(Tag::ProcessCompletion(ope), Matcher::ProcessCompletion) => match ope {
+				None => filter.matches("_"),
+				Some(ProcessEnd::Success) => filter.matches("success"),
+				Some(ProcessEnd::ExitError(int)) => filter.matches(format!("error({})", int)),
+				Some(ProcessEnd::ExitSignal(sig)) => todo!("process completion: signal"),
+				Some(ProcessEnd::ExitStop(int)) => filter.matches(format!("stop({})", int)),
+				Some(ProcessEnd::Exception(int)) => filter.matches(format!("exception({})", int)),
+				Some(ProcessEnd::Continued) => filter.matches("continued"),
+			},
 			(_, _) => {
 				trace!("no match for tag, skipping");
 				return Ok(None);
