@@ -3,7 +3,7 @@ use std::num::{NonZeroI32, NonZeroI64};
 use watchexec::{
 	event::{filekind::*, ProcessEnd, Source},
 	filter::tagged::TaggedFilterer,
-	signal::source::MainSignal,
+	signal::{process::SubSignal, source::MainSignal},
 };
 
 mod helpers;
@@ -337,8 +337,6 @@ async fn complete_with_any_exit_error() {
 	filterer.complete_doesnt_pass(None);
 }
 
-// TODO: complete with signal (see above)
-
 #[tokio::test]
 async fn complete_with_specific_stop() {
 	let filterer = filt(&[filter("complete*=stop(19)")]).await;
@@ -380,6 +378,49 @@ async fn complete_with_any_exception() {
 	filterer.complete_does_pass(Some(ProcessEnd::Exception(
 		NonZeroI32::new(-128239127).unwrap(),
 	)));
+	filterer.complete_doesnt_pass(Some(ProcessEnd::ExitStop(NonZeroI32::new(63).unwrap())));
+	filterer.complete_doesnt_pass(Some(ProcessEnd::ExitError(NonZeroI64::new(63).unwrap())));
+	filterer.complete_doesnt_pass(Some(ProcessEnd::Success));
+	filterer.complete_doesnt_pass(None);
+}
+
+#[tokio::test]
+async fn complete_with_specific_signal_with_sig() {
+	let filterer = filt(&[filter("complete*=signal(SIGINT)")]).await;
+
+	filterer.complete_does_pass(Some(ProcessEnd::ExitSignal(SubSignal::Interrupt)));
+	filterer.complete_doesnt_pass(Some(ProcessEnd::ExitStop(NonZeroI32::new(19).unwrap())));
+	filterer.complete_doesnt_pass(Some(ProcessEnd::Success));
+	filterer.complete_doesnt_pass(None);
+}
+
+#[tokio::test]
+async fn complete_with_specific_signal_without_sig() {
+	let filterer = filt(&[filter("complete*=signal(INT)")]).await;
+
+	filterer.complete_does_pass(Some(ProcessEnd::ExitSignal(SubSignal::Interrupt)));
+	filterer.complete_doesnt_pass(Some(ProcessEnd::ExitStop(NonZeroI32::new(19).unwrap())));
+	filterer.complete_doesnt_pass(Some(ProcessEnd::Success));
+	filterer.complete_doesnt_pass(None);
+}
+
+#[tokio::test]
+async fn complete_with_specific_signal_number() {
+	let filterer = filt(&[filter("complete*=signal(2)")]).await;
+
+	filterer.complete_does_pass(Some(ProcessEnd::ExitSignal(SubSignal::Interrupt)));
+	filterer.complete_doesnt_pass(Some(ProcessEnd::ExitStop(NonZeroI32::new(19).unwrap())));
+	filterer.complete_doesnt_pass(Some(ProcessEnd::Success));
+	filterer.complete_doesnt_pass(None);
+}
+
+#[tokio::test]
+async fn complete_with_any_signal() {
+	let filterer = filt(&[filter("complete*=signal(*)")]).await;
+
+	filterer.complete_does_pass(Some(ProcessEnd::ExitSignal(SubSignal::Interrupt)));
+	filterer.complete_does_pass(Some(ProcessEnd::ExitSignal(SubSignal::Terminate)));
+	filterer.complete_does_pass(Some(ProcessEnd::ExitSignal(SubSignal::Custom(123))));
 	filterer.complete_doesnt_pass(Some(ProcessEnd::ExitStop(NonZeroI32::new(63).unwrap())));
 	filterer.complete_doesnt_pass(Some(ProcessEnd::ExitError(NonZeroI64::new(63).unwrap())));
 	filterer.complete_doesnt_pass(Some(ProcessEnd::Success));
