@@ -362,9 +362,9 @@ async fn complete_with_any_stop() {
 
 #[tokio::test]
 async fn complete_with_specific_exception() {
-	let filterer = filt(&[filter("complete*=exception(19)")]).await;
+	let filterer = filt(&[filter("complete*=exception(4B53)")]).await;
 
-	filterer.complete_does_pass(Some(ProcessEnd::Exception(NonZeroI32::new(19).unwrap())));
+	filterer.complete_does_pass(Some(ProcessEnd::Exception(NonZeroI32::new(19283).unwrap())));
 	filterer.complete_doesnt_pass(Some(ProcessEnd::Success));
 	filterer.complete_doesnt_pass(None);
 }

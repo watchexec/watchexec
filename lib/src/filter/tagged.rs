@@ -390,7 +390,7 @@ impl TaggedFilterer {
 						|| filter.matches(format!("signal({})", int))?)
 				}
 				Some(ProcessEnd::ExitStop(int)) => filter.matches(format!("stop({})", int)),
-				Some(ProcessEnd::Exception(int)) => filter.matches(format!("exception({})", int)),
+				Some(ProcessEnd::Exception(int)) => filter.matches(format!("exception({:X})", int)),
 				Some(ProcessEnd::Continued) => filter.matches("continued"),
 			},
 			(_, _) => {
