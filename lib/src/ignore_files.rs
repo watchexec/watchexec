@@ -264,7 +264,7 @@ pub async fn from_environment() -> (Vec<IgnoreFile>, Vec<Error>) {
 }
 
 #[inline]
-async fn discover_file(
+pub(crate) async fn discover_file(
 	files: &mut Vec<IgnoreFile>,
 	errors: &mut Vec<Error>,
 	applies_in: Option<PathBuf>,

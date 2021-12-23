@@ -130,6 +130,7 @@ async fn main() -> Result<()> {
 		.and_then(|wd| wd.canonicalize())
 		.into_diagnostic()?;
 	for filter in args.values_of("filter").unwrap_or_default() {
+		// TODO: use globset
 		let mut filter: Filter = filter.parse()?;
 		filter.in_path = Some(workdir.clone());
 		filters.push(filter);
@@ -141,6 +142,7 @@ async fn main() -> Result<()> {
 		.map(|s| s.split(',').map(|s| s.trim()))
 		.flatten()
 	{
+		// TODO: use globset
 		filters.push(Filter {
 			in_path: None,
 			on: Matcher::Path,

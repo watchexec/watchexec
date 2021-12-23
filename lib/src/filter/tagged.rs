@@ -24,6 +24,7 @@ use crate::signal::source::MainSignal;
 pub use regex::Regex;
 
 pub mod error;
+pub mod files;
 mod parse;
 pub mod swaplock;
 
