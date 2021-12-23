@@ -20,7 +20,11 @@ async fn main() -> Result<()> {
 		tracing_subscriber::fmt::init();
 	}
 
-	let args = args::get_args()?;
+	let tagged_filterer = var("WATCHEXEC_FILTERER")
+		.map(|v| v == "tagged")
+		.unwrap_or(false);
+
+	let args = args::get_args(tagged_filterer)?;
 
 	tracing_subscriber::fmt()
 		.with_env_filter(match args.occurrences_of("verbose") {
@@ -34,17 +38,12 @@ async fn main() -> Result<()> {
 
 	let init = config::init(&args)?;
 	let mut runtime = config::runtime(&args)?;
-	runtime.filterer(
-		if var("WATCHEXEC_FILTERER")
-			.map(|v| v == "tagged")
-			.unwrap_or(false)
-		{
-			eprintln!("!!! EXPERIMENTAL: using tagged filterer !!!");
-			filterer::tagged(&args).await?
-		} else {
-			filterer::globset(&args).await?
-		},
-	);
+	runtime.filterer(if tagged_filterer {
+		eprintln!("!!! EXPERIMENTAL: using tagged filterer !!!");
+		filterer::tagged(&args).await?
+	} else {
+		filterer::globset(&args).await?
+	});
 
 	let wx = Watchexec::new(init, runtime)?;
 

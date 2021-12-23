@@ -27,7 +27,7 @@ const OPTSET_DEBUGGING: &str = "Debugging options:";
 const OPTSET_OUTPUT: &str = "Output options:";
 const OPTSET_BEHAVIOUR: &str = "Behaviour options:";
 
-pub fn get_args() -> Result<ArgMatches<'static>> {
+pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches<'static>> {
 	let app = App::new("watchexec")
 		.version(crate_version!())
 		.about("Execute commands when watched files change")
@@ -37,12 +37,6 @@ pub fn get_args() -> Result<ArgMatches<'static>> {
 			.help("Command to execute")
 			.multiple(true)
 			.required(true))
-		.arg(Arg::with_name("extensions")
-			.help_heading(Some(OPTSET_FILTERING))
-			.help("Comma-separated list of file extensions to watch (e.g. js,css,html)")
-			.short("e")
-			.long("exts")
-			.takes_value(true))
 		.arg(Arg::with_name("paths")
 			.help_heading(Some(OPTSET_FILTERING))
 			.help("Watch a specific file or directory")
@@ -100,24 +94,6 @@ pub fn get_args() -> Result<ArgMatches<'static>> {
 			.help("Print events that trigger actions")
 			.long("print-events")
 			.alias("changes-only")) // --changes-only is deprecated (remove at v2)
-		.arg(Arg::with_name("filter") // TODO
-			.help_heading(Some(OPTSET_FILTERING))
-			.help("Ignore all modifications except those matching the pattern")
-			.short("f")
-			.long("filter")
-			.number_of_values(1)
-			.multiple(true)
-			.takes_value(true)
-			.value_name("pattern"))
-		.arg(Arg::with_name("ignore") // TODO
-			.help_heading(Some(OPTSET_FILTERING))
-			.help("Ignore modifications to paths matching the pattern")
-			.short("i")
-			.long("ignore")
-			.number_of_values(1)
-			.multiple(true)
-			.takes_value(true)
-			.value_name("pattern"))
 		.arg(Arg::with_name("no-vcs-ignore") // TODO
 			.help_heading(Some(OPTSET_FILTERING))
 			.help("Skip auto-loading of .gitignore files for filtering")
@@ -155,10 +131,6 @@ pub fn get_args() -> Result<ArgMatches<'static>> {
 			.help("Do not wrap command in a shell. Deprecated: use --shell=none instead.")
 			.short("n")
 			.long("no-shell"))
-		.arg(Arg::with_name("no-meta") // TODO
-			.help_heading(Some(OPTSET_FILTERING))
-			.help("Ignore metadata changes")
-			.long("no-meta"))
 		.arg(Arg::with_name("no-environment") // TODO
 			.help_heading(Some(OPTSET_OUTPUT))
 			.help("Do not set WATCHEXEC_*_PATH environment variables for the command")
@@ -179,6 +151,74 @@ pub fn get_args() -> Result<ArgMatches<'static>> {
 			.help("Send a desktop notification when watchexec notices a change (experimental, behaviour may change)")
 			.short("N")
 			.long("notify"));
+
+	let app = if tagged_filterer {
+		app.arg(
+			Arg::with_name("filter")
+				.help_heading(Some(OPTSET_FILTERING))
+				.help("Add tagged filter (e.g. 'path=foo*', 'type=dir', 'kind=Create(*)')")
+				.short("f")
+				.long("filter")
+				.number_of_values(1)
+				.multiple(true)
+				.takes_value(true)
+				.value_name("tagged filter"),
+		)
+		.arg(
+			Arg::with_name("filter-files") // TODO
+				.help_heading(Some(OPTSET_FILTERING))
+				.help("Load tagged filters from a file")
+				.short("F")
+				.long("filter-file")
+				.number_of_values(1)
+				.multiple(true)
+				.takes_value(true)
+				.value_name("path"),
+		)
+		.arg(
+			Arg::with_name("no-meta") // TODO
+				.help_heading(Some(OPTSET_FILTERING))
+				.help("Ignore metadata changes (equivalent of `-f 'kind*!Modify(Metadata(*))'`)")
+				.long("no-meta"),
+		)
+	} else {
+		app.arg(
+			Arg::with_name("extensions")
+				.help_heading(Some(OPTSET_FILTERING))
+				.help("Comma-separated list of file extensions to watch (e.g. js,css,html)")
+				.short("e")
+				.long("exts")
+				.takes_value(true),
+		)
+		.arg(
+			Arg::with_name("filter") // TODO
+				.help_heading(Some(OPTSET_FILTERING))
+				.help("Ignore all modifications except those matching the pattern")
+				.short("f")
+				.long("filter")
+				.number_of_values(1)
+				.multiple(true)
+				.takes_value(true)
+				.value_name("pattern"),
+		)
+		.arg(
+			Arg::with_name("ignore") // TODO
+				.help_heading(Some(OPTSET_FILTERING))
+				.help("Ignore modifications to paths matching the pattern")
+				.short("i")
+				.long("ignore")
+				.number_of_values(1)
+				.multiple(true)
+				.takes_value(true)
+				.value_name("pattern"),
+		)
+		.arg(
+			Arg::with_name("no-meta") // TODO
+				.help_heading(Some(OPTSET_FILTERING))
+				.help("Ignore metadata changes")
+				.long("no-meta"),
+		)
+	};
 
 	let mut raw_args: Vec<OsString> = env::args_os().collect();
 
