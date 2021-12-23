@@ -172,12 +172,12 @@ impl TaggedFilterer {
 							} {
 								Match::None => {
 									trace!("no match (fail)");
-									tag_match = false;
+									tag_match &= false;
 								}
 								Match::Ignore(glob) => {
 									if glob.from().map_or(true, |f| path.strip_prefix(f).is_ok()) {
 										trace!(?glob, "positive match (pass)");
-										tag_match = true;
+										tag_match &= true;
 									} else {
 										trace!(?glob, "positive match, but not in scope (ignore)");
 									}
@@ -200,12 +200,12 @@ impl TaggedFilterer {
 							} {
 								Match::None => {
 									trace!("no match (pass)");
-									tag_match = true;
+									tag_match &= true;
 								}
 								Match::Ignore(glob) => {
 									if glob.from().map_or(true, |f| path.strip_prefix(f).is_ok()) {
 										trace!(?glob, "positive match (fail)");
-										tag_match = false;
+										tag_match &= false;
 									} else {
 										trace!(?glob, "positive match, but not in scope (ignore)");
 									}
