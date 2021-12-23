@@ -21,7 +21,7 @@ name = "watchexec"
 path = "src/main.rs"
 
 [dependencies]
-console-subscriber = { git = "https://github.com/tokio-rs/console", optional = true }
+console-subscriber = { version = "0.1.0", optional = true }
 dunce = "1.0.2"
 miette = { version = "3.2.0", features = ["fancy"] }
 notify-rust = "4.5.2"
@@ -35,7 +35,7 @@ default-features = false
 features = ["wrap_help"]
 
 [dependencies.tokio]
-version = "1.12.0"
+version = "1.15.0"
 features = [
 	"fs",
 	"io-std",

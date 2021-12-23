@@ -42,7 +42,7 @@ version = "0.13.22"
 default-features = false
 
 [dependencies.tokio]
-version = "1.10.0"
+version = "1.15.0"
 features = [
 	"fs",
 	"io-std",

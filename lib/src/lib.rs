@@ -3,8 +3,7 @@
 //!
 //! Also see the CLI tool: <https://watchexec.github.io/>
 //!
-//! This library is powered by [Tokio](https://tokio.rs), minimum version 1.10. This requirement may
-//! change (upwards) in the future without breaking change.
+//! This library is powered by [Tokio](https://tokio.rs).
 //!
 //! The main way to use this crate involves constructing a [`Watchexec`] around an
 //! [`InitConfig`][config::InitConfig] and a [`RuntimeConfig`][config::RuntimeConfig], then running
