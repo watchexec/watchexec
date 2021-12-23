@@ -26,7 +26,6 @@ dunce = "1.0.2"
 miette = { version = "3.2.0", features = ["fancy"] }
 notify-rust = "4.5.2"
 tracing = "0.1.26"
-tracing-subscriber = "0.2.24"
 watchexec = { path = "../lib" }
 
 [dependencies.clap]
@@ -45,6 +44,13 @@ features = [
 	"rt-multi-thread",
 	"signal",
 	"sync",
+]
+
+[dependencies.tracing-subscriber]
+version = "0.3.3"
+features = [
+	"env-filter",
+	"fmt",
 ]
 
 [target.'cfg(target_env = "musl")'.dependencies]
