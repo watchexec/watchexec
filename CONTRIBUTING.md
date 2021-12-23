@@ -1,29 +1,19 @@
 # Contribution guidebook
 
 
-This is a fairly free-form project, with low contribution traffic. It is mostly passively
-maintained, with occasional bouts of more active developing, usually along a theme. Most of the
-maintainer activity is triaging and managing issues, and loosely planning/grouping feature requests
-and non-critical bugs to fix into these themes, represented as milestones.
+This is a fairly free-form project, with low contribution traffic.
 
 Maintainers:
 
 - Félix Saparelli (@passcod) (active)
 - Matt Green (@mattgreen) (original author, more passive now)
 
-Currently the project is in a long v1 phase, with a "sometime in the future" second phase, which at
-the moment I envision as something with a stronger semver focus, and a major version number that may
-increase more often. Possibly the project would be split in two or more crates, to facilitate this.
+Currently the project is in an active development period, with the recently-overhauled "library 2.0"
+backend enabling a swathe of new features that only remain to be added and then exposed.
 
-So, semver. Watchexec remains semver-compatible... on the CLI interface only. The library interface
-is explicitly _not_ considered as part of breaking changes, and even _patch_ version number changes
-may actually involve API breakage at the library interface.
+Contributions are accepted, but review may be delayed until the above work is finished.
 
-Additionally, it is to be considered unwise to rely on the _output_ of the CLI as an interface. The
-semver aspects are fairly loose but focus on input (flags, options, arguments, env), behaviour, and
-the calling environment of the sub process.
-
-Contributions are accepted for literally everything. There are a few anti goals:
+There are a few anti goals:
 
 - Calling watchexec is to be a **simple** exercise that remains intuitive. As a specific point, it
   should not involve any piping or require xargs.
@@ -48,8 +38,8 @@ Apart from that, welcome and thank you for your time!
 A release goes through these steps:
 
 1. Opening a draft release. Before even merging anything, a draft (only visible privately) release
-   is made. These are a github feature and only visible to maintainers. Name the release... that can
-   be descriptive or whimsical or both. Release title template is `{version without v}: {title}`.
+   is made. These are a github feature and only visible to maintainers. Name the release: which part
+   of the project the release is for (`CLI` or `Lib`), and the version. E.g. `CLI 1.18.0`.
 
 2. Adding each change to the draft release. The releases pages on github serves as a changelog, so
    this is worth getting right. One sentence per change, focusing on what it is, what it adds, what
