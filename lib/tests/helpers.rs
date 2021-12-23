@@ -12,7 +12,7 @@ use watchexec::{
 	event::{filekind::FileEventKind, Event, FileType, ProcessEnd, Source, Tag},
 	filter::{
 		globset::GlobsetFilterer,
-		tagged::{Filter, Matcher, Op, Pattern, TaggedFilterer},
+		tagged::{files::FilterFile, Filter, Matcher, Op, Pattern, TaggedFilterer},
 		Filterer,
 	},
 	ignore_files::IgnoreFile,
@@ -21,8 +21,8 @@ use watchexec::{
 };
 
 pub mod globset {
-	pub use super::file;
 	pub use super::globset_filt as filt;
+	pub use super::ig_file as file;
 	pub use super::Applies;
 	pub use super::PathHarness;
 }
@@ -33,7 +33,7 @@ pub mod globset_ig {
 }
 
 pub mod tagged {
-	pub use super::file;
+	pub use super::ig_file as file;
 	pub use super::tagged_filt as filt;
 	pub use super::Applies;
 	pub use super::FilterExt;
@@ -45,6 +45,12 @@ pub mod tagged {
 pub mod tagged_ig {
 	pub use super::tagged::*;
 	pub use super::tagged_igfilt as filt;
+}
+
+pub mod tagged_ff {
+	pub use super::ff_file as file;
+	pub use super::tagged::*;
+	pub use super::tagged_fffilt as filt;
 }
 
 pub trait PathHarness {
@@ -252,7 +258,27 @@ pub async fn tagged_igfilt(origin: &str, ignore_files: &[IgnoreFile]) -> Arc<Tag
 	filterer
 }
 
-pub fn file(name: &str) -> IgnoreFile {
+pub async fn tagged_fffilt(
+	origin: &str,
+	ignore_files: &[IgnoreFile],
+	filter_files: &[FilterFile],
+) -> Arc<TaggedFilterer> {
+	let filterer = tagged_igfilt(origin, ignore_files).await;
+	let mut filters = Vec::new();
+	for file in filter_files {
+		tracing::info!(?file, "loading filter file");
+		filters.extend(file.load().await.expect("loading filter file"));
+	}
+
+	filterer
+		.add_filters(&filters)
+		.await
+		.expect("adding filters");
+
+	filterer
+}
+
+pub fn ig_file(name: &str) -> IgnoreFile {
 	let path = dunce::canonicalize(".")
 		.unwrap()
 		.join("tests")
@@ -263,6 +289,10 @@ pub fn file(name: &str) -> IgnoreFile {
 		applies_in: None,
 		applies_to: None,
 	}
+}
+
+pub fn ff_file(name: &str) -> FilterFile {
+	FilterFile(ig_file(name))
 }
 
 pub trait Applies {
@@ -280,6 +310,16 @@ impl Applies for IgnoreFile {
 	fn applies_to(mut self, project_type: ProjectType) -> Self {
 		self.applies_to = Some(project_type);
 		self
+	}
+}
+
+impl Applies for FilterFile {
+	fn applies_in(self, origin: &str) -> Self {
+		Self(self.0.applies_in(origin))
+	}
+
+	fn applies_to(self, project_type: ProjectType) -> Self {
+		Self(self.0.applies_to(project_type))
 	}
 }
 
