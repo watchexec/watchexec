@@ -163,7 +163,7 @@ pub fn get_args() -> Result<ArgMatches<'static>> {
 			.help_heading(Some(OPTSET_OUTPUT))
 			.help("Do not set WATCHEXEC_*_PATH environment variables for the command")
 			.long("no-environment"))
-		.arg(Arg::with_name("no-process-group") // TODO
+		.arg(Arg::with_name("no-process-group")
 			.help_heading(Some(OPTSET_COMMAND))
 			.help("Do not use a process group when running the command")
 			.long("no-process-group"))

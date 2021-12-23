@@ -5,8 +5,8 @@ use miette::{IntoDiagnostic, Result};
 use watchexec::filter::globset::GlobsetFilterer;
 
 pub async fn globset(args: &ArgMatches<'static>) -> Result<Arc<GlobsetFilterer>> {
-	let (project_origin, workdir) = super::common::dirs(args).await?;
-	let ignores = super::common::ignores(args, &project_origin).await?;
+	let (project_origin, _workdir) = super::common::dirs(args).await?;
+	let _ignores = super::common::ignores(args, &project_origin).await?;
 	// TODO: load ignorefiles
 
 	let filters = args

@@ -2,7 +2,6 @@ use std::{
 	collections::HashSet,
 	env,
 	path::{Path, PathBuf},
-	sync::Arc,
 };
 
 use clap::ArgMatches;
@@ -10,7 +9,6 @@ use dunce::canonicalize;
 use miette::{IntoDiagnostic, Result};
 use tracing::{debug, warn};
 use watchexec::{
-	filter::tagged::{Filter, Matcher, Op, Pattern, Regex, TaggedFilterer},
 	ignore_files::{self, IgnoreFile},
 	paths::common_prefix,
 	project::{self, ProjectType},
@@ -36,7 +34,7 @@ pub async fn dirs(args: &ArgMatches<'static>) -> Result<(PathBuf, PathBuf)> {
 	Ok((project_origin, workdir))
 }
 
-pub async fn ignores(args: &ArgMatches<'static>, origin: &Path) -> Result<Vec<IgnoreFile>> {
+pub async fn ignores(_args: &ArgMatches<'static>, origin: &Path) -> Result<Vec<IgnoreFile>> {
 	let vcs_types = project::types(origin)
 		.await
 		.into_iter()
@@ -104,6 +102,9 @@ pub async fn ignores(args: &ArgMatches<'static>, origin: &Path) -> Result<Vec<Ig
 		}));
 		debug!(?ignores, "combined and applied final filter over ignores");
 	}
+
+	// TODO: --no-ignore
+	// TODO: --no-vcs-ignore
 
 	Ok(ignores)
 }

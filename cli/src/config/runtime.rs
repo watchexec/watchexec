@@ -38,6 +38,10 @@ pub fn runtime(args: &ArgMatches<'static>) -> Result<RuntimeConfig> {
 		)));
 	}
 
+	if args.is_present("no-process-group") {
+		config.command_grouped(false);
+	}
+
 	config.command_shell(if args.is_present("no-shell") {
 		Shell::None
 	} else if let Some(s) = args.value_of("shell") {
@@ -173,6 +177,8 @@ pub fn runtime(args: &ArgMatches<'static>) -> Result<RuntimeConfig> {
 
 		fut
 	});
+
+	// TODO: pre-command (environment vars)
 
 	Ok(config)
 }

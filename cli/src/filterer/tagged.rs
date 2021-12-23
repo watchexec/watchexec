@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use clap::ArgMatches;
-use miette::{IntoDiagnostic, Result};
+use miette::Result;
 use tracing::debug;
-use watchexec::filter::tagged::{Filter, Matcher, Op, Pattern, Regex, TaggedFilterer};
+use watchexec::filter::tagged::{Filter, TaggedFilterer};
 
 pub async fn tagged(args: &ArgMatches<'static>) -> Result<Arc<TaggedFilterer>> {
 	let (project_origin, workdir) = super::common::dirs(args).await?;
