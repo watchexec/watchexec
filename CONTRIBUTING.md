@@ -23,6 +23,20 @@ There are a few anti goals:
   but watchexec itself will remain generic, usable for any purpose.
 
 
+## Debugging
+
+To enable verbose logging in tests, run with:
+
+```console
+$ env RUST_LOG=watchexec=trace,info RUST_TEST_THREADS=1 RUST_NOCAPTURE=1 cargo test --test testfile -- testname
+```
+
+To use [Tokio Console](https://github.com/tokio-rs/console):
+
+1. Add `--cfg tokio_unstable` to your `RUSTFLAGS`.
+2. Run the CLI with the `dev-console` feature.
+
+
 ## PR etiquette
 
 - Maintainers are busy or may not have the bandwidth, be patient.
