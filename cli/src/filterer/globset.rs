@@ -86,8 +86,7 @@ impl Iterator for OsSplit {
 
 	fn next(&mut self) -> Option<Self::Item> {
 		use std::os::windows::ffi::{OsStrExt, OsStringExt};
-		let mut wides = self.os.encode_wide();
-		wides.skip(self.pos);
+		let wides = self.os.encode_wide().skip(self.pos);
 
 		let mut cur = Vec::new();
 		for wide in wides {
