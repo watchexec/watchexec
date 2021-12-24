@@ -146,9 +146,9 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches<'static>> {
 			.short("W")
 			.hidden(true)
 			.long("watch-when-idle"))
-		.arg(Arg::with_name("notif") // TODO
+		.arg(Arg::with_name("notif")
 			.help_heading(Some(OPTSET_OUTPUT))
-			.help("Send a desktop notification when watchexec notices a change (experimental, behaviour may change)")
+			.help("Send a desktop notification when the command ends")
 			.short("N")
 			.long("notify"));
 

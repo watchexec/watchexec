@@ -2,6 +2,7 @@ use std::{convert::Infallible, env::current_dir, path::Path, str::FromStr, time:
 
 use clap::ArgMatches;
 use miette::{IntoDiagnostic, Result};
+use notify_rust::Notification;
 use watchexec::{
 	action::{Action, Outcome},
 	command::Shell,
@@ -59,6 +60,7 @@ pub fn runtime(args: &ArgMatches<'static>) -> Result<RuntimeConfig> {
 	});
 
 	let clear = args.is_present("clear");
+	let notif = args.is_present("notif");
 	let mut on_busy = args
 		.value_of("on-busy-update")
 		.unwrap_or("queue")
@@ -131,23 +133,37 @@ pub fn runtime(args: &ArgMatches<'static>) -> Result<RuntimeConfig> {
 
 			let completion = action.events.iter().flat_map(|e| e.completions()).next();
 			if let Some(status) = completion {
-				match status {
+				let (msg, printit) = match status {
 					Some(ProcessEnd::ExitError(code)) => {
-						eprintln!("[Command exited with {}]", code);
+						(format!("Command exited with {}", code), true)
 					}
 					Some(ProcessEnd::ExitSignal(sig)) => {
-						eprintln!("[Command killed by {:?}]", sig);
+						(format!("Command killed by {:?}", sig), true)
 					}
 					Some(ProcessEnd::ExitStop(sig)) => {
-						eprintln!("[Command stopped by {:?}]", sig);
+						(format!("Command stopped by {:?}", sig), true)
 					}
-					Some(ProcessEnd::Continued) => {
-						eprintln!("[Command continued]");
-					}
+					Some(ProcessEnd::Continued) => ("Command continued".to_string(), true),
 					Some(ProcessEnd::Exception(ex)) => {
-						eprintln!("[Command ended by exception {:#x}]", ex);
+						(format!("Command ended by exception {:#x}", ex), true)
 					}
-					_ => {}
+					Some(ProcessEnd::Success) => ("Command was successful".to_string(), false),
+					None => ("Command completed".to_string(), false),
+				};
+
+				if printit {
+					eprintln!("{}", msg);
+				}
+
+				if notif {
+					Notification::new()
+						.summary("Watchexec: command ended")
+						.body(&msg)
+						.show()
+						.map(drop)
+						.unwrap_or_else(|err| {
+							eprintln!("Failed to send desktop notification: {}", err);
+						});
 				}
 
 				action.outcome(Outcome::DoNothing);
