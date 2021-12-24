@@ -19,8 +19,7 @@ FLAGS:
         --no-process-group     Do not use a process group when running the command
     -n, --no-shell             Do not wrap command in a shell. Deprecated: use --shell=none instead.
         --no-vcs-ignore        Skip auto-loading of .gitignore files for filtering
-    -N, --notify               Send a desktop notification when watchexec notices a change (experimental, behaviour may
-                               change)
+    -N, --notify               Send a desktop notification when the command ends
     -p, --postpone             Wait until first change to execute command
         --print-events         Print events that trigger actions
     -r, --restart              Restart the process if it's still running. Shorthand for --on-busy-update=restart
