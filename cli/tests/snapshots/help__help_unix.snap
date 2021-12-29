@@ -14,6 +14,7 @@ FLAGS:
     -h, --help                 Prints help information
         --no-default-ignore    Skip auto-ignoring of commonly ignored globs
         --no-environment       Do not set WATCHEXEC_*_PATH environment variables for the command
+        --no-global-ignore     Skip auto-loading of global or environment-wide ignore files
         --no-ignore            Skip auto-loading of ignore files (.gitignore, .ignore, etc.) for filtering
         --no-meta              Ignore metadata changes
         --no-process-group     Do not use a process group when running the command
