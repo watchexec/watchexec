@@ -135,9 +135,9 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches<'static>> {
 			.help("Do not wrap command in a shell. Deprecated: use --shell=none instead.")
 			.short("n")
 			.long("no-shell"))
-		.arg(Arg::with_name("no-environment") // TODO
+		.arg(Arg::with_name("no-environment")
 			.help_heading(Some(OPTSET_OUTPUT))
-			.help("Do not set WATCHEXEC_*_PATH environment variables for the command")
+			.help("Do not set WATCHEXEC_* environment variables for the command")
 			.long("no-environment"))
 		.arg(Arg::with_name("no-process-group")
 			.help_heading(Some(OPTSET_COMMAND))
@@ -201,7 +201,7 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches<'static>> {
 				.takes_value(true),
 		)
 		.arg(
-			Arg::with_name("filter") // TODO
+			Arg::with_name("filter")
 				.help_heading(Some(OPTSET_FILTERING))
 				.help("Ignore all modifications except those matching the pattern")
 				.short("f")
@@ -212,7 +212,7 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches<'static>> {
 				.value_name("pattern"),
 		)
 		.arg(
-			Arg::with_name("ignore") // TODO
+			Arg::with_name("ignore")
 				.help_heading(Some(OPTSET_FILTERING))
 				.help("Ignore modifications to paths matching the pattern")
 				.short("i")

@@ -4,11 +4,13 @@ use clap::ArgMatches;
 use miette::{IntoDiagnostic, Result};
 use notify_rust::Notification;
 use watchexec::{
-	action::{Action, Outcome},
+	action::{Action, Outcome, PostSpawn, PreSpawn},
 	command::Shell,
 	config::RuntimeConfig,
 	event::ProcessEnd,
 	fs::Watcher,
+	handler::SyncFnHandler,
+	paths::summarise_events_to_env,
 	signal::{process::SubSignal, source::MainSignal},
 };
 
@@ -194,7 +196,34 @@ pub fn runtime(args: &ArgMatches<'static>) -> Result<RuntimeConfig> {
 		fut
 	});
 
-	// TODO: pre-command (environment vars)
+	let no_env = args.is_present("no-environment");
+	config.on_pre_spawn(move |prespawn: PreSpawn| async move {
+		if !no_env {
+			let envs = summarise_events_to_env(prespawn.events.iter());
+			if let Some(mut command) = prespawn.command().await {
+				for (k, v) in envs {
+					command.env(format!("WATCHEXEC_{}", k), v);
+				}
+			}
+		}
+
+		Ok::<(), Infallible>(())
+	});
+
+	config.on_post_spawn(SyncFnHandler::from(move |postspawn: PostSpawn| {
+		if notif {
+			Notification::new()
+				.summary("Watchexec: change detected")
+				.body(&format!("Running `{}`", postspawn.command.join(" ")))
+				.show()
+				.map(drop)
+				.unwrap_or_else(|err| {
+					eprintln!("Failed to send desktop notification: {}", err);
+				});
+		}
+
+		Ok::<(), Infallible>(())
+	}));
 
 	Ok(config)
 }
