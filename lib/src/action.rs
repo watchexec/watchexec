@@ -115,7 +115,8 @@ pub async fn worker(
 		trace!("out of throttle, starting action process");
 		last = Instant::now();
 
-		let action = Action::new(set.drain(..).collect());
+		let events = Arc::new(set.drain(..).collect());
+		let action = Action::new(Arc::clone(&events));
 		debug!(?action, "action constructed");
 
 		if let Some(h) = working.borrow().action_handler.take() {
@@ -154,6 +155,7 @@ pub async fn worker(
 		let w = working.borrow().clone();
 		let rerr = apply_outcome(
 			outcome,
+			events,
 			w,
 			&mut process,
 			&mut pre_spawn_handler,
@@ -171,15 +173,17 @@ pub async fn worker(
 	Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 #[async_recursion::async_recursion]
 async fn apply_outcome(
 	outcome: Outcome,
+	events: Arc<Vec<Event>>,
 	working: WorkingData,
 	process: &mut Option<Supervisor>,
 	pre_spawn_handler: &mut Box<dyn Handler<PreSpawn> + Send>,
 	post_spawn_handler: &mut Box<dyn Handler<PostSpawn> + Send>,
-	errors: mpsc::Sender<RuntimeError>,
-	events: mpsc::Sender<Event>,
+	errors_c: mpsc::Sender<RuntimeError>,
+	events_c: mpsc::Sender<Event>,
 ) -> Result<(), RuntimeError> {
 	trace!(?outcome, "applying outcome");
 	match (process.as_mut(), outcome) {
@@ -200,7 +204,8 @@ async fn apply_outcome(
 				warn!("tried to start a command without anything to run");
 			} else {
 				let command = working.shell.to_command(&working.command);
-				let (pre_spawn, command) = PreSpawn::new(command, working.command.clone());
+				let (pre_spawn, command) =
+					PreSpawn::new(command, working.command.clone(), events.clone());
 
 				debug!("running pre-spawn handler");
 				pre_spawn_handler
@@ -213,8 +218,8 @@ async fn apply_outcome(
 
 				trace!("spawing supervisor for command");
 				let sup = Supervisor::spawn(
-					errors.clone(),
-					events.clone(),
+					errors_c.clone(),
+					events_c.clone(),
 					&mut command,
 					working.grouped,
 				)?;
@@ -222,6 +227,7 @@ async fn apply_outcome(
 				debug!("running post-spawn handler");
 				let post_spawn = PostSpawn {
 					command: working.command.clone(),
+					events: events.clone(),
 					id: sup.id(),
 					grouped: working.grouped,
 				};
@@ -261,24 +267,26 @@ async fn apply_outcome(
 		(Some(_), Outcome::IfRunning(then, _)) => {
 			apply_outcome(
 				*then,
+				events.clone(),
 				working,
 				process,
 				pre_spawn_handler,
 				post_spawn_handler,
-				errors,
-				events,
+				errors_c,
+				events_c,
 			)
 			.await?;
 		}
 		(None, Outcome::IfRunning(_, otherwise)) => {
 			apply_outcome(
 				*otherwise,
+				events.clone(),
 				working,
 				process,
 				pre_spawn_handler,
 				post_spawn_handler,
-				errors,
-				events,
+				errors_c,
+				events_c,
 			)
 			.await?;
 		}
@@ -286,29 +294,31 @@ async fn apply_outcome(
 		(_, Outcome::Both(one, two)) => {
 			if let Err(err) = apply_outcome(
 				*one,
+				events.clone(),
 				working.clone(),
 				process,
 				pre_spawn_handler,
 				post_spawn_handler,
-				errors.clone(),
-				events.clone(),
+				errors_c.clone(),
+				events_c.clone(),
 			)
 			.await
 			{
 				debug!(
 					"first outcome failed, sending an error but proceeding to the second anyway"
 				);
-				errors.send(err).await.ok();
+				errors_c.send(err).await.ok();
 			}
 
 			apply_outcome(
 				*two,
+				events.clone(),
 				working,
 				process,
 				pre_spawn_handler,
 				post_spawn_handler,
-				errors,
-				events,
+				errors_c,
+				events_c,
 			)
 			.await?;
 		}

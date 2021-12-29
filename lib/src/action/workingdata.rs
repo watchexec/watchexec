@@ -131,12 +131,12 @@ impl Default for WorkingData {
 #[derive(Debug, Default)]
 pub struct Action {
 	/// The collected events which triggered the action.
-	pub events: Vec<Event>,
+	pub events: Arc<Vec<Event>>,
 	pub(super) outcome: Arc<OnceCell<Outcome>>,
 }
 
 impl Action {
-	pub(super) fn new(events: Vec<Event>) -> Self {
+	pub(super) fn new(events: Arc<Vec<Event>>) -> Self {
 		Self {
 			events,
 			..Self::default()
@@ -169,15 +169,24 @@ pub struct PreSpawn {
 	///
 	/// This is the final command, after the [`Shell`] has been applied.
 	pub command: Vec<String>,
+
+	/// The collected events which triggered the action this command issues from.
+	pub events: Arc<Vec<Event>>,
+
 	command_w: Weak<Mutex<Command>>,
 }
 
 impl PreSpawn {
-	pub(super) fn new(command: Command, cmd: Vec<String>) -> (Self, Arc<Mutex<Command>>) {
+	pub(super) fn new(
+		command: Command,
+		cmd: Vec<String>,
+		events: Arc<Vec<Event>>,
+	) -> (Self, Arc<Mutex<Command>>) {
 		let arc = Arc::new(Mutex::new(command));
 		(
 			Self {
 				command: cmd,
+				events,
 				command_w: Arc::downgrade(&arc),
 			},
 			arc.clone(),
@@ -210,6 +219,9 @@ impl PreSpawn {
 pub struct PostSpawn {
 	/// The final command the process was spawned with.
 	pub command: Vec<String>,
+
+	/// The collected events which triggered the action the command issues from.
+	pub events: Arc<Vec<Event>>,
 
 	/// The process ID or the process group ID.
 	pub id: u32,
