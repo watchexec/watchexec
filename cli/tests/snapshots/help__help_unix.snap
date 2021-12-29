@@ -15,11 +15,11 @@ FLAGS:
         --no-default-ignore    Skip auto-ignoring of commonly ignored globs
         --no-environment       Do not set WATCHEXEC_*_PATH environment variables for the command
         --no-global-ignore     Skip auto-loading of global or environment-wide ignore files
-        --no-ignore            Skip auto-loading of ignore files (.gitignore, .ignore, etc.) for filtering
+        --no-ignore            Skip auto-loading of project ignore files (.gitignore, .ignore, etc.)
         --no-meta              Ignore metadata changes
         --no-process-group     Do not use a process group when running the command
     -n, --no-shell             Do not wrap command in a shell. Deprecated: use --shell=none instead.
-        --no-vcs-ignore        Skip auto-loading of .gitignore files for filtering
+        --no-vcs-ignore        Skip auto-loading of VCS (Git, etc) ignore files
     -N, --notify               Send a desktop notification when the command ends
     -p, --postpone             Wait until first change to execute command
         --print-events         Print events that trigger actions

@@ -96,11 +96,11 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches<'static>> {
 			.alias("changes-only")) // --changes-only is deprecated (remove at v2)
 		.arg(Arg::with_name("no-vcs-ignore") // TODO
 			.help_heading(Some(OPTSET_FILTERING))
-			.help("Skip auto-loading of .gitignore files for filtering")
+			.help("Skip auto-loading of VCS (Git, etc) ignore files")
 			.long("no-vcs-ignore"))
 		.arg(Arg::with_name("no-ignore") // TODO
 			.help_heading(Some(OPTSET_FILTERING))
-			.help("Skip auto-loading of ignore files (.gitignore, .ignore, etc.) for filtering")
+			.help("Skip auto-loading of project ignore files (.gitignore, .ignore, etc)")
 			.long("no-ignore"))
 		.arg(Arg::with_name("no-default-ignore") // TODO
 			.help_heading(Some(OPTSET_FILTERING))
