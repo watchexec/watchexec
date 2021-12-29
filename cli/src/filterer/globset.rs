@@ -5,9 +5,16 @@ use std::{
 
 use clap::ArgMatches;
 use miette::{IntoDiagnostic, Result};
-use watchexec::filter::globset::GlobsetFilterer;
+use watchexec::{
+	error::RuntimeError,
+	event::{
+		filekind::{FileEventKind, ModifyKind},
+		Event, Tag,
+	},
+	filter::{globset::GlobsetFilterer, Filterer},
+};
 
-pub async fn globset(args: &ArgMatches<'static>) -> Result<Arc<GlobsetFilterer>> {
+pub async fn globset(args: &ArgMatches<'static>) -> Result<Arc<WatchexecFilterer>> {
 	let (project_origin, workdir) = super::common::dirs(args).await?;
 	let ignorefiles = super::common::ignores(args, &project_origin).await?;
 
@@ -33,9 +40,34 @@ pub async fn globset(args: &ArgMatches<'static>) -> Result<Arc<GlobsetFilterer>>
 		.map(|s| s.split(b','))
 		.flatten();
 
-	Ok(Arc::new(
-		GlobsetFilterer::new(project_origin, filters, ignores, exts).into_diagnostic()?,
-	))
+	Ok(Arc::new(WatchexecFilterer {
+		inner: GlobsetFilterer::new(project_origin, filters, ignores, exts).into_diagnostic()?,
+		no_meta: args.is_present("no-meta"),
+	}))
+}
+
+/// A custom filterer that combines the library's Globset filterer and a switch for --no-meta
+#[derive(Debug)]
+pub struct WatchexecFilterer {
+	inner: GlobsetFilterer,
+	no_meta: bool,
+}
+
+impl Filterer for WatchexecFilterer {
+	fn check_event(&self, event: &Event) -> Result<bool, RuntimeError> {
+		let is_meta = event.tags.iter().any(|tag| {
+			matches!(
+				tag,
+				Tag::FileEventKind(FileEventKind::Modify(ModifyKind::Metadata(_)))
+			)
+		});
+
+		if self.no_meta && is_meta {
+			Ok(false)
+		} else {
+			self.inner.check_event(event)
+		}
+	}
 }
 
 trait OsStringSplit {

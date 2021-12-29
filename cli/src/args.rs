@@ -94,11 +94,11 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches<'static>> {
 			.help("Print events that trigger actions")
 			.long("print-events")
 			.alias("changes-only")) // --changes-only is deprecated (remove at v2)
-		.arg(Arg::with_name("no-vcs-ignore") // TODO
+		.arg(Arg::with_name("no-vcs-ignore")
 			.help_heading(Some(OPTSET_FILTERING))
 			.help("Skip auto-loading of VCS (Git, etc) ignore files")
 			.long("no-vcs-ignore"))
-		.arg(Arg::with_name("no-project-ignore") // TODO
+		.arg(Arg::with_name("no-project-ignore")
 			.help_heading(Some(OPTSET_FILTERING))
 			.help("Skip auto-loading of project ignore files (.gitignore, .ignore, etc)")
 			.long("no-ignore"))
@@ -106,7 +106,7 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches<'static>> {
 			.help_heading(Some(OPTSET_FILTERING))
 			.help("Skip auto-ignoring of commonly ignored globs")
 			.long("no-default-ignore"))
-		.arg(Arg::with_name("no-global-ignore") // TODO
+		.arg(Arg::with_name("no-global-ignore")
 			.help_heading(Some(OPTSET_FILTERING))
 			.help("Skip auto-loading of global or environment-wide ignore files")
 			.long("no-global-ignore"))
@@ -186,7 +186,7 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches<'static>> {
 				.long("no-default-filters"),
 		)
 		.arg(
-			Arg::with_name("no-meta") // TODO
+			Arg::with_name("no-meta")
 				.help_heading(Some(OPTSET_FILTERING))
 				.help("Ignore metadata changes (equivalent of `-f 'kind*!Modify(Metadata(*))'`)")
 				.long("no-meta"),
@@ -223,7 +223,7 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches<'static>> {
 				.value_name("pattern"),
 		)
 		.arg(
-			Arg::with_name("no-meta") // TODO
+			Arg::with_name("no-meta")
 				.help_heading(Some(OPTSET_FILTERING))
 				.help("Ignore metadata changes")
 				.long("no-meta"),
