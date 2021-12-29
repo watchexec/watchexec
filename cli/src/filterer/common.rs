@@ -34,7 +34,7 @@ pub async fn dirs(args: &ArgMatches<'static>) -> Result<(PathBuf, PathBuf)> {
 	Ok((project_origin, workdir))
 }
 
-pub async fn ignores(_args: &ArgMatches<'static>, origin: &Path) -> Result<Vec<IgnoreFile>> {
+pub async fn ignores(args: &ArgMatches<'static>, origin: &Path) -> Result<Vec<IgnoreFile>> {
 	let vcs_types = project::types(origin)
 		.await
 		.into_iter()
@@ -45,6 +45,8 @@ pub async fn ignores(_args: &ArgMatches<'static>, origin: &Path) -> Result<Vec<I
 	let (mut ignores, _errors) = ignore_files::from_origin(origin).await;
 	// TODO: handle errors
 	debug!(?ignores, "discovered ignore files from project origin");
+
+	// TODO: use drain_ignore instead for x = x.filter()... when that stabilises
 
 	let mut skip_git_global_excludes = false;
 	if !vcs_types.is_empty() {
@@ -67,7 +69,6 @@ pub async fn ignores(_args: &ArgMatches<'static>, origin: &Path) -> Result<Vec<I
 			})
 			.collect::<Vec<_>>();
 		debug!(?ignores, "filtered ignores to only those for project vcs");
-		// TODO: use drain_ignore when that stabilises
 	}
 
 	let (mut global_ignores, _errors) = ignore_files::from_environment().await;
@@ -92,7 +93,6 @@ pub async fn ignores(_args: &ArgMatches<'static>, origin: &Path) -> Result<Vec<I
 			?global_ignores,
 			"filtered global ignores to exclude global git ignores"
 		);
-		// TODO: use drain_ignore when that stabilises
 	}
 
 	if !vcs_types.is_empty() {
@@ -103,9 +103,37 @@ pub async fn ignores(_args: &ArgMatches<'static>, origin: &Path) -> Result<Vec<I
 		debug!(?ignores, "combined and applied final filter over ignores");
 	}
 
-	// TODO: --no-ignore
-	// TODO: --no-vcs-ignore
-	// TODO: --no-global-ignore
+	if args.is_present("no-project-ignore") {
+		ignores = ignores
+			.into_iter()
+			.filter(|ig| {
+				!ig.applies_in
+					.as_ref()
+					.map_or(false, |p| p.starts_with(&origin))
+			})
+			.collect::<Vec<_>>();
+		debug!(
+			?ignores,
+			"filtered ignores to exclude project-local ignores"
+		);
+	}
+
+	if args.is_present("no-global-ignore") {
+		ignores = ignores
+			.into_iter()
+			.filter(|ig| !matches!(ig.applies_in, None))
+			.collect::<Vec<_>>();
+		debug!(?ignores, "filtered ignores to exclude global ignores");
+	}
+
+	if args.is_present("no-vcs-ignore") {
+		ignores = ignores
+			.into_iter()
+			.filter(|ig| matches!(ig.applies_to, None))
+			.collect::<Vec<_>>();
+		debug!(?ignores, "filtered ignores to exclude VCS-specific ignores");
+	}
+
 	// TODO: --no-default-ignore (whatever that was)
 
 	Ok(ignores)

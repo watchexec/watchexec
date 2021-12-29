@@ -98,7 +98,7 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches<'static>> {
 			.help_heading(Some(OPTSET_FILTERING))
 			.help("Skip auto-loading of VCS (Git, etc) ignore files")
 			.long("no-vcs-ignore"))
-		.arg(Arg::with_name("no-ignore") // TODO
+		.arg(Arg::with_name("no-project-ignore") // TODO
 			.help_heading(Some(OPTSET_FILTERING))
 			.help("Skip auto-loading of project ignore files (.gitignore, .ignore, etc)")
 			.long("no-ignore"))
