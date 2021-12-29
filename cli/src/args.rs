@@ -102,7 +102,7 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches<'static>> {
 			.help_heading(Some(OPTSET_FILTERING))
 			.help("Skip auto-loading of project ignore files (.gitignore, .ignore, etc)")
 			.long("no-ignore"))
-		.arg(Arg::with_name("no-default-ignore") // TODO
+		.arg(Arg::with_name("no-default-ignore")
 			.help_heading(Some(OPTSET_FILTERING))
 			.help("Skip auto-ignoring of commonly ignored globs")
 			.long("no-default-ignore"))

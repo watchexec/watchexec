@@ -3,7 +3,7 @@ use std::sync::Arc;
 use clap::ArgMatches;
 use futures::future::try_join_all;
 use miette::{IntoDiagnostic, Result};
-use tracing::debug;
+use tracing::{debug, trace};
 use watchexec::{
 	filter::tagged::{
 		files::{self, FilterFile},
@@ -56,6 +56,23 @@ pub async fn tagged(args: &ArgMatches<'static>) -> Result<Arc<TaggedFilterer>> {
 		filters.push(filter);
 	}
 
+	if !args.is_present("no-default-ignore") {
+		filters.extend([
+			Filter::from_glob_ignore(None, ".DS_Store/"),
+			Filter::from_glob_ignore(None, ".git/"),
+			Filter::from_glob_ignore(None, ".hg/"),
+			Filter::from_glob_ignore(None, ".svn/"),
+			Filter::from_glob_ignore(None, "_darcs/"),
+			Filter::from_glob_ignore(None, ".fossil-settings/"),
+			Filter::from_glob_ignore(None, "*.py[co]"),
+			Filter::from_glob_ignore(None, "#*#"),
+			Filter::from_glob_ignore(None, ".#*"),
+			Filter::from_glob_ignore(None, ".*.kate-swp"),
+			Filter::from_glob_ignore(None, ".*.sw?"),
+			Filter::from_glob_ignore(None, ".*.sw?x"),
+		]);
+	}
+
 	if args.is_present("no-meta") {
 		filters.push(Filter {
 			in_path: Some(workdir.clone()),
@@ -66,7 +83,8 @@ pub async fn tagged(args: &ArgMatches<'static>) -> Result<Arc<TaggedFilterer>> {
 		});
 	}
 
-	debug!(?filters, "parsed filters");
+	debug!(filters=%filters.len(), "parsed filters");
+	trace!(?filters, "all filters");
 	filterer.add_filters(&filters).await?;
 
 	Ok(filterer)

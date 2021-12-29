@@ -1,10 +1,12 @@
 use std::{
 	ffi::{OsStr, OsString},
+	path::MAIN_SEPARATOR,
 	sync::Arc,
 };
 
 use clap::ArgMatches;
 use miette::{IntoDiagnostic, Result};
+use tracing::debug;
 use watchexec::{
 	error::RuntimeError,
 	event::{
@@ -19,6 +21,22 @@ pub async fn globset(args: &ArgMatches<'static>) -> Result<Arc<WatchexecFilterer
 	let ignorefiles = super::common::ignores(args, &project_origin).await?;
 
 	let mut ignores = Vec::new();
+
+	if !args.is_present("no-default-ignore") {
+		ignores.extend([
+			(format!("**{s}.DS_Store", s = MAIN_SEPARATOR), None),
+			(String::from("*.py[co]"), None),
+			(String::from("#*#"), None),
+			(String::from(".#*"), None),
+			(String::from(".*.kate-swp"), None),
+			(String::from(".*.sw?"), None),
+			(String::from(".*.sw?x"), None),
+			(format!("**{s}.git{s}**", s = MAIN_SEPARATOR), None),
+			(format!("**{s}.hg{s}**", s = MAIN_SEPARATOR), None),
+			(format!("**{s}.svn{s}**", s = MAIN_SEPARATOR), None),
+		]);
+	}
+
 	for ignore in ignorefiles {
 		ignores.extend(GlobsetFilterer::list_from_ignore_file(&ignore).await?);
 	}
@@ -40,6 +58,7 @@ pub async fn globset(args: &ArgMatches<'static>) -> Result<Arc<WatchexecFilterer
 		.map(|s| s.split(b','))
 		.flatten();
 
+	debug!(filters=%filters.len(), ignores=%ignores.len(), "vecs lengths");
 	Ok(Arc::new(WatchexecFilterer {
 		inner: GlobsetFilterer::new(project_origin, filters, ignores, exts).into_diagnostic()?,
 		no_meta: args.is_present("no-meta"),
