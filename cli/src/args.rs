@@ -109,7 +109,7 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches<'static>> {
 		.arg(Arg::with_name("no-global-ignore") // TODO
 			.help_heading(Some(OPTSET_FILTERING))
 			.help("Skip auto-loading of global or environment-wide ignore files")
-			.long("no-default-ignore"))
+			.long("no-global-ignore"))
 		.arg(Arg::with_name("postpone")
 			.help_heading(Some(OPTSET_BEHAVIOUR))
 			.help("Wait until first change to execute command")
