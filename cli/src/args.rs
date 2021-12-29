@@ -106,6 +106,10 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches<'static>> {
 			.help_heading(Some(OPTSET_FILTERING))
 			.help("Skip auto-ignoring of commonly ignored globs")
 			.long("no-default-ignore"))
+		.arg(Arg::with_name("no-global-ignore") // TODO
+			.help_heading(Some(OPTSET_FILTERING))
+			.help("Skip auto-loading of global or environment-wide ignore files")
+			.long("no-default-ignore"))
 		.arg(Arg::with_name("postpone")
 			.help_heading(Some(OPTSET_BEHAVIOUR))
 			.help("Wait until first change to execute command")
@@ -165,7 +169,7 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches<'static>> {
 				.value_name("tagged filter"),
 		)
 		.arg(
-			Arg::with_name("filter-files") // TODO
+			Arg::with_name("filter-files")
 				.help_heading(Some(OPTSET_FILTERING))
 				.help("Load tagged filters from a file")
 				.short("F")
@@ -174,6 +178,12 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches<'static>> {
 				.multiple(true)
 				.takes_value(true)
 				.value_name("path"),
+		)
+		.arg(
+			Arg::with_name("no-global-filters")
+				.help_heading(Some(OPTSET_FILTERING))
+				.help("Skip auto-loading of global or environment-wide ignore files")
+				.long("no-default-filters"),
 		)
 		.arg(
 			Arg::with_name("no-meta") // TODO
