@@ -41,7 +41,7 @@
 //!         let mut c = c.clone();
 //!         let w = w.clone();
 //!         async move {
-//!             for event in &action.events {
+//!             for event in action.events.iter() {
 //!                 if event.paths().any(|(p, _)| p.ends_with("/watchexec.conf")) {
 //!                     let conf = YourConfigFormat::load_from_file("watchexec.conf").await?;
 //!
