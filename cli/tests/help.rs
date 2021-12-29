@@ -22,3 +22,25 @@ fn help() {
 		String::from_utf8(output.stdout).unwrap()
 	);
 }
+
+#[test]
+fn help_short() {
+	let long = Command::cargo_bin("watchexec")
+		.unwrap()
+		.arg("--help")
+		.output()
+		.unwrap();
+
+	let short = Command::cargo_bin("watchexec")
+		.unwrap()
+		.arg("--help")
+		.output()
+		.unwrap();
+
+	assert!(short.status.success(), "-h returns 0");
+	assert_eq!(short.stderr, Vec::<u8>::new(), "-h stderr is empty");
+	assert_eq!(
+		long.stdout, short.stdout,
+		"--help and -h output are the same"
+	);
+}
