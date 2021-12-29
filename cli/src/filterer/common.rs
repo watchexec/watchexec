@@ -105,6 +105,8 @@ pub async fn ignores(_args: &ArgMatches<'static>, origin: &Path) -> Result<Vec<I
 
 	// TODO: --no-ignore
 	// TODO: --no-vcs-ignore
+	// TODO: --no-global-ignore
+	// TODO: --no-default-ignore (whatever that was)
 
 	Ok(ignores)
 }
