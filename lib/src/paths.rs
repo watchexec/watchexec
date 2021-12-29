@@ -2,7 +2,7 @@
 
 use std::{
 	collections::HashMap,
-	ffi::{OsStr, OsString},
+	ffi::OsString,
 	path::{Path, PathBuf},
 };
 
@@ -66,7 +66,7 @@ where
 /// byte order and joined with the platform-specific path separator (`:` for unix, `;` for Windows).
 pub fn summarise_events_to_env<'events>(
 	events: impl IntoIterator<Item = &'events Event>,
-) -> HashMap<&'static OsStr, OsString> {
+) -> HashMap<&'static str, OsString> {
 	#[cfg(unix)]
 	const ENV_SEP: &str = ":";
 	#[cfg(not(unix))]
@@ -118,14 +118,14 @@ pub fn summarise_events_to_env<'events>(
 	for (kind, paths) in kind_buckets {
 		use notify::event::{AccessKind::*, AccessMode::*, EventKind::*, ModifyKind::*};
 		grouped_buckets
-			.entry(OsStr::new(match kind {
+			.entry(match kind {
 				Modify(Data(_)) | Access(Close(Write)) => "WRITTEN",
 				Modify(Metadata(_)) => "META_CHANGED",
 				Remove(_) => "REMOVED",
 				Create(_) => "CREATED",
 				Modify(Name(_)) => "RENAMED",
 				_ => "OTHERWISE_CHANGED",
-			}))
+			})
 			.or_insert_with(Vec::new)
 			.extend(paths.into_iter().map(|p| {
 				if let Some(suffix) = common_path
@@ -139,7 +139,7 @@ pub fn summarise_events_to_env<'events>(
 			}));
 	}
 
-	let mut res: HashMap<&'static OsStr, OsString> = grouped_buckets
+	let mut res: HashMap<&'static str, OsString> = grouped_buckets
 		.into_iter()
 		.map(|(kind, mut paths)| {
 			let mut joined =
@@ -158,7 +158,7 @@ pub fn summarise_events_to_env<'events>(
 		.collect();
 
 	if let Some(common_path) = common_path {
-		res.insert(OsStr::new("COMMON_PATH"), common_path.into_os_string());
+		res.insert("COMMON_PATH", common_path.into_os_string());
 	}
 
 	res

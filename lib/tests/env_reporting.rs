@@ -1,7 +1,4 @@
-use std::{
-	collections::HashMap,
-	ffi::{OsStr, OsString},
-};
+use std::{collections::HashMap, ffi::OsString};
 
 use notify::event::CreateKind;
 use watchexec::{
@@ -49,8 +46,8 @@ fn single_created() {
 	assert_eq!(
 		summarise_events_to_env(&events),
 		HashMap::from([
-			(OsStr::new("CREATED"), OsString::from("file.txt")),
-			(OsStr::new("COMMON_PATH"), ospath("")),
+			("CREATED", OsString::from("file.txt")),
+			("COMMON_PATH", ospath("")),
 		])
 	);
 }
@@ -64,8 +61,8 @@ fn single_meta() {
 	assert_eq!(
 		summarise_events_to_env(&events),
 		HashMap::from([
-			(OsStr::new("META_CHANGED"), OsString::from("file.txt")),
-			(OsStr::new("COMMON_PATH"), ospath("")),
+			("META_CHANGED", OsString::from("file.txt")),
+			("COMMON_PATH", ospath("")),
 		])
 	);
 }
@@ -76,8 +73,8 @@ fn single_removed() {
 	assert_eq!(
 		summarise_events_to_env(&events),
 		HashMap::from([
-			(OsStr::new("REMOVED"), OsString::from("file.txt")),
-			(OsStr::new("COMMON_PATH"), ospath("")),
+			("REMOVED", OsString::from("file.txt")),
+			("COMMON_PATH", ospath("")),
 		])
 	);
 }
@@ -91,8 +88,8 @@ fn single_renamed() {
 	assert_eq!(
 		summarise_events_to_env(&events),
 		HashMap::from([
-			(OsStr::new("RENAMED"), OsString::from("file.txt")),
-			(OsStr::new("COMMON_PATH"), ospath("")),
+			("RENAMED", OsString::from("file.txt")),
+			("COMMON_PATH", ospath("")),
 		])
 	);
 }
@@ -106,8 +103,8 @@ fn single_written() {
 	assert_eq!(
 		summarise_events_to_env(&events),
 		HashMap::from([
-			(OsStr::new("WRITTEN"), OsString::from("file.txt")),
-			(OsStr::new("COMMON_PATH"), ospath("")),
+			("WRITTEN", OsString::from("file.txt")),
+			("COMMON_PATH", ospath("")),
 		])
 	);
 }
@@ -118,8 +115,8 @@ fn single_otherwise() {
 	assert_eq!(
 		summarise_events_to_env(&events),
 		HashMap::from([
-			(OsStr::new("OTHERWISE_CHANGED"), OsString::from("file.txt")),
-			(OsStr::new("COMMON_PATH"), ospath("")),
+			("OTHERWISE_CHANGED", OsString::from("file.txt")),
+			("COMMON_PATH", ospath("")),
 		])
 	);
 }
@@ -146,13 +143,13 @@ fn all_types_once() {
 	assert_eq!(
 		summarise_events_to_env(&events),
 		HashMap::from([
-			(OsStr::new("CREATED"), OsString::from("create.txt")),
-			(OsStr::new("META_CHANGED"), OsString::from("metadata.txt")),
-			(OsStr::new("REMOVED"), OsString::from("remove.txt")),
-			(OsStr::new("RENAMED"), OsString::from("rename.txt")),
-			(OsStr::new("WRITTEN"), OsString::from("modify.txt")),
-			(OsStr::new("OTHERWISE_CHANGED"), OsString::from("any.txt")),
-			(OsStr::new("COMMON_PATH"), ospath("")),
+			("CREATED", OsString::from("create.txt")),
+			("META_CHANGED", OsString::from("metadata.txt")),
+			("REMOVED", OsString::from("remove.txt")),
+			("RENAMED", OsString::from("rename.txt")),
+			("WRITTEN", OsString::from("modify.txt")),
+			("OTHERWISE_CHANGED", OsString::from("any.txt")),
+			("COMMON_PATH", ospath("")),
 		])
 	);
 }
@@ -172,7 +169,7 @@ fn single_type_multipath() {
 		summarise_events_to_env(&events),
 		HashMap::from([
 			(
-				OsStr::new("CREATED"),
+				"CREATED",
 				OsString::from(
 					"".to_string()
 						+ "deeper/sub/folder.txt"
@@ -181,7 +178,7 @@ fn single_type_multipath() {
 						+ "sub/folder.txt"
 				)
 			),
-			(OsStr::new("COMMON_PATH"), ospath("")),
+			("COMMON_PATH", ospath("")),
 		])
 	);
 }
@@ -196,10 +193,10 @@ fn single_type_divergent_paths() {
 		summarise_events_to_env(&events),
 		HashMap::from([
 			(
-				OsStr::new("CREATED"),
+				"CREATED",
 				OsString::from("".to_string() + "dom/folder.txt" + ENV_SEP + "sub/folder.txt")
 			),
-			(OsStr::new("COMMON_PATH"), ospath("")),
+			("COMMON_PATH", ospath("")),
 		])
 	);
 }
@@ -220,16 +217,13 @@ fn multitype_multipath() {
 		summarise_events_to_env(&events),
 		HashMap::from([
 			(
-				OsStr::new("CREATED"),
+				"CREATED",
 				OsString::from("".to_string() + "root.txt" + ENV_SEP + "sibling.txt"),
 			),
-			(OsStr::new("META_CHANGED"), OsString::from("sub/folder.txt"),),
-			(OsStr::new("REMOVED"), OsString::from("dom/folder.txt"),),
-			(
-				OsStr::new("OTHERWISE_CHANGED"),
-				OsString::from("deeper/sub/folder.txt"),
-			),
-			(OsStr::new("COMMON_PATH"), ospath("")),
+			("META_CHANGED", OsString::from("sub/folder.txt"),),
+			("REMOVED", OsString::from("dom/folder.txt"),),
+			("OTHERWISE_CHANGED", OsString::from("deeper/sub/folder.txt"),),
+			("COMMON_PATH", ospath("")),
 		])
 	);
 }
@@ -254,10 +248,10 @@ fn multiple_paths_in_one_event() {
 		summarise_events_to_env(&events),
 		HashMap::from([
 			(
-				OsStr::new("OTHERWISE_CHANGED"),
+				"OTHERWISE_CHANGED",
 				OsString::from("".to_string() + "one.txt" + ENV_SEP + "two.txt")
 			),
-			(OsStr::new("COMMON_PATH"), ospath("")),
+			("COMMON_PATH", ospath("")),
 		])
 	);
 }
@@ -280,10 +274,10 @@ fn mixed_non_paths_events() {
 		summarise_events_to_env(&events),
 		HashMap::from([
 			(
-				OsStr::new("OTHERWISE_CHANGED"),
+				"OTHERWISE_CHANGED",
 				OsString::from("".to_string() + "one.txt" + ENV_SEP + "two.txt")
 			),
-			(OsStr::new("COMMON_PATH"), ospath("")),
+			("COMMON_PATH", ospath("")),
 		])
 	);
 }
@@ -316,7 +310,7 @@ fn multipath_is_sorted() {
 		summarise_events_to_env(&events),
 		HashMap::from([
 			(
-				OsStr::new("OTHERWISE_CHANGED"),
+				"OTHERWISE_CHANGED",
 				OsString::from(
 					"".to_string()
 						+ "0123.txt" + ENV_SEP + "a.txt"
@@ -324,7 +318,7 @@ fn multipath_is_sorted() {
 						+ "c.txt" + ENV_SEP + "ᄁ.txt"
 				)
 			),
-			(OsStr::new("COMMON_PATH"), ospath("")),
+			("COMMON_PATH", ospath("")),
 		])
 	);
 }
