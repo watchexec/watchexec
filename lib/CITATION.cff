@@ -7,7 +7,7 @@ message: |
 
 title: Watchexec (library)
 version: 1.17.1
-date-released: 2021-12-21
+date-released: 2021-12-29
 
 repository-code: https://github.com/watchexec/watchexec
 license: Apache-2.0
