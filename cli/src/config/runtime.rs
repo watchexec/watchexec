@@ -202,7 +202,7 @@ pub fn runtime(args: &ArgMatches<'static>) -> Result<RuntimeConfig> {
 			let envs = summarise_events_to_env(prespawn.events.iter());
 			if let Some(mut command) = prespawn.command().await {
 				for (k, v) in envs {
-					command.env(format!("WATCHEXEC_{}", k), v);
+					command.env(format!("WATCHEXEC_{}_PATH", k), v);
 				}
 			}
 		}

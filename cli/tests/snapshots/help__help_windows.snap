@@ -13,7 +13,7 @@ FLAGS:
     -c, --clear                Clear screen before executing command
     -h, --help                 Prints help information
         --no-default-ignore    Skip auto-ignoring of commonly ignored globs
-        --no-environment       Do not set WATCHEXEC_* environment variables for the command
+        --no-environment       Do not set WATCHEXEC_*_PATH environment variables for the command
         --no-global-ignore     Skip auto-loading of global or environment-wide ignore files
         --no-meta              Ignore metadata changes
         --no-process-group     Do not use a process group when running the command

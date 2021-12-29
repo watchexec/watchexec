@@ -137,7 +137,7 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches<'static>> {
 			.long("no-shell"))
 		.arg(Arg::with_name("no-environment")
 			.help_heading(Some(OPTSET_OUTPUT))
-			.help("Do not set WATCHEXEC_* environment variables for the command")
+			.help("Do not set WATCHEXEC_*_PATH environment variables for the command")
 			.long("no-environment"))
 		.arg(Arg::with_name("no-process-group")
 			.help_heading(Some(OPTSET_COMMAND))

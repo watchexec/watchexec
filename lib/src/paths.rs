@@ -60,7 +60,7 @@ where
 /// - `RENAMED` -> `Modify(Name(_))`
 /// - `WRITTEN` -> `Modify(Data(_))`, `Access(Close(Write))`
 /// - `OTHERWISE_CHANGED` -> anything else
-/// - plus `COMMON_PATH` with the common prefix of all paths (even if there's only one path).
+/// - plus `COMMON` with the common prefix of all paths (even if there's only one path).
 ///
 /// It ignores non-path events and pathed events without event kind. Multiple events are sorted in
 /// byte order and joined with the platform-specific path separator (`:` for unix, `;` for Windows).
@@ -158,7 +158,7 @@ pub fn summarise_events_to_env<'events>(
 		.collect();
 
 	if let Some(common_path) = common_path {
-		res.insert("COMMON_PATH", common_path.into_os_string());
+		res.insert("COMMON", common_path.into_os_string());
 	}
 
 	res
