@@ -154,7 +154,7 @@ pub fn runtime(args: &ArgMatches<'static>) -> Result<RuntimeConfig> {
 				};
 
 				if printit {
-					eprintln!("{}", msg);
+					eprintln!("[[{}]]", msg);
 				}
 
 				if notif {
@@ -164,7 +164,7 @@ pub fn runtime(args: &ArgMatches<'static>) -> Result<RuntimeConfig> {
 						.show()
 						.map(drop)
 						.unwrap_or_else(|err| {
-							eprintln!("Failed to send desktop notification: {}", err);
+							eprintln!("[[Failed to send desktop notification: {}]]", err);
 						});
 				}
 
@@ -218,7 +218,7 @@ pub fn runtime(args: &ArgMatches<'static>) -> Result<RuntimeConfig> {
 				.show()
 				.map(drop)
 				.unwrap_or_else(|err| {
-					eprintln!("Failed to send desktop notification: {}", err);
+					eprintln!("[[Failed to send desktop notification: {}]]", err);
 				});
 		}
 
