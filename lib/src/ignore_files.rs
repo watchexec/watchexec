@@ -8,6 +8,7 @@ use std::{
 
 use futures::{pin_mut, Stream, StreamExt};
 use tokio::fs::{metadata, read_dir};
+use tracing::{trace, trace_span};
 
 use crate::project::ProjectType;
 
@@ -271,13 +272,19 @@ pub(crate) async fn discover_file(
 	applies_to: Option<ProjectType>,
 	path: PathBuf,
 ) -> bool {
+	let _span = trace_span!("discover_file", ?path, ?applies_in, ?applies_to).entered();
 	match find_file(path).await {
 		Err(err) => {
+			trace!(?err, "found an error");
 			errors.push(err);
 			false
 		}
-		Ok(None) => false,
+		Ok(None) => {
+			trace!("found nothing");
+			false
+		},
 		Ok(Some(path)) => {
+			trace!(?path, "found a file");
 			files.push(IgnoreFile {
 				path,
 				applies_in,
