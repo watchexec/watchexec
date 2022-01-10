@@ -9,7 +9,7 @@ use std::{
 
 use tokio::fs::read_to_string;
 
-use crate::ignore_files::{discover_file, IgnoreFile};
+use crate::ignore::files::{discover_file, IgnoreFile};
 
 use super::{error::TaggedFiltererError, Filter};
 

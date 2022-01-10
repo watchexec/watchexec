@@ -9,7 +9,7 @@ use watchexec::{
 		files::{self, FilterFile},
 		Filter, Matcher, Op, Pattern, TaggedFilterer,
 	},
-	ignore_files::IgnoreFile,
+	ignore::files::IgnoreFile,
 };
 
 pub async fn tagged(args: &ArgMatches<'static>) -> Result<Arc<TaggedFilterer>> {

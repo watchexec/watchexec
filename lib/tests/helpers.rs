@@ -15,7 +15,7 @@ use watchexec::{
 		tagged::{files::FilterFile, Filter, Matcher, Op, Pattern, TaggedFilterer},
 		Filterer,
 	},
-	ignore_files::IgnoreFile,
+	ignore::files::IgnoreFile,
 	project::ProjectType,
 	signal::source::MainSignal,
 };

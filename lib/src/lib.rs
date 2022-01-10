@@ -104,7 +104,7 @@ pub mod error;
 pub mod event;
 pub mod filter;
 pub mod fs;
-pub mod ignore_files;
+pub mod ignore;
 pub mod paths;
 pub mod project;
 pub mod signal;

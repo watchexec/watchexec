@@ -282,7 +282,7 @@ pub(crate) async fn discover_file(
 		Ok(None) => {
 			trace!("found nothing");
 			false
-		},
+		}
 		Ok(Some(path)) => {
 			trace!(?path, "found a file");
 			files.push(IgnoreFile {

@@ -10,7 +10,7 @@ use tracing::{debug, trace, trace_span};
 use crate::error::RuntimeError;
 use crate::event::{Event, FileType};
 use crate::filter::Filterer;
-use crate::ignore_files::IgnoreFile;
+use crate::ignore::files::IgnoreFile;
 
 /// A path-only filterer based on globsets.
 ///
