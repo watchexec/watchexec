@@ -19,6 +19,7 @@ use crate::{
 /// Errors which are not recoverable and stop watchexec execution.
 #[derive(Debug, Diagnostic, Error)]
 #[non_exhaustive]
+#[diagnostic(url(docsrs))]
 pub enum CriticalError {
 	/// Pseudo-error used to signal a graceful exit.
 	#[error("this should never be printed (exit)")]
@@ -65,6 +66,7 @@ pub enum CriticalError {
 /// be reported to the user and/or acted upon programatically, but will not outright stop watchexec.
 #[derive(Debug, Diagnostic, Error)]
 #[non_exhaustive]
+#[diagnostic(url(docsrs))]
 pub enum RuntimeError {
 	/// Pseudo-error used to signal a graceful exit.
 	#[error("this should never be printed (exit)")]
@@ -246,6 +248,7 @@ pub enum RuntimeError {
 /// Errors occurring from reconfigs.
 #[derive(Debug, Diagnostic, Error)]
 #[non_exhaustive]
+#[diagnostic(url(docsrs))]
 pub enum ReconfigError {
 	/// Error received when the action processor cannot be updated.
 	#[error("reconfig: action watch: {0}")]
