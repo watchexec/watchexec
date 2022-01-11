@@ -236,6 +236,11 @@ pub enum RuntimeError {
 		#[source]
 		err: Box<dyn std::error::Error + Send + Sync>,
 	},
+
+	/// A set of related [`RuntimeError`]s.
+	#[error("related: {0:?}")]
+	#[diagnostic(code(watchexec::runtime::set))]
+	Set(#[related] Vec<RuntimeError>),
 }
 
 /// Errors occurring from reconfigs.
