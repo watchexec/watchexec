@@ -79,6 +79,8 @@ pub async fn from_origin(path: impl AsRef<Path>) -> (Vec<IgnoreFile>, Vec<Error>
 		},
 	}
 
+	// TODO: integrate ignore::Filter
+
 	discover_file(
 		&mut files,
 		&mut errors,

@@ -97,6 +97,8 @@ impl Filterer for GlobsetFilterer {
 	///
 	/// This implementation never errors.
 	fn check_event(&self, event: &Event) -> Result<bool, RuntimeError> {
+		// TODO: integrate ignore::Filter
+
 		let _span = trace_span!("filterer_check").entered();
 		for (path, file_type) in event.paths() {
 			let _span = trace_span!("path", ?path).entered();

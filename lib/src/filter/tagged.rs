@@ -154,6 +154,8 @@ impl TaggedFilterer {
 						continue;
 					}
 
+					// TODO: integrate ignore::Filter
+
 					trace!(filters=%tag_filters.len(), "found some filters for this matcher");
 
 					let mut tag_match = true;
