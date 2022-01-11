@@ -219,6 +219,31 @@ pub enum RuntimeError {
 	#[diagnostic(code(watchexec::runtime::clearscreen))]
 	Clearscreen(#[from] clearscreen::Error),
 
+	/// Error received when parsing a glob from an [`IgnoreFile`](crate::ignore::files::IgnoreFile) fails.
+	#[error("cannot parse glob from ignore '{file}': {err}")]
+	#[diagnostic(code(watchexec::runtime::ignore_file_glob))]
+	IgnoreFileGlob {
+		/// The path to the erroring ignore file.
+		file: PathBuf,
+
+		/// The underlying error.
+		#[source]
+		err: ignore::Error,
+		// TODO: extract glob error into diagnostic
+	},
+
+	/// Error received when an [`IgnoreFile`](crate::ignore::files::IgnoreFile) cannot be read.
+	#[error("cannot read ignore '{file}': {err}")]
+	#[diagnostic(code(watchexec::runtime::ignore_file_read))]
+	IgnoreFileRead {
+		/// The path to the erroring ignore file.
+		file: PathBuf,
+
+		/// The underlying error.
+		#[source]
+		err: std::io::Error,
+	},
+
 	/// Error emitted by a [`Filterer`](crate::filter::Filterer).
 	///
 	/// With built-in filterers this will probably be a dynbox of
