@@ -69,6 +69,8 @@ dev-console = ["console-subscriber"]
 
 [profile.release]
 debug = 1 # for stack traces
+lto = "fat"
+
 [package.metadata.binstall]
 pkg-url = "{ repo }/releases/download/cli-v{ version }/watchexec-{ version }-{ target }.tar.xz"
 bin-dir = "watchexec-{ version }-{ target }/{ bin }{ format }"
