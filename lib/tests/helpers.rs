@@ -15,10 +15,17 @@ use watchexec::{
 		tagged::{files::FilterFile, Filter, Matcher, Op, Pattern, TaggedFilterer},
 		Filterer,
 	},
-	ignore::files::IgnoreFile,
+	ignore::{IgnoreFile, IgnoreFilterer},
 	project::ProjectType,
 	signal::source::MainSignal,
 };
+
+pub mod ignore {
+	pub use super::ig_file as file;
+	pub use super::ignore_filt as filt;
+	pub use super::Applies;
+	pub use super::PathHarness;
+}
 
 pub mod globset {
 	pub use super::globset_filt as filt;
@@ -53,12 +60,19 @@ pub mod tagged_ff {
 	pub use super::tagged_fffilt as filt;
 }
 
-pub trait PathHarness {
+pub trait PathHarness: Filterer {
 	fn check_path(
 		&self,
 		path: PathBuf,
 		file_type: Option<FileType>,
-	) -> std::result::Result<bool, RuntimeError>;
+	) -> std::result::Result<bool, RuntimeError> {
+		let event = Event {
+			tags: vec![Tag::Path { path, file_type }],
+			metadata: Default::default(),
+		};
+
+		self.check_event(&event)
+	}
 
 	fn path_pass(&self, path: &str, file_type: Option<FileType>, pass: bool) {
 		let origin = dunce::canonicalize(".").unwrap();
@@ -113,35 +127,9 @@ pub trait PathHarness {
 	}
 }
 
-impl PathHarness for GlobsetFilterer {
-	fn check_path(
-		&self,
-		path: PathBuf,
-		file_type: Option<FileType>,
-	) -> std::result::Result<bool, RuntimeError> {
-		let event = Event {
-			tags: vec![Tag::Path { path, file_type }],
-			metadata: Default::default(),
-		};
-
-		self.check_event(&event)
-	}
-}
-
-impl PathHarness for TaggedFilterer {
-	fn check_path(
-		&self,
-		path: PathBuf,
-		file_type: Option<FileType>,
-	) -> std::result::Result<bool, RuntimeError> {
-		let event = Event {
-			tags: vec![Tag::Path { path, file_type }],
-			metadata: Default::default(),
-		};
-
-		self.check_event(&event)
-	}
-}
+impl PathHarness for GlobsetFilterer {}
+impl PathHarness for TaggedFilterer {}
+impl PathHarness for IgnoreFilterer {}
 
 pub trait TaggedHarness {
 	fn check_tag(&self, tag: Tag) -> std::result::Result<bool, RuntimeError>;
@@ -210,8 +198,24 @@ impl TaggedHarness for TaggedFilterer {
 	}
 }
 
+fn tracing_init() {
+	use tracing_subscriber::{
+		fmt::{format::FmtSpan, Subscriber},
+		util::SubscriberInitExt,
+		EnvFilter,
+	};
+	Subscriber::builder()
+		.pretty()
+		.with_span_events(FmtSpan::FULL)
+		.with_env_filter(EnvFilter::from_default_env())
+		.finish()
+		.try_init()
+		.ok();
+}
+
 pub fn globset_filt(filters: &[&str], ignores: &[&str], extensions: &[&str]) -> GlobsetFilterer {
 	let origin = dunce::canonicalize(".").unwrap();
+	tracing_init();
 	GlobsetFilterer::new(
 		origin,
 		filters.iter().map(|s| (s.to_string(), None)),
@@ -222,6 +226,7 @@ pub fn globset_filt(filters: &[&str], ignores: &[&str], extensions: &[&str]) -> 
 }
 
 pub async fn globset_igfilt(origin: &str, ignore_files: &[IgnoreFile]) -> GlobsetFilterer {
+	tracing_init();
 	let mut ignores = Vec::new();
 	for file in ignore_files {
 		tracing::info!(?file, "loading ignore file");
@@ -236,17 +241,24 @@ pub async fn globset_igfilt(origin: &str, ignore_files: &[IgnoreFile]) -> Globse
 	GlobsetFilterer::new(origin, vec![], ignores, vec![]).expect("making filterer")
 }
 
+pub async fn ignore_filt(origin: &str, ignore_files: &[IgnoreFile]) -> IgnoreFilterer {
+	tracing_init();
+	IgnoreFilterer::new(origin, ignore_files)
+		.await
+		.expect("making filterer")
+}
+
 pub async fn tagged_filt(filters: &[Filter]) -> Arc<TaggedFilterer> {
 	let origin = dunce::canonicalize(".").unwrap();
+	tracing_init();
 	let filterer = TaggedFilterer::new(origin.clone(), origin).expect("creating filterer");
 	filterer.add_filters(filters).await.expect("adding filters");
-	tracing_subscriber::fmt::try_init().ok();
 	filterer
 }
 
 pub async fn tagged_igfilt(origin: &str, ignore_files: &[IgnoreFile]) -> Arc<TaggedFilterer> {
 	let origin = dunce::canonicalize(".").unwrap().join(origin);
-	tracing_subscriber::fmt::try_init().ok();
+	tracing_init();
 	let filterer = TaggedFilterer::new(origin.clone(), origin).expect("creating filterer");
 	for file in ignore_files {
 		tracing::info!(?file, "loading ignore file");
