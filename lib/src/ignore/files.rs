@@ -136,7 +136,7 @@ pub async fn from_origin(path: impl AsRef<Path>) -> (Vec<IgnoreFile>, Vec<Error>
 						}
 
 						if let Some(sf) = &search_filter {
-							if sf.check_dir(&dir) {
+							if !sf.check_dir(&dir) {
 								trace!(?dir, "dir is ignored, adding to skip list");
 								dirs.skip(dir);
 								continue;
