@@ -12,7 +12,6 @@ args=(
 	'(-c --clear)'{-c,--clear}'[Clear screen before executing command]'
 	'(-h --help)'{-h,--help}'[Prints help information]'
 	'--shell=[Change the wrapping shell, or set to none to disable]'
-	'--no-shell[Deprecated, use --shell=none]'
 	'-n[Shorthand for --shell=none]'
 	'--no-environment[Do not set WATCHEXEC_*_PATH environment variables for command]'
 	'--no-meta[Ignore metadata changes]'
