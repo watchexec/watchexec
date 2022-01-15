@@ -8,7 +8,7 @@ use futures::{pin_mut, Stream, StreamExt};
 use tokio::fs::{metadata, read_dir};
 use tracing::{trace, trace_span};
 
-use crate::{project::ProjectType, paths::PATH_SEPARATOR};
+use crate::{paths::PATH_SEPARATOR, project::ProjectType};
 
 /// An ignore file.
 ///

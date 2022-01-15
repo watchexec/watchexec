@@ -243,6 +243,7 @@ pub async fn globset_igfilt(origin: &str, ignore_files: &[IgnoreFile]) -> Globse
 
 pub async fn ignore_filt(origin: &str, ignore_files: &[IgnoreFile]) -> IgnoreFilterer {
 	tracing_init();
+	let origin = dunce::canonicalize(".").unwrap().join(origin);
 	IgnoreFilterer::new(origin, ignore_files)
 		.await
 		.expect("making filterer")

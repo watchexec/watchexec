@@ -34,6 +34,10 @@ pub struct IgnoreFilterer {
 impl IgnoreFilterer {
 	/// Read ignore files from disk and load them for filtering.
 	pub async fn new(origin: impl AsRef<Path>, files: &[IgnoreFile]) -> Result<Self, RuntimeError> {
+		let origin = origin.as_ref();
+		let _span = trace_span!("build_filterer", ?origin);
+
+		trace!(files=%files.len(), "loading file contents");
 		let (files_contents, errors): (Vec<_>, Vec<_>) = files
 			.iter()
 			.map(|file| async move {
@@ -58,12 +62,13 @@ impl IgnoreFilterer {
 
 		let errors: Vec<RuntimeError> = errors.into_iter().flatten().collect();
 		if !errors.is_empty() {
+			trace!("found {} errors", errors.len());
 			return Err(RuntimeError::Set(errors));
 		}
 
 		// TODO: different parser/adapter for non-git-syntax ignore files?
 
-		let origin = origin.as_ref();
+		trace!(files=%files_contents.len(), "building ignore list");
 		let mut builder = GitignoreBuilder::new(origin);
 		for (file, content) in files_contents.into_iter().flatten() {
 			let _span = trace_span!("loading ignore file", ?file).entered();
@@ -210,12 +215,11 @@ impl Filterer for IgnoreFilterer {
 		let mut pass = true;
 
 		for (path, file_type) in event.paths() {
-			let _span = trace_span!("path", ?path).entered();
+			let _span = trace_span!("checking_against_compiled", ?path, ?file_type).entered();
 			let is_dir = file_type
 				.map(|t| matches!(t, FileType::Dir))
 				.unwrap_or(false);
 
-			trace!("checking against compiled ignore files");
 			match if path.strip_prefix(&self.origin).is_ok() {
 				trace!("checking against path or parents");
 				self.compiled.matched_path_or_any_parents(path, is_dir)

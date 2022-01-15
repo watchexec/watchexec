@@ -165,7 +165,8 @@ impl TaggedFilterer {
 
 						let gc = self.glob_compiled.borrow();
 						if let Some(igs) = gc.as_ref() {
-							trace!("checking against compiled Glob filters");
+							let _span = trace_span!("checking_compiled_filters", compiled=%"Glob")
+								.entered();
 							match if path.strip_prefix(&self.origin).is_ok() {
 								trace!("checking against path or parents");
 								igs.matched_path_or_any_parents(path, is_dir)
@@ -193,7 +194,9 @@ impl TaggedFilterer {
 
 						let ngc = self.not_glob_compiled.borrow();
 						if let Some(ngs) = ngc.as_ref() {
-							trace!("checking against compiled NotGlob filters");
+							let _span =
+								trace_span!("checking_compiled_filters", compiled=%"NotGlob")
+									.entered();
 							match if path.strip_prefix(&self.origin).is_ok() {
 								trace!("checking against path or parents");
 								ngs.matched_path_or_any_parents(path, is_dir)
@@ -248,7 +251,7 @@ impl TaggedFilterer {
 					trace!(filters=%tag_filters.len(), "got some filters to check still");
 
 					for filter in &tag_filters {
-						trace!(?filter, "checking filter againt tag");
+						let _span = trace_span!("checking filter against tag", ?filter).entered();
 						if let Some(app) = self.match_tag(filter, tag)? {
 							if filter.negate {
 								if app {
