@@ -8,7 +8,7 @@ use futures::{pin_mut, Stream, StreamExt};
 use tokio::fs::{metadata, read_dir};
 use tracing::{trace, trace_span};
 
-use crate::project::ProjectType;
+use crate::{project::ProjectType, paths::PATH_SEPARATOR};
 
 /// An ignore file.
 ///
@@ -171,7 +171,7 @@ pub async fn from_environment() -> (Vec<IgnoreFile>, Vec<Error>) {
 
 	for path in env::var("WATCHEXEC_IGNORE_FILES")
 		.unwrap_or_default()
-		.split(',')
+		.split(PATH_SEPARATOR)
 	{
 		discover_file(&mut files, &mut errors, None, None, PathBuf::from(path)).await;
 	}

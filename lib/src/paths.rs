@@ -8,6 +8,13 @@ use std::{
 
 use crate::event::{Event, FileType, Tag};
 
+/// The separator for paths used in environment variables.
+#[cfg(unix)]
+pub const PATH_SEPARATOR: &str = ":";
+/// The separator for paths used in environment variables.
+#[cfg(not(unix))]
+pub const PATH_SEPARATOR: &str = ";";
+
 /// Returns the longest common prefix of all given paths.
 ///
 /// This is a utility function which is useful for finding the common root of a set of origins.
@@ -67,11 +74,6 @@ where
 pub fn summarise_events_to_env<'events>(
 	events: impl IntoIterator<Item = &'events Event>,
 ) -> HashMap<&'static str, OsString> {
-	#[cfg(unix)]
-	const ENV_SEP: &str = ":";
-	#[cfg(not(unix))]
-	const ENV_SEP: &str = ";";
-
 	let mut all_trunks = Vec::new();
 	let mut kind_buckets = HashMap::new();
 	for event in events {
@@ -148,7 +150,7 @@ pub fn summarise_events_to_env<'events>(
 			paths.sort();
 			paths.into_iter().enumerate().for_each(|(i, path)| {
 				if i > 0 {
-					joined.push(ENV_SEP);
+					joined.push(PATH_SEPARATOR);
 				}
 				joined.push(path);
 			});
