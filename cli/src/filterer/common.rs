@@ -16,7 +16,7 @@ use watchexec::{
 
 pub async fn dirs(args: &ArgMatches<'static>) -> Result<(PathBuf, PathBuf)> {
 	let mut origins = HashSet::new();
-	for path in args.values_of("paths").unwrap_or_default().into_iter() {
+	for path in args.values_of("paths").unwrap_or_default() {
 		let path = canonicalize(path).into_diagnostic()?;
 		origins.extend(project::origins(&path).await);
 	}
