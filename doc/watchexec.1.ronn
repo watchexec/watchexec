@@ -93,6 +93,8 @@ Prints diagnostic and debugging messages to STDERR. Increase the amount of `v`s 
 * `--print-events`, `--changes-only` (deprecated):
 Prints the events (changed paths, etc) that have triggered an action to STDERR.
 
+* `-N`, `--notify`:
+Sends desktop notifications on command start and command end.
 
 * `-V`, `--version`:
 Print the version of watchexec.
