@@ -36,7 +36,8 @@ async fn main() -> Result<()> {
 		});
 
 		if verbosity > 2 {
-			builder = builder.with_span_events(tracing_subscriber::fmt::format::FmtSpan::FULL);
+			use tracing_subscriber::fmt::format::FmtSpan;
+			builder = builder.with_span_events(FmtSpan::NEW | FmtSpan::CLOSE);
 		}
 
 		if verbosity > 3 {

@@ -206,7 +206,7 @@ fn tracing_init() {
 	};
 	Subscriber::builder()
 		.pretty()
-		.with_span_events(FmtSpan::FULL)
+		.with_span_events(FmtSpan::NEW | FmtSpan::CLOSE)
 		.with_env_filter(EnvFilter::from_default_env())
 		.finish()
 		.try_init()
