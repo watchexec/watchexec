@@ -4,11 +4,12 @@ use std::{
 	path::{Path, PathBuf},
 };
 
-use futures::{pin_mut, Stream, StreamExt};
 use tokio::fs::{metadata, read_dir};
 use tracing::{trace, trace_span};
 
 use crate::{paths::PATH_SEPARATOR, project::ProjectType};
+
+use super::IgnoreFilterer;
 
 /// An ignore file.
 ///
@@ -77,8 +78,6 @@ pub async fn from_origin(path: impl AsRef<Path>) -> (Vec<IgnoreFile>, Vec<Error>
 		},
 	}
 
-	// TODO: integrate ignore::Filter
-
 	discover_file(
 		&mut files,
 		&mut errors,
@@ -115,42 +114,67 @@ pub async fn from_origin(path: impl AsRef<Path>) -> (Vec<IgnoreFile>, Vec<Error>
 	)
 	.await;
 
-	let dirs = all_dirs(base);
-	pin_mut!(dirs);
-	while let Some(p) = dirs.next().await {
-		match p {
-			Err(err) => errors.push(err),
-			Ok(dir) => {
-				discover_file(
+	trace!("create IgnoreFilterer for visiting directories");
+	let mut search_filter = IgnoreFilterer::new(&base, &files.iter().cloned().collect::<Vec<_>>())
+		.await
+		.map_err(|err| errors.push(Error::new(ErrorKind::Other, err)))
+		.ok();
+
+	trace!("visiting child directories for ignore files");
+	let mut dirs = DirTourist::new(base);
+	loop {
+		match dirs.next().await {
+			Visit::Done => break,
+			Visit::Skip => continue,
+			Visit::Find(dir) => {
+				if let Some(sf) = &search_filter {
+					if sf.check_dir(&dir) {
+						trace!(?dir, "dir is ignored, adding to skiplist");
+						dirs.skip(dir);
+						continue;
+					}
+				}
+
+				if discover_file(
 					&mut files,
 					&mut errors,
 					Some(dir.clone()),
 					None,
 					dir.join(".ignore"),
 				)
-				.await;
+				.await
+				{
+					add_last_file_to_filter(&mut search_filter, &mut files, &mut errors).await;
+				}
 
-				discover_file(
+				if discover_file(
 					&mut files,
 					&mut errors,
 					Some(dir.clone()),
 					Some(ProjectType::Git),
 					dir.join(".gitignore"),
 				)
-				.await;
+				.await
+				{
+					add_last_file_to_filter(&mut search_filter, &mut files, &mut errors).await;
+				}
 
-				discover_file(
+				if discover_file(
 					&mut files,
 					&mut errors,
 					Some(dir.clone()),
 					Some(ProjectType::Mercurial),
 					dir.join(".hgignore"),
 				)
-				.await;
+				.await
+				{
+					add_last_file_to_filter(&mut search_filter, &mut files, &mut errors).await;
+				}
 			}
 		}
 	}
 
+	errors.extend(dirs.errors);
 	(files, errors)
 }
 
@@ -304,19 +328,88 @@ async fn find_file(path: PathBuf) -> Result<Option<PathBuf>, Error> {
 	}
 }
 
-fn all_dirs(path: PathBuf) -> impl Stream<Item = Result<PathBuf, Error>> {
-	async_stream::try_stream! {
-		yield path.clone();
-		let mut to_visit = vec![path];
+#[derive(Debug)]
+struct DirTourist {
+	to_visit: Vec<PathBuf>,
+	to_skip: Vec<PathBuf>,
+	pub errors: Vec<std::io::Error>,
+}
 
-		while let Some(path) = to_visit.pop() {
-			let mut dir = read_dir(&path).await?;
-			while let Some(entry) = dir.next_entry().await? {
-				if entry.file_type().await?.is_dir() {
-					let path = entry.path();
-					to_visit.push(path.clone());
-					yield path;
+#[derive(Debug)]
+enum Visit {
+	Find(PathBuf),
+	Skip,
+	Done,
+}
+
+impl DirTourist {
+	fn new(start: PathBuf) -> Self {
+		DirTourist {
+			to_visit: vec![start],
+			to_skip: Vec::new(),
+			errors: Vec::new(),
+		}
+	}
+
+	async fn next(&mut self) -> Visit {
+		if let Some(path) = self.to_visit.pop() {
+			if self.to_skip.contains(&path) {
+				trace!("in skip list");
+				return Visit::Skip;
+			}
+
+			let mut dir = match read_dir(&path).await {
+				Ok(dir) => dir,
+				Err(err) => {
+					trace!("failed to read dir: {}", err);
+					self.errors.push(err);
+					return Visit::Skip;
 				}
+			};
+
+			while let Some(entry) = match dir.next_entry().await {
+				Ok(entry) => entry,
+				Err(err) => {
+					trace!("failed to read dir entries: {}", err);
+					self.errors.push(err);
+					return Visit::Skip;
+				}
+			} {
+				if match entry.file_type().await {
+					Ok(ft) => ft.is_dir(),
+					Err(err) => {
+						trace!(entry=?entry.path(), "failed to read filetype, adding to skip list: {}", err);
+						self.errors.push(err);
+						self.to_skip.push(entry.path());
+						false
+					}
+				} {
+					let path = entry.path();
+					trace!(?path, "found a dir, adding to list");
+					self.to_visit.push(path.clone());
+				}
+			}
+
+			Visit::Find(path)
+		} else {
+			Visit::Done
+		}
+	}
+
+	fn skip(&mut self, path: PathBuf) {
+		self.to_skip.push(path);
+	}
+}
+
+async fn add_last_file_to_filter(
+	filter: &mut Option<IgnoreFilterer>,
+	files: &mut Vec<IgnoreFile>,
+	errors: &mut Vec<Error>,
+) {
+	if let Some(igf) = filter.as_mut() {
+		if let Some(ig) = files.last() {
+			if let Err(err) = igf.add_file(ig).await {
+				errors.push(Error::new(ErrorKind::Other, err));
 			}
 		}
 	}
