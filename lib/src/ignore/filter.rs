@@ -145,6 +145,14 @@ impl IgnoreFilterer {
 					})?;
 			}
 
+			self.recompile(file.path.clone())?;
+		}
+
+		Ok(())
+	}
+
+	fn recompile(&mut self, file: PathBuf) -> Result<(), RuntimeError> {
+		if let Some(builder) = &mut self.builder {
 			let pre_ignores = self.compiled.num_ignores();
 			let pre_allows = self.compiled.num_whitelists();
 
@@ -152,7 +160,7 @@ impl IgnoreFilterer {
 			let recompiled = builder
 				.build()
 				.map_err(|err| RuntimeError::IgnoreFileGlob {
-					file: file.path.clone(),
+					file,
 					err,
 				})?;
 
@@ -162,6 +170,32 @@ impl IgnoreFilterer {
 				"ignore file loaded and set recompiled",
 			);
 			self.compiled = recompiled;
+		}
+
+		Ok(())
+	}
+
+	/// Adds some globs manually, if the builder is available.
+	///
+	/// Does nothing silently otherwise.
+	pub async fn add_globs(&mut self, globs: &[&str], applies_in: Option<PathBuf>) -> Result<(), RuntimeError> {
+		if let Some(ref mut builder) = self.builder {
+			let _span = trace_span!("loading ignore globs", ?globs).entered();
+			for line in globs {
+				if line.is_empty() || line.starts_with('#') {
+					continue;
+				}
+
+				trace!(?line, "adding ignore line");
+				builder
+					.add_line(applies_in.clone(), line)
+					.map_err(|err| RuntimeError::IgnoreFileGlob {
+						file: "manual glob".into(),
+						err,
+					})?;
+			}
+
+			self.recompile("manual glob".into())?;
 		}
 
 		Ok(())

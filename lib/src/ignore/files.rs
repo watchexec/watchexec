@@ -115,34 +115,14 @@ pub async fn from_origin(path: impl AsRef<Path>) -> (Vec<IgnoreFile>, Vec<Error>
 	)
 	.await;
 
-	trace!("create IgnoreFilterer for visiting directories");
-	let mut search_filter = IgnoreFilterer::new(&base, &files)
-		.await
-		.map_err(|err| errors.push(Error::new(ErrorKind::Other, err)))
-		.ok();
-
 	trace!("visiting child directories for ignore files");
-	match dunce::canonicalize(base) {
-		Ok(base) => {
-			let mut dirs = DirTourist::new(base.clone());
+	match DirTourist::new(&base, &files).await {
+		Ok(mut dirs) => {
 			loop {
 				match dirs.next().await {
 					Visit::Done => break,
 					Visit::Skip => continue,
 					Visit::Find(dir) => {
-						if dir == base {
-							trace!(?dir, "dir is the base, continuing");
-							continue;
-						}
-
-						if let Some(sf) = &search_filter {
-							if !sf.check_dir(&dir) {
-								trace!(?dir, "dir is ignored, adding to skip list");
-								dirs.skip(dir);
-								continue;
-							}
-						}
-
 						if discover_file(
 							&mut files,
 							&mut errors,
@@ -152,7 +132,7 @@ pub async fn from_origin(path: impl AsRef<Path>) -> (Vec<IgnoreFile>, Vec<Error>
 						)
 						.await
 						{
-							add_last_file_to_filter(&mut search_filter, &mut files, &mut errors)
+							dirs.add_last_file_to_filter(&mut files, &mut errors)
 								.await;
 						}
 
@@ -165,7 +145,7 @@ pub async fn from_origin(path: impl AsRef<Path>) -> (Vec<IgnoreFile>, Vec<Error>
 						)
 						.await
 						{
-							add_last_file_to_filter(&mut search_filter, &mut files, &mut errors)
+							dirs.add_last_file_to_filter(&mut files, &mut errors)
 								.await;
 						}
 
@@ -178,7 +158,7 @@ pub async fn from_origin(path: impl AsRef<Path>) -> (Vec<IgnoreFile>, Vec<Error>
 						)
 						.await
 						{
-							add_last_file_to_filter(&mut search_filter, &mut files, &mut errors)
+							dirs.add_last_file_to_filter(&mut files, &mut errors)
 								.await;
 						}
 					}
@@ -350,6 +330,7 @@ struct DirTourist {
 	to_visit: Vec<PathBuf>,
 	to_skip: HashSet<PathBuf>,
 	pub errors: Vec<std::io::Error>,
+	filter: IgnoreFilterer,
 }
 
 #[derive(Debug)]
@@ -360,13 +341,23 @@ enum Visit {
 }
 
 impl DirTourist {
-	pub fn new(base: PathBuf) -> Self {
-		Self {
+	pub async fn new(base: &Path, files: &[IgnoreFile]) -> Result<Self, Error> {
+		let base = dunce::canonicalize(base)?;
+		trace!("create IgnoreFilterer for visiting directories");
+		let mut filter = IgnoreFilterer::new(&base, files)
+			.await
+			.map_err(|err| Error::new(ErrorKind::Other, err))?;
+
+		filter.add_globs(&["/.git", "/.hg", "/.bzr", "/_darcs", "/.fossil-settings"], Some(base.clone())).await
+		.map_err(|err| Error::new(ErrorKind::Other, err))?;
+
+		Ok(Self {
 			to_visit: vec![base.clone()],
 			base,
 			to_skip: HashSet::new(),
 			errors: Vec::new(),
-		}
+			filter,
+		})
 	}
 
 	pub async fn next(&mut self) -> Visit {
@@ -374,6 +365,12 @@ impl DirTourist {
 			let _span = trace_span!("visit_path", ?path).entered();
 			if self.must_skip(&path) {
 				trace!("in skip list");
+				return Visit::Skip;
+			}
+
+			if !self.filter.check_dir(&path) {
+				trace!("path is ignored, adding to skip list");
+				self.skip(path);
 				return Visit::Skip;
 			}
 
@@ -405,6 +402,12 @@ impl DirTourist {
 				match entry.file_type().await {
 					Ok(ft) => {
 						if ft.is_dir() {
+							if !self.filter.check_dir(&path) {
+								trace!("path is ignored, adding to skip list");
+								self.skip(path);
+								continue;
+							}
+
 							trace!("found a dir, adding to list");
 							self.to_visit.push(path);
 						} else {
@@ -438,6 +441,18 @@ impl DirTourist {
 		self.to_skip.insert(path);
 	}
 
+	pub(crate) async fn add_last_file_to_filter(
+		&mut self,
+	files: &mut Vec<IgnoreFile>,
+	errors: &mut Vec<Error>,
+) {
+		if let Some(ig) = files.last() {
+			if let Err(err) = self.filter.add_file(ig).await {
+				errors.push(Error::new(ErrorKind::Other, err));
+			}
+		}
+}
+
 	fn must_skip(&self, mut path: &Path) -> bool {
 		if self.to_skip.contains(path) {
 			return true;
@@ -453,19 +468,5 @@ impl DirTourist {
 		}
 
 		false
-	}
-}
-
-async fn add_last_file_to_filter(
-	filter: &mut Option<IgnoreFilterer>,
-	files: &mut Vec<IgnoreFile>,
-	errors: &mut Vec<Error>,
-) {
-	if let Some(igf) = filter.as_mut() {
-		if let Some(ig) = files.last() {
-			if let Err(err) = igf.add_file(ig).await {
-				errors.push(Error::new(ErrorKind::Other, err));
-			}
-		}
 	}
 }
