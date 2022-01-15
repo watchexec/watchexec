@@ -3,7 +3,7 @@ watchexec(1) -- execute commands when watched files change
 
 ## SYNOPSIS
 
-watchexec [`--exts` | `-e` <extensions>]... [`--filter` | `-f` <pattern>]... [`--ignore` | `-i` <pattern>]... [`--watch` | `-w` <path>]... [`--restart` | `-r`] [`--clear` | `-c`] [`--postpone` | `-p`] [`--force-poll` <interval>] [`--debounce` | `-d` <interval>] [`--no-vcs-ignore`] [`--no-default-ignore`] [`--verbose` | `-v`] [`--changes-only`] [`--version` | `-V`] [--] <command> [<argument>...]
+watchexec [`--exts` | `-e` <extensions>]... [`--filter` | `-f` <pattern>]... [`--ignore` | `-i` <pattern>]... [`--watch` | `-w` <path>]... [`--restart` | `-r`] [`--clear` | `-c`] [`--postpone` | `-p`] [`--force-poll` <interval>] [`--debounce` | `-d` <interval>] [`--no-vcs-ignore`] [`--no-default-ignore`] [`--verbose` | `-v` | `-vv` | `-vvv` | `-vvvv`] [`--changes-only`] [`--version` | `-V`] [--] <command> [<argument>...]
 
 ## DESCRIPTION
 
@@ -87,8 +87,8 @@ Skip loading of version control system (VCS) ignore files. By default, watchexec
 * `--no-default-ignore`:
 Skip default ignore statements. By default, watchexec ignores common temporary files for you, for example `*.swp`, `*.pyc`, and `.DS_Store`.
 
-* `-v`, `--verbose`:
-Prints diagnostic messages to STDERR.
+* `-v`, `--verbose`, `-vv`, etc:
+Prints diagnostic and debugging messages to STDERR. Increase the amount of `v`s to get progressively more output: for bug reports use **three**, and for deep debugging **four** can be helpful.
 
 * `--changes-only`:
 Prints the paths that have changed as diagnostics to STDERR, but not everything else that `--verbose` prints.
