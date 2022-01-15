@@ -25,13 +25,13 @@ use super::files::IgnoreFile;
 /// It implements [`Filterer`] so it can be used directly in another filterer; it is not designed to
 /// be used as a standalone filterer.
 #[derive(Debug)]
-pub struct Filter {
+pub struct IgnoreFilterer {
 	origin: PathBuf,
 	builder: Option<GitignoreBuilder>,
 	compiled: Gitignore,
 }
 
-impl Filter {
+impl IgnoreFilterer {
 	/// Read ignore files from disk and load them for filtering.
 	pub async fn new(origin: impl AsRef<Path>, files: &[IgnoreFile]) -> Result<Self, RuntimeError> {
 		let (files_contents, errors): (Vec<_>, Vec<_>) = files
@@ -200,7 +200,7 @@ impl Filter {
 	}
 }
 
-impl Filterer for Filter {
+impl Filterer for IgnoreFilterer {
 	/// Filter an event.
 	///
 	/// This implementation never errors. It returns `Ok(false)` if the event is ignored according

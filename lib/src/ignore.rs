@@ -1,8 +1,9 @@
 //! Ignore files: find them, parse them, interpret them.
 
 #[doc(inline)]
-pub use filter::Filter;
+pub use files::*;
+#[doc(inline)]
+pub use filter::*;
 
-pub mod files;
-
+mod files;
 mod filter;

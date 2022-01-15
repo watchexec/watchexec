@@ -9,7 +9,7 @@ use dunce::canonicalize;
 use miette::{IntoDiagnostic, Result};
 use tracing::{debug, warn};
 use watchexec::{
-	ignore::{self, files::IgnoreFile},
+	ignore::{self, IgnoreFile},
 	paths::common_prefix,
 	project::{self, ProjectType},
 };
@@ -42,7 +42,7 @@ pub async fn ignores(args: &ArgMatches<'static>, origin: &Path) -> Result<Vec<Ig
 		.collect::<Vec<_>>();
 	debug!(?vcs_types, "resolved vcs types");
 
-	let (mut ignores, _errors) = ignore::files::from_origin(origin).await;
+	let (mut ignores, _errors) = ignore::from_origin(origin).await;
 	// TODO: handle errors
 	debug!(?ignores, "discovered ignore files from project origin");
 
@@ -71,7 +71,7 @@ pub async fn ignores(args: &ArgMatches<'static>, origin: &Path) -> Result<Vec<Ig
 		debug!(?ignores, "filtered ignores to only those for project vcs");
 	}
 
-	let (mut global_ignores, _errors) = ignore::files::from_environment().await;
+	let (mut global_ignores, _errors) = ignore::from_environment().await;
 	// TODO: handle errors
 	debug!(?global_ignores, "discovered ignore files from environment");
 

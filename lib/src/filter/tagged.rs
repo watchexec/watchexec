@@ -16,7 +16,7 @@ use crate::error::RuntimeError;
 use crate::event::{Event, FileType, ProcessEnd, Tag};
 use crate::filter::tagged::error::TaggedFiltererError;
 use crate::filter::Filterer;
-use crate::ignore::files::IgnoreFile;
+use crate::ignore::IgnoreFile;
 use crate::signal::process::SubSignal;
 use crate::signal::source::MainSignal;
 

@@ -1,5 +1,3 @@
-//! Find ignore files, like `.gitignore`, `.ignore`, and others.
-
 use std::{
 	env,
 	io::{Error, ErrorKind},
