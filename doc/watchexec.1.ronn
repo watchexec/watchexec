@@ -107,19 +107,51 @@ Print a help message.
 
 ## ENVIRONMENT
 
-Processes started by watchexec have environment variables set describing the modification(s) observed. Which variable is set depends on how many modifications were observed and/or what type they were.
+In variables that contain lists of paths, the separator is as for the `$PATH` environment variable (a colon, or semicolon on Windows).
 
-If a single file changed (depending on the event type):
+### Set on child processes
 
-* `$WATCHEXEC_CREATED_PATH`, the path of the file that was created
-* `$WATCHEXEC_REMOVED_PATH`, the path of the file that was removed
-* `$WATCHEXEC_RENAMED_PATH`, the path of the file that was renamed
-* `$WATCHEXEC_WRITTEN_PATH`, the path of the file that was modified
-* `$WATCHEXEC_META_CHANGED_PATH`, the path of the file whose metadata changed
+Processes started by watchexec have environment variables set describing the changes observed.
 
-If multiple files changed:
+`$WATCHEXEC_COMMON_PATH` is set to the longest common path of all of the below variables, and so should be prepended to each path to obtain the full/real path.
 
-* `$WATCHEXEC_COMMON_PATH`, the longest common path of all of the files that triggered a change
+ - `$WATCHEXEC_CREATED_PATH` is set when files/folders were created
+ - `$WATCHEXEC_REMOVED_PATH` is set when files/folders were removed
+ - `$WATCHEXEC_RENAMED_PATH` is set when files/folders were renamed
+ - `$WATCHEXEC_WRITTEN_PATH` is set when files/folders were modified
+ - `$WATCHEXEC_META_CHANGED_PATH` is set when files/folders' metadata were modified
+ - `$WATCHEXEC_OTHERWISE_CHANGED_PATH` is set for every other kind of pathed event
+
+This can be disabled or limited with `--no-environment` (doesn't set any of these variables) and `--no-meta` (ignores metadata changes).
+
+### Read upon startup
+
+- `$WATCHEXEC_FILTERER`: select the filterer implementation: `globset` (default), or `tagged` (experimental).
+- `$WATCHEXEC_IGNORE_FILES`: a list of paths to additional ignore files to be loaded.
+- `$WATCHEXEC_FILTER_FILES`: a list of paths to additional "Tagged" filter files to be loaded (when enabled).
+- `$RUST_LOG`: use for advanced verbose logging configuration. Refer to tracing-subscriber for documentation.
+
+## FILES
+
+### Supported project ignore files
+
+- Git: `.gitignore` at project root and child directories, `.git/info/exclude`, and the file pointed to by `core.excludesFile` in `.git/config`.
+- Mercurial: `.hgignore` at project root and child directories.
+- Bazaar: `.bzrignore` at project root.
+- Darcs: `_darcs/prefs/boring`
+- Fossil: `.fossil-settings/ignore-glob`
+- Ripgrep/Watchexec/generic: `.ignore` at project root and child directories.
+
+Note that VCS ignore files (Git, Mercurial, Bazaar, Darcs, Fossil) are only used if the corresponding VCS is discovered to be in use for the project/origin. For example, a `.bzrignore` in a Git repository will be discarded.
+
+### Supported global ignore files
+
+- Git (if core.excludesFile is set): the file at that path
+- Git (otherwise): the first found of `$XDG_CONFIG_HOME/git/ignore`, `%APPDATA%/.gitignore`, `%USERPROFILE%/.gitignore`, `$HOME/.config/git/ignore`, `$HOME/.gitignore`.
+- Bazaar: the first found of `%APPDATA%/Bazzar/2.0/ignore`, `$HOME/.bazaar/ignore`.
+- Watchexec: the first found of `$XDG_CONFIG_HOME/watchexec/ignore`, `%APPDATA%/watchexec/ignore`, `%USERPROFILE%/.watchexec/ignore`, `$HOME/.watchexec/ignore`.
+
+Note that like for project files, Git and Bazaar global files will only be used for the corresponding VCS as used in the project.
 
 ## EXAMPLES
 
