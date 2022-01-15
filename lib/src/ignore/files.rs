@@ -115,7 +115,7 @@ pub async fn from_origin(path: impl AsRef<Path>) -> (Vec<IgnoreFile>, Vec<Error>
 	.await;
 
 	trace!("create IgnoreFilterer for visiting directories");
-	let mut search_filter = IgnoreFilterer::new(&base, &files.iter().cloned().collect::<Vec<_>>())
+	let mut search_filter = IgnoreFilterer::new(&base, &files)
 		.await
 		.map_err(|err| errors.push(Error::new(ErrorKind::Other, err)))
 		.ok();
