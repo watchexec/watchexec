@@ -26,15 +26,25 @@ async fn main() -> Result<()> {
 
 	let args = args::get_args(tagged_filterer)?;
 
-	tracing_subscriber::fmt()
-		.with_env_filter(match args.occurrences_of("verbose") {
+	{
+		let verbosity = args.occurrences_of("verbose");
+		let mut builder = tracing_subscriber::fmt().with_env_filter(match verbosity {
 			0 => "watchexec-cli=warn",
 			1 => "watchexec=debug,watchexec-cli=debug",
 			2 => "watchexec=trace,watchexec-cli=trace",
 			_ => "trace",
-		})
-		.try_init()
-		.ok();
+		});
+
+		if verbosity > 2 {
+			builder = builder.with_span_events(tracing_subscriber::fmt::format::FmtSpan::FULL);
+		}
+
+		if verbosity > 3 {
+			builder.pretty().try_init().ok();
+		} else {
+			builder.try_init().ok();
+		}
+	}
 
 	let init = config::init(&args)?;
 	let mut runtime = config::runtime(&args)?;

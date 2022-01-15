@@ -25,7 +25,7 @@ FLAGS:
         --print-events         Print events that trigger actions
     -r, --restart              Restart the process if it's still running. Shorthand for --on-busy-update=restart
     -V, --version              Prints version information
-    -v, --verbose              Print debugging messages (-v, -vv, -vvv; use -vvv for bug reports)
+    -v, --verbose              Print debugging messages (-v, -vv, -vvv, -vvvv; use -vvv for bug reports)
 
 OPTIONS:
     -d, --debounce <milliseconds>            Set the timeout between detected change and command execution, defaults to

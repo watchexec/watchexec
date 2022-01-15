@@ -85,7 +85,7 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches<'static>> {
 			.long("debounce"))
 		.arg(Arg::with_name("verbose")
 			.help_heading(Some(OPTSET_DEBUGGING))
-			.help("Print debugging messages (-v, -vv, -vvv; use -vvv for bug reports)")
+			.help("Print debugging messages (-v, -vv, -vvv, -vvvv; use -vvv for bug reports)")
 			.multiple(true)
 			.short("v")
 			.long("verbose"))
