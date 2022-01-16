@@ -23,11 +23,13 @@ pub async fn dirs(args: &ArgMatches<'static>) -> Result<(PathBuf, PathBuf)> {
 
 	debug!(?origins, "resolved all project origins");
 
-	let project_origin = common_prefix(&origins).unwrap_or_else(|| PathBuf::from("."));
+	let project_origin =
+		canonicalize(common_prefix(&origins).unwrap_or_else(|| PathBuf::from(".")))
+			.into_diagnostic()?;
 	debug!(?project_origin, "resolved common/project origin");
 
 	let workdir = env::current_dir()
-		.and_then(|wd| wd.canonicalize())
+		.and_then(|wd| canonicalize(wd))
 		.into_diagnostic()?;
 	debug!(?workdir, "resolved working directory");
 
@@ -111,7 +113,10 @@ pub async fn ignores(
 			Some(pt) if pt.is_vcs() => vcs_types.contains(&pt),
 			_ => true,
 		}));
-		debug!(?ignores, "combined and applied final filter over ignores");
+		debug!(
+			?ignores,
+			"combined and applied overall vcs filter over ignores"
+		);
 	}
 
 	if args.is_present("no-project-ignore") {
