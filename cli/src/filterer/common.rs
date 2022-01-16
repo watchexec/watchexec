@@ -29,7 +29,7 @@ pub async fn dirs(args: &ArgMatches<'static>) -> Result<(PathBuf, PathBuf)> {
 	debug!(?project_origin, "resolved common/project origin");
 
 	let workdir = env::current_dir()
-		.and_then(|wd| canonicalize(wd))
+		.and_then(canonicalize)
 		.into_diagnostic()?;
 	debug!(?workdir, "resolved working directory");
 
