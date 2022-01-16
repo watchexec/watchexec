@@ -79,6 +79,9 @@ pub async fn tagged(args: &ArgMatches<'static>) -> Result<Arc<TaggedFilterer>> {
 			filters.push(Filter::from_glob_ignore(None, "/.hg"));
 		}
 
+		if vcs_types.contains(&ProjectType::Subversion) {
+			filters.push(Filter::from_glob_ignore(None, "/.svn"));
+		}
 
 		if vcs_types.contains(&ProjectType::Bazaar) {
 			filters.push(Filter::from_glob_ignore(None, "/.bzr"));

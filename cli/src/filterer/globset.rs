@@ -41,6 +41,11 @@ pub async fn globset(args: &ArgMatches<'static>) -> Result<Arc<WatchexecFilterer
 		if vcs_types.contains(&ProjectType::Mercurial) {
 			ignores.push((format!("**{s}.hg{s}**", s = MAIN_SEPARATOR), None));
 		}
+
+		if vcs_types.contains(&ProjectType::Subversion) {
+			ignores.push((format!("**{s}.svn{s}**", s = MAIN_SEPARATOR), None));
+		}
+
 		if vcs_types.contains(&ProjectType::Bazaar) {
 			ignores.push((format!("**{s}.bzr{s}**", s = MAIN_SEPARATOR), None));
 		}

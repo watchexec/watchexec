@@ -347,7 +347,15 @@ impl DirTourist {
 
 		filter
 			.add_globs(
-				&["/.git", "/.hg", "/.bzr", "/_darcs", "/.fossil-settings"],
+				&[
+					"/.git",
+					"/.hg",
+					"/.bzr",
+					"/_darcs",
+					"/.fossil-settings",
+					"/.svn",
+					"/.pijul",
+				],
 				Some(base.clone()),
 			)
 			.await

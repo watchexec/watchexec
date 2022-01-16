@@ -38,6 +38,9 @@ pub enum ProjectType {
 	/// VCS: [Pijul](https://pijul.org/).
 	Pijul,
 
+	/// VCS: [Subversion](https://subversion.apache.org) (aka SVN).
+	Subversion,
+
 	/// Soft: [Ruby](https://www.ruby-lang.org/)’s [Bundler](https://bundler.io/).
 	Bundler,
 
@@ -85,7 +88,10 @@ impl ProjectType {
 	pub fn is_vcs(self) -> bool {
 		matches!(
 			self,
-			Self::Bazaar | Self::Darcs | Self::Fossil | Self::Git | Self::Mercurial | Self::Pijul
+			Self::Bazaar
+				| Self::Darcs | Self::Fossil
+				| Self::Git | Self::Mercurial
+				| Self::Pijul | Self::Subversion
 		)
 	}
 
@@ -126,6 +132,7 @@ pub async fn origins(path: impl AsRef<Path>) -> HashSet<PathBuf> {
 			list.has_dir(".git"),
 			list.has_dir(".github"),
 			list.has_dir(".hg"),
+			list.has_dir(".svn"),
 			list.has_file(".asf.yaml"),
 			list.has_file(".bzrignore"),
 			list.has_file(".codecov.yml"),
@@ -203,6 +210,7 @@ pub async fn types(path: impl AsRef<Path>) -> HashSet<ProjectType> {
 		list.if_has_dir(".fossil-settings", ProjectType::Fossil),
 		list.if_has_dir(".git", ProjectType::Git),
 		list.if_has_dir(".hg", ProjectType::Mercurial),
+		list.if_has_dir(".svn", ProjectType::Subversion),
 		list.if_has_file(".bzrignore", ProjectType::Bazaar),
 		list.if_has_file(".ctags", ProjectType::C),
 		list.if_has_file(".gitattributes", ProjectType::Git),
