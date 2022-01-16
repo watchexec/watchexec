@@ -4,8 +4,8 @@ use std::str::FromStr;
 
 #[cfg(unix)]
 use command_group::Signal as NixSignal;
-use miette::Diagnostic;
-use thiserror::Error;
+
+use crate::error::SignalParseError;
 
 use super::source::MainSignal;
 
@@ -208,32 +208,5 @@ impl FromStr for SubSignal {
 	#[cfg(not(any(unix, windows)))]
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		Err(SignalParseError::new(s, "no signals supported"))
-	}
-}
-
-/// Error when parsing a signal from string.
-#[derive(Debug, Diagnostic, Error)]
-#[error("invalid signal `{src}`: {err}")]
-#[diagnostic(code(watchexec::signal::process::parse), url(docsrs))]
-pub struct SignalParseError {
-	// The string that was parsed.
-	#[source_code]
-	src: String,
-
-	// The error that occurred.
-	err: String,
-
-	// The span of the source which is in error.
-	#[label = "invalid signal"]
-	span: (usize, usize),
-}
-
-impl SignalParseError {
-	fn new(src: &str, err: &str) -> Self {
-		Self {
-			src: src.to_owned(),
-			err: err.to_owned(),
-			span: (0, src.len()),
-		}
 	}
 }

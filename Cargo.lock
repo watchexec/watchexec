@@ -1107,9 +1107,9 @@ dependencies = [
 
 [[package]]
 name = "miette"
-version = "3.2.0"
+version = "3.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec47e61dc212c43f44dcd1f2841ccba79c6ec10da357cab7a7859b5f87bd27a9"
+checksum = "cd2adcfcced5d625bf90a958a82ae5b93231f57f3df1383fee28c9b5096d35ed"
 dependencies = [
  "atty",
  "backtrace",
@@ -1119,16 +1119,16 @@ dependencies = [
  "supports-color",
  "supports-hyperlinks",
  "supports-unicode",
- "term_size",
+ "terminal_size",
  "textwrap 0.14.2",
  "thiserror",
 ]
 
 [[package]]
 name = "miette-derive"
-version = "3.2.0"
+version = "3.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c0f0b6f999b9a9f7e86322125583a437cf015054b7aaa9926dff0ff13005b7e"
+checksum = "5c01a8b61312d367ce87956bb686731f87e4c6dd5dbc550e8f06e3c24fb1f67f"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1361,9 +1361,9 @@ checksum = "da32515d9f6e6e489d7bc9d84c71b060db7247dc035bbe44eac88cf87486d8d5"
 
 [[package]]
 name = "owo-colors"
-version = "2.1.0"
+version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a61765925aec40abdb23812a3a1a01fafc6ffb9da22768b2ce665a9e84e527c"
+checksum = "20448fd678ec04e6ea15bbe0476874af65e98a01515d667aa49f1434dc44ebf4"
 
 [[package]]
 name = "parking"

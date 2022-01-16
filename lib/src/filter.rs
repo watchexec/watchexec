@@ -3,10 +3,11 @@
 use std::sync::Arc;
 
 use ignore::gitignore::GitignoreBuilder;
-use miette::Diagnostic;
-use thiserror::Error;
 
-use crate::{error::RuntimeError, event::Event};
+use crate::{
+	error::{GlobParseError, RuntimeError},
+	event::Event,
+};
 
 pub mod globset;
 pub mod tagged;
@@ -52,32 +53,5 @@ pub fn check_glob(glob: &str) -> Result<(), GlobParseError> {
 		}
 	} else {
 		Ok(())
-	}
-}
-
-/// Error when parsing a glob pattern from string.
-#[derive(Debug, Diagnostic, Error)]
-#[error("invalid glob `{src}`: {err}")]
-#[diagnostic(code(watchexec::filter::glob_parse), url(docsrs))]
-pub struct GlobParseError {
-	// The string that was parsed.
-	#[source_code]
-	src: String,
-
-	// The error that occurred.
-	err: String,
-
-	// The span of the source which is in error.
-	#[label = "invalid"]
-	span: (usize, usize),
-}
-
-impl GlobParseError {
-	fn new(src: &str, err: &str) -> Self {
-		Self {
-			src: src.to_owned(),
-			err: err.to_owned(),
-			span: (0, src.len()),
-		}
 	}
 }
