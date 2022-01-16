@@ -29,7 +29,7 @@ args=(
 	'(-w --watch)'{-w+,--watch=}'[Watch a specific directory]:path:_path_files -/'
 	'(-s --signal)'{-s+,--signal=}'[Send signal to process upon changes, e.g. SIGHUP]:signal'
 	'--force-poll=[Forces polling mode]:interval'
-	'--no-ignore[Skip auto-loading of ignore files (.gitignore, .ignore, etc.) for filtering]'
+	'--no-project-ignore[Skip auto-loading of project-local ignore files (.gitignore, .ignore, etc.) for filtering]'
 	'--no-default-ignore[Skip auto-ignoring of commonly ignored globs]'
 	'--no-global-ignore[Skip auto-loading of global or environment-wide ignore files]'
 	'--no-vcs-ignore[Skip auto-loading of VCS ignore files for filtering]'
