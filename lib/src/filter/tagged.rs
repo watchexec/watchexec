@@ -163,9 +163,11 @@ impl TaggedFilterer {
 					if let (Matcher::Path, Tag::Path { path, file_type }) = (matcher, tag) {
 						let is_dir = file_type.map_or(false, |ft| matches!(ft, FileType::Dir));
 
+						{
 						let gc = self.glob_compiled.borrow();
 						if let Some(igs) = gc.as_ref() {
-							let _span = trace_span!("checking_compiled_filters", compiled=%"Glob")
+								let _span =
+									trace_span!("checking_compiled_filters", compiled=%"Glob")
 								.entered();
 							match if path.strip_prefix(&self.origin).is_ok() {
 								trace!("checking against path or parents");
@@ -179,11 +181,17 @@ impl TaggedFilterer {
 									tag_match &= false;
 								}
 								Match::Ignore(glob) => {
-									if glob.from().map_or(true, |f| path.strip_prefix(f).is_ok()) {
+										if glob
+											.from()
+											.map_or(true, |f| path.strip_prefix(f).is_ok())
+										{
 										trace!(?glob, "positive match (pass)");
 										tag_match &= true;
 									} else {
-										trace!(?glob, "positive match, but not in scope (ignore)");
+											trace!(
+												?glob,
+												"positive match, but not in scope (ignore)"
+											);
 									}
 								}
 								Match::Whitelist(glob) => {
@@ -191,7 +199,9 @@ impl TaggedFilterer {
 								}
 							}
 						}
+						}
 
+						{
 						let ngc = self.not_glob_compiled.borrow();
 						if let Some(ngs) = ngc.as_ref() {
 							let _span =
@@ -209,11 +219,17 @@ impl TaggedFilterer {
 									tag_match &= true;
 								}
 								Match::Ignore(glob) => {
-									if glob.from().map_or(true, |f| path.strip_prefix(f).is_ok()) {
+										if glob
+											.from()
+											.map_or(true, |f| path.strip_prefix(f).is_ok())
+										{
 										trace!(?glob, "positive match (fail)");
 										tag_match &= false;
 									} else {
-										trace!(?glob, "positive match, but not in scope (ignore)");
+											trace!(
+												?glob,
+												"positive match, but not in scope (ignore)"
+											);
 									}
 								}
 								Match::Whitelist(glob) => {
@@ -222,6 +238,7 @@ impl TaggedFilterer {
 								}
 							}
 						}
+					}
 					}
 
 					// those are handled with the compiled ignore filters above
