@@ -24,7 +24,7 @@ use super::files::IgnoreFile;
 ///
 /// It implements [`Filterer`] so it can be used directly in another filterer; it is not designed to
 /// be used as a standalone filterer.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct IgnoreFilterer {
 	origin: PathBuf,
 	builder: Option<GitignoreBuilder>,
@@ -32,7 +32,22 @@ pub struct IgnoreFilterer {
 }
 
 impl IgnoreFilterer {
+	/// Create a new empty filterer.
+	///
+	/// Prefer [`new()`](IgnoreFilterer::new()) if you have ignore files ready to use.
+	pub fn empty(origin: impl AsRef<Path>) -> Self {
+		let origin = origin.as_ref();
+		Self {
+			builder: Some(GitignoreBuilder::new(origin)),
+			origin: origin.to_owned(),
+			compiled: Gitignore::empty(),
+		}
+	}
+
 	/// Read ignore files from disk and load them for filtering.
+	///
+	/// Use [`empty()`](IgnoreFilterer::empty()) if you want an empty filterer,
+	/// or to construct one outside an async environment.
 	pub async fn new(origin: impl AsRef<Path>, files: &[IgnoreFile]) -> Result<Self, RuntimeError> {
 		let origin = origin.as_ref();
 		let _span = trace_span!("build_filterer", ?origin);
@@ -159,10 +174,7 @@ impl IgnoreFilterer {
 			trace!("recompiling globset");
 			let recompiled = builder
 				.build()
-				.map_err(|err| RuntimeError::IgnoreFileGlob {
-					file,
-					err,
-				})?;
+				.map_err(|err| RuntimeError::IgnoreFileGlob { file, err })?;
 
 			trace!(
 				new_ignores=%(recompiled.num_ignores() - pre_ignores),
@@ -178,7 +190,11 @@ impl IgnoreFilterer {
 	/// Adds some globs manually, if the builder is available.
 	///
 	/// Does nothing silently otherwise.
-	pub async fn add_globs(&mut self, globs: &[&str], applies_in: Option<PathBuf>) -> Result<(), RuntimeError> {
+	pub async fn add_globs(
+		&mut self,
+		globs: &[&str],
+		applies_in: Option<PathBuf>,
+	) -> Result<(), RuntimeError> {
 		if let Some(ref mut builder) = self.builder {
 			let _span = trace_span!("loading ignore globs", ?globs).entered();
 			for line in globs {
@@ -187,12 +203,12 @@ impl IgnoreFilterer {
 				}
 
 				trace!(?line, "adding ignore line");
-				builder
-					.add_line(applies_in.clone(), line)
-					.map_err(|err| RuntimeError::IgnoreFileGlob {
+				builder.add_line(applies_in.clone(), line).map_err(|err| {
+					RuntimeError::IgnoreFileGlob {
 						file: "manual glob".into(),
 						err,
-					})?;
+					}
+				})?;
 			}
 
 			self.recompile("manual glob".into())?;

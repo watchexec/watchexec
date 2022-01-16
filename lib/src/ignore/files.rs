@@ -132,8 +132,7 @@ pub async fn from_origin(path: impl AsRef<Path>) -> (Vec<IgnoreFile>, Vec<Error>
 						)
 						.await
 						{
-							dirs.add_last_file_to_filter(&mut files, &mut errors)
-								.await;
+							dirs.add_last_file_to_filter(&mut files, &mut errors).await;
 						}
 
 						if discover_file(
@@ -145,8 +144,7 @@ pub async fn from_origin(path: impl AsRef<Path>) -> (Vec<IgnoreFile>, Vec<Error>
 						)
 						.await
 						{
-							dirs.add_last_file_to_filter(&mut files, &mut errors)
-								.await;
+							dirs.add_last_file_to_filter(&mut files, &mut errors).await;
 						}
 
 						if discover_file(
@@ -158,8 +156,7 @@ pub async fn from_origin(path: impl AsRef<Path>) -> (Vec<IgnoreFile>, Vec<Error>
 						)
 						.await
 						{
-							dirs.add_last_file_to_filter(&mut files, &mut errors)
-								.await;
+							dirs.add_last_file_to_filter(&mut files, &mut errors).await;
 						}
 					}
 				}
@@ -348,8 +345,13 @@ impl DirTourist {
 			.await
 			.map_err(|err| Error::new(ErrorKind::Other, err))?;
 
-		filter.add_globs(&["/.git", "/.hg", "/.bzr", "/_darcs", "/.fossil-settings"], Some(base.clone())).await
-		.map_err(|err| Error::new(ErrorKind::Other, err))?;
+		filter
+			.add_globs(
+				&["/.git", "/.hg", "/.bzr", "/_darcs", "/.fossil-settings"],
+				Some(base.clone()),
+			)
+			.await
+			.map_err(|err| Error::new(ErrorKind::Other, err))?;
 
 		Ok(Self {
 			to_visit: vec![base.clone()],
@@ -443,15 +445,15 @@ impl DirTourist {
 
 	pub(crate) async fn add_last_file_to_filter(
 		&mut self,
-	files: &mut Vec<IgnoreFile>,
-	errors: &mut Vec<Error>,
-) {
+		files: &mut Vec<IgnoreFile>,
+		errors: &mut Vec<Error>,
+	) {
 		if let Some(ig) = files.last() {
 			if let Err(err) = self.filter.add_file(ig).await {
 				errors.push(Error::new(ErrorKind::Other, err));
 			}
 		}
-}
+	}
 
 	fn must_skip(&self, mut path: &Path) -> bool {
 		if self.to_skip.contains(path) {
