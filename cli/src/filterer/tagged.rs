@@ -63,11 +63,6 @@ pub async fn tagged(args: &ArgMatches<'static>) -> Result<Arc<TaggedFilterer>> {
 	if !args.is_present("no-default-ignore") {
 		filters.extend([
 			Filter::from_glob_ignore(None, ".DS_Store/"),
-			Filter::from_glob_ignore(None, ".git/"),
-			Filter::from_glob_ignore(None, ".hg/"),
-			Filter::from_glob_ignore(None, ".svn/"),
-			Filter::from_glob_ignore(None, "_darcs/"),
-			Filter::from_glob_ignore(None, ".fossil-settings/"),
 			Filter::from_glob_ignore(None, "*.py[co]"),
 			Filter::from_glob_ignore(None, "#*#"),
 			Filter::from_glob_ignore(None, ".#*"),
@@ -75,6 +70,31 @@ pub async fn tagged(args: &ArgMatches<'static>) -> Result<Arc<TaggedFilterer>> {
 			Filter::from_glob_ignore(None, ".*.sw?"),
 			Filter::from_glob_ignore(None, ".*.sw?x"),
 		]);
+
+		if vcs_types.contains(&ProjectType::Git) {
+			filters.push(Filter::from_glob_ignore(None, "/.git"));
+		}
+
+		if vcs_types.contains(&ProjectType::Mercurial) {
+			filters.push(Filter::from_glob_ignore(None, "/.hg"));
+		}
+
+
+		if vcs_types.contains(&ProjectType::Bazaar) {
+			filters.push(Filter::from_glob_ignore(None, "/.bzr"));
+		}
+
+		if vcs_types.contains(&ProjectType::Darcs) {
+			filters.push(Filter::from_glob_ignore(None, "/_darcs"));
+		}
+
+		if vcs_types.contains(&ProjectType::Fossil) {
+			filters.push(Filter::from_glob_ignore(None, "/.fossil-settings"));
+		}
+
+		if vcs_types.contains(&ProjectType::Pijul) {
+			filters.push(Filter::from_glob_ignore(None, "/.pijul"));
+		}
 	}
 
 	if args.is_present("no-meta") {

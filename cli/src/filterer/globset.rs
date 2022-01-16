@@ -13,11 +13,13 @@ use watchexec::{
 		Event, Tag,
 	},
 	filter::{globset::GlobsetFilterer, Filterer},
+	project::ProjectType,
 };
 
 pub async fn globset(args: &ArgMatches<'static>) -> Result<Arc<WatchexecFilterer>> {
 	let (project_origin, workdir) = super::common::dirs(args).await?;
-	let ignore_files = super::common::ignores(args, &project_origin).await?;
+	let vcs_types = super::common::vcs_types(&project_origin).await;
+	let ignore_files = super::common::ignores(args, &vcs_types, &project_origin).await?;
 
 	let mut ignores = Vec::new();
 
@@ -30,10 +32,33 @@ pub async fn globset(args: &ArgMatches<'static>) -> Result<Arc<WatchexecFilterer
 			(String::from(".*.kate-swp"), None),
 			(String::from(".*.sw?"), None),
 			(String::from(".*.sw?x"), None),
-			(format!("**{s}.git{s}**", s = MAIN_SEPARATOR), None),
-			(format!("**{s}.hg{s}**", s = MAIN_SEPARATOR), None),
-			(format!("**{s}.svn{s}**", s = MAIN_SEPARATOR), None),
 		]);
+
+		if vcs_types.contains(&ProjectType::Git) {
+			ignores.push((format!("**{s}.git{s}**", s = MAIN_SEPARATOR), None));
+		}
+
+		if vcs_types.contains(&ProjectType::Mercurial) {
+			ignores.push((format!("**{s}.hg{s}**", s = MAIN_SEPARATOR), None));
+		}
+		if vcs_types.contains(&ProjectType::Bazaar) {
+			ignores.push((format!("**{s}.bzr{s}**", s = MAIN_SEPARATOR), None));
+		}
+
+		if vcs_types.contains(&ProjectType::Darcs) {
+			ignores.push((format!("**{s}_darcs{s}**", s = MAIN_SEPARATOR), None));
+		}
+
+		if vcs_types.contains(&ProjectType::Fossil) {
+			ignores.push((
+				format!("**{s}.fossil-settings{s}**", s = MAIN_SEPARATOR),
+				None,
+			));
+		}
+
+		if vcs_types.contains(&ProjectType::Pijul) {
+			ignores.push((format!("**{s}.pijul{s}**", s = MAIN_SEPARATOR), None));
+		}
 	}
 
 	let filters = args
