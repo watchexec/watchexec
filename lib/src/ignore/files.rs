@@ -281,6 +281,8 @@ pub async fn from_environment() -> (Vec<IgnoreFile>, Vec<Error>) {
 	(files, errors)
 }
 
+// TODO: add context to these errors
+
 #[inline]
 pub(crate) async fn discover_file(
 	files: &mut Vec<IgnoreFile>,

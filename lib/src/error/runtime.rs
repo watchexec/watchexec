@@ -6,8 +6,6 @@ use tokio::sync::mpsc;
 
 use crate::{event::Event, fs::Watcher, signal::process::SubSignal};
 
-use super::SpecificIoError;
-
 /// Errors which _may_ be recoverable, transient, or only affect a part of the operation, and should
 /// be reported to the user and/or acted upon programatically, but will not outright stop watchexec.
 #[derive(Debug, Diagnostic, Error)]
@@ -226,19 +224,4 @@ pub enum RuntimeError {
 	#[error("related: {0:?}")]
 	#[diagnostic(code(watchexec::runtime::set))]
 	Set(#[related] Vec<RuntimeError>),
-}
-
-impl<T> SpecificIoError<Result<T, RuntimeError>> for Result<T, std::io::Error> {
-	fn about(self, context: &'static str) -> Result<T, RuntimeError> {
-		self.map_err(|err| err.about(context))
-	}
-}
-
-impl SpecificIoError<RuntimeError> for std::io::Error {
-	fn about(self, context: &'static str) -> RuntimeError {
-		RuntimeError::IoError {
-			about: context,
-			err: self,
-		}
-	}
 }

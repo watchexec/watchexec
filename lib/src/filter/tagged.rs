@@ -328,13 +328,19 @@ impl TaggedFilterer {
 		origin: impl Into<PathBuf>,
 		workdir: impl Into<PathBuf>,
 	) -> Result<Arc<Self>, TaggedFiltererError> {
-		let origin = canonicalize(origin.into())?;
+		let origin = canonicalize(origin.into()).map_err(|err| TaggedFiltererError::IoError {
+			about: "canonicalise origin on new tagged filterer",
+			err,
+		})?;
 		Ok(Arc::new(Self {
 			filters: swaplock::SwapLock::new(HashMap::new()),
 			ignore_filterer: swaplock::SwapLock::new(IgnoreFilterer::empty(&origin)),
 			glob_compiled: swaplock::SwapLock::new(None),
 			not_glob_compiled: swaplock::SwapLock::new(None),
-			workdir: canonicalize(workdir.into())?,
+			workdir: canonicalize(workdir.into()).map_err(|err| TaggedFiltererError::IoError {
+				about: "canonicalise workdir on new tagged filterer",
+				err,
+			})?,
 			origin,
 		}))
 	}
@@ -662,7 +668,13 @@ impl Filter {
 	/// Returns the filter with its `in_path` canonicalised.
 	pub fn canonicalised(mut self) -> Result<Self, TaggedFiltererError> {
 		if let Some(ctx) = self.in_path {
-			self.in_path = Some(canonicalize(&ctx)?);
+			self.in_path =
+				Some(
+					canonicalize(&ctx).map_err(|err| TaggedFiltererError::IoError {
+						about: "canonicalise Filter in_path",
+						err,
+					})?,
+				);
 			trace!(canon=?ctx, "canonicalised in_path");
 		}
 

@@ -74,7 +74,13 @@ impl FilterFile {
 	///
 	/// This method reads the entire file into memory.
 	pub async fn load(&self) -> Result<Vec<Filter>, TaggedFiltererError> {
-		let content = read_to_string(&self.0.path).await?;
+		let content =
+			read_to_string(&self.0.path)
+				.await
+				.map_err(|err| TaggedFiltererError::IoError {
+					about: "filter file load",
+					err,
+				})?;
 		let lines = content.lines();
 		let mut filters = Vec::with_capacity(lines.size_hint().0);
 

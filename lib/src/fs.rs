@@ -286,7 +286,10 @@ fn process_event(
 		// possibly pull file_type from whatever notify (or the native driver) returns?
 		tags.push(Tag::Path {
 			file_type: metadata(&path).ok().map(|m| m.file_type().into()),
-			path: dunce::canonicalize(path)?,
+			path: dunce::canonicalize(path).map_err(|err| RuntimeError::IoError {
+				about: "canonicalise path in event",
+				err,
+			})?,
 		});
 	}
 
