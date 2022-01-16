@@ -146,7 +146,9 @@ async fn imp_worker(
 	macro_rules! listen {
 		($sig:ident) => {{
 			trace!(kind=%stringify!($sig), "listening for windows process notification");
-			$sig()?
+			$sig().map_err(|err| CriticalError::IoError {
+				about: concat!("setting ", stringify!($sig), " signal listener"), err
+			})?
 		}}
 	}
 
