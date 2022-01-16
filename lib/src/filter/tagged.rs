@@ -8,7 +8,6 @@ use dunce::canonicalize;
 use globset::Glob;
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use ignore::Match;
-use tokio::fs::read_to_string;
 use tracing::{debug, trace, trace_span, warn};
 use unicase::UniCase;
 
@@ -16,7 +15,7 @@ use crate::error::RuntimeError;
 use crate::event::{Event, FileType, ProcessEnd, Tag};
 use crate::filter::tagged::error::TaggedFiltererError;
 use crate::filter::Filterer;
-use crate::ignore::IgnoreFile;
+use crate::ignore::{IgnoreFile, IgnoreFilterer};
 use crate::signal::process::SubSignal;
 use crate::signal::source::MainSignal;
 
@@ -116,6 +115,9 @@ pub struct TaggedFilterer {
 	/// All filters that are applied, in order, by matcher.
 	filters: swaplock::SwapLock<HashMap<Matcher, Vec<Filter>>>,
 
+	/// Sub-filterer for ignore files.
+	ignore_filterer: swaplock::SwapLock<IgnoreFilterer>,
+
 	/// Compiled matcher for Glob filters.
 	glob_compiled: swaplock::SwapLock<Option<Gitignore>>,
 
@@ -133,6 +135,15 @@ impl TaggedFilterer {
 	fn check(&self, event: &Event) -> Result<bool, TaggedFiltererError> {
 		let _span = trace_span!("filterer_check").entered();
 		trace!(?event, "checking event");
+
+		{
+			trace!("checking internal ignore filterer");
+			let igf = self.ignore_filterer.borrow();
+			if !igf.check_event(event).expect("IgnoreFilterer never errors") {
+				trace!("internal ignore filterer matched (fail)");
+				return Ok(false);
+			}
+		}
 
 		if self.filters.borrow().is_empty() {
 			trace!("no filters, skipping entire check (pass)");
@@ -154,8 +165,6 @@ impl TaggedFilterer {
 						continue;
 					}
 
-					// TODO: integrate ignore::Filter
-
 					trace!(filters=%tag_filters.len(), "found some filters for this matcher");
 
 					let mut tag_match = true;
@@ -164,81 +173,81 @@ impl TaggedFilterer {
 						let is_dir = file_type.map_or(false, |ft| matches!(ft, FileType::Dir));
 
 						{
-						let gc = self.glob_compiled.borrow();
-						if let Some(igs) = gc.as_ref() {
+							let gc = self.glob_compiled.borrow();
+							if let Some(igs) = gc.as_ref() {
 								let _span =
 									trace_span!("checking_compiled_filters", compiled=%"Glob")
-								.entered();
-							match if path.strip_prefix(&self.origin).is_ok() {
-								trace!("checking against path or parents");
-								igs.matched_path_or_any_parents(path, is_dir)
-							} else {
-								trace!("checking against path only");
-								igs.matched(path, is_dir)
-							} {
-								Match::None => {
-									trace!("no match (fail)");
-									tag_match &= false;
-								}
-								Match::Ignore(glob) => {
+										.entered();
+								match if path.strip_prefix(&self.origin).is_ok() {
+									trace!("checking against path or parents");
+									igs.matched_path_or_any_parents(path, is_dir)
+								} else {
+									trace!("checking against path only");
+									igs.matched(path, is_dir)
+								} {
+									Match::None => {
+										trace!("no match (fail)");
+										tag_match &= false;
+									}
+									Match::Ignore(glob) => {
 										if glob
 											.from()
 											.map_or(true, |f| path.strip_prefix(f).is_ok())
 										{
-										trace!(?glob, "positive match (pass)");
-										tag_match &= true;
-									} else {
+											trace!(?glob, "positive match (pass)");
+											tag_match &= true;
+										} else {
 											trace!(
 												?glob,
 												"positive match, but not in scope (ignore)"
 											);
+										}
+									}
+									Match::Whitelist(glob) => {
+										trace!(?glob, "negative match (ignore)");
 									}
 								}
-								Match::Whitelist(glob) => {
-									trace!(?glob, "negative match (ignore)");
-								}
 							}
-						}
 						}
 
 						{
-						let ngc = self.not_glob_compiled.borrow();
-						if let Some(ngs) = ngc.as_ref() {
-							let _span =
-								trace_span!("checking_compiled_filters", compiled=%"NotGlob")
-									.entered();
-							match if path.strip_prefix(&self.origin).is_ok() {
-								trace!("checking against path or parents");
-								ngs.matched_path_or_any_parents(path, is_dir)
-							} else {
-								trace!("checking against path only");
-								ngs.matched(path, is_dir)
-							} {
-								Match::None => {
-									trace!("no match (pass)");
-									tag_match &= true;
-								}
-								Match::Ignore(glob) => {
+							let ngc = self.not_glob_compiled.borrow();
+							if let Some(ngs) = ngc.as_ref() {
+								let _span =
+									trace_span!("checking_compiled_filters", compiled=%"NotGlob")
+										.entered();
+								match if path.strip_prefix(&self.origin).is_ok() {
+									trace!("checking against path or parents");
+									ngs.matched_path_or_any_parents(path, is_dir)
+								} else {
+									trace!("checking against path only");
+									ngs.matched(path, is_dir)
+								} {
+									Match::None => {
+										trace!("no match (pass)");
+										tag_match &= true;
+									}
+									Match::Ignore(glob) => {
 										if glob
 											.from()
 											.map_or(true, |f| path.strip_prefix(f).is_ok())
 										{
-										trace!(?glob, "positive match (fail)");
-										tag_match &= false;
-									} else {
+											trace!(?glob, "positive match (fail)");
+											tag_match &= false;
+										} else {
 											trace!(
 												?glob,
 												"positive match, but not in scope (ignore)"
 											);
+										}
 									}
-								}
-								Match::Whitelist(glob) => {
-									trace!(?glob, "negative match (pass)");
-									tag_match = true;
+									Match::Whitelist(glob) => {
+										trace!(?glob, "negative match (pass)");
+										tag_match = true;
+									}
 								}
 							}
 						}
-					}
 					}
 
 					// those are handled with the compiled ignore filters above
@@ -309,7 +318,7 @@ impl TaggedFilterer {
 	///
 	/// The origin is the directory the main project that is being watched is in. This is used to
 	/// resolve absolute paths given in filters without an `in_path` field (e.g. all filters parsed
-	/// from text).
+	/// from text), and for ignore file based filtering.
 	///
 	/// The workdir is used to resolve relative paths given in filters without an `in_path` field.
 	///
@@ -320,12 +329,14 @@ impl TaggedFilterer {
 		origin: impl Into<PathBuf>,
 		workdir: impl Into<PathBuf>,
 	) -> Result<Arc<Self>, TaggedFiltererError> {
+		let origin = canonicalize(origin.into())?;
 		Ok(Arc::new(Self {
-			origin: canonicalize(origin.into())?,
-			workdir: canonicalize(workdir.into())?,
 			filters: swaplock::SwapLock::new(HashMap::new()),
+			ignore_filterer: swaplock::SwapLock::new(IgnoreFilterer::empty(&origin)),
 			glob_compiled: swaplock::SwapLock::new(None),
 			not_glob_compiled: swaplock::SwapLock::new(None),
+			workdir: canonicalize(workdir.into())?,
+			origin,
 		}))
 	}
 
@@ -431,7 +442,8 @@ impl TaggedFilterer {
 	/// with a single write, without needing to acquire the lock repeatedly.
 	///
 	/// If filters with glob operations are added, the filterer's glob matchers are recompiled after
-	/// the new filters are added, in this method.
+	/// the new filters are added, in this method. This should not be used for inserting an
+	/// [`IgnoreFile`]: use [`add_ignore_file()`](Self::add_ignore_file) instead.
 	pub async fn add_filters(&self, filters: &[Filter]) -> Result<(), TaggedFiltererError> {
 		debug!(?filters, "adding filters to filterer");
 
@@ -526,26 +538,18 @@ impl TaggedFilterer {
 			.map_err(TaggedFiltererError::GlobsetChange)
 	}
 
-	/// Reads a gitignore-style [`IgnoreFile`] and adds all of its contents to the filterer.
-	///
-	/// Empty lines and lines starting with `#` are ignored. The `applies_in` field of the
-	/// [`IgnoreFile`] is used for the `in_path` field of each [`Filter`].
-	///
-	/// This method reads the entire file into memory.
+	/// Reads a gitignore-style [`IgnoreFile`] and adds it to the filterer.
 	pub async fn add_ignore_file(&self, file: &IgnoreFile) -> Result<(), TaggedFiltererError> {
-		let content = read_to_string(&file.path).await?;
-		let lines = content.lines();
-		let mut ignores = Vec::with_capacity(lines.size_hint().0);
+		let mut new = { self.ignore_filterer.borrow().clone() };
 
-		for line in lines {
-			if line.is_empty() || line.starts_with('#') {
-				continue;
-			}
-
-			ignores.push(Filter::from_glob_ignore(file.applies_in.clone(), line));
-		}
-
-		self.add_filters(&ignores).await
+		new.add_file(file)
+			.await
+			.map_err(TaggedFiltererError::Ignore)?;
+		self.ignore_filterer
+			.replace(new)
+			.await
+			.map_err(TaggedFiltererError::IgnoreSwap)?;
+		Ok(())
 	}
 
 	/// Clears all filters from the filterer.

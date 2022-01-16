@@ -10,6 +10,7 @@ use tokio::sync::watch::error::SendError;
 use crate::{
 	error::RuntimeError,
 	filter::tagged::{Filter, Matcher},
+	ignore::IgnoreFilterer,
 };
 
 /// Errors emitted by the TaggedFilterer.
@@ -55,6 +56,16 @@ pub enum TaggedFiltererError {
 	#[error("cannot change compiled globset: {0:?}")]
 	#[diagnostic(code(watchexec::filter::tagged::globset_change))]
 	GlobsetChange(#[source] SendError<Option<Gitignore>>),
+
+	/// Error received about the internal ignore filterer.
+	#[error("ignore filterer: {0}")]
+	#[diagnostic(code(watchexec::filter::tagged::ignore))]
+	Ignore(#[source] RuntimeError),
+
+	/// Error received when a new ignore filterer cannot be swapped in.
+	#[error("cannot swap in new ignore filterer: {0:?}")]
+	#[diagnostic(code(watchexec::filter::tagged::ignore_swap))]
+	IgnoreSwap(#[source] SendError<IgnoreFilterer>),
 }
 
 impl From<TaggedFiltererError> for RuntimeError {
