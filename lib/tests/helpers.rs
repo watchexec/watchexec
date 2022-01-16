@@ -203,7 +203,11 @@ fn tracing_init() {
 		.ok();
 }
 
-pub async fn globset_filt(filters: &[&str], ignores: &[&str], extensions: &[&str]) -> GlobsetFilterer {
+pub async fn globset_filt(
+	filters: &[&str],
+	ignores: &[&str],
+	extensions: &[&str],
+) -> GlobsetFilterer {
 	let origin = dunce::canonicalize(".").unwrap();
 	tracing_init();
 	GlobsetFilterer::new(
@@ -216,7 +220,6 @@ pub async fn globset_filt(filters: &[&str], ignores: &[&str], extensions: &[&str
 	.await
 	.expect("making filterer")
 }
-
 
 pub async fn ignore_filt(origin: &str, ignore_files: &[IgnoreFile]) -> IgnoreFilterer {
 	tracing_init();

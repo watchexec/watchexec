@@ -54,7 +54,9 @@ pub async fn globset(args: &ArgMatches<'static>) -> Result<Arc<WatchexecFilterer
 		.flatten();
 
 	Ok(Arc::new(WatchexecFilterer {
-		inner: GlobsetFilterer::new(project_origin, filters, ignores, ignore_files, exts).await.into_diagnostic()?,
+		inner: GlobsetFilterer::new(project_origin, filters, ignores, ignore_files, exts)
+			.await
+			.into_diagnostic()?,
 		no_meta: args.is_present("no-meta"),
 	}))
 }

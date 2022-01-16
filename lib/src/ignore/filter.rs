@@ -105,10 +105,7 @@ impl IgnoreFilterer {
 		trace!("compiling globset");
 		let compiled = builder
 			.build()
-			.map_err(|err| RuntimeError::GlobsetGlob {
-				file: None,
-				err,
-			})?;
+			.map_err(|err| RuntimeError::GlobsetGlob { file: None, err })?;
 
 		trace!(
 			files=%files.len(),
@@ -177,9 +174,10 @@ impl IgnoreFilterer {
 			let pre_allows = self.compiled.num_whitelists();
 
 			trace!("recompiling globset");
-			let recompiled = builder
-				.build()
-				.map_err(|err| RuntimeError::GlobsetGlob { file: Some(file), err })?;
+			let recompiled = builder.build().map_err(|err| RuntimeError::GlobsetGlob {
+				file: Some(file),
+				err,
+			})?;
 
 			trace!(
 				new_ignores=%(recompiled.num_ignores() - pre_ignores),
@@ -208,12 +206,9 @@ impl IgnoreFilterer {
 				}
 
 				trace!(?line, "adding ignore line");
-				builder.add_line(applies_in.clone(), line).map_err(|err| {
-					RuntimeError::GlobsetGlob {
-						file: None,
-						err,
-					}
-				})?;
+				builder
+					.add_line(applies_in.clone(), line)
+					.map_err(|err| RuntimeError::GlobsetGlob { file: None, err })?;
 			}
 
 			self.recompile("manual glob".into())?;

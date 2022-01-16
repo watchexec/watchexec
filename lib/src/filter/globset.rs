@@ -48,25 +48,29 @@ impl GlobsetFilterer {
 
 		for (filter, in_path) in filters {
 			trace!(filter=?&filter, "add filter to globset filterer");
-			filters_builder.add_line(in_path.clone(), &filter)
-			.map_err(|err| RuntimeError::GlobsetGlob { file: in_path, err })
-			?;
+			filters_builder
+				.add_line(in_path.clone(), &filter)
+				.map_err(|err| RuntimeError::GlobsetGlob { file: in_path, err })?;
 		}
 
 		for (ignore, in_path) in ignores {
 			trace!(ignore=?&ignore, "add ignore to globset filterer");
-			ignores_builder.add_line(in_path.clone(), &ignore)
-			.map_err(|err| RuntimeError::GlobsetGlob { file: in_path, err })?;
+			ignores_builder
+				.add_line(in_path.clone(), &ignore)
+				.map_err(|err| RuntimeError::GlobsetGlob { file: in_path, err })?;
 		}
 
-		let filters = filters_builder.build()
-		.map_err(|err| RuntimeError::GlobsetGlob { file: None, err })?;
-		let ignores = ignores_builder.build()
-		.map_err(|err| RuntimeError::GlobsetGlob { file: None, err })?;
+		let filters = filters_builder
+			.build()
+			.map_err(|err| RuntimeError::GlobsetGlob { file: None, err })?;
+		let ignores = ignores_builder
+			.build()
+			.map_err(|err| RuntimeError::GlobsetGlob { file: None, err })?;
 
 		let extensions: Vec<OsString> = extensions.into_iter().collect();
 
-		let mut ignore_files = IgnoreFilterer::new(origin, &ignore_files.into_iter().collect::<Vec<_>>()).await?;
+		let mut ignore_files =
+			IgnoreFilterer::new(origin, &ignore_files.into_iter().collect::<Vec<_>>()).await?;
 		ignore_files.finish();
 
 		debug!(
@@ -96,7 +100,11 @@ impl Filterer for GlobsetFilterer {
 
 		{
 			trace!("checking internal ignore filterer");
-			if !self.ignore_files.check_event(event).expect("IgnoreFilterer never errors") {
+			if !self
+				.ignore_files
+				.check_event(event)
+				.expect("IgnoreFilterer never errors")
+			{
 				trace!("internal ignore filterer matched (fail)");
 				return Ok(false);
 			}
