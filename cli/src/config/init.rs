@@ -9,11 +9,11 @@ pub fn init(_args: &ArgMatches<'static>) -> Result<InitConfig> {
 	let mut config = InitConfig::default();
 	config.on_error(SyncFnHandler::from(
 		|data| -> std::result::Result<(), Infallible> {
-			if let RuntimeError::IoErrorGeneric(_) = data {
-				// these are often spurious, so condemn them to -v only
-				error!("{}", data);
-				return Ok(());
-			}
+			// if let RuntimeError::IoError { .. } = data {
+			// 	// these are often spurious, so condemn them to -v only
+			// 	error!("{}", data);
+			// 	return Ok(());
+			// }
 
 			if cfg!(debug_assertions) {
 				eprintln!("[[{:?}]]", data);

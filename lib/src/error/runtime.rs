@@ -25,11 +25,6 @@ pub enum RuntimeError {
 	#[diagnostic(code(watchexec::runtime::external))]
 	External(#[from] Box<dyn std::error::Error + Send + Sync>),
 
-	/// Generic I/O error, with no additional context.
-	#[error("io(unspecified): {0}")]
-	#[diagnostic(code(watchexec::runtime::io_error_generic))]
-	IoErrorGeneric(#[from] std::io::Error),
-
 	/// Generic I/O error, with some context.
 	#[error("io({about}): {err}")]
 	#[diagnostic(code(watchexec::runtime::io_error))]

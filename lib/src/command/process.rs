@@ -124,14 +124,20 @@ impl Process {
 			Self::Done(status) => Ok(Some(*status)),
 			Self::Grouped(c) => {
 				trace!("waiting on process group");
-				let status = c.wait().await?;
+				let status = c.wait().await.map_err(|err| RuntimeError::IoError {
+					about: "waiting on process group",
+					err,
+				})?;
 				trace!(?status, "converting to ::Done");
 				*self = Self::Done(status);
 				Ok(Some(status))
 			}
 			Self::Ungrouped(c) => {
 				trace!("waiting on process");
-				let status = c.wait().await?;
+				let status = c.wait().await.map_err(|err| RuntimeError::IoError {
+					about: "waiting on process (ungrouped)",
+					err,
+				})?;
 				trace!(?status, "converting to ::Done");
 				*self = Self::Done(status);
 				Ok(Some(status))

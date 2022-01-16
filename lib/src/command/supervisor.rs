@@ -59,12 +59,18 @@ impl Supervisor {
 	) -> Result<Self, RuntimeError> {
 		debug!(%grouped, ?command, "spawning command");
 		let (process, id) = if grouped {
-			let proc = command.group_spawn()?;
+			let proc = command.group_spawn().map_err(|err| RuntimeError::IoError {
+				about: "spawing process group",
+				err,
+			})?;
 			let id = proc.id().ok_or(RuntimeError::ProcessDeadOnArrival)?;
 			debug!(pgid=%id, "process group spawned");
 			(Process::Grouped(proc), id)
 		} else {
-			let proc = command.spawn()?;
+			let proc = command.spawn().map_err(|err| RuntimeError::IoError {
+				about: "spawning process (ungrouped)",
+				err,
+			})?;
 			let id = proc.id().ok_or(RuntimeError::ProcessDeadOnArrival)?;
 			debug!(pid=%id, "process spawned");
 			(Process::Ungrouped(proc), id)
