@@ -11,10 +11,12 @@ use nom::{
 use regex::Regex;
 use tracing::trace;
 
+use crate::error::TaggedFiltererError;
+
 use super::*;
 
 impl FromStr for Filter {
-	type Err = error::TaggedFiltererError;
+	type Err = TaggedFiltererError;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		fn matcher(i: &str) -> IResult<&str, Matcher> {
@@ -129,7 +131,7 @@ impl FromStr for Filter {
 				trace!(src=?s, filter=?f, "parsed tagged filter");
 				f
 			})
-			.map_err(|e| error::TaggedFiltererError::Parse {
+			.map_err(|e| TaggedFiltererError::Parse {
 				src: s.to_string(),
 				err: e.code,
 			})

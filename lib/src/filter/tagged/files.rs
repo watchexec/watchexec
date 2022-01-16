@@ -9,9 +9,12 @@ use std::{
 
 use tokio::fs::read_to_string;
 
-use crate::ignore::{discover_file, IgnoreFile};
+use crate::{
+	error::TaggedFiltererError,
+	ignore::{discover_file, IgnoreFile},
+};
 
-use super::{error::TaggedFiltererError, Filter};
+use super::Filter;
 
 /// A filter file.
 ///

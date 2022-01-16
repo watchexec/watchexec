@@ -12,8 +12,8 @@ use tracing::{debug, trace, trace_span, warn};
 use unicase::UniCase;
 
 use crate::error::RuntimeError;
+use crate::error::TaggedFiltererError;
 use crate::event::{Event, FileType, ProcessEnd, Tag};
-use crate::filter::tagged::error::TaggedFiltererError;
 use crate::filter::Filterer;
 use crate::ignore::{IgnoreFile, IgnoreFilterer};
 use crate::signal::process::SubSignal;
@@ -22,7 +22,6 @@ use crate::signal::source::MainSignal;
 // to make filters
 pub use regex::Regex;
 
-pub mod error;
 pub mod files;
 mod parse;
 pub mod swaplock;

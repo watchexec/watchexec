@@ -1,7 +1,9 @@
 use std::{collections::HashSet, str::FromStr};
 
-use regex::Regex;
-use watchexec::filter::tagged::{error::TaggedFiltererError, Filter, Matcher, Op, Pattern};
+use watchexec::{
+	error::TaggedFiltererError,
+	filter::tagged::{Filter, Matcher, Op, Pattern, Regex},
+};
 
 mod helpers;
 use helpers::tagged::*;
