@@ -34,11 +34,6 @@ pub mod globset {
 	pub use super::PathHarness;
 }
 
-pub mod globset_ig {
-	pub use super::globset::*;
-	pub use super::globset_igfilt as filt;
-}
-
 pub mod tagged {
 	pub use super::ig_file as file;
 	pub use super::tagged_filt as filt;
@@ -47,11 +42,6 @@ pub mod tagged {
 	pub use super::PathHarness;
 	pub use super::TaggedHarness;
 	pub use super::{filter, glob_filter, notglob_filter};
-}
-
-pub mod tagged_ig {
-	pub use super::tagged::*;
-	pub use super::tagged_igfilt as filt;
 }
 
 pub mod tagged_ff {
@@ -227,11 +217,6 @@ pub async fn globset_filt(filters: &[&str], ignores: &[&str], extensions: &[&str
 	.expect("making filterer")
 }
 
-pub async fn globset_igfilt(origin: &str, ignore_files: &[IgnoreFile]) -> GlobsetFilterer {
-	tracing_init();
-	let origin = dunce::canonicalize(".").unwrap().join(origin);
-	GlobsetFilterer::new(origin, vec![], vec![], ignore_files.iter().cloned(), vec![]).await.expect("making filterer")
-}
 
 pub async fn ignore_filt(origin: &str, ignore_files: &[IgnoreFile]) -> IgnoreFilterer {
 	tracing_init();
