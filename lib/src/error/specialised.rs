@@ -88,11 +88,6 @@ impl SignalParseError {
 #[non_exhaustive]
 #[diagnostic(url(docsrs))]
 pub enum TaggedFiltererError {
-	/// Generic I/O error, with no additional context.
-	#[error("io(unspecified): {0}")]
-	#[diagnostic(code(watchexec::filter::io_error_generic))]
-	IoErrorGeneric(#[from] std::io::Error),
-
 	/// Generic I/O error, with some context.
 	#[error("io({about}): {err}")]
 	#[diagnostic(code(watchexec::filter::io_error))]
