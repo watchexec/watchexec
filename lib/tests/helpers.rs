@@ -213,32 +213,24 @@ fn tracing_init() {
 		.ok();
 }
 
-pub fn globset_filt(filters: &[&str], ignores: &[&str], extensions: &[&str]) -> GlobsetFilterer {
+pub async fn globset_filt(filters: &[&str], ignores: &[&str], extensions: &[&str]) -> GlobsetFilterer {
 	let origin = dunce::canonicalize(".").unwrap();
 	tracing_init();
 	GlobsetFilterer::new(
 		origin,
 		filters.iter().map(|s| (s.to_string(), None)),
 		ignores.iter().map(|s| (s.to_string(), None)),
+		vec![],
 		extensions.iter().map(OsString::from),
 	)
+	.await
 	.expect("making filterer")
 }
 
 pub async fn globset_igfilt(origin: &str, ignore_files: &[IgnoreFile]) -> GlobsetFilterer {
 	tracing_init();
-	let mut ignores = Vec::new();
-	for file in ignore_files {
-		tracing::info!(?file, "loading ignore file");
-		ignores.extend(
-			GlobsetFilterer::list_from_ignore_file(file)
-				.await
-				.expect("adding ignorefile"),
-		);
-	}
-
 	let origin = dunce::canonicalize(".").unwrap().join(origin);
-	GlobsetFilterer::new(origin, vec![], ignores, vec![]).expect("making filterer")
+	GlobsetFilterer::new(origin, vec![], vec![], ignore_files.iter().cloned(), vec![]).await.expect("making filterer")
 }
 
 pub async fn ignore_filt(origin: &str, ignore_files: &[IgnoreFile]) -> IgnoreFilterer {

@@ -95,8 +95,8 @@ impl IgnoreFilterer {
 				trace!(?line, "adding ignore line");
 				builder
 					.add_line(file.applies_in.clone(), line)
-					.map_err(|err| RuntimeError::IgnoreFileGlob {
-						file: file.path.clone(),
+					.map_err(|err| RuntimeError::GlobsetGlob {
+						file: Some(file.path.clone()),
 						err,
 					})?;
 			}
@@ -105,8 +105,8 @@ impl IgnoreFilterer {
 		trace!("compiling globset");
 		let compiled = builder
 			.build()
-			.map_err(|err| RuntimeError::IgnoreFileGlob {
-				file: "set of ignores".into(),
+			.map_err(|err| RuntimeError::GlobsetGlob {
+				file: None,
 				err,
 			})?;
 
@@ -122,6 +122,11 @@ impl IgnoreFilterer {
 			builder: Some(builder),
 			compiled,
 		})
+	}
+
+	/// Returns the number of ignores and allowlists loaded.
+	pub fn num_ignores(&self) -> (u64, u64) {
+		(self.compiled.num_ignores(), self.compiled.num_whitelists())
 	}
 
 	/// Deletes the internal builder, to save memory.
@@ -154,8 +159,8 @@ impl IgnoreFilterer {
 				trace!(?line, "adding ignore line");
 				builder
 					.add_line(file.applies_in.clone(), line)
-					.map_err(|err| RuntimeError::IgnoreFileGlob {
-						file: file.path.clone(),
+					.map_err(|err| RuntimeError::GlobsetGlob {
+						file: Some(file.path.clone()),
 						err,
 					})?;
 			}
@@ -174,7 +179,7 @@ impl IgnoreFilterer {
 			trace!("recompiling globset");
 			let recompiled = builder
 				.build()
-				.map_err(|err| RuntimeError::IgnoreFileGlob { file, err })?;
+				.map_err(|err| RuntimeError::GlobsetGlob { file: Some(file), err })?;
 
 			trace!(
 				new_ignores=%(recompiled.num_ignores() - pre_ignores),
@@ -204,8 +209,8 @@ impl IgnoreFilterer {
 
 				trace!(?line, "adding ignore line");
 				builder.add_line(applies_in.clone(), line).map_err(|err| {
-					RuntimeError::IgnoreFileGlob {
-						file: "manual glob".into(),
+					RuntimeError::GlobsetGlob {
+						file: None,
 						err,
 					}
 				})?;

@@ -219,12 +219,12 @@ pub enum RuntimeError {
 	#[diagnostic(code(watchexec::runtime::clearscreen))]
 	Clearscreen(#[from] clearscreen::Error),
 
-	/// Error received when parsing a glob from an [`IgnoreFile`](crate::ignore::files::IgnoreFile) fails.
-	#[error("cannot parse glob from ignore '{file}': {err}")]
-	#[diagnostic(code(watchexec::runtime::ignore_file_glob))]
-	IgnoreFileGlob {
+	/// Error received when parsing a glob (possibly from an [`IgnoreFile`](crate::ignore::files::IgnoreFile)) fails.
+	#[error("cannot parse glob from ignore '{file:?}': {err}")]
+	#[diagnostic(code(watchexec::runtime::ignore_glob))]
+	GlobsetGlob {
 		/// The path to the erroring ignore file.
-		file: PathBuf,
+		file: Option<PathBuf>,
 
 		/// The underlying error.
 		#[source]

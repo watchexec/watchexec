@@ -1,9 +1,9 @@
 mod helpers;
 use helpers::globset::*;
 
-#[test]
-fn empty_filter_passes_everything() {
-	let filterer = filt(&[], &[], &[]);
+#[tokio::test]
+async fn empty_filter_passes_everything() {
+	let filterer = filt(&[], &[], &[]).await;
 
 	filterer.file_does_pass("Cargo.toml");
 	filterer.file_does_pass("Cargo.json");
@@ -21,9 +21,9 @@ fn empty_filter_passes_everything() {
 	filterer.dir_does_pass("apples/oranges/bananas");
 }
 
-#[test]
-fn exact_filename() {
-	let filterer = filt(&["Cargo.toml"], &[], &[]);
+#[tokio::test]
+async fn exact_filename() {
+	let filterer = filt(&["Cargo.toml"], &[], &[]).await;
 
 	filterer.file_does_pass("Cargo.toml");
 	filterer.file_does_pass("/test/foo/bar/Cargo.toml");
@@ -34,9 +34,9 @@ fn exact_filename() {
 	filterer.dir_does_pass("/test/Cargo.toml");
 }
 
-#[test]
-fn exact_filenames_multiple() {
-	let filterer = filt(&["Cargo.toml", "package.json"], &[], &[]);
+#[tokio::test]
+async fn exact_filenames_multiple() {
+	let filterer = filt(&["Cargo.toml", "package.json"], &[], &[]).await;
 
 	filterer.file_does_pass("Cargo.toml");
 	filterer.file_does_pass("/test/foo/bar/Cargo.toml");
@@ -51,9 +51,9 @@ fn exact_filenames_multiple() {
 	filterer.dir_does_pass("/test/package.json");
 }
 
-#[test]
-fn glob_single_final_ext_star() {
-	let filterer = filt(&["Cargo.*"], &[], &[]);
+#[tokio::test]
+async fn glob_single_final_ext_star() {
+	let filterer = filt(&["Cargo.*"], &[], &[]).await;
 
 	filterer.file_does_pass("Cargo.toml");
 	filterer.file_does_pass("Cargo.json");
@@ -63,9 +63,9 @@ fn glob_single_final_ext_star() {
 	filterer.dir_does_pass("Cargo.toml");
 }
 
-#[test]
-fn glob_star_trailing_slash() {
-	let filterer = filt(&["Cargo.*/"], &[], &[]);
+#[tokio::test]
+async fn glob_star_trailing_slash() {
+	let filterer = filt(&["Cargo.*/"], &[], &[]).await;
 
 	filterer.file_doesnt_pass("Cargo.toml");
 	filterer.file_doesnt_pass("Cargo.json");
@@ -76,9 +76,9 @@ fn glob_star_trailing_slash() {
 	filterer.unk_doesnt_pass("Cargo.toml");
 }
 
-#[test]
-fn glob_star_leading_slash() {
-	let filterer = filt(&["/Cargo.*"], &[], &[]);
+#[tokio::test]
+async fn glob_star_leading_slash() {
+	let filterer = filt(&["/Cargo.*"], &[], &[]).await;
 
 	filterer.file_does_pass("Cargo.toml");
 	filterer.file_does_pass("Cargo.json");
@@ -88,9 +88,9 @@ fn glob_star_leading_slash() {
 	filterer.dir_doesnt_pass("foo/Cargo.toml");
 }
 
-#[test]
-fn glob_leading_double_star() {
-	let filterer = filt(&["**/possum"], &[], &[]);
+#[tokio::test]
+async fn glob_leading_double_star() {
+	let filterer = filt(&["**/possum"], &[], &[]).await;
 
 	filterer.file_does_pass("possum");
 	filterer.file_does_pass("foo/bar/possum");
@@ -103,9 +103,9 @@ fn glob_leading_double_star() {
 	filterer.file_doesnt_pass("/foo/bar/rat");
 }
 
-#[test]
-fn glob_trailing_double_star() {
-	let filterer = filt(&["possum/**"], &[], &[]);
+#[tokio::test]
+async fn glob_trailing_double_star() {
+	let filterer = filt(&["possum/**"], &[], &[]).await;
 
 	// these do work by expectation and in v1
 	filterer.file_does_pass("/test/possum/foo/bar");
@@ -117,9 +117,9 @@ fn glob_trailing_double_star() {
 	filterer.file_doesnt_pass("/foo/bar/rat");
 }
 
-#[test]
-fn glob_middle_double_star() {
-	let filterer = filt(&["apples/**/oranges"], &[], &[]);
+#[tokio::test]
+async fn glob_middle_double_star() {
+	let filterer = filt(&["apples/**/oranges"], &[], &[]).await;
 
 	filterer.dir_doesnt_pass("/a/folder");
 	filterer.file_does_pass("apples/carrots/oranges");
@@ -132,9 +132,9 @@ fn glob_middle_double_star() {
 	filterer.dir_doesnt_pass("apples/oranges/bananas");
 }
 
-#[test]
-fn glob_double_star_trailing_slash() {
-	let filterer = filt(&["apples/**/oranges/"], &[], &[]);
+#[tokio::test]
+async fn glob_double_star_trailing_slash() {
+	let filterer = filt(&["apples/**/oranges/"], &[], &[]).await;
 
 	filterer.dir_doesnt_pass("/a/folder");
 	filterer.file_doesnt_pass("apples/carrots/oranges");
@@ -150,9 +150,9 @@ fn glob_double_star_trailing_slash() {
 	filterer.unk_doesnt_pass("apples/carrots/cauliflowers/artichokes/oranges");
 }
 
-#[test]
-fn ignore_exact_filename() {
-	let filterer = filt(&[], &["Cargo.toml"], &[]);
+#[tokio::test]
+async fn ignore_exact_filename() {
+	let filterer = filt(&[], &["Cargo.toml"], &[]).await;
 
 	filterer.file_doesnt_pass("Cargo.toml");
 	filterer.file_doesnt_pass("/test/foo/bar/Cargo.toml");
@@ -163,9 +163,9 @@ fn ignore_exact_filename() {
 	filterer.dir_doesnt_pass("/test/Cargo.toml");
 }
 
-#[test]
-fn ignore_exact_filenames_multiple() {
-	let filterer = filt(&[], &["Cargo.toml", "package.json"], &[]);
+#[tokio::test]
+async fn ignore_exact_filenames_multiple() {
+	let filterer = filt(&[], &["Cargo.toml", "package.json"], &[]).await;
 
 	filterer.file_doesnt_pass("Cargo.toml");
 	filterer.file_doesnt_pass("/test/foo/bar/Cargo.toml");
@@ -180,9 +180,9 @@ fn ignore_exact_filenames_multiple() {
 	filterer.dir_doesnt_pass("/test/package.json");
 }
 
-#[test]
-fn ignore_glob_single_final_ext_star() {
-	let filterer = filt(&[], &["Cargo.*"], &[]);
+#[tokio::test]
+async fn ignore_glob_single_final_ext_star() {
+	let filterer = filt(&[], &["Cargo.*"], &[]).await;
 
 	filterer.file_doesnt_pass("Cargo.toml");
 	filterer.file_doesnt_pass("Cargo.json");
@@ -192,9 +192,9 @@ fn ignore_glob_single_final_ext_star() {
 	filterer.dir_doesnt_pass("Cargo.toml");
 }
 
-#[test]
-fn ignore_glob_star_trailing_slash() {
-	let filterer = filt(&[], &["Cargo.*/"], &[]);
+#[tokio::test]
+async fn ignore_glob_star_trailing_slash() {
+	let filterer = filt(&[], &["Cargo.*/"], &[]).await;
 
 	filterer.file_does_pass("Cargo.toml");
 	filterer.file_does_pass("Cargo.json");
@@ -205,9 +205,9 @@ fn ignore_glob_star_trailing_slash() {
 	filterer.unk_does_pass("Cargo.toml");
 }
 
-#[test]
-fn ignore_glob_star_leading_slash() {
-	let filterer = filt(&[], &["/Cargo.*"], &[]);
+#[tokio::test]
+async fn ignore_glob_star_leading_slash() {
+	let filterer = filt(&[], &["/Cargo.*"], &[]).await;
 
 	filterer.file_doesnt_pass("Cargo.toml");
 	filterer.file_doesnt_pass("Cargo.json");
@@ -217,9 +217,9 @@ fn ignore_glob_star_leading_slash() {
 	filterer.dir_does_pass("foo/Cargo.toml");
 }
 
-#[test]
-fn ignore_glob_leading_double_star() {
-	let filterer = filt(&[], &["**/possum"], &[]);
+#[tokio::test]
+async fn ignore_glob_leading_double_star() {
+	let filterer = filt(&[], &["**/possum"], &[]).await;
 
 	filterer.file_doesnt_pass("possum");
 	filterer.file_doesnt_pass("foo/bar/possum");
@@ -232,9 +232,9 @@ fn ignore_glob_leading_double_star() {
 	filterer.file_does_pass("/foo/bar/rat");
 }
 
-#[test]
-fn ignore_glob_trailing_double_star() {
-	let filterer = filt(&[], &["possum/**"], &[]);
+#[tokio::test]
+async fn ignore_glob_trailing_double_star() {
+	let filterer = filt(&[], &["possum/**"], &[]).await;
 
 	filterer.file_does_pass("possum");
 	filterer.file_doesnt_pass("possum/foo/bar");
@@ -251,9 +251,9 @@ fn ignore_glob_trailing_double_star() {
 	filterer.file_does_pass("/foo/bar/rat");
 }
 
-#[test]
-fn ignore_glob_middle_double_star() {
-	let filterer = filt(&[], &["apples/**/oranges"], &[]);
+#[tokio::test]
+async fn ignore_glob_middle_double_star() {
+	let filterer = filt(&[], &["apples/**/oranges"], &[]).await;
 
 	filterer.dir_does_pass("/a/folder");
 	filterer.file_doesnt_pass("apples/carrots/oranges");
@@ -266,9 +266,9 @@ fn ignore_glob_middle_double_star() {
 	filterer.dir_does_pass("apples/oranges/bananas");
 }
 
-#[test]
-fn ignore_glob_double_star_trailing_slash() {
-	let filterer = filt(&[], &["apples/**/oranges/"], &[]);
+#[tokio::test]
+async fn ignore_glob_double_star_trailing_slash() {
+	let filterer = filt(&[], &["apples/**/oranges/"], &[]).await;
 
 	filterer.dir_does_pass("/a/folder");
 	filterer.file_does_pass("apples/carrots/oranges");
@@ -284,9 +284,9 @@ fn ignore_glob_double_star_trailing_slash() {
 	filterer.unk_does_pass("apples/carrots/cauliflowers/artichokes/oranges");
 }
 
-#[test]
-fn ignores_take_precedence() {
-	let filterer = filt(&["*.docx", "*.toml", "*.json"], &["*.toml", "*.json"], &[]);
+#[tokio::test]
+async fn ignores_take_precedence() {
+	let filterer = filt(&["*.docx", "*.toml", "*.json"], &["*.toml", "*.json"], &[]).await;
 
 	filterer.file_doesnt_pass("Cargo.toml");
 	filterer.file_doesnt_pass("/test/foo/bar/Cargo.toml");
@@ -299,9 +299,9 @@ fn ignores_take_precedence() {
 
 // The following tests replicate the "buggy"/"confusing" watchexec v1 behaviour.
 
-#[test]
-fn ignore_folder_incorrectly_with_bare_match() {
-	let filterer = filt(&[], &["prunes"], &[]);
+#[tokio::test]
+async fn ignore_folder_incorrectly_with_bare_match() {
+	let filterer = filt(&[], &["prunes"], &[]).await;
 
 	filterer.file_does_pass("apples");
 	filterer.file_does_pass("apples/carrots/cauliflowers/oranges");
@@ -330,9 +330,9 @@ fn ignore_folder_incorrectly_with_bare_match() {
 	filterer.dir_does_pass("prunes/carrots/cauliflowers/artichokes/oranges");
 }
 
-#[test]
-fn ignore_folder_incorrectly_with_bare_and_leading_slash() {
-	let filterer = filt(&[], &["/prunes"], &[]);
+#[tokio::test]
+async fn ignore_folder_incorrectly_with_bare_and_leading_slash() {
+	let filterer = filt(&[], &["/prunes"], &[]).await;
 
 	filterer.file_does_pass("apples");
 	filterer.file_does_pass("apples/carrots/cauliflowers/oranges");
@@ -361,9 +361,9 @@ fn ignore_folder_incorrectly_with_bare_and_leading_slash() {
 	filterer.dir_does_pass("prunes/carrots/cauliflowers/artichokes/oranges");
 }
 
-#[test]
-fn ignore_folder_incorrectly_with_bare_and_trailing_slash() {
-	let filterer = filt(&[], &["prunes/"], &[]);
+#[tokio::test]
+async fn ignore_folder_incorrectly_with_bare_and_trailing_slash() {
+	let filterer = filt(&[], &["prunes/"], &[]).await;
 
 	filterer.file_does_pass("apples");
 	filterer.file_does_pass("apples/carrots/cauliflowers/oranges");
@@ -392,9 +392,9 @@ fn ignore_folder_incorrectly_with_bare_and_trailing_slash() {
 	filterer.dir_does_pass("prunes/carrots/cauliflowers/artichokes/oranges");
 }
 
-#[test]
-fn ignore_folder_incorrectly_with_only_double_double_glob() {
-	let filterer = filt(&[], &["**/prunes/**"], &[]);
+#[tokio::test]
+async fn ignore_folder_incorrectly_with_only_double_double_glob() {
+	let filterer = filt(&[], &["**/prunes/**"], &[]).await;
 
 	filterer.file_does_pass("apples");
 	filterer.file_does_pass("apples/carrots/cauliflowers/oranges");
@@ -423,9 +423,9 @@ fn ignore_folder_incorrectly_with_only_double_double_glob() {
 	filterer.dir_does_pass("prunes");
 }
 
-#[test]
-fn ignore_folder_correctly_with_double_and_double_double_globs() {
-	let filterer = filt(&[], &["**/prunes", "**/prunes/**"], &[]);
+#[tokio::test]
+async fn ignore_folder_correctly_with_double_and_double_double_globs() {
+	let filterer = filt(&[], &["**/prunes", "**/prunes/**"], &[]).await;
 
 	filterer.file_does_pass("apples");
 	filterer.file_does_pass("apples/carrots/cauliflowers/oranges");

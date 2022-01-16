@@ -6,7 +6,6 @@ use std::{
 
 use clap::ArgMatches;
 use miette::{IntoDiagnostic, Result};
-use tracing::debug;
 use watchexec::{
 	error::RuntimeError,
 	event::{
@@ -18,7 +17,7 @@ use watchexec::{
 
 pub async fn globset(args: &ArgMatches<'static>) -> Result<Arc<WatchexecFilterer>> {
 	let (project_origin, workdir) = super::common::dirs(args).await?;
-	let ignorefiles = super::common::ignores(args, &project_origin).await?;
+	let ignore_files = super::common::ignores(args, &project_origin).await?;
 
 	let mut ignores = Vec::new();
 
@@ -35,10 +34,6 @@ pub async fn globset(args: &ArgMatches<'static>) -> Result<Arc<WatchexecFilterer
 			(format!("**{s}.hg{s}**", s = MAIN_SEPARATOR), None),
 			(format!("**{s}.svn{s}**", s = MAIN_SEPARATOR), None),
 		]);
-	}
-
-	for ignore in ignorefiles {
-		ignores.extend(GlobsetFilterer::list_from_ignore_file(&ignore).await?);
 	}
 
 	let filters = args
@@ -58,9 +53,8 @@ pub async fn globset(args: &ArgMatches<'static>) -> Result<Arc<WatchexecFilterer
 		.map(|s| s.split(b','))
 		.flatten();
 
-	debug!(filters=%filters.len(), ignores=%ignores.len(), "vecs lengths");
 	Ok(Arc::new(WatchexecFilterer {
-		inner: GlobsetFilterer::new(project_origin, filters, ignores, exts).into_diagnostic()?,
+		inner: GlobsetFilterer::new(project_origin, filters, ignores, ignore_files, exts).await.into_diagnostic()?,
 		no_meta: args.is_present("no-meta"),
 	}))
 }

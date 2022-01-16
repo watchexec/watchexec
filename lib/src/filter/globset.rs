@@ -10,18 +10,19 @@ use tracing::{debug, trace, trace_span};
 use crate::error::RuntimeError;
 use crate::event::{Event, FileType};
 use crate::filter::Filterer;
-use crate::ignore::IgnoreFile;
+use crate::ignore::{IgnoreFile, IgnoreFilterer};
 
 /// A path-only filterer based on globsets.
 ///
 /// This filterer mimics the behavior of the `watchexec` v1 filter, but does not match it exactly,
-/// due to differing internals. It is intended to be used as a stopgap until the tagged filter
-/// reaches a stable state or becomes the default. As such it does not have an updatable
-/// configuration.
+/// due to differing internals. It is intended to be used as a stopgap until the tagged filterer
+/// or another advanced filterer, reaches a stable state or becomes the default. As such it does not
+/// have an updatable configuration.
 #[derive(Debug)]
 pub struct GlobsetFilterer {
 	filters: Gitignore,
 	ignores: Gitignore,
+	ignore_files: IgnoreFilterer,
 	extensions: Vec<OsString>,
 }
 
@@ -35,32 +36,45 @@ impl GlobsetFilterer {
 	/// The extensions list is used to filter files by extension.
 	///
 	/// Non-path events are always passed.
-	pub fn new(
+	pub async fn new(
 		origin: impl AsRef<Path>,
 		filters: impl IntoIterator<Item = (String, Option<PathBuf>)>,
 		ignores: impl IntoIterator<Item = (String, Option<PathBuf>)>,
+		ignore_files: impl IntoIterator<Item = IgnoreFile>,
 		extensions: impl IntoIterator<Item = OsString>,
-	) -> Result<Self, ignore::Error> {
-		let mut filters_builder = GitignoreBuilder::new(origin);
-		let mut ignores_builder = filters_builder.clone();
+	) -> Result<Self, RuntimeError> {
+		let origin = origin.as_ref();
+		let mut filters_builder = GitignoreBuilder::new(&origin);
+		let mut ignores_builder = GitignoreBuilder::new(&origin);
 
 		for (filter, in_path) in filters {
 			trace!(filter=?&filter, "add filter to globset filterer");
-			filters_builder.add_line(in_path, &filter)?;
+			filters_builder.add_line(in_path.clone(), &filter)
+			.map_err(|err| RuntimeError::GlobsetGlob { file: in_path, err })
+			?;
 		}
 
 		for (ignore, in_path) in ignores {
 			trace!(ignore=?&ignore, "add ignore to globset filterer");
-			ignores_builder.add_line(in_path, &ignore)?;
+			ignores_builder.add_line(in_path.clone(), &ignore)
+			.map_err(|err| RuntimeError::GlobsetGlob { file: in_path, err })?;
 		}
 
-		let filters = filters_builder.build()?;
-		let ignores = ignores_builder.build()?;
+		let filters = filters_builder.build()
+		.map_err(|err| RuntimeError::GlobsetGlob { file: None, err })?;
+		let ignores = ignores_builder.build()
+		.map_err(|err| RuntimeError::GlobsetGlob { file: None, err })?;
+
 		let extensions: Vec<OsString> = extensions.into_iter().collect();
+
+		let mut ignore_files = IgnoreFilterer::new(origin, &ignore_files.into_iter().collect::<Vec<_>>()).await?;
+		ignore_files.finish();
+
 		debug!(
 			num_filters=%filters.num_ignores(),
 			num_neg_filters=%filters.num_whitelists(),
 			num_ignores=%ignores.num_ignores(),
+			num_in_ignore_files=?ignore_files.num_ignores(),
 			num_neg_ignores=%ignores.num_whitelists(),
 			num_extensions=%extensions.len(),
 		"globset filterer built");
@@ -68,6 +82,7 @@ impl GlobsetFilterer {
 		Ok(Self {
 			filters,
 			ignores,
+			ignore_files,
 			extensions,
 		})
 	}
@@ -97,9 +112,16 @@ impl Filterer for GlobsetFilterer {
 	///
 	/// This implementation never errors.
 	fn check_event(&self, event: &Event) -> Result<bool, RuntimeError> {
-		// TODO: integrate ignore::Filter
-
 		let _span = trace_span!("filterer_check").entered();
+
+		{
+			trace!("checking internal ignore filterer");
+			if !self.ignore_files.check_event(event).expect("IgnoreFilterer never errors") {
+				trace!("internal ignore filterer matched (fail)");
+				return Ok(false);
+			}
+		}
+
 		for (path, file_type) in event.paths() {
 			let _span = trace_span!("path", ?path).entered();
 			let is_dir = file_type
