@@ -4,7 +4,7 @@ use tokio::{sync::mpsc, task::JoinError};
 
 use crate::event::Event;
 
-use super::RuntimeError;
+use super::{RuntimeError, SpecificIoError};
 
 /// Errors which are not recoverable and stop watchexec execution.
 #[derive(Debug, Diagnostic, Error)]
@@ -62,4 +62,19 @@ pub enum CriticalError {
 	#[error("internal: missing handler on init")]
 	#[diagnostic(code(watchexec::critical::internal::missing_handler))]
 	MissingHandler,
+}
+
+impl<T> SpecificIoError<Result<T, CriticalError>> for Result<T, std::io::Error> {
+	fn about(self, context: &'static str) -> Result<T, CriticalError> {
+		self.map_err(|err| err.about(context))
+	}
+}
+
+impl SpecificIoError<CriticalError> for std::io::Error {
+	fn about(self, context: &'static str) -> CriticalError {
+		CriticalError::IoError {
+			about: context,
+			err: self,
+		}
+	}
 }
