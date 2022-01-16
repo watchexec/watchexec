@@ -4,7 +4,6 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
-use tokio::fs::read_to_string;
 use tracing::{debug, trace, trace_span};
 
 use crate::error::RuntimeError;
@@ -85,25 +84,6 @@ impl GlobsetFilterer {
 			ignore_files,
 			extensions,
 		})
-	}
-
-	/// Produces a list of ignore patterns compatible with [`new`][GlobsetFilterer::new()] from an [`IgnoreFile`].
-	pub async fn list_from_ignore_file(
-		ig: &IgnoreFile,
-	) -> Result<Vec<(String, Option<PathBuf>)>, RuntimeError> {
-		let content = read_to_string(&ig.path).await?;
-		let lines = content.lines();
-		let mut ignores = Vec::with_capacity(lines.size_hint().0);
-
-		for line in lines {
-			if line.is_empty() || line.starts_with('#') {
-				continue;
-			}
-
-			ignores.push((line.to_owned(), ig.applies_in.clone()));
-		}
-
-		Ok(ignores)
 	}
 }
 
