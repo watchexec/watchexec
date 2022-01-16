@@ -3,18 +3,20 @@ use std::sync::Arc;
 use clap::ArgMatches;
 use futures::future::try_join_all;
 use miette::{IntoDiagnostic, Result};
-use tracing::{debug, trace};
+use tracing::{debug, trace, warn};
 use watchexec::{
 	filter::tagged::{
 		files::{self, FilterFile},
 		Filter, Matcher, Op, Pattern, TaggedFilterer,
 	},
 	ignore::IgnoreFile,
+	project::ProjectType,
 };
 
 pub async fn tagged(args: &ArgMatches<'static>) -> Result<Arc<TaggedFilterer>> {
 	let (project_origin, workdir) = super::common::dirs(args).await?;
-	let ignores = super::common::ignores(args, &project_origin).await?;
+	let vcs_types = super::common::vcs_types(&project_origin).await;
+	let ignores = super::common::ignores(args, &vcs_types, &project_origin).await?;
 
 	let filterer = TaggedFilterer::new(project_origin, workdir.clone())?;
 
@@ -34,8 +36,10 @@ pub async fn tagged(args: &ArgMatches<'static>) -> Result<Arc<TaggedFilterer>> {
 	debug!(?filter_files, "resolved command filter files");
 
 	if !args.is_present("no-global-filters") {
-		// TODO: handle errors
-		let (global_filter_files, _errors) = files::from_environment().await;
+		let (global_filter_files, errors) = files::from_environment().await;
+		for err in errors {
+			warn!("while discovering project-local filter files: {}", err);
+		}
 		debug!(?global_filter_files, "discovered global filter files");
 		filter_files.extend(global_filter_files);
 	}

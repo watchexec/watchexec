@@ -34,16 +34,25 @@ pub async fn dirs(args: &ArgMatches<'static>) -> Result<(PathBuf, PathBuf)> {
 	Ok((project_origin, workdir))
 }
 
-pub async fn ignores(args: &ArgMatches<'static>, origin: &Path) -> Result<Vec<IgnoreFile>> {
+pub async fn vcs_types(origin: &Path) -> Vec<ProjectType> {
 	let vcs_types = project::types(origin)
 		.await
 		.into_iter()
 		.filter(|pt| pt.is_vcs())
 		.collect::<Vec<_>>();
 	debug!(?vcs_types, "resolved vcs types");
+	vcs_types
+}
 
-	let (mut ignores, _errors) = ignore::from_origin(origin).await;
-	// TODO: handle errors
+pub async fn ignores(
+	args: &ArgMatches<'static>,
+	vcs_types: &[ProjectType],
+	origin: &Path,
+) -> Result<Vec<IgnoreFile>> {
+	let (mut ignores, errors) = ignore::from_origin(origin).await;
+	for err in errors {
+		warn!("while discovering project-local ignore files: {}", err);
+	}
 	debug!(?ignores, "discovered ignore files from project origin");
 
 	// TODO: use drain_ignore instead for x = x.filter()... when that stabilises
@@ -71,8 +80,10 @@ pub async fn ignores(args: &ArgMatches<'static>, origin: &Path) -> Result<Vec<Ig
 		debug!(?ignores, "filtered ignores to only those for project vcs");
 	}
 
-	let (mut global_ignores, _errors) = ignore::from_environment().await;
-	// TODO: handle errors
+	let (mut global_ignores, errors) = ignore::from_environment().await;
+	for err in errors {
+		warn!("while discovering global ignore files: {}", err);
+	}
 	debug!(?global_ignores, "discovered ignore files from environment");
 
 	if skip_git_global_excludes {
@@ -133,8 +144,6 @@ pub async fn ignores(args: &ArgMatches<'static>, origin: &Path) -> Result<Vec<Ig
 			.collect::<Vec<_>>();
 		debug!(?ignores, "filtered ignores to exclude VCS-specific ignores");
 	}
-
-	// TODO: --no-default-ignore (whatever that was)
 
 	Ok(ignores)
 }
