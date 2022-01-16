@@ -106,7 +106,9 @@ async fn imp_worker(
 	macro_rules! listen {
 		($sig:ident) => {{
 			trace!(kind=%stringify!($sig), "listening for unix signal");
-			signal(SignalKind::$sig())?
+			signal(SignalKind::$sig()).map_err(|err| CriticalError::IoError {
+			about: concat!("setting ", stringify!($sig), " signal listener"), err
+		})?
 		}}
 	}
 

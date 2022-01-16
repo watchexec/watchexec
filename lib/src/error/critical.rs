@@ -24,12 +24,7 @@ pub enum CriticalError {
 	#[diagnostic(code(watchexec::critical::external))]
 	External(#[from] Box<dyn std::error::Error + Send + Sync>),
 
-	/// A critical I/O error occurred (generic).
-	#[error("io(unspecified): {0}")]
-	#[diagnostic(code(watchexec::critical::io_error_generic))]
-	IoErrorGeneric(#[from] std::io::Error),
-
-	/// A critical I/O error occurred (specific).
+	/// A critical I/O error occurred.
 	#[error("io({about}): {err}")]
 	#[diagnostic(code(watchexec::critical::io_error))]
 	IoError {
