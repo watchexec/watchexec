@@ -13,6 +13,8 @@ use crate::{
 	ignore::IgnoreFilterer,
 };
 
+use super::SpecificIoError;
+
 /// Errors occurring from reconfigs.
 #[derive(Debug, Diagnostic, Error)]
 #[non_exhaustive]
@@ -155,6 +157,21 @@ impl From<TaggedFiltererError> for RuntimeError {
 		Self::Filterer {
 			kind: "tagged",
 			err: Box::new(err) as _,
+		}
+	}
+}
+
+impl<T> SpecificIoError<Result<T, TaggedFiltererError>> for Result<T, std::io::Error> {
+	fn about(self, context: &'static str) -> Result<T, TaggedFiltererError> {
+		self.map_err(|err| err.about(context))
+	}
+}
+
+impl SpecificIoError<TaggedFiltererError> for std::io::Error {
+	fn about(self, context: &'static str) -> TaggedFiltererError {
+		TaggedFiltererError::IoError {
+			about: context,
+			err: self,
 		}
 	}
 }
