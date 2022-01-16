@@ -2,8 +2,7 @@ use std::convert::Infallible;
 
 use clap::ArgMatches;
 use miette::Result;
-use tracing::error;
-use watchexec::{config::InitConfig, error::RuntimeError, handler::SyncFnHandler};
+use watchexec::{config::InitConfig, handler::SyncFnHandler};
 
 pub fn init(_args: &ArgMatches<'static>) -> Result<InitConfig> {
 	let mut config = InitConfig::default();
