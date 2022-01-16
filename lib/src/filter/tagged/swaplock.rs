@@ -34,7 +34,8 @@ where
 	/// This obtains a clone of the value, and then calls the closure with a mutable reference to
 	/// it. Once the closure returns, the value is swapped in.
 	pub async fn change(&self, f: impl FnOnce(&mut T)) -> Result<(), SendError<T>> {
-		let mut new = self.r.borrow().clone();
+		let mut new = { self.r.borrow().clone() };
+
 		f(&mut new);
 		self.s.send(new)
 	}
