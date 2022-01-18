@@ -176,18 +176,24 @@ impl Iterator for OsSplit {
 
 		let res = OsString::from_wide(&cur);
 		self.pos = cur.len() + 1;
-		Some(res)
+		if res.is_empty() && self.pos >= self.os.len() {
+			None
+		} else {
+			Some(res)
+		}
 	}
 }
 
-#[cfg(test)] #[test]
+#[cfg(test)]
+#[test]
 fn os_split_none() {
 	let os = OsString::from("");
 	let mut split = os.split(b',');
 	assert_eq!(split.next(), None);
 }
 
-#[cfg(test)] #[test]
+#[cfg(test)]
+#[test]
 fn os_split_one() {
 	let os = OsString::from("abc");
 	let mut split = os.split(b',');
@@ -195,10 +201,23 @@ fn os_split_one() {
 	assert_eq!(split.next(), None);
 }
 
-#[cfg(test)] #[test]
+#[cfg(test)]
+#[test]
 fn os_split_multi() {
 	let os = OsString::from("a,b,c");
 	let mut split = os.split(b',');
+	assert_eq!(split.next(), Some(OsString::from("a")));
+	assert_eq!(split.next(), Some(OsString::from("b")));
+	assert_eq!(split.next(), Some(OsString::from("c")));
+	assert_eq!(split.next(), None);
+}
+
+#[cfg(test)]
+#[test]
+fn os_split_leading() {
+	let os = OsString::from(",a,b,c");
+	let mut split = os.split(b',');
+	assert_eq!(split.next(), Some(OsString::from("")));
 	assert_eq!(split.next(), Some(OsString::from("a")));
 	assert_eq!(split.next(), Some(OsString::from("b")));
 	assert_eq!(split.next(), Some(OsString::from("c")));
