@@ -20,6 +20,7 @@ Example use cases:
 * Launches the command in a new process group (can be disabled with `--no-process-group`)
 * Optionally clears screen between executions
 * Optionally restarts the command with every modification (good for servers)
+* Optionally sends a desktop notification on command start and end
 * Does not require a language runtime
 * Sets the following environment variables in the process:
 
@@ -107,7 +108,7 @@ Checksums and signatures are available.
 
 #### Cargo (from source)
 
-Requires Rust 1.43 or later.
+Requires Rust 1.58.0 or later.
 
     $ cargo install watchexec-cli
 
