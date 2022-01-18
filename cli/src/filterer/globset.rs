@@ -150,7 +150,7 @@ impl Iterator for OsSplit {
 				pos += 1;
 			}
 
-			let res = OsString::from_vec(bytes[self.pos..=pos].to_vec());
+			let res = OsString::from_vec(bytes[self.pos..pos].to_vec());
 			self.pos = pos + 1;
 			Some(res)
 		}
@@ -178,4 +178,29 @@ impl Iterator for OsSplit {
 		self.pos = cur.len() + 1;
 		Some(res)
 	}
+}
+
+#[cfg(test)] #[test]
+fn os_split_none() {
+	let os = OsString::from("");
+	let mut split = os.split(b',');
+	assert_eq!(split.next(), None);
+}
+
+#[cfg(test)] #[test]
+fn os_split_one() {
+	let os = OsString::from("abc");
+	let mut split = os.split(b',');
+	assert_eq!(split.next(), Some(OsString::from("abc")));
+	assert_eq!(split.next(), None);
+}
+
+#[cfg(test)] #[test]
+fn os_split_multi() {
+	let os = OsString::from("a,b,c");
+	let mut split = os.split(b',');
+	assert_eq!(split.next(), Some(OsString::from("a")));
+	assert_eq!(split.next(), Some(OsString::from("b")));
+	assert_eq!(split.next(), Some(OsString::from("c")));
+	assert_eq!(split.next(), None);
 }
