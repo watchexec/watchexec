@@ -1,7 +1,7 @@
 [![Crates.io page](https://badgen.net/crates/v/watchexec)](https://crates.io/crates/watchexec)
 [![API Docs](https://docs.rs/watchexec/badge.svg)][docs]
 [![Crate license: Apache 2.0](https://badgen.net/badge/license/Apache%202.0)][license]
-![MSRV: 1.56.0 (breaking)](https://badgen.net/badge/MSRV/1.56.0%20%28breaking%29/green)
+![MSRV: 1.58.0 (minor)](https://badgen.net/badge/MSRV/1.58.0%20%28minor%29/teal)
 [![CI status](https://github.com/watchexec/watchexec/actions/workflows/check.yml/badge.svg)](https://github.com/watchexec/watchexec/actions/workflows/check.yml)
 
 # Watchexec library
@@ -10,7 +10,7 @@ _The library which powers [Watchexec CLI](https://watchexec.github.io) and other
 
 - **[API documentation][docs]**.
 - Licensed under [Apache 2.0][license].
-- Minimum Supported Rust Version: 1.56.0.
+- Minimum Supported Rust Version: 1.58.0 (incurs a minor semver bump).
 - Status: in preview (`2.0.0-pre.N` series).
 
 [docs]: https://docs.rs/watchexec
@@ -93,7 +93,7 @@ to make anything else you may want:
   and **[types](https://docs.rs/watchexec/2.0.0-pre.0/watchexec/project/fn.types.html)** of projects.
 
 - Discovering project-local and global
-  **[ignore files](https://docs.rs/watchexec/2.0.0-pre.0/watchexec/ignore_files/index.html)**.
+  **[ignore files](https://docs.rs/watchexec/2.0.0-pre.0/watchexec/ignore/index.html)**.
 
 There are also separate, standalone crates used to build Watchexec which you can tap into:
 
@@ -108,6 +108,6 @@ There are also separate, standalone crates used to build Watchexec which you can
 
 This library is also the home of Watchexec's current _two_ filtering implementations: the v1
 behaviour which has proven confusing and inconsistent over the years, and an upcoming complete
-overhaul called "tagged filtering."
+overhaul called "tagged filtering" which will potentially replace the legacy one.
 
-Have a look at the [docs](https://docs.rs/watchexec/2.0.0-pre.0/watchexec/filter/tagged/struct.TaggedFilterer.html)!
+Have a look at the [docs](https://docs.rs/watchexec/2.0.0-pre.5/watchexec/filter/tagged/struct.TaggedFilterer.html)!
