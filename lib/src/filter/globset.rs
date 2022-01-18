@@ -140,9 +140,9 @@ impl Filterer for GlobsetFilterer {
 				} else {
 					trace!(
 						?path,
-						"omitted from extension check due to having no extension"
+						"failed on extension check due to having no extension"
 					);
-					continue;
+					return Ok(false);
 				}
 			}
 		}
