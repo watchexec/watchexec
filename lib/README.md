@@ -13,7 +13,7 @@ _The library which powers [Watchexec CLI](https://watchexec.github.io) and other
 - Minimum Supported Rust Version: 1.58.0 (incurs a minor semver bump).
 - Status: in preview (`2.0.0-pre.N` series).
 
-[docs]: https://docs.rs/watchexec/2.0.0-pre.5
+[docs]: https://docs.rs/watchexec/2.0.0-pre.6
 [license]: ../LICENSE
 
 
@@ -79,21 +79,21 @@ async fn main() -> Result<()> {
 The library also exposes a large amount of components which are available to make your own tool, or
 to make anything else you may want:
 
-- **[Command handling](https://docs.rs/watchexec/2.0.0-pre.5/watchexec/command/index.html)**, to
+- **[Command handling](https://docs.rs/watchexec/2.0.0-pre.6/watchexec/command/index.html)**, to
   build a command with an arbitrary shell, deal with grouped and ungrouped processes the same way,
   and supervise a process while also listening for & acting on interventions such as sending signals.
 
-- **Event sources**: [Filesystem](https://docs.rs/watchexec/2.0.0-pre.5/watchexec/fs/index.html),
-  [Signals](https://docs.rs/watchexec/2.0.0-pre.5/watchexec/signal/source/index.html), (more to come).
+- **Event sources**: [Filesystem](https://docs.rs/watchexec/2.0.0-pre.6/watchexec/fs/index.html),
+  [Signals](https://docs.rs/watchexec/2.0.0-pre.6/watchexec/signal/source/index.html), (more to come).
 
-- Finding **[a common prefix](https://docs.rs/watchexec/2.0.0-pre.5/watchexec/paths/fn.common_prefix.html)**
+- Finding **[a common prefix](https://docs.rs/watchexec/2.0.0-pre.6/watchexec/paths/fn.common_prefix.html)**
   of a set of paths.
 
-- Detecting the **[origin(s)](https://docs.rs/watchexec/2.0.0-pre.5/watchexec/project/fn.origins.html)**
-  and **[types](https://docs.rs/watchexec/2.0.0-pre.5/watchexec/project/fn.types.html)** of projects.
+- Detecting the **[origin(s)](https://docs.rs/watchexec/2.0.0-pre.6/watchexec/project/fn.origins.html)**
+  and **[types](https://docs.rs/watchexec/2.0.0-pre.6/watchexec/project/fn.types.html)** of projects.
 
 - Discovering project-local and global
-  **[ignore files](https://docs.rs/watchexec/2.0.0-pre.5/watchexec/ignore/index.html)**.
+  **[ignore files](https://docs.rs/watchexec/2.0.0-pre.6/watchexec/ignore/index.html)**.
 
 - And [more][docs]!
 
@@ -112,4 +112,4 @@ This library is also the home of Watchexec's current _two_ filtering implementat
 behaviour which has proven confusing and inconsistent over the years, and an upcoming complete
 overhaul called "tagged filtering" which will potentially replace the legacy one.
 
-Have a look at the [docs](https://docs.rs/watchexec/2.0.0-pre.5/watchexec/filter/tagged/struct.TaggedFilterer.html)!
+Have a look at the [docs](https://docs.rs/watchexec/2.0.0-pre.6/watchexec/filter/tagged/struct.TaggedFilterer.html)!
