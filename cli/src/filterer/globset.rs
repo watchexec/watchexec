@@ -174,12 +174,11 @@ impl Iterator for OsSplit {
 			cur.push(wide);
 		}
 
-		let res = OsString::from_wide(&cur);
-		self.pos = cur.len() + 1;
-		if res.is_empty() && self.pos >= self.os.len() {
+		self.pos += cur.len() + 1;
+		if cur.is_empty() && self.pos >= self.os.len() {
 			None
 		} else {
-			Some(res)
+			Some(OsString::from_wide(&cur))
 		}
 	}
 }
