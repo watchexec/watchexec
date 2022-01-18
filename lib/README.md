@@ -1,7 +1,7 @@
 [![Crates.io page](https://badgen.net/crates/v/watchexec)](https://crates.io/crates/watchexec)
 [![API Docs](https://docs.rs/watchexec/badge.svg)][docs]
 [![Crate license: Apache 2.0](https://badgen.net/badge/license/Apache%202.0)][license]
-![MSRV: 1.58.0 (minor)](https://badgen.net/badge/MSRV/1.58.0%20%28minor%29/teal)
+![MSRV: 1.58.0 (minor)](https://badgen.net/badge/MSRV/1.58.0%20%28minor%29/0b7261)
 [![CI status](https://github.com/watchexec/watchexec/actions/workflows/check.yml/badge.svg)](https://github.com/watchexec/watchexec/actions/workflows/check.yml)
 
 # Watchexec library
@@ -13,7 +13,7 @@ _The library which powers [Watchexec CLI](https://watchexec.github.io) and other
 - Minimum Supported Rust Version: 1.58.0 (incurs a minor semver bump).
 - Status: in preview (`2.0.0-pre.N` series).
 
-[docs]: https://docs.rs/watchexec
+[docs]: https://docs.rs/watchexec/2.0.0-pre.5
 [license]: ../LICENSE
 
 
@@ -25,7 +25,7 @@ use watchexec::{
     Watchexec,
     action::{Action, Outcome},
     config::{InitConfig, RuntimeConfig},
-    handler::{Handler as _, PrintDebug},
+    handler::PrintDebug,
 };
 
 #[tokio::main]
@@ -36,7 +36,7 @@ async fn main() -> Result<()> {
     let mut runtime = RuntimeConfig::default();
     runtime.pathset(["watchexec.conf"]);
 
-    let conf = YourConfigFormat::load_from_file("watchexec.conf").await?;
+    let conf = YourConfigFormat::load_from_file("watchexec.conf").await.into_diagnostic()?;
     conf.apply(&mut runtime);
 
     let we = Watchexec::new(init, runtime.clone())?;
@@ -47,12 +47,12 @@ async fn main() -> Result<()> {
         let mut c = c.clone();
         let w = w.clone();
         async move {
-            for event in &action.events {
+            for event in action.events.iter() {
                 if event.paths().any(|(p, _)| p.ends_with("/watchexec.conf")) {
                     let conf = YourConfigFormat::load_from_file("watchexec.conf").await?;
 
                     conf.apply(&mut c);
-                    w.reconfigure(c.clone());
+                    let _ = w.reconfigure(c.clone());
                     // tada! self-reconfiguring watchexec on config file change!
 
                     break;
@@ -64,11 +64,11 @@ async fn main() -> Result<()> {
                 Outcome::both(Outcome::Clear, Outcome::Start),
             ));
 
-            Ok(())
+            Ok::<(), std::io::Error>(())
         }
     });
 
-    we.main().await.into_diagnostic()?;
+    let _ = we.main().await.into_diagnostic()?;
     Ok(())
 }
 ```
@@ -79,21 +79,23 @@ async fn main() -> Result<()> {
 The library also exposes a large amount of components which are available to make your own tool, or
 to make anything else you may want:
 
-- **[Command handling](https://docs.rs/watchexec/2.0.0-pre.0/watchexec/command/index.html)**, to
+- **[Command handling](https://docs.rs/watchexec/2.0.0-pre.5/watchexec/command/index.html)**, to
   build a command with an arbitrary shell, deal with grouped and ungrouped processes the same way,
   and supervise a process while also listening for & acting on interventions such as sending signals.
 
-- **Event sources**: [Filesystem](https://docs.rs/watchexec/2.0.0-pre.0/watchexec/fs/index.html),
-  [Signals](https://docs.rs/watchexec/2.0.0-pre.0/watchexec/signal/source/index.html), (more to come).
+- **Event sources**: [Filesystem](https://docs.rs/watchexec/2.0.0-pre.5/watchexec/fs/index.html),
+  [Signals](https://docs.rs/watchexec/2.0.0-pre.5/watchexec/signal/source/index.html), (more to come).
 
-- Finding **[a common prefix](https://docs.rs/watchexec/2.0.0-pre.0/watchexec/paths/fn.common_prefix.html)**
+- Finding **[a common prefix](https://docs.rs/watchexec/2.0.0-pre.5/watchexec/paths/fn.common_prefix.html)**
   of a set of paths.
 
-- Detecting the **[origin(s)](https://docs.rs/watchexec/2.0.0-pre.0/watchexec/project/fn.origins.html)**
-  and **[types](https://docs.rs/watchexec/2.0.0-pre.0/watchexec/project/fn.types.html)** of projects.
+- Detecting the **[origin(s)](https://docs.rs/watchexec/2.0.0-pre.5/watchexec/project/fn.origins.html)**
+  and **[types](https://docs.rs/watchexec/2.0.0-pre.5/watchexec/project/fn.types.html)** of projects.
 
 - Discovering project-local and global
-  **[ignore files](https://docs.rs/watchexec/2.0.0-pre.0/watchexec/ignore/index.html)**.
+  **[ignore files](https://docs.rs/watchexec/2.0.0-pre.5/watchexec/ignore/index.html)**.
+
+- And [more][docs]!
 
 There are also separate, standalone crates used to build Watchexec which you can tap into:
 
