@@ -116,5 +116,3 @@ mod watchexec;
 
 #[doc(inline)]
 pub use crate::watchexec::Watchexec;
-
-// the *action* is debounced, not the events

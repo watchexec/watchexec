@@ -187,7 +187,10 @@ impl Iterator for OsSplit {
 #[test]
 fn os_split_none() {
 	let os = OsString::from("");
-	assert_eq!(os.split(b',').collect::<Vec<OsString>>(), Vec::<OsString>::new());
+	assert_eq!(
+		os.split(b',').collect::<Vec<OsString>>(),
+		Vec::<OsString>::new()
+	);
 
 	let mut split = os.split(b',');
 	assert_eq!(split.next(), None);
@@ -197,7 +200,10 @@ fn os_split_none() {
 #[test]
 fn os_split_one() {
 	let os = OsString::from("abc");
-	assert_eq!(os.split(b',').collect::<Vec<OsString>>(), vec![OsString::from("abc")]);
+	assert_eq!(
+		os.split(b',').collect::<Vec<OsString>>(),
+		vec![OsString::from("abc")]
+	);
 
 	let mut split = os.split(b',');
 	assert_eq!(split.next(), Some(OsString::from("abc")));
@@ -208,11 +214,14 @@ fn os_split_one() {
 #[test]
 fn os_split_multi() {
 	let os = OsString::from("a,b,c");
-	assert_eq!(os.split(b',').collect::<Vec<OsString>>(), vec![
-		OsString::from("a"),
-		OsString::from("b"),
-		OsString::from("c"),
-	]);
+	assert_eq!(
+		os.split(b',').collect::<Vec<OsString>>(),
+		vec![
+			OsString::from("a"),
+			OsString::from("b"),
+			OsString::from("c"),
+		]
+	);
 
 	let mut split = os.split(b',');
 	assert_eq!(split.next(), Some(OsString::from("a")));
@@ -225,12 +234,15 @@ fn os_split_multi() {
 #[test]
 fn os_split_leading() {
 	let os = OsString::from(",a,b,c");
-	assert_eq!(os.split(b',').collect::<Vec<OsString>>(), vec![
-		OsString::from(""),
-		OsString::from("a"),
-		OsString::from("b"),
-		OsString::from("c"),
-	]);
+	assert_eq!(
+		os.split(b',').collect::<Vec<OsString>>(),
+		vec![
+			OsString::from(""),
+			OsString::from("a"),
+			OsString::from("b"),
+			OsString::from("c"),
+		]
+	);
 
 	let mut split = os.split(b',');
 	assert_eq!(split.next(), Some(OsString::from("")));
