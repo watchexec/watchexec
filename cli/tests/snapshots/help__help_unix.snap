@@ -30,7 +30,7 @@ FLAGS:
 
 OPTIONS:
     -d, --debounce <milliseconds>            Set the timeout between detected change and command execution, defaults to
-                                             100ms
+                                             50ms
     -e, --exts <extensions>                  Comma-separated list of file extensions to watch (e.g. js,css,html)
     -f, --filter <pattern>...                Ignore all modifications except those matching the pattern
     -i, --ignore <pattern>...                Ignore modifications to paths matching the pattern
@@ -39,7 +39,8 @@ OPTIONS:
                                              [possible values: do-nothing, queue, restart, signal]
     -w, --watch <path>...                    Watch a specific file or directory
         --force-poll <interval>              Force polling mode (interval in milliseconds)
-        --shell <shell>                      Use a different shell, or `none`. E.g. --shell=bash
+        --shell <shell>                      Use a different shell, or `none`. Defaults to `sh` (until 2.0, where that
+                                             will change to `$SHELL`). E.g. --shell=bash
     -s, --signal <signal>                    Specify the signal to send when using --on-busy-update=signal
 
 ARGS:
