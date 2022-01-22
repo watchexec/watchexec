@@ -30,7 +30,7 @@ pub fn runtime(args: &ArgMatches<'static>) -> Result<RuntimeConfig> {
 
 	config.action_throttle(Duration::from_millis(
 		args.value_of("debounce")
-			.unwrap_or("100")
+			.unwrap_or("50")
 			.parse()
 			.into_diagnostic()?,
 	));
