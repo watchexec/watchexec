@@ -76,7 +76,7 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches<'static>> {
 			.long("kill"))
 		.arg(Arg::with_name("debounce")
 			.help_heading(Some(OPTSET_BEHAVIOUR))
-			.help("Set the timeout between detected change and command execution, defaults to 100ms")
+			.help("Set the timeout between detected change and command execution, defaults to 50ms")
 			.takes_value(true)
 			.value_name("milliseconds")
 			.short("d")
