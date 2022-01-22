@@ -199,10 +199,7 @@ mod tests {
 			config.commands[0].run.as_ref().unwrap().shell,
 			Shell::default()
 		);
-		assert_eq!(
-			config.commands[0].run.as_ref().unwrap().shell,
-			Shell::None
-		);
+		assert_eq!(config.commands[0].run.as_ref().unwrap().shell, Shell::None);
 	}
 
 	#[test]

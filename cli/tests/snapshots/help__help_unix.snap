@@ -12,6 +12,7 @@ USAGE:
 
 FLAGS:
     -c, --clear                Clear screen before executing command
+    -C, --config               Config file(s) to use
     -h, --help                 Prints help information
         --no-default-ignore    Skip auto-ignoring of commonly ignored globs
         --no-environment       Do not set WATCHEXEC_*_PATH environment variables for the command

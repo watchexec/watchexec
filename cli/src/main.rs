@@ -1,6 +1,8 @@
 use std::env::var;
 
-use miette::{IntoDiagnostic, Result};
+use miette::{IntoDiagnostic, Result, WrapErr};
+use tokio::fs::read_to_string;
+use tracing::debug;
 use watchexec::{event::Event, Watchexec};
 
 mod args;
@@ -46,6 +48,21 @@ async fn main() -> Result<()> {
 			builder.try_init().ok();
 		}
 	}
+
+	let mut configs = Vec::with_capacity(
+		args.occurrences_of("config-file")
+			.try_into()
+			.into_diagnostic()
+			.wrap_err("Too many config files")?,
+	);
+	// TODO: look for global/project config file
+	for path in args.values_of("config-file").unwrap_or_default() {
+		let content = read_to_string(path).await.into_diagnostic()?;
+		configs.push(config::File::parse(&content)?);
+	}
+	debug!(?configs, "loaded config files");
+	// TODO: merge configs
+	// TODO: use configs
 
 	let init = config::init(&args)?;
 	let mut runtime = config::runtime(&args)?;

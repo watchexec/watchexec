@@ -23,6 +23,7 @@ impl Clap3Compat for Arg<'_, '_> {}
 
 const OPTSET_FILTERING: &str = "Filtering options:";
 const OPTSET_COMMAND: &str = "Command options:";
+const OPTSET_CONFIG: &str = "Config file options:";
 const OPTSET_DEBUGGING: &str = "Debugging options:";
 const OPTSET_OUTPUT: &str = "Output options:";
 const OPTSET_BEHAVIOUR: &str = "Behaviour options:";
@@ -32,6 +33,12 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches<'static>> {
 		.version(crate_version!())
 		.about("Execute commands when watched files change")
 		.after_help("Use @argfile as first argument to load arguments from the file `argfile` (one argument per line) which will be inserted in place of the @argfile (further arguments on the CLI will override or add onto those in the file).")
+		.arg(Arg::with_name("config-file")
+			.help_heading(Some(OPTSET_CONFIG))
+			.help("Config file(s) to use")
+			.multiple(true)
+			.short("C")
+			.long("config"))
 		.arg(Arg::with_name("command")
 			.help_heading(Some(OPTSET_COMMAND))
 			.help("Command to execute")
