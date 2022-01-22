@@ -126,7 +126,7 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches<'static>> {
 			.help(if cfg!(windows) {
 				"Use a different shell, or `none`. Try --shell=powershell, which will become the default in 2.0."
 			} else {
-			"Use a different shell, or `none`. E.g. --shell=bash"
+			"Use a different shell, or `none`. Defaults to `sh` (until 2.0, where that will change to `$SHELL`). E.g. --shell=bash"
 			})
 			.takes_value(true)
 			.long("shell"))
