@@ -24,6 +24,7 @@ path = "src/main.rs"
 console-subscriber = { version = "0.1.0", optional = true }
 dunce = "1.0.2"
 futures = "0.3.17"
+kdl = "3.0.0"
 miette = { version = "3.2.0", features = ["fancy"] }
 notify-rust = "4.5.2"
 tracing = "0.1.26"
