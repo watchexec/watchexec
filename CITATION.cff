@@ -6,7 +6,7 @@ message: |
   The library has its own CITATION.cff file in lib/.
 
 title: Watchexec (command-line tool)
-version: 1.18.0
+version: 1.18.1
 date-released: 2022-01-23
 
 repository-code: https://github.com/watchexec/watchexec
