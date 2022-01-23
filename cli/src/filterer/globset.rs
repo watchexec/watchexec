@@ -81,7 +81,8 @@ pub async fn globset(args: &ArgMatches<'static>) -> Result<Arc<WatchexecFilterer
 		.values_of_os("extensions")
 		.unwrap_or_default()
 		.map(|s| s.split(b','))
-		.flatten();
+		.flatten()
+		.map(|e| os_strip_prefix(e, b'.'));
 
 	Ok(Arc::new(WatchexecFilterer {
 		inner: GlobsetFilterer::new(project_origin, filters, ignores, ignore_files, exts)
@@ -157,6 +158,17 @@ impl Iterator for OsSplit {
 	}
 }
 
+#[cfg(unix)]
+fn os_strip_prefix(os: OsString, prefix: u8) -> OsString {
+	use std::os::unix::ffi::{OsStrExt, OsStringExt};
+	let bytes = os.as_bytes();
+	if bytes.first().copied() == Some(prefix) {
+		OsString::from_vec(bytes[1..].to_vec())
+	} else {
+		os
+	}
+}
+
 #[cfg(windows)]
 impl Iterator for OsSplit {
 	type Item = OsString;
@@ -180,6 +192,17 @@ impl Iterator for OsSplit {
 		} else {
 			Some(OsString::from_wide(&cur))
 		}
+	}
+}
+
+#[cfg(windows)]
+fn os_strip_prefix(os: OsString, prefix: u8) -> OsString {
+	use std::os::windows::ffi::{OsStrExt, OsStringExt};
+	let wides: Vec<u16> = os.encode_wide().collect();
+	if wides.first().copied() == Some(u16::from(prefix)) {
+		OsString::from_wide(&wides[1..])
+	} else {
+		os
 	}
 }
 
@@ -250,4 +273,54 @@ fn os_split_leading() {
 	assert_eq!(split.next(), Some(OsString::from("b")));
 	assert_eq!(split.next(), Some(OsString::from("c")));
 	assert_eq!(split.next(), None);
+}
+
+#[cfg(test)]
+#[test]
+fn os_strip_none() {
+	let os = OsString::from("abc");
+	assert_eq!(
+		os_strip_prefix(os, b'.'),
+		OsString::from("abc")
+	);
+}
+
+#[cfg(test)]
+#[test]
+fn os_strip_left() {
+	let os = OsString::from(".abc");
+	assert_eq!(
+		os_strip_prefix(os, b'.'),
+		OsString::from("abc")
+	);
+}
+
+#[cfg(test)]
+#[test]
+fn os_strip_not_right() {
+	let os = OsString::from("abc.");
+	assert_eq!(
+		os_strip_prefix(os, b'.'),
+		OsString::from("abc.")
+	);
+}
+
+#[cfg(test)]
+#[test]
+fn os_strip_only_left() {
+	let os = OsString::from(".abc.");
+	assert_eq!(
+		os_strip_prefix(os, b'.'),
+		OsString::from("abc.")
+	);
+}
+
+#[cfg(test)]
+#[test]
+fn os_strip_only_once() {
+	let os = OsString::from("..abc");
+	assert_eq!(
+		os_strip_prefix(os, b'.'),
+		OsString::from(".abc")
+	);
 }
