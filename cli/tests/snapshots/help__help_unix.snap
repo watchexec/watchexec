@@ -1,5 +1,6 @@
 ---
 source: cli/tests/help.rs
+assertion_line: 16
 expression: "String::from_utf8(output.stdout).unwrap()"
 
 ---
@@ -39,8 +40,7 @@ OPTIONS:
     -w, --watch <path>...                    Watch a specific file or directory
         --force-poll <interval>              Force polling mode (interval in milliseconds)
         --shell <shell>                      Use a different shell, or `none`. E.g. --shell=bash
-    -s, --signal <signal>                    Specify the signal to send when using --on-busy-update=signal [default:
-                                             SIGTERM]
+    -s, --signal <signal>                    Specify the signal to send when using --on-busy-update=signal
 
 ARGS:
     <command>...    Command to execute

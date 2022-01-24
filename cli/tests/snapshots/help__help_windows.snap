@@ -40,6 +40,7 @@ OPTIONS:
         --force-poll <interval>              Force polling mode (interval in milliseconds)
         --shell <shell>                      Use a different shell, or `none`. Try --shell=powershell, which will become
                                              the default in 2.0.
+    -s, --signal <signal>                    Specify the signal to send when using --on-busy-update=signal
 
 ARGS:
     <command>...    Command to execute

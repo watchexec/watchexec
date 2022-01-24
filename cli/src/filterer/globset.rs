@@ -279,48 +279,33 @@ fn os_split_leading() {
 #[test]
 fn os_strip_none() {
 	let os = OsString::from("abc");
-	assert_eq!(
-		os_strip_prefix(os, b'.'),
-		OsString::from("abc")
-	);
+	assert_eq!(os_strip_prefix(os, b'.'), OsString::from("abc"));
 }
 
 #[cfg(test)]
 #[test]
 fn os_strip_left() {
 	let os = OsString::from(".abc");
-	assert_eq!(
-		os_strip_prefix(os, b'.'),
-		OsString::from("abc")
-	);
+	assert_eq!(os_strip_prefix(os, b'.'), OsString::from("abc"));
 }
 
 #[cfg(test)]
 #[test]
 fn os_strip_not_right() {
 	let os = OsString::from("abc.");
-	assert_eq!(
-		os_strip_prefix(os, b'.'),
-		OsString::from("abc.")
-	);
+	assert_eq!(os_strip_prefix(os, b'.'), OsString::from("abc."));
 }
 
 #[cfg(test)]
 #[test]
 fn os_strip_only_left() {
 	let os = OsString::from(".abc.");
-	assert_eq!(
-		os_strip_prefix(os, b'.'),
-		OsString::from("abc.")
-	);
+	assert_eq!(os_strip_prefix(os, b'.'), OsString::from("abc."));
 }
 
 #[cfg(test)]
 #[test]
 fn os_strip_only_once() {
 	let os = OsString::from("..abc");
-	assert_eq!(
-		os_strip_prefix(os, b'.'),
-		OsString::from(".abc")
-	);
+	assert_eq!(os_strip_prefix(os, b'.'), OsString::from(".abc"));
 }
