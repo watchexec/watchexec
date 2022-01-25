@@ -109,44 +109,50 @@ impl Filterer for GlobsetFilterer {
 				return Ok(false);
 			}
 		}
+		
+		let mut paths = event.paths().peekable();
+		if paths.peek().is_none() {
+			trace!("non-path event (pass)");
+			Ok(true)
+		} else {
+			Ok(paths.any(|(path, file_type)| {
+				let _span = trace_span!("path", ?path).entered();
+				let is_dir = file_type
+					.map(|t| matches!(t, FileType::Dir))
+					.unwrap_or(false);
 
-		Ok(event.paths().any(|(path, file_type)| {
-			let _span = trace_span!("path", ?path).entered();
-			let is_dir = file_type
-				.map(|t| matches!(t, FileType::Dir))
-				.unwrap_or(false);
-
-			if self.ignores.matched(path, is_dir).is_ignore() {
-				trace!("ignored by globset ignore");
-				return false;
-			}
-
-			if self.filters.num_ignores() > 0 && !self.filters.matched(path, is_dir).is_ignore() {
-				trace!("ignored by globset filters");
-				return false;
-			}
-
-			if !self.extensions.is_empty() {
-				if is_dir {
-					trace!("failed on extension check due to being a dir");
+				if self.ignores.matched(path, is_dir).is_ignore() {
+					trace!("ignored by globset ignore");
 					return false;
 				}
 
-				if let Some(ext) = path.extension() {
-					if !self.extensions.iter().any(|e| e == ext) {
-						trace!("ignored by extension filter");
+				if self.filters.num_ignores() > 0 && !self.filters.matched(path, is_dir).is_ignore() {
+					trace!("ignored by globset filters");
+					return false;
+				}
+
+				if !self.extensions.is_empty() {
+					if is_dir {
+						trace!("failed on extension check due to being a dir");
 						return false;
 					}
-				} else {
-					trace!(
-						?path,
-						"failed on extension check due to having no extension"
-					);
-					return false;
-				}
-			}
 
-			true
-		}))
+					if let Some(ext) = path.extension() {
+						if !self.extensions.iter().any(|e| e == ext) {
+							trace!("ignored by extension filter");
+							return false;
+						}
+					} else {
+						trace!(
+							?path,
+							"failed on extension check due to having no extension"
+						);
+						return false;
+					}
+				}
+
+				true
+			}))
+		}
 	}
 }
