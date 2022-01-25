@@ -1,0 +1,72 @@
+command "hello-world" {
+	run shell="bash" "echo 'hello world' > /tmp/test.txt"
+	// run "echo" "hello world"
+	// run shell="bash" "echo" "hello world" // error!
+
+	process-group true
+
+	debounce (ms)50
+	postpone true
+
+	on-action {
+		when-idle {
+			print "Once more..."
+			start
+		}
+
+		when-busy restart
+		// when-busy {
+		// 	signal "KILL"
+		// 	restart
+		// }
+	}
+
+	environment {
+		set SET_VAR="value"
+		set MULTIPLE="vars" ON="one line"
+		unset "UNSET_VAR"
+		path-changes false
+	}
+
+	notifications {
+		on-start false
+		on-finish default=false {
+			on-error {
+				body "That didn't work"
+			}
+
+			on-signal {
+				body "Who did this?!"
+			}
+
+			title "Whoopsie"
+		}
+	}
+
+	clear {
+		on-start method="reset"
+	}
+
+	ignores {
+		vcs "git"
+		global false
+	}
+
+	filters engine="tagged" {
+		path "*=" "hello.*"
+		file-event-kind "*=" "Create(*)"
+		file-type "!=" "dir"
+	}
+}
+
+command "and-another-thing" {
+	hook on="exit" match="success" {
+		subcommand name="hello-world" {
+			send-event /* (empty) */
+		}
+	}
+
+	hook on="exit" regex="(error|signal)\((\d+)\)" {
+		quit code="$1"
+	}
+}
