@@ -2,12 +2,7 @@
 
 use std::sync::Arc;
 
-use ignore::gitignore::GitignoreBuilder;
-
-use crate::{
-	error::{GlobParseError, RuntimeError},
-	event::Event,
-};
+use crate::{error::RuntimeError, event::Event};
 
 pub mod globset;
 pub mod tagged;
@@ -36,22 +31,5 @@ impl Filterer for () {
 impl<T: Filterer> Filterer for Arc<T> {
 	fn check_event(&self, event: &Event) -> Result<bool, RuntimeError> {
 		Arc::as_ref(self).check_event(event)
-	}
-}
-
-/// Convenience function to check a glob pattern from a string.
-///
-/// This parses the glob and wraps any error with nice [miette] diagnostics.
-pub fn check_glob(glob: &str) -> Result<(), GlobParseError> {
-	let mut builder = GitignoreBuilder::new("/");
-	if let Err(err) = builder.add_line(None, glob) {
-		if let ignore::Error::Glob { err, .. } = err {
-			// TODO: use globset and return a nicer error
-			Err(GlobParseError::new(glob, &err))
-		} else {
-			Err(GlobParseError::new(glob, "unknown error"))
-		}
-	} else {
-		Ok(())
 	}
 }
