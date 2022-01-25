@@ -110,7 +110,7 @@ impl Filterer for GlobsetFilterer {
 			}
 		}
 
-		for (path, file_type) in event.paths() {
+		Ok(event.paths().any(|(path, file_type)| {
 			let _span = trace_span!("path", ?path).entered();
 			let is_dir = file_type
 				.map(|t| matches!(t, FileType::Dir))
@@ -118,35 +118,35 @@ impl Filterer for GlobsetFilterer {
 
 			if self.ignores.matched(path, is_dir).is_ignore() {
 				trace!("ignored by globset ignore");
-				return Ok(false);
+				return false;
 			}
 
 			if self.filters.num_ignores() > 0 && !self.filters.matched(path, is_dir).is_ignore() {
 				trace!("ignored by globset filters");
-				return Ok(false);
+				return false;
 			}
 
 			if !self.extensions.is_empty() {
 				if is_dir {
 					trace!("failed on extension check due to being a dir");
-					return Ok(false);
+					return false;
 				}
 
 				if let Some(ext) = path.extension() {
 					if !self.extensions.iter().any(|e| e == ext) {
 						trace!("ignored by extension filter");
-						return Ok(false);
+						return false;
 					}
 				} else {
 					trace!(
 						?path,
 						"failed on extension check due to having no extension"
 					);
-					return Ok(false);
+					return false;
 				}
 			}
-		}
 
-		Ok(true)
+			true
+		}))
 	}
 }

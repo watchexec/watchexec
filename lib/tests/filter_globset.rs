@@ -316,6 +316,37 @@ async fn extensions_fail_extensionless() {
 	filterer.file_doesnt_pass("Cargo");
 }
 
+#[tokio::test]
+async fn multipath_allow_on_any_one_pass() {
+	use watchexec::{
+		event::{Event, FileType, Tag},
+		filter::Filterer,
+	};
+
+	let filterer = filt(&[], &[], &["py"]).await;
+	let origin = dunce::canonicalize(".").unwrap();
+
+	let event = Event {
+		tags: vec![
+			Tag::Path {
+				path: origin.join("Cargo.py"),
+				file_type: Some(FileType::File),
+			},
+			Tag::Path {
+				path: origin.join("Cargo.toml"),
+				file_type: Some(FileType::File),
+			},
+			Tag::Path {
+				path: origin.join("Cargo.py"),
+				file_type: Some(FileType::Dir),
+			},
+		],
+		metadata: Default::default(),
+	};
+
+	assert!(filterer.check_event(&event).unwrap());
+}
+
 // The following tests replicate the "buggy"/"confusing" watchexec v1 behaviour.
 
 #[tokio::test]
