@@ -2574,7 +2574,7 @@ dependencies = [
 
 [[package]]
 name = "watchexec-cli"
-version = "1.18.2"
+version = "1.18.3"
 dependencies = [
  "assert_cmd",
  "clap",
