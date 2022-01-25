@@ -236,7 +236,7 @@ fn default_shell() -> Shell {
 
 #[cfg(not(windows))]
 fn default_shell() -> Shell {
-	Shell::default()
+	Shell::Unix("sh".to_string())
 }
 
 // because Shell::Cmd is only on windows
