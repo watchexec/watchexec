@@ -216,7 +216,7 @@ async fn apply_outcome(
 					.map_err(|_| RuntimeError::HandlerLockHeld("pre-spawn"))?
 					.into_inner();
 
-				trace!("spawing supervisor for command");
+				trace!("spawning supervisor for command");
 				let sup = Supervisor::spawn(
 					errors_c.clone(),
 					events_c.clone(),

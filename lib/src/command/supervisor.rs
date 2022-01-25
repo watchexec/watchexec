@@ -60,7 +60,7 @@ impl Supervisor {
 		debug!(%grouped, ?command, "spawning command");
 		let (process, id) = if grouped {
 			let proc = command.group_spawn().map_err(|err| RuntimeError::IoError {
-				about: "spawing process group",
+				about: "spawning process group",
 				err,
 			})?;
 			let id = proc.id().ok_or(RuntimeError::ProcessDeadOnArrival)?;
