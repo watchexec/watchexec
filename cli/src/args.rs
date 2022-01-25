@@ -153,7 +153,12 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches<'static>> {
 			.help_heading(Some(OPTSET_OUTPUT))
 			.help("Send a desktop notification when the command ends")
 			.short("N")
-			.long("notify"));
+			.long("notify"))
+		.arg(Arg::with_name("project-origin")
+			.help_heading(Some(OPTSET_FILTERING))
+			.help("Override the project origin: the directory from which ignore files are detected")
+			.value_name("path")
+			.long("project-origin"));
 
 	let app = if tagged_filterer {
 		app.arg(
