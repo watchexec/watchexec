@@ -39,6 +39,8 @@ OPTIONS:
                                              [possible values: do-nothing, queue, restart, signal]
     -w, --watch <path>...                    Watch a specific file or directory
         --force-poll <interval>              Force polling mode (interval in milliseconds)
+        --project-origin <path>              Override the project origin: the directory from which ignore files are
+                                             detected
         --shell <shell>                      Use a different shell, or `none`. Defaults to `sh` (until 2.0, where that
                                              will change to `$SHELL`). E.g. --shell=bash
     -s, --signal <signal>                    Specify the signal to send when using --on-busy-update=signal
