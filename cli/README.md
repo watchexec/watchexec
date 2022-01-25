@@ -51,7 +51,7 @@ Watch all JavaScript, CSS and HTML files in the current directory and all subdir
 
 Call `make test` when any file changes in this directory/subdirectory, except for everything below `target`:
 
-    $ watchexec -i target make test
+    $ watchexec -i "target/**" make test
 
 Call `ls -la` when any file changes in this directory/subdirectory:
 
