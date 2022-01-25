@@ -297,6 +297,25 @@ async fn ignores_take_precedence() {
 	filterer.file_does_pass("FINAL-FINAL.docx");
 }
 
+#[tokio::test]
+async fn extensions_fail_dirs() {
+	let filterer = filt(&[], &[], &["py"]).await;
+
+	filterer.file_does_pass("Cargo.py");
+	filterer.file_doesnt_pass("Cargo.toml");
+	filterer.dir_doesnt_pass("Cargo");
+	filterer.dir_doesnt_pass("Cargo.toml");
+	filterer.dir_doesnt_pass("Cargo.py");
+}
+
+#[tokio::test]
+async fn extensions_fail_extensionless() {
+	let filterer = filt(&[], &[], &["py"]).await;
+
+	filterer.file_does_pass("Cargo.py");
+	filterer.file_doesnt_pass("Cargo");
+}
+
 // The following tests replicate the "buggy"/"confusing" watchexec v1 behaviour.
 
 #[tokio::test]

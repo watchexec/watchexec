@@ -128,8 +128,8 @@ impl Filterer for GlobsetFilterer {
 
 			if !self.extensions.is_empty() {
 				if is_dir {
-					trace!("omitted from extension check due to being a dir");
-					continue;
+					trace!("failed on extension check due to being a dir");
+					return Ok(false);
 				}
 
 				if let Some(ext) = path.extension() {
