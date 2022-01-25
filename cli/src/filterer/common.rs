@@ -50,7 +50,7 @@ pub async fn ignores(
 	args: &ArgMatches<'static>,
 	vcs_types: &[ProjectType],
 	origin: &Path,
-) -> Result<Vec<IgnoreFile>> {
+) -> Vec<IgnoreFile> {
 	let (mut ignores, errors) = ignore::from_origin(origin).await;
 	for err in errors {
 		warn!("while discovering project-local ignore files: {}", err);
@@ -150,5 +150,5 @@ pub async fn ignores(
 		debug!(?ignores, "filtered ignores to exclude VCS-specific ignores");
 	}
 
-	Ok(ignores)
+	ignores
 }

@@ -16,7 +16,7 @@ use watchexec::{
 pub async fn tagged(args: &ArgMatches<'static>) -> Result<Arc<TaggedFilterer>> {
 	let (project_origin, workdir) = super::common::dirs(args).await?;
 	let vcs_types = super::common::vcs_types(&project_origin).await;
-	let ignores = super::common::ignores(args, &vcs_types, &project_origin).await?;
+	let ignores = super::common::ignores(args, &vcs_types, &project_origin).await;
 
 	let filterer = TaggedFilterer::new(project_origin, workdir.clone())?;
 
