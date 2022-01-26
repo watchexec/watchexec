@@ -177,7 +177,7 @@ pub async fn from_origin(path: impl AsRef<Path>) -> (Vec<IgnoreFile>, Vec<Error>
 /// - User-specific git ignore files (e.g. `~/.gitignore`)
 /// - Git configurable ignore files (e.g. with `core.excludesFile` in system or user config)
 /// - `$XDG_CONFIG_HOME/watchexec/ignore`, as well as other locations (APPDATA on Windows…)
-/// - Files from the `WATCHEXEC_IGNORE_FILES` environment variable (comma-separated)
+/// - Files from the `WATCHEXEC_IGNORE_FILES` environment variable (separated the same was as `PATH`)
 ///
 /// All errors (permissions, etc) are collected and returned alongside the ignore files: you may
 /// want to show them to the user while still using whatever ignores were successfully found. Errors
