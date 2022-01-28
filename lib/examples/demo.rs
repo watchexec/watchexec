@@ -45,13 +45,11 @@ async fn main() -> Result<()> {
 				action.outcome(Outcome::Exit);
 			} else if sigs.iter().any(|sig| sig == &MainSignal::User1) {
 				eprintln!("Switching to native for funsies");
-				config.file_watcher(Watcher::Native).keep_action();
+				config.file_watcher(Watcher::Native);
 				w.reconfigure(config)?;
 			} else if sigs.iter().any(|sig| sig == &MainSignal::User2) {
 				eprintln!("Switching to polling for funsies");
-				config
-					.file_watcher(Watcher::Poll(Duration::from_millis(50)))
-					.keep_action();
+				config.file_watcher(Watcher::Poll(Duration::from_millis(50)));
 				w.reconfigure(config)?;
 			} else {
 				action.outcome(Outcome::if_running(
