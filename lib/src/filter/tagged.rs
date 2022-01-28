@@ -18,13 +18,13 @@ use crate::filter::Filterer;
 use crate::ignore::{IgnoreFile, IgnoreFilterer};
 use crate::signal::process::SubSignal;
 use crate::signal::source::MainSignal;
+use crate::swaplock::SwapLock;
 
 // to make filters
 pub use regex::Regex;
 
 pub mod files;
 mod parse;
-pub mod swaplock;
 
 /// A filterer implementation that exposes the full capabilities of Watchexec.
 ///
@@ -112,16 +112,16 @@ pub struct TaggedFilterer {
 	workdir: PathBuf,
 
 	/// All filters that are applied, in order, by matcher.
-	filters: swaplock::SwapLock<HashMap<Matcher, Vec<Filter>>>,
+	filters: SwapLock<HashMap<Matcher, Vec<Filter>>>,
 
 	/// Sub-filterer for ignore files.
-	ignore_filterer: swaplock::SwapLock<IgnoreFilterer>,
+	ignore_filterer: SwapLock<IgnoreFilterer>,
 
 	/// Compiled matcher for Glob filters.
-	glob_compiled: swaplock::SwapLock<Option<Gitignore>>,
+	glob_compiled: SwapLock<Option<Gitignore>>,
 
 	/// Compiled matcher for NotGlob filters.
-	not_glob_compiled: swaplock::SwapLock<Option<Gitignore>>,
+	not_glob_compiled: SwapLock<Option<Gitignore>>,
 }
 
 impl Filterer for TaggedFilterer {
@@ -333,10 +333,10 @@ impl TaggedFilterer {
 			err,
 		})?;
 		Ok(Arc::new(Self {
-			filters: swaplock::SwapLock::new(HashMap::new()),
-			ignore_filterer: swaplock::SwapLock::new(IgnoreFilterer::empty(&origin)),
-			glob_compiled: swaplock::SwapLock::new(None),
-			not_glob_compiled: swaplock::SwapLock::new(None),
+			filters: SwapLock::new(HashMap::new()),
+			ignore_filterer: SwapLock::new(IgnoreFilterer::empty(&origin)),
+			glob_compiled: SwapLock::new(None),
+			not_glob_compiled: SwapLock::new(None),
 			workdir: canonicalize(workdir.into()).map_err(|err| TaggedFiltererError::IoError {
 				about: "canonicalise workdir on new tagged filterer",
 				err,

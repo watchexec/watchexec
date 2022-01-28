@@ -97,6 +97,7 @@ impl Watchexec {
 
 			let error_hook = subtask!(error_hook, error_hook(er_r, eh));
 
+			// Use Tokio TaskSet when that lands
 			try_join!(action, error_hook, fs, signal)
 				.map(drop)
 				.or_else(|e| {

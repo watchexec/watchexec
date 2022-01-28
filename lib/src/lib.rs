@@ -108,6 +108,7 @@ pub mod ignore;
 pub mod paths;
 pub mod project;
 pub mod signal;
+pub mod swaplock;
 
 // the core experience
 pub mod config;
