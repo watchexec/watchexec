@@ -1,6 +1,6 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
-use tokio::sync::RwLock;
+use tokio::{sync::RwLock, time::timeout};
 
 use crate::{command::Supervisor, error::RuntimeError, signal::process::SubSignal};
 
@@ -43,11 +43,17 @@ impl ProcessHolder {
 	}
 
 	pub async fn wait(&self) -> Result<(), RuntimeError> {
-		// Maybe loop this with a timeout to allow concurrent drop_inner?
-		if let Some(p) = self.0.write().await.as_mut() {
-			p.wait().await?;
+		// Loop to allow concurrent operations while waiting
+		loop {
+			if let Some(p) = self.0.write().await.as_mut() {
+				match timeout(Duration::from_millis(20), p.wait()).await {
+					Err(_timeout) => continue,
+					Ok(Err(err)) => break Err(err),
+					Ok(Ok(())) => break Ok(()),
+				}
+			} else {
+				break Ok(());
+			}
 		}
-
-		Ok(())
 	}
 }
