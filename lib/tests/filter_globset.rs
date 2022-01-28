@@ -350,21 +350,25 @@ async fn multipath_allow_on_any_one_pass() {
 #[tokio::test]
 async fn nonpath_event_passes() {
 	use watchexec::{
-		event::{Event, Tag, Source},
+		event::{Event, Source, Tag},
 		filter::Filterer,
 	};
 
 	let filterer = filt(&[], &[], &["py"]).await;
 
-	assert!(filterer.check_event(&Event {
-		tags: vec![Tag::Source(Source::Internal)],
-		metadata: Default::default(),
-	}).unwrap());
+	assert!(filterer
+		.check_event(&Event {
+			tags: vec![Tag::Source(Source::Internal)],
+			metadata: Default::default(),
+		})
+		.unwrap());
 
-	assert!(filterer.check_event(&Event {
-		tags: vec![Tag::Source(Source::Keyboard)],
-		metadata: Default::default(),
-	}).unwrap());
+	assert!(filterer
+		.check_event(&Event {
+			tags: vec![Tag::Source(Source::Keyboard)],
+			metadata: Default::default(),
+		})
+		.unwrap());
 }
 
 // The following tests replicate the "buggy"/"confusing" watchexec v1 behaviour.

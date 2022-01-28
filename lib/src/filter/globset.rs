@@ -109,7 +109,7 @@ impl Filterer for GlobsetFilterer {
 				return Ok(false);
 			}
 		}
-		
+
 		let mut paths = event.paths().peekable();
 		if paths.peek().is_none() {
 			trace!("non-path event (pass)");
@@ -126,7 +126,8 @@ impl Filterer for GlobsetFilterer {
 					return false;
 				}
 
-				if self.filters.num_ignores() > 0 && !self.filters.matched(path, is_dir).is_ignore() {
+				if self.filters.num_ignores() > 0 && !self.filters.matched(path, is_dir).is_ignore()
+				{
 					trace!("ignored by globset filters");
 					return false;
 				}
