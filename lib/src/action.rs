@@ -7,7 +7,12 @@ use std::{
 
 use clearscreen::ClearScreen;
 use tokio::{
-	sync::{mpsc, watch},
+	spawn,
+	sync::{
+		mpsc,
+		watch::{self, Receiver},
+		RwLock,
+	},
 	time::timeout,
 };
 use tracing::{debug, trace, warn};
@@ -17,6 +22,7 @@ use crate::{
 	error::{CriticalError, RuntimeError},
 	event::Event,
 	handler::rte,
+	signal::process::SubSignal,
 };
 
 #[doc(inline)]
@@ -40,7 +46,7 @@ pub async fn worker(
 ) -> Result<(), CriticalError> {
 	let mut last = Instant::now();
 	let mut set = Vec::new();
-	let mut process: Option<Supervisor> = None;
+	let process = ProcessHolder::default();
 
 	loop {
 		let maxtime = if set.is_empty() {
@@ -132,8 +138,7 @@ pub async fn worker(
 		let outcome = outcome.get().cloned().unwrap_or_default();
 		debug!(?outcome, "handler finished");
 
-		let is_running = process.as_ref().map(|p| p.is_running()).unwrap_or(false);
-		let outcome = outcome.resolve(is_running);
+		let outcome = outcome.resolve(process.is_running().await);
 		debug!(?outcome, "outcome resolved");
 
 		let w = working.borrow().clone();
@@ -309,4 +314,51 @@ async fn apply_outcome(
 	}
 
 	Ok(())
+}
+
+#[derive(Clone, Debug, Default)]
+struct ProcessHolder(Arc<RwLock<Option<Supervisor>>>);
+impl ProcessHolder {
+	async fn is_running(&self) -> bool {
+		self.0
+			.read()
+			.as_ref()
+			.map(|p| p.is_running())
+			.unwrap_or(false)
+	}
+
+	async fn is_some(&self) -> bool {
+		self.0.read().await.is_some()
+	}
+
+	async fn drop_inner(&self) {
+		self.0.write().await.take();
+	}
+
+	async fn replace(&self, new: Supervisor) {
+		if let Some(_old) = self.0.write().await.replace(new) {
+			// TODO: figure out what to do with old
+		}
+	}
+
+	async fn signal(&self, sig: SubSignal) {
+		if let Some(p) = self.0.read().await.as_ref() {
+			p.signal(sig).await;
+		}
+	}
+
+	async fn kill(&self) {
+		if let Some(p) = self.0.read().await.as_ref() {
+			p.kill().await;
+		}
+	}
+
+	async fn wait(&self) -> Result<(), RuntimeError> {
+		// Maybe loop this with a timeout to allow concurrent drop_inner?
+		if let Some(p) = self.0.write().await.as_mut() {
+			p.wait().await?; // TODO: &melf
+		}
+
+		Ok(())
+	}
 }
