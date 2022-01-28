@@ -2,15 +2,13 @@
 
 use std::{fmt, path::Path, sync::Arc, time::Duration};
 
-use atomic_take::AtomicTake;
-
 use crate::{
 	action::{Action, PostSpawn, PreSpawn},
 	command::Shell,
 	error::RuntimeError,
 	filter::Filterer,
 	fs::Watcher,
-	handler::Handler,
+	handler::{Handler, HandlerLock},
 };
 
 /// Runtime configuration for [`Watchexec`][crate::Watchexec].
@@ -93,13 +91,13 @@ impl RuntimeConfig {
 
 	/// Set the action handler.
 	pub fn on_action(&mut self, handler: impl Handler<Action> + Send + 'static) -> &mut Self {
-		self.action.action_handler = Arc::new(AtomicTake::new(Box::new(handler) as _));
+		self.action.action_handler = HandlerLock::new(Box::new(handler));
 		self
 	}
 
 	/// Set the pre-spawn handler.
 	pub fn on_pre_spawn(&mut self, handler: impl Handler<PreSpawn> + Send + 'static) -> &mut Self {
-		self.action.pre_spawn_handler = Arc::new(AtomicTake::new(Box::new(handler) as _));
+		self.action.pre_spawn_handler = HandlerLock::new(Box::new(handler));
 		self
 	}
 
@@ -108,7 +106,7 @@ impl RuntimeConfig {
 		&mut self,
 		handler: impl Handler<PostSpawn> + Send + 'static,
 	) -> &mut Self {
-		self.action.post_spawn_handler = Arc::new(AtomicTake::new(Box::new(handler) as _));
+		self.action.post_spawn_handler = HandlerLock::new(Box::new(handler));
 		self
 	}
 }

@@ -16,7 +16,7 @@ use crate::{
 	command::Supervisor,
 	error::{CriticalError, RuntimeError},
 	event::Event,
-	handler::{rte, Handler},
+	handler::rte,
 };
 
 #[doc(inline)]
@@ -41,13 +41,6 @@ pub async fn worker(
 	let mut last = Instant::now();
 	let mut set = Vec::new();
 	let mut process: Option<Supervisor> = None;
-
-	let mut action_handler =
-		{ working.borrow().action_handler.take() }.ok_or(CriticalError::MissingHandler)?;
-	let mut pre_spawn_handler =
-		{ working.borrow().pre_spawn_handler.take() }.ok_or(CriticalError::MissingHandler)?;
-	let mut post_spawn_handler =
-		{ working.borrow().post_spawn_handler.take() }.ok_or(CriticalError::MissingHandler)?;
 
 	loop {
 		let maxtime = if set.is_empty() {
@@ -119,25 +112,16 @@ pub async fn worker(
 		let action = Action::new(Arc::clone(&events));
 		debug!(?action, "action constructed");
 
-		if let Some(h) = working.borrow().action_handler.take() {
-			trace!("action handler updated");
-			action_handler = h;
-		}
-
-		if let Some(h) = working.borrow().pre_spawn_handler.take() {
-			trace!("pre-spawn handler updated");
-			pre_spawn_handler = h;
-		}
-
-		if let Some(h) = working.borrow().post_spawn_handler.take() {
-			trace!("post-spawn handler updated");
-			post_spawn_handler = h;
-		}
-
 		debug!("running action handler");
+		let action_handler = {
+			let wrk = working.borrow();
+			wrk.action_handler.clone()
+		};
+
 		let outcome = action.outcome.clone();
 		let err = action_handler
-			.handle(action)
+			.call(action)
+			.await
 			.map_err(|e| rte("action worker", e));
 		if let Err(err) = err {
 			errors.send(err).await?;

@@ -4,14 +4,13 @@ use std::{
 	time::Duration,
 };
 
-use atomic_take::AtomicTake;
 use once_cell::sync::OnceCell;
 use tokio::{
 	process::Command,
 	sync::{Mutex, OwnedMutexGuard},
 };
 
-use crate::{command::Shell, event::Event, filter::Filterer, handler::Handler};
+use crate::{command::Shell, event::Event, filter::Filterer, handler::HandlerLock};
 
 use super::Outcome;
 
@@ -43,7 +42,7 @@ pub struct WorkingData {
 	/// It's useful to know that the handlers are updated from this working data before any of them
 	/// run in any given cycle, so changing the pre-spawn and post-spawn handlers from this handler
 	/// will not affect the running action.
-	pub action_handler: Arc<AtomicTake<Box<dyn Handler<Action> + Send>>>,
+	pub action_handler: HandlerLock<Action>,
 
 	/// A handler triggered before a command is spawned.
 	///
@@ -53,7 +52,7 @@ pub struct WorkingData {
 	///
 	/// Returning an error from the handler will stop the action from processing further, and issue
 	/// a [`RuntimeError`][crate::error::RuntimeError] to the error channel.
-	pub pre_spawn_handler: Arc<AtomicTake<Box<dyn Handler<PreSpawn> + Send>>>,
+	pub pre_spawn_handler: HandlerLock<PreSpawn>,
 
 	/// A handler triggered immediately after a command is spawned.
 	///
@@ -63,7 +62,7 @@ pub struct WorkingData {
 	/// Returning an error from the handler will drop the [`Child`][tokio::process::Child], which
 	/// will terminate the command without triggering any of the normal Watchexec behaviour, and
 	/// issue a [`RuntimeError`][crate::error::RuntimeError] to the error channel.
-	pub post_spawn_handler: Arc<AtomicTake<Box<dyn Handler<PostSpawn> + Send>>>,
+	pub post_spawn_handler: HandlerLock<PostSpawn>,
 
 	/// Command to execute.
 	///
@@ -110,9 +109,9 @@ impl Default for WorkingData {
 		Self {
 			// set to 50ms here, but will remain 100ms on cli until 2022
 			throttle: Duration::from_millis(50),
-			action_handler: Arc::new(AtomicTake::new(Box::new(()) as _)),
-			pre_spawn_handler: Arc::new(AtomicTake::new(Box::new(()) as _)),
-			post_spawn_handler: Arc::new(AtomicTake::new(Box::new(()) as _)),
+			action_handler: Default::default(),
+			pre_spawn_handler: Default::default(),
+			post_spawn_handler: Default::default(),
 			command: Vec::new(),
 			shell: Shell::default(),
 			grouped: true,
