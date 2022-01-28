@@ -127,18 +127,18 @@ impl Default for WorkingData {
 ///
 /// The [`Action::outcome()`] method is the only way to set the outcome of the action, and it _must_
 /// be called before the handler returns.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Action {
 	/// The collected events which triggered the action.
-	pub events: Arc<Vec<Event>>,
+	pub events: Arc<[Event]>,
 	pub(super) outcome: Arc<OnceCell<Outcome>>,
 }
 
 impl Action {
-	pub(super) fn new(events: Arc<Vec<Event>>) -> Self {
+	pub(super) fn new(events: Arc<[Event]>) -> Self {
 		Self {
 			events,
-			..Self::default()
+			outcome: Default::default(),
 		}
 	}
 
@@ -170,7 +170,7 @@ pub struct PreSpawn {
 	pub command: Vec<String>,
 
 	/// The collected events which triggered the action this command issues from.
-	pub events: Arc<Vec<Event>>,
+	pub events: Arc<[Event]>,
 
 	command_w: Weak<Mutex<Command>>,
 }
@@ -179,7 +179,7 @@ impl PreSpawn {
 	pub(super) fn new(
 		command: Command,
 		cmd: Vec<String>,
-		events: Arc<Vec<Event>>,
+		events: Arc<[Event]>,
 	) -> (Self, Arc<Mutex<Command>>) {
 		let arc = Arc::new(Mutex::new(command));
 		(
@@ -220,7 +220,7 @@ pub struct PostSpawn {
 	pub command: Vec<String>,
 
 	/// The collected events which triggered the action the command issues from.
-	pub events: Arc<Vec<Event>>,
+	pub events: Arc<[Event]>,
 
 	/// The process ID or the process group ID.
 	pub id: u32,

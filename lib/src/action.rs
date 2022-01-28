@@ -114,7 +114,7 @@ pub async fn worker(
 		trace!("out of throttle, starting action process");
 		last = Instant::now();
 
-		let events = Arc::new(set.drain(..).collect());
+		let events = Arc::from(set.drain(..).collect::<Vec<_>>().into_boxed_slice());
 		let action = Action::new(Arc::clone(&events));
 		debug!(?action, "action constructed");
 
@@ -157,7 +157,7 @@ pub async fn worker(
 
 #[derive(Clone)]
 struct ActionOutcome {
-	events: Arc<Vec<Event>>, // TODO: make this Arc<[Event]>
+	events: Arc<[Event]>,
 	working: Receiver<WorkingData>,
 	process: ProcessHolder,
 	errors_c: mpsc::Sender<RuntimeError>,
