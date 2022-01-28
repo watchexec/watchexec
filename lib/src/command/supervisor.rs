@@ -11,7 +11,6 @@ use tokio::{
 		mpsc::{self, Sender},
 		oneshot,
 	},
-	task::JoinHandle,
 };
 use tracing::{debug, error, trace};
 
@@ -38,9 +37,6 @@ enum Intervention {
 pub struct Supervisor {
 	id: u32,
 	intervene: Sender<Intervention>,
-
-	#[allow(dead_code)]
-	handle: JoinHandle<()>, // see TODO in ::spawn()
 
 	// why this and not a watch::channel? two reasons:
 	// 1. I tried the watch and ran into some race conditions???
@@ -81,7 +77,7 @@ impl Supervisor {
 		let (int_s, int_r) = mpsc::channel(8);
 
 		let going = ongoing.clone();
-		let handle = spawn(async move {
+		spawn(async move {
 			let mut process = process;
 			let mut int = int_r;
 
@@ -181,7 +177,6 @@ impl Supervisor {
 			waiter: Some(waiter),
 			ongoing,
 			intervene: int_s,
-			handle, // TODO: is there anything useful to do with this? do we need to keep it?
 		})
 	}
 

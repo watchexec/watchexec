@@ -136,6 +136,7 @@ pub async fn worker(
 			errors.clone(),
 			events_tx.clone(),
 		);
+		debug!("action process done");
 	}
 
 	debug!("action worker finished");
