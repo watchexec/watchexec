@@ -84,9 +84,9 @@
 //! on_data(PrintDisplay(stderr()));
 //! ```
 
-use std::{error::Error, future::Future, io::Write, marker::PhantomData};
+use std::{error::Error, future::Future, io::Write, marker::PhantomData, sync::Arc};
 
-use tokio::{runtime::Handle, task::block_in_place};
+use tokio::{runtime::Handle, sync::Mutex, task::block_in_place};
 
 use crate::error::RuntimeError;
 
@@ -94,6 +94,41 @@ use crate::error::RuntimeError;
 pub trait Handler<T> {
 	/// Call the handler with the given data.
 	fn handle(&mut self, _data: T) -> Result<(), Box<dyn Error>>;
+}
+
+/// A shareable wrapper for a [`Handler`].
+///
+/// Internally this is a Tokio [`Mutex`].
+pub struct HandlerLock<T>(Arc<Mutex<Box<dyn Handler<T> + Send>>>);
+impl<T> HandlerLock<T> {
+	/// Wrap a [`Handler`] into a lock.
+	pub fn new(handler: Box<dyn Handler<T> + Send>) -> Self {
+		Self(Arc::new(Mutex::new(handler)))
+	}
+
+	/// Replace the handler with a new one.
+	pub async fn replace(&self, new: Box<dyn Handler<T> + Send>) {
+		let mut handler = self.0.lock().await;
+		*handler = new;
+	}
+
+	/// Call the handler.
+	pub async fn call(&self, data: T) -> Result<(), Box<dyn Error>> {
+		let mut handler = self.0.lock().await;
+		handler.handle(data)
+	}
+}
+
+impl<T> Clone for HandlerLock<T> {
+	fn clone(&self) -> Self {
+		Self(Arc::clone(&self.0))
+	}
+}
+
+impl<T> Default for HandlerLock<T> {
+	fn default() -> Self {
+		Self::new(Box::new(()))
+	}
 }
 
 pub(crate) fn rte(ctx: &'static str, err: Box<dyn Error>) -> RuntimeError {
