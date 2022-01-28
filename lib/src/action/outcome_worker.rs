@@ -41,7 +41,12 @@ impl OutcomeWorker {
 		spawn(async move {
 			let errors_c = this.errors_c.clone();
 			if let Err(err) = this.apply(outcome.clone()).await {
-				error!(?err, "outcome applier errored");
+				if matches!(err, RuntimeError::Exit) {
+					debug!("propagating graceful exit");
+				} else {
+					error!(?err, "outcome applier errored");
+				}
+
 				if let Err(err) = errors_c.send(err).await {
 					error!(?err, "failed to send an error, something is terribly wrong");
 				}
