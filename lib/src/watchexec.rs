@@ -250,4 +250,12 @@ impl ErrorHook {
 	pub fn critical(self, critical: CriticalError) {
 		self.critical.set(critical).ok();
 	}
+
+	/// Elevate the current runtime error to critical.
+	///
+	/// This is a shorthand method for `ErrorHook::critical(CriticalError::Elevated(error))`.
+	pub fn elevate(self) {
+		let Self { error, critical } = self;
+		critical.set(CriticalError::Elevated(error)).ok();
+	}
 }

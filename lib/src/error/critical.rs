@@ -24,6 +24,15 @@ pub enum CriticalError {
 	#[diagnostic(code(watchexec::critical::external))]
 	External(#[from] Box<dyn std::error::Error + Send + Sync>),
 
+	/// For elevated runtime errors.
+	///
+	/// This should be used for runtime errors elevated to critical. This currently does not happen
+	/// in watchexec, but it is possible in the future. This variant is useful with the `on_error`
+	/// runtime error handler; see [`ErrorHook`](crate::ErrorHook).
+	#[error("elevated: {0}")]
+	#[diagnostic(code(watchexec::critical::elevated_runtime))]
+	Elevated(#[source] RuntimeError),
+
 	/// A critical I/O error occurred.
 	#[error("io({about}): {err}")]
 	#[diagnostic(code(watchexec::critical::io_error))]
