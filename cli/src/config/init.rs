@@ -1,7 +1,7 @@
 use std::convert::Infallible;
 
 use clap::ArgMatches;
-use miette::Result;
+use miette::{Report, Result};
 use tracing::error;
 use watchexec::{config::InitConfig, error::RuntimeError, handler::SyncFnHandler};
 
@@ -22,9 +22,9 @@ pub fn init(_args: &ArgMatches<'static>) -> Result<InitConfig> {
 
 			if cfg!(debug_assertions) {
 				eprintln!("[[{:?}]]", data);
-			} else {
-				eprintln!("[[{}]]", data);
 			}
+
+			eprintln!("[[Error (not fatal)]]\n{}", Report::new(data));
 
 			Ok(())
 		},
