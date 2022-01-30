@@ -322,3 +322,33 @@ fn multipath_is_sorted() {
 		])
 	);
 }
+
+#[test]
+fn multipath_is_deduped() {
+	let events = vec![
+		event("0123.txt", FileEventKind::Any),
+		event("0123.txt", FileEventKind::Any),
+		event("a.txt", FileEventKind::Any),
+		event("a.txt", FileEventKind::Any),
+		event("b.txt", FileEventKind::Any),
+		event("b.txt", FileEventKind::Any),
+		event("c.txt", FileEventKind::Any),
+		event("ᄁ.txt", FileEventKind::Any),
+		event("ᄁ.txt", FileEventKind::Any),
+	];
+	assert_eq!(
+		summarise_events_to_env(&events),
+		HashMap::from([
+			(
+				"OTHERWISE_CHANGED",
+				OsString::from(
+					"".to_string()
+						+ "0123.txt" + ENV_SEP + "a.txt"
+						+ ENV_SEP + "b.txt" + ENV_SEP
+						+ "c.txt" + ENV_SEP + "ᄁ.txt"
+				)
+			),
+			("COMMON", ospath("")),
+		])
+	);
+}

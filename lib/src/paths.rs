@@ -1,7 +1,7 @@
 //! Utilities for paths and sets of paths.
 
 use std::{
-	collections::HashMap,
+	collections::{HashMap, HashSet},
 	ffi::OsString,
 	path::{Path, PathBuf},
 };
@@ -109,7 +109,7 @@ pub fn summarise_events_to_env<'events>(
 		}) {
 			kind_buckets
 				.entry(kind)
-				.or_insert_with(Vec::new)
+				.or_insert_with(HashSet::new)
 				.extend(paths.clone());
 		}
 	}
@@ -128,7 +128,7 @@ pub fn summarise_events_to_env<'events>(
 				Modify(Name(_)) => "RENAMED",
 				_ => "OTHERWISE_CHANGED",
 			})
-			.or_insert_with(Vec::new)
+			.or_insert_with(HashSet::new)
 			.extend(paths.into_iter().map(|p| {
 				if let Some(suffix) = common_path
 					.as_ref()
@@ -143,10 +143,11 @@ pub fn summarise_events_to_env<'events>(
 
 	let mut res: HashMap<&'static str, OsString> = grouped_buckets
 		.into_iter()
-		.map(|(kind, mut paths)| {
+		.map(|(kind, paths)| {
 			let mut joined =
 				OsString::with_capacity(paths.iter().map(|p| p.len()).sum::<usize>() + paths.len());
 
+			let mut paths = paths.into_iter().collect::<Vec<_>>();
 			paths.sort();
 			paths.into_iter().enumerate().for_each(|(i, path)| {
 				if i > 0 {
