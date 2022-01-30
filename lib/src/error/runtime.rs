@@ -50,6 +50,10 @@ pub enum RuntimeError {
 		/// The underlying error.
 		#[source]
 		err: notify::Error,
+
+		/// A hint to the user about resolving the error.
+		#[source_code]
+		help: String,
 	},
 
 	/// Error received when reading a filesystem event fails.

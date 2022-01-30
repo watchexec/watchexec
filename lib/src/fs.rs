@@ -51,7 +51,17 @@ impl Watcher {
 			Self::Poll(delay) => notify::PollWatcher::with_delay(Arc::new(Mutex::new(f)), delay)
 				.map(|w| Box::new(w) as _),
 		}
-		.map_err(|err| RuntimeError::FsWatcherCreate { kind: self, err })
+		.map_err(|err| RuntimeError::FsWatcherCreate {
+			kind: self,
+			help: if cfg!(target_os = "linux") && (matches!(err.kind, notify::ErrorKind::MaxFilesWatch) || matches!(err.kind, notify::ErrorKind::Io(ref ioerr) if ioerr.raw_os_error() == Some(28))) {
+				"you will want to increase your inotify.max_user_watches, see inotify(7) and https://watchexec.github.io/docs/inotify-limits.html"
+			} else if cfg!(target_os = "linux") && matches!(err.kind, notify::ErrorKind::Io(ref ioerr) if ioerr.raw_os_error() == Some(24)) {
+				"you will want to increase your `nofile` limit, see pam_limits(8)"
+			} else {
+				"you may want to try again with the polling watcher"
+			}.into(),
+			err,
+		})
 	}
 }
 
