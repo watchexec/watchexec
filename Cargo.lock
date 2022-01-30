@@ -2518,34 +2518,6 @@ checksum = "fd6fbd9a79829dd1ad0cc20627bf1ed606756a7f77edff7b66b7064f9cb327c6"
 [[package]]
 name = "watchexec"
 version = "2.0.0-pre.8"
-dependencies = [
- "async-recursion",
- "async-stream",
- "atomic-take",
- "clearscreen",
- "command-group",
- "dunce",
- "futures",
- "git2",
- "globset",
- "ignore",
- "libc",
- "miette",
- "nom 7.1.0",
- "notify",
- "once_cell",
- "regex",
- "thiserror",
- "tokio",
- "tokio-stream",
- "tracing",
- "tracing-subscriber",
- "unicase",
-]
-
-[[package]]
-name = "watchexec"
-version = "2.0.0-pre.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f7966a31cfb48f16a9803aac9fe32df6e2c878c975ddbd1c3744da3fba2983b"
 dependencies = [
@@ -2573,6 +2545,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "watchexec"
+version = "2.0.0-pre.9"
+dependencies = [
+ "async-recursion",
+ "async-stream",
+ "atomic-take",
+ "clearscreen",
+ "command-group",
+ "dunce",
+ "futures",
+ "git2",
+ "globset",
+ "ignore",
+ "libc",
+ "miette",
+ "nom 7.1.0",
+ "notify",
+ "once_cell",
+ "regex",
+ "thiserror",
+ "tokio",
+ "tokio-stream",
+ "tracing",
+ "tracing-subscriber",
+ "unicase",
+]
+
+[[package]]
 name = "watchexec-cli"
 version = "1.18.4"
 dependencies = [
@@ -2589,7 +2589,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
- "watchexec 2.0.0-pre.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "watchexec 2.0.0-pre.8",
 ]
 
 [[package]]
