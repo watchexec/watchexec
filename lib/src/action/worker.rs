@@ -34,6 +34,7 @@ pub async fn worker(
 	let mut last = Instant::now();
 	let mut set = Vec::new();
 	let process = ProcessHolder::default();
+	let outcome_gen = OutcomeWorker::newgen();
 
 	loop {
 		let maxtime = if set.is_empty() {
@@ -133,6 +134,7 @@ pub async fn worker(
 			events,
 			working.clone(),
 			process.clone(),
+			outcome_gen.clone(),
 			errors.clone(),
 			events_tx.clone(),
 		);
