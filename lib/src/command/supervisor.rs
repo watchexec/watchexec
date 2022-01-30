@@ -234,7 +234,7 @@ impl Supervisor {
 	/// 100% in sync.
 	pub async fn wait(&mut self) -> Result<(), RuntimeError> {
 		if !self.ongoing.load(Ordering::SeqCst) {
-			trace!("supervisor already completed");
+			trace!("supervisor already completed (pre)");
 			return Ok(());
 		}
 
@@ -251,7 +251,7 @@ impl Supervisor {
 				#[cfg(not(debug_assertions))]
 				tracing::warn!("oneshot completed but ongoing was true, this should never happen");
 			}
-		} else {
+		} else if self.ongoing.load(Ordering::SeqCst) {
 			#[cfg(debug_assertions)]
 			panic!("waiter is None but ongoing was true, this should never happen");
 			#[cfg(not(debug_assertions))]
@@ -259,6 +259,8 @@ impl Supervisor {
 				self.ongoing.store(false, Ordering::SeqCst);
 				tracing::warn!("waiter is None but ongoing was true, this should never happen");
 			}
+		} else {
+			trace!("supervisor already completed (post)");
 		}
 
 		Ok(())
