@@ -7,7 +7,7 @@ use watchexec::{
 	error::ReconfigError,
 	fs::Watcher,
 	signal::source::MainSignal,
-	Watchexec,
+	ErrorHook, Watchexec,
 };
 
 // Run with: `env RUST_LOG=debug cargo run --example print_out`
@@ -16,8 +16,8 @@ async fn main() -> Result<()> {
 	tracing_subscriber::fmt::init();
 
 	let mut init = InitConfig::default();
-	init.on_error(|err| async move {
-		eprintln!("Watchexec Runtime Error: {}", err);
+	init.on_error(|err: ErrorHook| async move {
+		eprintln!("Watchexec Runtime Error: {}", err.error);
 		Ok::<(), std::convert::Infallible>(())
 	});
 

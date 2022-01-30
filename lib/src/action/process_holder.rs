@@ -31,7 +31,7 @@ impl ProcessHolder {
 		trace!("replacing supervisor");
 		if let Some(_old) = self.0.write().await.replace(new) {
 			trace!("replaced supervisor");
-			// TODO: figure out what to do with old
+		// TODO: figure out what to do with old
 		} else {
 			trace!("not replaced: no supervisor");
 		}

@@ -5,10 +5,10 @@ use std::{fmt, path::Path, sync::Arc, time::Duration};
 use crate::{
 	action::{Action, PostSpawn, PreSpawn},
 	command::Shell,
-	error::RuntimeError,
 	filter::Filterer,
 	fs::Watcher,
 	handler::{Handler, HandlerLock},
+	ErrorHook,
 };
 
 /// Runtime configuration for [`Watchexec`][crate::Watchexec].
@@ -127,18 +127,20 @@ pub struct InitConfig {
 	/// If the handler errors, [_that_ error][crate::error::RuntimeError::Handler] is immediately
 	/// given to the handler. If this second handler call errors as well, its error is ignored.
 	///
+	/// Also see the [`ErrorHook`] documentation for returning critical errors from this handler.
+	///
 	/// # Examples
 	///
 	/// ```
 	/// # use std::convert::Infallible;
-	/// # use watchexec::config::InitConfig;
+	/// # use watchexec::{config::InitConfig, ErrorHook};
 	/// let mut init = InitConfig::default();
-	/// init.on_error(|err| async move {
-	///     tracing::error!("{}", err);
+	/// init.on_error(|err: ErrorHook| async move {
+	///     tracing::error!("{}", err.error);
 	///     Ok::<(), Infallible>(())
 	/// });
 	/// ```
-	pub error_handler: Box<dyn Handler<RuntimeError> + Send>,
+	pub error_handler: Box<dyn Handler<ErrorHook> + Send>,
 
 	/// Internal: the buffer size of the channel which carries runtime errors.
 	///
@@ -167,7 +169,7 @@ impl InitConfig {
 	/// Set the runtime error handler.
 	///
 	/// See the [documentation on the field](InitConfig#structfield.error_handler) for more details.
-	pub fn on_error(&mut self, handler: impl Handler<RuntimeError> + Send + 'static) -> &mut Self {
+	pub fn on_error(&mut self, handler: impl Handler<ErrorHook> + Send + 'static) -> &mut Self {
 		self.error_handler = Box::new(handler) as _;
 		self
 	}

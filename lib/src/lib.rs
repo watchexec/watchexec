@@ -116,4 +116,4 @@ pub mod handler;
 mod watchexec;
 
 #[doc(inline)]
-pub use crate::watchexec::Watchexec;
+pub use crate::watchexec::{ErrorHook, Watchexec};

@@ -6,6 +6,7 @@ use std::{
 
 use atomic_take::AtomicTake;
 use futures::FutureExt;
+use once_cell::sync::OnceCell;
 use tokio::{
 	spawn,
 	sync::{mpsc, watch, Notify},
@@ -170,7 +171,7 @@ fn flatten(join_res: Result<Result<(), CriticalError>, JoinError>) -> Result<(),
 
 async fn error_hook(
 	mut errors: mpsc::Receiver<RuntimeError>,
-	mut handler: Box<dyn Handler<RuntimeError> + Send>,
+	mut handler: Box<dyn Handler<ErrorHook> + Send>,
 ) -> Result<(), CriticalError> {
 	while let Some(err) = errors.recv().await {
 		if matches!(err, RuntimeError::Exit) {
@@ -179,15 +180,74 @@ async fn error_hook(
 		}
 
 		error!(%err, "runtime error");
-		if let Err(err) = handler.handle(err) {
+
+		let hook = ErrorHook::new(err);
+		let crit = hook.critical.clone();
+		if let Err(err) = handler.handle(hook) {
 			error!(%err, "error while handling error");
-			handler
-				.handle(rte("error hook", err))
-				.unwrap_or_else(|err| {
-					error!(%err, "error while handling error of handling error");
-				});
+			let rehook = ErrorHook::new(rte("error hook", err));
+			let recrit = rehook.critical.clone();
+			handler.handle(rehook).unwrap_or_else(|err| {
+				error!(%err, "error while handling error of handling error");
+			});
+			ErrorHook::handle_crit(recrit, "error handler error handler")?;
+		} else {
+			ErrorHook::handle_crit(crit, "error handler")?;
 		}
 	}
 
 	Ok(())
+}
+
+/// The environment given to the error handler.
+///
+/// This deliberately does not implement Clone to make it hard to move it out of the handler, which
+/// you should not do.
+///
+/// The [`ErrorHook::critical()`] method should be used to send a [`CriticalError`], which will
+/// terminate watchexec. This is useful to e.g. upgrade certain errors to be fatal.
+///
+/// Note that returning errors from the error handler does not result in critical errors.
+#[derive(Debug)]
+pub struct ErrorHook {
+	/// The runtime error for which this handler was called.
+	pub error: RuntimeError,
+	critical: Arc<OnceCell<CriticalError>>,
+}
+
+impl ErrorHook {
+	fn new(error: RuntimeError) -> Self {
+		Self {
+			error,
+			critical: Default::default(),
+		}
+	}
+
+	fn handle_crit(
+		crit: Arc<OnceCell<CriticalError>>,
+		name: &'static str,
+	) -> Result<(), CriticalError> {
+		match Arc::try_unwrap(crit) {
+			Err(err) => {
+				error!(?err, "{} hook has an outstanding ref", name);
+				Ok(())
+			}
+			Ok(crit) => {
+				if let Some(crit) = crit.into_inner() {
+					debug!(%crit, "{} output a critical error", name);
+					Err(crit)
+				} else {
+					Ok(())
+				}
+			}
+		}
+	}
+
+	/// Set a critical error to be emitted.
+	///
+	/// This takes `self` and `ErrorHook` is not `Clone`, so it's only possible to call it once.
+	/// Regardless, if you _do_ manage to call it twice, it will do nothing beyond the first call.
+	pub fn critical(self, critical: CriticalError) {
+		self.critical.set(critical).ok();
+	}
 }

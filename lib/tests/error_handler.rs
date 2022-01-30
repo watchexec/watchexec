@@ -4,7 +4,7 @@ use miette::Result;
 use tokio::time::sleep;
 use watchexec::{
 	config::{InitConfig, RuntimeConfig},
-	Watchexec,
+	ErrorHook, Watchexec,
 };
 
 #[tokio::main]
@@ -12,8 +12,8 @@ async fn main() -> Result<()> {
 	tracing_subscriber::fmt::init();
 
 	let mut init = InitConfig::default();
-	init.on_error(|err| async move {
-		eprintln!("Watchexec Runtime Error: {}", err);
+	init.on_error(|err: ErrorHook| async move {
+		eprintln!("Watchexec Runtime Error: {}", err.error);
 		Ok::<(), std::convert::Infallible>(())
 	});
 
