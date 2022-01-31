@@ -2544,35 +2544,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "watchexec"
-version = "2.0.0-pre.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "258ab676835a769ed1b9f4b89c72f562a0867c3f862c26ffd19ea802266f18aa"
-dependencies = [
- "async-recursion",
- "async-stream",
- "atomic-take",
- "clearscreen",
- "command-group",
- "dunce",
- "futures",
- "git2",
- "globset",
- "ignore",
- "libc",
- "miette",
- "nom 7.1.0",
- "notify",
- "once_cell",
- "regex",
- "thiserror",
- "tokio",
- "tokio-stream",
- "tracing",
- "unicase",
-]
-
-[[package]]
 name = "watchexec-cli"
 version = "1.18.5"
 dependencies = [
@@ -2589,7 +2560,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
- "watchexec 2.0.0-pre.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "watchexec",
 ]
 
 [[package]]
