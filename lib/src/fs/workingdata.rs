@@ -1,4 +1,5 @@
 use std::{
+	collections::HashSet,
 	path::{Path, PathBuf},
 	sync::Arc,
 };
@@ -14,58 +15,158 @@ use super::Watcher;
 #[non_exhaustive]
 pub struct WorkingData {
 	/// The set of paths to be watched.
-	pub pathset: Vec<WatchedPath>,
+	pub pathset: HashSet<WatchedPath>,
 
 	/// The kind of watcher to be used.
 	pub watcher: Watcher,
-
-	/// The filterer implementation to use when filtering paths to watch.
-	///
-	/// This is invoked in this context in a special way, as synthetic events
-	/// with [`Source::Internal`] and a single path. This is used to filter out
-	/// paths that are not to be watched, in the context of a recursive
-	/// filesystem watch where we control the descent.
-	///
-	/// Even though the default [`Filterer`] is a noop, there is no way to check
-	/// that the filterer is always a noop, so this is an [`Option`]: if `Some`,
-	/// the internal watcher implementation will use non-recursive watching and
-	/// this module does the descent itself, otherwise the recursion is left to
-	/// the discretion of the Notify library.
-	pub filterer: Option<Arc<dyn Filterer>>,
 }
 
-/// A path to watch.
+/// A path to watch, and how to do so.
 ///
-/// This is currently only a wrapper around a [`PathBuf`], but may be augmented in the future.
-#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct WatchedPath(PathBuf);
+/// Note that this implements `Ord` by ignoring the value of the `recurse`
+/// field: only the `dirpath` is considered.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub struct WatchedPath {
+	/// The directory path.
+	///
+	/// This should not be a file: instead, watch the parent directory, and
+	/// filter relevant _events_ (i.e. not with this struct's `filterer`) to
+	/// just that file's.
+	pub dirpath: PathBuf,
+
+	/// Whether to recurse into subdirectories, and the strategy to use.
+	pub recursive: Recurse,
+}
+
+impl WatchedPath {
+	/// Create a new `WatchedPath` from a path and the default recurse strategy.
+	pub fn new(dirpath: impl Into<PathBuf>) -> Self {
+		Self {
+			dirpath: dirpath.into(),
+			recursive: Recurse::default(),
+		}
+	}
+
+	/// Create a new `WatchedPath` from a path and a recurse strategy.
+	pub fn new_with_recurse(dirpath: impl Into<PathBuf>, recursive: Recurse) -> Self {
+		Self {
+			dirpath: dirpath.into(),
+			recursive,
+		}
+	}
+
+	/// Create a new non-recursive `WatchedPath` from a path.
+	pub fn non_recursive(dirpath: impl Into<PathBuf>) -> Self {
+		Self {
+			dirpath: dirpath.into(),
+			recursive: Recurse::No,
+		}
+	}
+
+	/// Create a new filtered recursive `WatchedPath` from a path and a filterer.
+	pub fn filtered(dirpath: impl Into<PathBuf>, filterer: &Arc<dyn Filterer>) -> Self {
+		Self {
+			dirpath: dirpath.into(),
+			recursive: Recurse::Filtered(filterer.clone()),
+		}
+	}
+}
+
+/// The strategy to use when recursing into subdirectories.
+///
+/// Note that this implements `Eq` and `Hash` by ignoring the value of the
+/// `Filtered` variant, so two paths watched with different `Filtered` variants
+/// will be considered equal and will replace each other in the pathset; for
+/// best results prefer _not_ to do that.
+///
+/// This is marked non-exhaustive so new strategies can be added without breaking.
+#[derive(Clone, Debug)]
+#[non_exhaustive]
+pub enum Recurse {
+	/// Do not recurse.
+	No,
+
+	/// Recurse into subdirectories with the native/Notify implementation.
+	///
+	/// There is no control over how the recursion is done, but it may use
+	/// native APIs, which would be more efficient.
+	///
+	/// This is the default.
+	Native,
+
+	/// Recurse into subdirectories with this module's implementation.
+	///
+	/// Recursion is controlled via a [`Filterer`], which is invoked for every
+	/// folder candidate, and should return `true` if the folder is to be
+	/// watched (and recursed into).
+	///
+	/// The default (noop) filterer `()` may be used to recurse into all
+	/// subdirectories, but consider using `Native` instead in that case.
+	Filtered(Arc<dyn Filterer>),
+}
+
+impl Default for Recurse {
+	fn default() -> Self {
+		Self::Native
+	}
+}
+
+impl PartialEq for Recurse {
+	fn eq(&self, other: &Self) -> bool {
+		match (self, other) {
+			(Self::Filtered(_), Self::Filtered(_)) => true,
+			_ => std::mem::discriminant(self) == std::mem::discriminant(other),
+		}
+	}
+}
+
+impl std::hash::Hash for Recurse {
+	fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+		std::mem::discriminant(self).hash(state);
+	}
+}
+
+impl Eq for Recurse {}
+
+impl PartialOrd for WatchedPath {
+	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+		self.dirpath.partial_cmp(&other.dirpath)
+	}
+}
+
+impl Ord for WatchedPath {
+	fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+		self.dirpath.cmp(&other.dirpath)
+	}
+}
 
 impl From<PathBuf> for WatchedPath {
 	fn from(path: PathBuf) -> Self {
-		Self(path)
+		Self::new(path)
 	}
 }
 
 impl From<&str> for WatchedPath {
 	fn from(path: &str) -> Self {
-		Self(path.into())
+		Self::new(path)
 	}
 }
 
 impl From<&Path> for WatchedPath {
 	fn from(path: &Path) -> Self {
-		Self(path.into())
+		Self::new(path)
 	}
 }
 
 impl From<WatchedPath> for PathBuf {
 	fn from(path: WatchedPath) -> Self {
-		path.0
+		path.dirpath
 	}
 }
 
 impl AsRef<Path> for WatchedPath {
 	fn as_ref(&self) -> &Path {
-		self.0.as_ref()
+		self.dirpath.as_ref()
 	}
 }

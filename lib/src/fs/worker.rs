@@ -57,6 +57,8 @@ pub async fn worker(
 
 	let mut watcher_type = Watcher::default();
 	let mut watcher = None;
+
+	// the effective pathset, not exactly the one in the working data
 	let mut pathset = HashSet::new();
 
 	while working.changed().await.is_ok() {
@@ -75,19 +77,19 @@ pub async fn worker(
 			if watcher.is_none() || watcher_type != data.watcher {
 				pathset.drain();
 
-				(Some(data.watcher), data.pathset.clone(), Vec::new())
+				(Some(data.watcher), data.pathset.clone(), HashSet::new())
 			} else {
-				let mut to_watch = Vec::with_capacity(data.pathset.len());
-				let mut to_drop = Vec::with_capacity(pathset.len());
+				let mut to_watch = HashSet::with_capacity(data.pathset.len());
+				let mut to_drop = HashSet::with_capacity(pathset.len());
 				for path in data.pathset.iter() {
 					if !pathset.contains(path) {
-						to_watch.push(path.clone());
+						to_watch.insert(path.clone());
 					}
 				}
 
 				for path in pathset.iter() {
 					if !data.pathset.contains(path) {
-						to_drop.push(path.clone());
+						to_drop.insert(path.clone());
 					}
 				}
 
