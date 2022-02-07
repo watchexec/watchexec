@@ -10,7 +10,6 @@ use watchexec::{
 		Filter, Matcher, Op, Pattern, TaggedFilterer,
 	},
 	ignore::IgnoreFile,
-	project::ProjectType,
 };
 
 pub async fn tagged(args: &ArgMatches<'static>) -> Result<Arc<TaggedFilterer>> {
@@ -69,35 +68,14 @@ pub async fn tagged(args: &ArgMatches<'static>) -> Result<Arc<TaggedFilterer>> {
 			Filter::from_glob_ignore(None, ".*.kate-swp"),
 			Filter::from_glob_ignore(None, ".*.sw?"),
 			Filter::from_glob_ignore(None, ".*.sw?x"),
+			Filter::from_glob_ignore(None, ".bzr"),
+			Filter::from_glob_ignore(None, "_darcs"),
+			Filter::from_glob_ignore(None, ".fossil-settings"),
+			Filter::from_glob_ignore(None, ".git"),
+			Filter::from_glob_ignore(None, ".hg"),
+			Filter::from_glob_ignore(None, ".pijul"),
+			Filter::from_glob_ignore(None, ".svn"),
 		]);
-
-		if vcs_types.contains(&ProjectType::Git) {
-			filters.push(Filter::from_glob_ignore(None, "/.git"));
-		}
-
-		if vcs_types.contains(&ProjectType::Mercurial) {
-			filters.push(Filter::from_glob_ignore(None, "/.hg"));
-		}
-
-		if vcs_types.contains(&ProjectType::Subversion) {
-			filters.push(Filter::from_glob_ignore(None, "/.svn"));
-		}
-
-		if vcs_types.contains(&ProjectType::Bazaar) {
-			filters.push(Filter::from_glob_ignore(None, "/.bzr"));
-		}
-
-		if vcs_types.contains(&ProjectType::Darcs) {
-			filters.push(Filter::from_glob_ignore(None, "/_darcs"));
-		}
-
-		if vcs_types.contains(&ProjectType::Fossil) {
-			filters.push(Filter::from_glob_ignore(None, "/.fossil-settings"));
-		}
-
-		if vcs_types.contains(&ProjectType::Pijul) {
-			filters.push(Filter::from_glob_ignore(None, "/.pijul"));
-		}
 	}
 
 	if args.is_present("no-meta") {
