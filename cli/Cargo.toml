@@ -1,6 +1,6 @@
 [package]
 name = "watchexec-cli"
-version = "1.18.5"
+version = "1.18.6"
 
 authors = ["Matt Green <mattgreenrocks@gmail.com>", "Félix Saparelli <felix@passcod.name>"]
 license = "Apache-2.0"
