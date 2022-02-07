@@ -108,16 +108,15 @@ pub async fn ignores(
 		);
 	}
 
-	if !vcs_types.is_empty() {
-		ignores.extend(global_ignores.into_iter().filter(|ig| match ig.applies_to {
-			Some(pt) if pt.is_vcs() => vcs_types.contains(&pt),
-			_ => true,
-		}));
-		debug!(
-			?ignores,
-			"combined and applied overall vcs filter over ignores"
-		);
-	}
+	ignores.extend(global_ignores.into_iter().filter(|ig| match ig.applies_to {
+		Some(pt) if pt.is_vcs() => vcs_types.contains(&pt),
+		_ => true,
+	}));
+	debug!(
+		?ignores,
+		?vcs_types,
+		"combined and applied overall vcs filter over ignores"
+	);
 
 	if args.is_present("no-project-ignore") {
 		ignores = ignores
