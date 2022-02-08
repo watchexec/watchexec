@@ -45,9 +45,17 @@ More usage examples: [in the CLI README](./cli/#usage-examples)!
 - As pre-built binary package: https://watchexec.github.io/downloads/
 - With your package manager for Arch, Homebrew, Nix, Scoop, Chocolatey…
 - From source with Cargo: `cargo install watchexec-cli`
+- From binary with Binstall: `cargo binstall watchexec-cli`
 
 All options in detail: [in the CLI README](./cli/#installation).
 
+## Augment
+
+Watchexec pairs well with:
+
+- [checkexec](https://github.com/kurtbuilds/checkexec): to run only when source files are newer than a target file
+- [just](https://github.com/casey/just): a modern alternative to `make`
+- [systemfd](https://github.com/mitsuhiko/systemfd): socket-passing in development
 
 ## Extend
 
