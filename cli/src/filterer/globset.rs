@@ -58,8 +58,7 @@ pub async fn globset(args: &ArgMatches<'static>) -> Result<Arc<WatchexecFilterer
 	let exts = args
 		.values_of_os("extensions")
 		.unwrap_or_default()
-		.map(|s| s.split(b','))
-		.flatten()
+		.flat_map(|s| s.split(b','))
 		.map(|e| os_strip_prefix(e, b'.'));
 
 	Ok(Arc::new(WatchexecFilterer {
