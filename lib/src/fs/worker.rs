@@ -8,7 +8,7 @@ use tracing::{debug, trace, warn};
 
 use crate::{
 	error::{CriticalError, RuntimeError},
-	event::{Event, Source, Tag},
+	event::{filekind::FileEventKind, Event, FileType, Source, Tag},
 };
 
 use super::{recursor::PathSet, Watcher, WorkingData};
@@ -40,7 +40,7 @@ use super::{recursor::PathSet, Watcher, WorkingData};
 ///     let (wd_s, wd_r) = watch::channel(WorkingData::default());
 ///
 ///     let mut wkd = WorkingData::default();
-///     wkd.pathset = vec![".".into()];
+///     wkd.pathset.insert(".".into());
 ///     wd_s.send(wkd)?;
 ///
 ///     worker(wd_r, er_s, ev_s).await?;
@@ -148,12 +148,17 @@ fn process_event(
 
 	let mut tags = Vec::with_capacity(4);
 	tags.push(Tag::Source(Source::Filesystem));
-	tags.push(Tag::FileEventKind(nev.kind));
 
+	let mut dirs = Vec::new();
 	for path in nev.paths {
 		// possibly pull file_type from whatever notify (or the native driver) returns?
+		let file_type = metadata(&path).ok().map(|m| m.file_type().into());
+		if let Some(FileType::Dir) = file_type {
+			dirs.push(path.clone());
+		}
+
 		tags.push(Tag::Path {
-			file_type: metadata(&path).ok().map(|m| m.file_type().into()),
+			file_type,
 			path: dunce::canonicalize(&path).unwrap_or_else(|err| {
 				warn!(?err, ?path, "failed to canonicalise event path");
 				path
@@ -161,14 +166,24 @@ fn process_event(
 		});
 	}
 
+	if !dirs.is_empty() {
+		match nev.kind {
+			FileEventKind::Create(_) => todo!("watch new dirs"),
+			FileEventKind::Remove(_) => todo!("unwatch gone dirs"),
+			_ => {}
+		}
+	}
+
+	tags.push(Tag::FileEventKind(nev.kind));
+
 	if let Some(pid) = nev.attrs.process_id() {
 		tags.push(Tag::Process(pid));
 	}
 
 	let mut metadata = HashMap::new();
 
-	if let Some(uid) = nev.attrs.info() {
-		metadata.insert("file-event-info".to_string(), vec![uid.to_string()]);
+	if let Some(info) = nev.attrs.info() {
+		metadata.insert("file-event-info".to_string(), vec![info.to_string()]);
 	}
 
 	if let Some(src) = nev.attrs.source() {

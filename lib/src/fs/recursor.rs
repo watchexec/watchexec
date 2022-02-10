@@ -11,7 +11,8 @@ use crate::error::RuntimeError;
 
 use super::{Recurse, WatchedPath, Watcher as WatcherKind};
 
-// TODO: for Recurse::Native, unwatch and re-watch manually while ignoring all the erroring paths
+// TODO: for Recurse::Native, on error return a Recurse::Filtered with a filter
+// that ignores the erroring paths.
 // See https://github.com/watchexec/watchexec/issues/218
 
 #[derive(Debug, Default)]
