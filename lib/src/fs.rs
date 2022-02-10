@@ -7,6 +7,7 @@ pub use worker::*;
 #[doc(inline)]
 pub use workingdata::*;
 
+mod recursor;
 mod watcher;
 mod worker;
 mod workingdata;

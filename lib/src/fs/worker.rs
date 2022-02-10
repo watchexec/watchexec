@@ -1,18 +1,17 @@
 use std::{
 	collections::{HashMap, HashSet},
 	fs::metadata,
-	mem::take,
 };
 
 use tokio::sync::{mpsc, watch};
-use tracing::{debug, error, trace, warn};
+use tracing::{debug, trace, warn};
 
 use crate::{
 	error::{CriticalError, RuntimeError},
 	event::{Event, Source, Tag},
 };
 
-use super::{WatchedPath, Watcher, WorkingData};
+use super::{recursor::PathSet, Watcher, WorkingData};
 
 /// Launch the filesystem event worker.
 ///
@@ -58,8 +57,8 @@ pub async fn worker(
 	let mut watcher_type = Watcher::default();
 	let mut watcher = None;
 
-	// the effective pathset, not exactly the one in the working data
-	let mut pathset = HashSet::new();
+	// the effective pathset
+	let mut pathset = PathSet::default();
 
 	while working.changed().await.is_ok() {
 		// In separate scope so we drop the working read lock as early as we can
@@ -122,27 +121,15 @@ pub async fn worker(
 
 			for path in to_drop {
 				trace!(?path, "removing path from the watcher");
-				if let Err(err) = w.unwatch(path.as_ref()) {
-					error!(?err, "notify unwatch() error");
-					for e in notify_multi_path_errors(watcher_type, path, err, true) {
-						errors.send(e).await?;
-					}
-				} else {
-					pathset.remove(&path);
+				if let Err(err) = path.unwatch(watcher_type, w, &mut pathset) {
+					errors.send(err).await?;
 				}
 			}
 
 			for path in to_watch {
 				trace!(?path, "adding path to the watcher");
-				if let Err(err) = w.watch(path.as_ref(), notify::RecursiveMode::Recursive) {
-					error!(?err, "notify watch() error");
-					for e in notify_multi_path_errors(watcher_type, path, err, false) {
-						errors.send(e).await?;
-					}
-				// TODO: unwatch and re-watch manually while ignoring all the erroring paths
-				// See https://github.com/watchexec/watchexec/issues/218
-				} else {
-					pathset.insert(path);
+				if let Err(err) = path.watch(watcher_type, w, &mut pathset) {
+					errors.send(err).await?;
 				}
 			}
 		}
@@ -150,37 +137,6 @@ pub async fn worker(
 
 	debug!("ending file watcher");
 	Ok(())
-}
-
-fn notify_multi_path_errors(
-	kind: Watcher,
-	path: WatchedPath,
-	mut err: notify::Error,
-	rm: bool,
-) -> Vec<RuntimeError> {
-	let mut paths = take(&mut err.paths);
-	if paths.is_empty() {
-		paths.push(path.into());
-	}
-
-	let generic = err.to_string();
-	let mut err = Some(err);
-
-	let mut errs = Vec::with_capacity(paths.len());
-	for path in paths {
-		let e = err
-			.take()
-			.unwrap_or_else(|| notify::Error::generic(&generic))
-			.add_path(path.clone());
-
-		errs.push(if rm {
-			RuntimeError::FsWatcherPathRemove { path, kind, err: e }
-		} else {
-			RuntimeError::FsWatcherPathAdd { path, kind, err: e }
-		});
-	}
-
-	errs
 }
 
 fn process_event(

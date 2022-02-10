@@ -18,7 +18,7 @@ async fn main() -> Result<()> {
 	let (wd_s, wd_r) = watch::channel(fs::WorkingData::default());
 
 	let mut wkd = fs::WorkingData::default();
-	wkd.pathset = vec![".".into()];
+	wkd.pathset.insert(".".into());
 	wd_s.send(wkd.clone()).into_diagnostic()?;
 
 	tokio::spawn(async move {
@@ -35,7 +35,7 @@ async fn main() -> Result<()> {
 
 	let wd_sh = tokio::spawn(async move {
 		sleep(Duration::from_secs(15)).await;
-		wkd.pathset = Vec::new();
+		wkd.pathset.drain();
 		tracing::info!("turning off fs watcher without stopping it");
 		wd_s.send(wkd).unwrap();
 		wd_s
