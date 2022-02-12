@@ -3,7 +3,12 @@ use std::convert::Infallible;
 use clap::ArgMatches;
 use miette::{Report, Result};
 use tracing::error;
-use watchexec::{config::InitConfig, error::RuntimeError, handler::SyncFnHandler, ErrorHook};
+use watchexec::{
+	config::InitConfig,
+	error::{FsWatcherError, RuntimeError},
+	handler::SyncFnHandler,
+	ErrorHook,
+};
 
 pub fn init(_args: &ArgMatches<'static>) -> Result<InitConfig> {
 	let mut config = InitConfig::default();
@@ -20,7 +25,14 @@ pub fn init(_args: &ArgMatches<'static>) -> Result<InitConfig> {
 				return Ok(());
 			}
 
-			if let RuntimeError::FsWatcherCreate { .. } = err.error {
+			if let RuntimeError::FsWatcher {
+				err:
+					FsWatcherError::Create { .. }
+					| FsWatcherError::TooManyWatches { .. }
+					| FsWatcherError::TooManyHandles { .. },
+				..
+			} = err.error
+			{
 				err.elevate();
 				return Ok(());
 			}

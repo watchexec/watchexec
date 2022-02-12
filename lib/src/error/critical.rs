@@ -29,9 +29,16 @@ pub enum CriticalError {
 	/// This should be used for runtime errors elevated to critical. This currently does not happen
 	/// in watchexec, but it is possible in the future. This variant is useful with the `on_error`
 	/// runtime error handler; see [`ErrorHook`](crate::ErrorHook).
-	#[error("elevated: {0}")]
-	#[diagnostic(code(watchexec::critical::elevated_runtime))]
-	Elevated(#[source] RuntimeError),
+	#[error("a runtime error is too serious for the process to continue")]
+	#[diagnostic(code(watchexec::critical::elevated_runtime), help("{help:?}"))]
+	Elevated {
+		/// The runtime error to be elevated.
+		#[source]
+		err: RuntimeError,
+
+		/// Some context or help for the user.
+		help: Option<String>,
+	},
 
 	/// A critical I/O error occurred.
 	#[error("io({about}): {err}")]

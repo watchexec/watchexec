@@ -6,6 +6,7 @@ use std::{
 
 use atomic_take::AtomicTake;
 use futures::FutureExt;
+use miette::Diagnostic;
 use once_cell::sync::OnceCell;
 use tokio::{
 	spawn,
@@ -256,6 +257,11 @@ impl ErrorHook {
 	/// This is a shorthand method for `ErrorHook::critical(CriticalError::Elevated(error))`.
 	pub fn elevate(self) {
 		let Self { error, critical } = self;
-		critical.set(CriticalError::Elevated(error)).ok();
+		critical
+			.set(CriticalError::Elevated {
+				help: error.help().map(|h| h.to_string()),
+				err: error,
+			})
+			.ok();
 	}
 }
