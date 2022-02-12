@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
 use ignore::gitignore::Gitignore;
 use miette::Diagnostic;
@@ -125,4 +125,55 @@ impl From<TaggedFiltererError> for RuntimeError {
 			err: Box::new(err) as _,
 		}
 	}
+}
+
+/// Errors emitted by the filesystem watcher.
+#[derive(Debug, Diagnostic, Error)]
+#[non_exhaustive]
+#[diagnostic(url(docsrs))]
+pub enum FsWatcherError {
+	/// Error received when creating a filesystem watcher fails.
+	#[error("failed to instantiate")]
+	#[diagnostic(
+		code(watchexec::fs_watcher::create),
+		help("perhaps retry with the poll watcher")
+	)]
+	Create {
+		/// The underlying error.
+		#[source]
+		err: notify::Error,
+
+		/// A hint to the user about resolving the error.
+		#[source_code]
+		help: String,
+	},
+
+	/// Error received when reading a filesystem event fails.
+	#[error("received an event that we could not read")]
+	#[diagnostic(code(watchexec::fs_watcher::event))]
+	Event(#[source] notify::Error),
+
+	/// Error received when adding to the pathset for the filesystem watcher fails.
+	#[error("while adding {path:?}")]
+	#[diagnostic(code(watchexec::fs_watcher::path_add))]
+	PathAdd {
+		/// The path that was attempted to be added.
+		path: PathBuf,
+
+		/// The underlying error.
+		#[source]
+		err: notify::Error,
+	},
+
+	/// Error received when removing from the pathset for the filesystem watcher fails.
+	#[error("while removing {path:?}")]
+	#[diagnostic(code(watchexec::fs_watcher::path_remove))]
+	PathRemove {
+		/// The path that was attempted to be removed.
+		path: PathBuf,
+
+		/// The underlying error.
+		#[source]
+		err: notify::Error,
+	},
 }

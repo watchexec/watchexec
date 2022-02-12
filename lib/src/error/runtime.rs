@@ -37,65 +37,16 @@ pub enum RuntimeError {
 		err: std::io::Error,
 	},
 
-	/// Error received when creating a filesystem watcher fails.
-	#[error("{kind:?} watcher failed to instantiate: {err}")]
-	#[diagnostic(
-		code(watchexec::runtime::fs_watcher_error),
-		help("perhaps retry with the poll watcher")
-	)]
-	FsWatcherCreate {
+	/// Events from the filesystem watcher event source.
+	#[error("{kind:?} fs watcher error")]
+	#[diagnostic(code(watchexec::runtime::fs_watcher))]
+	FsWatcher {
 		/// The kind of watcher that failed to instantiate.
 		kind: Watcher,
 
 		/// The underlying error.
 		#[source]
-		err: notify::Error,
-
-		/// A hint to the user about resolving the error.
-		#[source_code]
-		help: String,
-	},
-
-	/// Error received when reading a filesystem event fails.
-	#[error("{kind:?} watcher received an event that we could not read: {err}")]
-	#[diagnostic(code(watchexec::runtime::fs_watcher_event))]
-	FsWatcherEvent {
-		/// The kind of watcher that failed to read an event.
-		kind: Watcher,
-
-		/// The underlying error.
-		#[source]
-		err: notify::Error,
-	},
-
-	/// Error received when adding to the pathset for the filesystem watcher fails.
-	#[error("while adding {path:?} to the {kind:?} watcher: {err}")]
-	#[diagnostic(code(watchexec::runtime::fs_watcher_path_add))]
-	FsWatcherPathAdd {
-		/// The path that was attempted to be added.
-		path: PathBuf,
-
-		/// The kind of watcher that failed to add a path.
-		kind: Watcher,
-
-		/// The underlying error.
-		#[source]
-		err: notify::Error,
-	},
-
-	/// Error received when removing from the pathset for the filesystem watcher fails.
-	#[error("while removing {path:?} from the {kind:?} watcher: {err}")]
-	#[diagnostic(code(watchexec::runtime::fs_watcher_path_remove))]
-	FsWatcherPathRemove {
-		/// The path that was attempted to be removed.
-		path: PathBuf,
-
-		/// The kind of watcher that failed to remove a path.
-		kind: Watcher,
-
-		/// The underlying error.
-		#[source]
-		err: notify::Error,
+		err: super::FsWatcherError,
 	},
 
 	/// Opaque internal error from a command supervisor.

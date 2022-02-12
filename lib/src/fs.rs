@@ -14,7 +14,7 @@ use tokio::sync::{mpsc, watch};
 use tracing::{debug, error, trace, warn};
 
 use crate::{
-	error::{CriticalError, RuntimeError},
+	error::{CriticalError, FsWatcherError, RuntimeError},
 	event::{Event, Source, Tag},
 };
 
@@ -51,8 +51,9 @@ impl Watcher {
 			Self::Poll(delay) => notify::PollWatcher::with_delay(Arc::new(Mutex::new(f)), delay)
 				.map(|w| Box::new(w) as _),
 		}
-		.map_err(|err| RuntimeError::FsWatcherCreate {
+		.map_err(|err| RuntimeError::FsWatcher {
 			kind: self,
+			err: FsWatcherError::Create {
 			help: if cfg!(target_os = "linux") && (matches!(err.kind, notify::ErrorKind::MaxFilesWatch) || matches!(err.kind, notify::ErrorKind::Io(ref ioerr) if ioerr.raw_os_error() == Some(28))) {
 				"you will want to increase your inotify.max_user_watches, see inotify(7) and https://watchexec.github.io/docs/inotify-limits.html"
 			} else if cfg!(target_os = "linux") && matches!(err.kind, notify::ErrorKind::Io(ref ioerr) if ioerr.raw_os_error() == Some(24)) {
@@ -61,7 +62,7 @@ impl Watcher {
 				"you may want to try again with the polling watcher"
 			}.into(),
 			err,
-		})
+		}})
 	}
 }
 
@@ -271,10 +272,13 @@ fn notify_multi_path_errors(
 			.unwrap_or_else(|| notify::Error::generic(&generic))
 			.add_path(path.clone());
 
-		errs.push(if rm {
-			RuntimeError::FsWatcherPathRemove { path, kind, err: e }
-		} else {
-			RuntimeError::FsWatcherPathAdd { path, kind, err: e }
+		errs.push(RuntimeError::FsWatcher {
+			kind,
+			err: if rm {
+				FsWatcherError::PathRemove { path, err: e }
+			} else {
+				FsWatcherError::PathAdd { path, err: e }
+			},
 		});
 	}
 
@@ -286,7 +290,10 @@ fn process_event(
 	kind: Watcher,
 	n_events: mpsc::Sender<Event>,
 ) -> Result<(), RuntimeError> {
-	let nev = nev.map_err(|err| RuntimeError::FsWatcherEvent { kind, err })?;
+	let nev = nev.map_err(|err| RuntimeError::FsWatcher {
+		kind,
+		err: FsWatcherError::Event(err),
+	})?;
 
 	let mut tags = Vec::with_capacity(4);
 	tags.push(Tag::Source(Source::Filesystem));
