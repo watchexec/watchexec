@@ -126,22 +126,30 @@ impl Filterer for GlobsetFilterer {
 					return false;
 				}
 
-				if self.filters.num_ignores() > 0 && !self.filters.matched(path, is_dir).is_ignore()
-				{
-					trace!("ignored by globset filters");
-					return false;
+				let mut filtered = false;
+				if self.filters.num_ignores() > 0 {
+					trace!("running through glob filters");
+					filtered = true;
+
+					if self.filters.matched(path, is_dir).is_ignore() {
+						trace!("allowed by globset filters");
+						return true;
+					}
 				}
 
 				if !self.extensions.is_empty() {
+					trace!("running through extension filters");
+					filtered = true;
+
 					if is_dir {
 						trace!("failed on extension check due to being a dir");
 						return false;
 					}
 
 					if let Some(ext) = path.extension() {
-						if !self.extensions.iter().any(|e| e == ext) {
-							trace!("ignored by extension filter");
-							return false;
+						if self.extensions.iter().any(|e| e == ext) {
+							trace!("allowed by extension filter");
+							return true;
 						}
 					} else {
 						trace!(
@@ -152,7 +160,7 @@ impl Filterer for GlobsetFilterer {
 					}
 				}
 
-				true
+				!filtered
 			}))
 		}
 	}
