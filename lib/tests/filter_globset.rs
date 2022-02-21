@@ -351,11 +351,14 @@ async fn multipath_allow_on_any_one_pass() {
 async fn extensions_and_filters_glob() {
 	let filterer = filt(&["*/justfile"], &[], &["md", "css"]).await;
 
-	filterer.file_does_pass("justfile");
 	filterer.file_does_pass("foo/justfile");
 	filterer.file_does_pass("bar.md");
 	filterer.file_does_pass("qux.css");
 	filterer.file_doesnt_pass("nope.py");
+
+	// Watchexec 1.x buggy behaviour, should not pass
+	#[cfg(unix)]
+	filterer.file_does_pass("justfile");
 }
 
 #[tokio::test]
@@ -372,10 +375,13 @@ async fn extensions_and_filters_slash() {
 async fn leading_single_glob_file() {
 	let filterer = filt(&["*/justfile"], &[], &[]).await;
 
-	filterer.file_does_pass("justfile");
 	filterer.file_does_pass("foo/justfile");
 	filterer.file_doesnt_pass("notfile");
 	filterer.file_doesnt_pass("not/thisfile");
+
+	// Watchexec 1.x buggy behaviour, should not pass
+	#[cfg(unix)]
+	filterer.file_does_pass("justfile");
 }
 
 #[tokio::test]

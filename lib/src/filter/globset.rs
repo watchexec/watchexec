@@ -1,7 +1,7 @@
 //! A simple filterer in the style of the watchexec v1 filter.
 
 use std::ffi::OsString;
-use std::path::{Path, PathBuf};
+use std::path::{Path, PathBuf, MAIN_SEPARATOR};
 
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use tracing::{debug, trace, trace_span};
@@ -19,6 +19,7 @@ use crate::ignore::{IgnoreFile, IgnoreFilterer};
 /// have an updatable configuration.
 #[derive(Debug)]
 pub struct GlobsetFilterer {
+	origin: PathBuf,
 	filters: Gitignore,
 	ignores: Gitignore,
 	ignore_files: IgnoreFilterer,
@@ -74,6 +75,7 @@ impl GlobsetFilterer {
 		ignore_files.finish();
 
 		debug!(
+			?origin,
 			num_filters=%filters.num_ignores(),
 			num_neg_filters=%filters.num_whitelists(),
 			num_ignores=%ignores.num_ignores(),
@@ -83,6 +85,7 @@ impl GlobsetFilterer {
 		"globset filterer built");
 
 		Ok(Self {
+			origin: origin.into(),
 			filters,
 			ignores,
 			ignore_files,
@@ -134,6 +137,24 @@ impl Filterer for GlobsetFilterer {
 					if self.filters.matched(path, is_dir).is_ignore() {
 						trace!("allowed by globset filters");
 						return true;
+					}
+
+					// Watchexec 1.x bug, TODO remove at 2.0
+					#[cfg(unix)]
+					if let Ok(based) = path.strip_prefix(&self.origin) {
+						let rebased = {
+							let mut b = self.origin.clone().into_os_string();
+							b.push(PathBuf::from(String::from(MAIN_SEPARATOR)));
+							b.push(PathBuf::from(String::from(MAIN_SEPARATOR)));
+							b.push(based.as_os_str());
+							b
+						};
+
+						trace!(?rebased, "testing on rebased path, 1.x bug compat (#258)");
+						if self.filters.matched(rebased, is_dir).is_ignore() {
+							trace!("allowed by globset filters, 1.x bug compat (#258)");
+							return true;
+						}
 					}
 				}
 
