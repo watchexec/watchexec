@@ -31,10 +31,9 @@ max = 1
 
 [[pre-release-replacements]]
 file = "tests/snapshots/help__help_windows.snap"
-search = "watchexec.exe [\\d.]+(-.+)?"
-replace = "watchexec.exe {{version}}"
+search = "watchexec [\\d.]+(-.+)?"
+replace = "watchexec {{version}}"
 prerelease = true
-min = 0
 max = 1
 
 [[pre-release-replacements]]
@@ -42,5 +41,4 @@ file = "tests/snapshots/help__help_unix.snap"
 search = "watchexec [\\d.]+(-.+)?"
 replace = "watchexec {{version}}"
 prerelease = true
-min = 0
 max = 1
