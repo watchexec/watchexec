@@ -5,7 +5,6 @@ use std::{
 	fs::metadata,
 	mem::take,
 	path::{Path, PathBuf},
-	sync::{Arc, Mutex},
 	time::Duration,
 };
 
@@ -48,7 +47,7 @@ impl Watcher {
 	) -> Result<Box<dyn notify::Watcher + Send>, RuntimeError> {
 		match self {
 			Self::Native => notify::RecommendedWatcher::new(f).map(|w| Box::new(w) as _),
-			Self::Poll(delay) => notify::PollWatcher::with_delay(Arc::new(Mutex::new(f)), delay)
+			Self::Poll(delay) => notify::PollWatcher::with_delay(f, delay)
 				.map(|w| Box::new(w) as _),
 		}
 		.map_err(|err| RuntimeError::FsWatcher {

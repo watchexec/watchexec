@@ -41,7 +41,7 @@ version = "0.13.22"
 default-features = false
 
 [dependencies.notify]
-version = "5.0.0-pre.13"
+version = "5.0.0-pre.14"
 default-features = false
 features = ["macos_kqueue"]
 
