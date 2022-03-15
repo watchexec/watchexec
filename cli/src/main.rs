@@ -1,6 +1,7 @@
 use std::env::var;
 
 use miette::{IntoDiagnostic, Result};
+use tracing::debug;
 use watchexec::{event::Event, Watchexec};
 
 mod args;
@@ -46,6 +47,8 @@ async fn main() -> Result<()> {
 			builder.try_init().ok();
 		}
 	}
+
+	debug!(version=%env!("CARGO_PKG_VERSION"), "constructing Watchexec from CLI");
 
 	let init = config::init(&args)?;
 	let mut runtime = config::runtime(&args)?;
