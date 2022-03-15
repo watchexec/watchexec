@@ -58,7 +58,7 @@ impl Watchexec {
 		mut init: InitConfig,
 		mut runtime: RuntimeConfig,
 	) -> Result<Arc<Self>, CriticalError> {
-		debug!(?init, ?runtime, pid=%std::process::id(), "initialising");
+		debug!(?init, ?runtime, pid=%std::process::id(), version=%env!("CARGO_PKG_VERSION"), "initialising");
 
 		let (ev_s, ev_r) = mpsc::channel(init.event_channel_size);
 		let (ac_s, ac_r) = watch::channel(take(&mut runtime.action));

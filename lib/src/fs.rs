@@ -47,8 +47,9 @@ impl Watcher {
 	) -> Result<Box<dyn notify::Watcher + Send>, RuntimeError> {
 		match self {
 			Self::Native => notify::RecommendedWatcher::new(f).map(|w| Box::new(w) as _),
-			Self::Poll(delay) => notify::PollWatcher::with_delay(f, delay)
-				.map(|w| Box::new(w) as _),
+			Self::Poll(delay) => {
+				notify::PollWatcher::with_delay(f, delay).map(|w| Box::new(w) as _)
+			}
 		}
 		.map_err(|err| RuntimeError::FsWatcher {
 			kind: self,
