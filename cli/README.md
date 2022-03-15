@@ -35,6 +35,8 @@ Example use cases:
     | `$WATCHEXEC_META_CHANGED_PATH` | files/folders' metadata were modified |
     | `$WATCHEXEC_OTHERWISE_CHANGED_PATH` | every other kind of event |
 
+    These variables may contain multiple paths: these are separated by the platform's path separator, as with the `PATH` system environment variable. On Unix that is `:`, and on Windows `;`. Within each variable, paths are deduplicated and sorted in binary order (i.e. neither Unicode nor locale aware).
+
     This can be disabled or limited with `--no-environment` (doesn't set any of these variables) and `--no-meta` (ignores metadata changes).
 
 ## Anti-Features

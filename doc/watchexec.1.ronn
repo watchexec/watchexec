@@ -116,7 +116,7 @@ In variables that contain lists of paths, the separator is as for the `$PATH` en
 
 Processes started by watchexec have environment variables set describing the changes observed.
 
-`$WATCHEXEC_COMMON_PATH` is set to the longest common path of all of the below variables, and so should be prepended to each path to obtain the full/real path.
+`$WATCHEXEC_COMMON_PATH` is set to the longest common path of all of the below variables, and so should be prepended to each path to obtain the full/real path. Then:
 
  - `$WATCHEXEC_CREATED_PATH` is set when files/folders were created
  - `$WATCHEXEC_REMOVED_PATH` is set when files/folders were removed
@@ -125,7 +125,11 @@ Processes started by watchexec have environment variables set describing the cha
  - `$WATCHEXEC_META_CHANGED_PATH` is set when files/folders' metadata were modified
  - `$WATCHEXEC_OTHERWISE_CHANGED_PATH` is set for every other kind of pathed event
 
-This can be disabled or limited with `--no-environment` (doesn't set any of these variables) and `--no-meta` (ignores metadata changes).
+These variables may contain multiple paths: these are separated by the platform's path separator, as with the `PATH` system environment variable. On Unix that is `:`, and on Windows `;`. Within each variable, paths are deduplicated and sorted in binary order (i.e. neither Unicode nor locale aware).
+
+One thing to take care of is assuming inherent behaviour where there is only chance. Notably, it could appear as if the `RENAMED` variable contains both the original and the new path being renamed. In previous versions, it would even appear on some platforms as if the original always came before the new. However, none of this was true. It's impossible to reliably and portably know which changed path is the old or new, "half" renames may appear (only the original, only the new), "unknown" renames may appear (change was a rename, but whether it was the old or new isn't known), rename events might split across two debouncing boundaries, and so on.
+
+This variable group can be disabled or limited with `--no-environment` (doesn't set any of these variables) and `--no-meta` (ignores metadata changes).
 
 ### Read upon startup
 
