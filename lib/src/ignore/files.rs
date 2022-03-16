@@ -1,4 +1,6 @@
+use git_config::file::GitConfig;
 use std::{
+	borrow::Cow,
 	collections::HashSet,
 	env,
 	io::{Error, ErrorKind},
@@ -62,18 +64,26 @@ pub async fn from_origin(path: impl AsRef<Path>) -> (Vec<IgnoreFile>, Vec<Error>
 	match find_file(base.join(".git/config")).await {
 		Err(err) => errors.push(err),
 		Ok(None) => {}
-		Ok(Some(path)) => match git2::Config::open(&path) {
+		Ok(Some(path)) => match GitConfig::open(&path) {
 			Err(err) => errors.push(Error::new(ErrorKind::Other, err)),
 			Ok(config) => {
-				if let Ok(excludes) = config.get_path("core.excludesFile") {
-					discover_file(
-						&mut files,
-						&mut errors,
-						None,
-						Some(ProjectType::Git),
-						excludes,
-					)
-					.await;
+				if let Ok(excludes) = config.value::<Cow<[u8]>>("core", None, "excludesFile") {
+					match String::from_utf8(excludes.into_owned()) {
+						Ok(e) => {
+							let excludes = PathBuf::from(e);
+							discover_file(
+								&mut files,
+								&mut errors,
+								None,
+								Some(ProjectType::Git),
+								excludes,
+							)
+							.await;
+						}
+						Err(err) => {
+							errors.push(Error::new(ErrorKind::Other, err));
+						}
+					}
 				}
 			}
 		},
@@ -194,20 +204,28 @@ pub async fn from_environment() -> (Vec<IgnoreFile>, Vec<Error>) {
 	}
 
 	let mut found_git_global = false;
-	match git2::Config::open_default() {
+	match GitConfig::from_env_paths() {
 		Err(err) => errors.push(Error::new(ErrorKind::Other, err)),
 		Ok(config) => {
-			if let Ok(excludes) = config.get_path("core.excludesFile") {
-				if discover_file(
-					&mut files,
-					&mut errors,
-					None,
-					Some(ProjectType::Git),
-					excludes,
-				)
-				.await
-				{
-					found_git_global = true;
+			if let Ok(excludes) = config.value::<Cow<[u8]>>("core", None, "excludesFile") {
+				match String::from_utf8(excludes.into_owned()) {
+					Ok(e) => {
+						let excludes = PathBuf::from(e);
+						if discover_file(
+							&mut files,
+							&mut errors,
+							None,
+							Some(ProjectType::Git),
+							excludes,
+						)
+						.await
+						{
+							found_git_global = true;
+						}
+					}
+					Err(err) => {
+						errors.push(Error::new(ErrorKind::Other, err));
+					}
 				}
 			}
 		}
