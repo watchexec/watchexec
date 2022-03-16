@@ -6,8 +6,8 @@ message: |
   The library has its own CITATION.cff file in lib/.
 
 title: Watchexec (command-line tool)
-version: "1.18.7"
-date-released: 2022-03-07
+version: "1.18.8"
+date-released: 2022-03-16
 
 repository-code: https://github.com/watchexec/watchexec
 license: Apache-2.0

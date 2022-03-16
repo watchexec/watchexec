@@ -4,7 +4,7 @@ assertion_line: 16
 expression: "String::from_utf8(output.stdout).unwrap()"
 
 ---
-watchexec 1.18.7
+watchexec 1.18.8
 Execute commands when watched files change
 
 USAGE:
