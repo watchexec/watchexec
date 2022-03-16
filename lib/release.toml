@@ -19,7 +19,7 @@ max = 1
 
 [[pre-release-replacements]]
 file = "../cli/Cargo.toml"
-search = "^watchexec = \\{ version = \"[\\d.]+(-.+)?\", path = \"../lib\" \\}"
-replace = "watchexec = { version = \"{{version}}\", path = \"../lib\" }"
+search = "^watchexec = \\{ version = \"=[\\d.]+(-.+)?\", path = \"../lib\" \\}"
+replace = "watchexec = { version = \"={{version}}\", path = \"../lib\" }"
 prerelease = true
 min = 0
