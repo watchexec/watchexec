@@ -27,7 +27,7 @@ futures = "0.3.17"
 miette = { version = "3.2.0", features = ["fancy"] }
 notify-rust = "4.5.2"
 tracing = "0.1.26"
-watchexec = { version = "=2.0.0-pre.11", path = "../lib" }
+watchexec = { version = "=2.0.0-pre.12", path = "../lib" }
 
 [dependencies.clap]
 version = "2.33.3"
