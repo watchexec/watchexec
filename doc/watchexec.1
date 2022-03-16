@@ -1,7 +1,7 @@
 .\" generated with Ronn/v0.7.3
 .\" http://github.com/rtomayko/ronn/tree/0.7.3
 .
-.TH "WATCHEXEC" "1" "February 2022" "" ""
+.TH "WATCHEXEC" "1" "March 2022" "" ""
 .
 .SH "NAME"
 \fBwatchexec\fR \- execute commands when watched files change
@@ -153,7 +153,7 @@ In variables that contain lists of paths, the separator is as for the \fB$PATH\f
 Processes started by watchexec have environment variables set describing the changes observed\.
 .
 .P
-\fB$WATCHEXEC_COMMON_PATH\fR is set to the longest common path of all of the below variables, and so should be prepended to each path to obtain the full/real path\.
+\fB$WATCHEXEC_COMMON_PATH\fR is set to the longest common path of all of the below variables, and so should be prepended to each path to obtain the full/real path\. Then:
 .
 .IP "\(bu" 4
 \fB$WATCHEXEC_CREATED_PATH\fR is set when files/folders were created
@@ -176,7 +176,13 @@ Processes started by watchexec have environment variables set describing the cha
 .IP "" 0
 .
 .P
-This can be disabled or limited with \fB\-\-no\-environment\fR (doesn\'t set any of these variables) and \fB\-\-no\-meta\fR (ignores metadata changes)\.
+These variables may contain multiple paths: these are separated by the platform\'s path separator, as with the \fBPATH\fR system environment variable\. On Unix that is \fB:\fR, and on Windows \fB;\fR\. Within each variable, paths are deduplicated and sorted in binary order (i\.e\. neither Unicode nor locale aware)\.
+.
+.P
+One thing to take care of is assuming inherent behaviour where there is only chance\. Notably, it could appear as if the \fBRENAMED\fR variable contains both the original and the new path being renamed\. In previous versions, it would even appear on some platforms as if the original always came before the new\. However, none of this was true\. It\'s impossible to reliably and portably know which changed path is the old or new, "half" renames may appear (only the original, only the new), "unknown" renames may appear (change was a rename, but whether it was the old or new isn\'t known), rename events might split across two debouncing boundaries, and so on\.
+.
+.P
+This variable group can be disabled or limited with \fB\-\-no\-environment\fR (doesn\'t set any of these variables) and \fB\-\-no\-meta\fR (ignores metadata changes)\.
 .
 .SS "Read upon startup"
 .

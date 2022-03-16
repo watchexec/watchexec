@@ -156,7 +156,7 @@
 
 <p>Processes started by watchexec have environment variables set describing the changes observed.</p>
 
-<p><code>$WATCHEXEC_COMMON_PATH</code> is set to the longest common path of all of the below variables, and so should be prepended to each path to obtain the full/real path.</p>
+<p><code>$WATCHEXEC_COMMON_PATH</code> is set to the longest common path of all of the below variables, and so should be prepended to each path to obtain the full/real path. Then:</p>
 
 <ul>
 <li><code>$WATCHEXEC_CREATED_PATH</code> is set when files/folders were created</li>
@@ -168,7 +168,11 @@
 </ul>
 
 
-<p>This can be disabled or limited with <code>--no-environment</code> (doesn't set any of these variables) and <code>--no-meta</code> (ignores metadata changes).</p>
+<p>These variables may contain multiple paths: these are separated by the platform's path separator, as with the <code>PATH</code> system environment variable. On Unix that is <code>:</code>, and on Windows <code>;</code>. Within each variable, paths are deduplicated and sorted in binary order (i.e. neither Unicode nor locale aware).</p>
+
+<p>One thing to take care of is assuming inherent behaviour where there is only chance. Notably, it could appear as if the <code>RENAMED</code> variable contains both the original and the new path being renamed. In previous versions, it would even appear on some platforms as if the original always came before the new. However, none of this was true. It's impossible to reliably and portably know which changed path is the old or new, "half" renames may appear (only the original, only the new), "unknown" renames may appear (change was a rename, but whether it was the old or new isn't known), rename events might split across two debouncing boundaries, and so on.</p>
+
+<p>This variable group can be disabled or limited with <code>--no-environment</code> (doesn't set any of these variables) and <code>--no-meta</code> (ignores metadata changes).</p>
 
 <h3 id="Read-upon-startup">Read upon startup</h3>
 
@@ -263,7 +267,7 @@
 
   <ol class='man-decor man-foot man foot'>
     <li class='tl'></li>
-    <li class='tc'>February 2022</li>
+    <li class='tc'>March 2022</li>
     <li class='tr'>watchexec(1)</li>
   </ol>
 
