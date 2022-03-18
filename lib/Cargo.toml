@@ -42,8 +42,6 @@ default-features = false
 
 [dependencies.notify]
 version = "=5.0.0-pre.14"
-default-features = false
-features = ["macos_kqueue"]
 
 [dependencies.tokio]
 version = "1.15.0"
