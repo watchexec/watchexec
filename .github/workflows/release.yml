@@ -92,17 +92,19 @@ jobs:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-cargo-registry-${{ hashFiles('Cargo.lock') }}
 
-      - uses: actions/cache@v2
-        if: startsWith(matrix.name, 'linux-')
-        with:
-          path: ~/.cargo/bin
-          key: ${{ runner.os }}-cargo-bin-${{ hashFiles('.github/workflows/release.yml') }}
       - name: Install cargo-deb
         if: startsWith(matrix.name, 'linux-')
-        run: which cargo-deb || cargo install cargo-deb --version 1.34.2 --locked
+        uses: baptiste0928/cargo-install@v1
+        with:
+          crate: cargo-deb
+          version: 1.34.2
+
       - name: Install cargo-generate-rpm
         if: startsWith(matrix.name, 'linux-')
-        run: which cargo-generate-rpm || cargo install cargo-generate-rpm --version 0.6.0 --locked
+        uses: baptiste0928/cargo-install@v1
+        with:
+          crate: cargo-generate-rpm
+          version: 0.6.0
 
       - uses: actions-rs/toolchain@v1
         with:
@@ -205,15 +207,18 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/cache@v2
-        with:
-          path: ~/.cargo/bin
-          key: sign-tools-${{ hashFiles('.github/workflows/release.yml') }}
 
       - name: Install rsign2
-        run: cargo install rsign2 --force --version 0.6.1
+        uses: baptiste0928/cargo-install@v1
+        with:
+          crate: rsign2
+          version: 0.6.1
+
       - name: Install b3sum
-        run: cargo install b3sum --force --version 1.3.0
+        uses: baptiste0928/cargo-install@v1
+        with:
+          crate: b3sum
+          version: 1.3.0
 
       - uses: actions/download-artifact@v2
         with:
