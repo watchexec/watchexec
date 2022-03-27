@@ -6,7 +6,7 @@ use std::{
 
 use clap::ArgMatches;
 use dunce::canonicalize;
-use miette::{IntoDiagnostic, Result, miette};
+use miette::{miette, IntoDiagnostic, Result};
 use tracing::{debug, warn};
 use watchexec::{
 	ignore::{self, IgnoreFile},
@@ -15,16 +15,19 @@ use watchexec::{
 };
 
 pub async fn dirs(args: &ArgMatches<'static>) -> Result<(PathBuf, PathBuf)> {
+	let curdir = env::current_dir()
+		.and_then(canonicalize)
+		.into_diagnostic()?;
+	debug!(?curdir, "current directory");
+
 	let mut paths = HashSet::new();
 	for path in args.values_of("paths").unwrap_or_default() {
-		paths.insert(
-			canonicalize(path).into_diagnostic()?
-		);
+		paths.insert(canonicalize(path).into_diagnostic()?);
 	}
 
 	if paths.is_empty() {
 		debug!("no paths, using current directory");
-		paths.insert(canonicalize(".").into_diagnostic()?);
+		paths.insert(curdir.clone());
 	}
 
 	debug!(?paths, "resolved all watched paths");
@@ -34,16 +37,22 @@ pub async fn dirs(args: &ArgMatches<'static>) -> Result<(PathBuf, PathBuf)> {
 		origins.extend(project::origins(&path).await);
 	}
 
+	if origins.is_empty() {
+		debug!("no origins, using current directory");
+		origins.insert(curdir.clone());
+	}
+
 	debug!(?origins, "resolved all project origins");
 
-	let project_origin =
-		canonicalize(common_prefix(&origins).ok_or_else(|| miette!("no common prefix, but this should never fail"))?)
-			.into_diagnostic()?;
+	// This canonicalize is probably redundant
+	let project_origin = canonicalize(
+		common_prefix(&origins)
+			.ok_or_else(|| miette!("no common prefix, but this should never fail"))?,
+	)
+	.into_diagnostic()?;
 	debug!(?project_origin, "resolved common/project origin");
 
-	let workdir = env::current_dir()
-		.and_then(canonicalize)
-		.into_diagnostic()?;
+	let workdir = curdir;
 	debug!(?workdir, "resolved working directory");
 
 	Ok((project_origin, workdir))
