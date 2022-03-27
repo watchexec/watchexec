@@ -6,7 +6,7 @@ use std::{
 
 use clap::ArgMatches;
 use dunce::canonicalize;
-use miette::{IntoDiagnostic, Result};
+use miette::{IntoDiagnostic, Result, miette};
 use tracing::{debug, warn};
 use watchexec::{
 	ignore::{self, IgnoreFile},
@@ -15,16 +15,29 @@ use watchexec::{
 };
 
 pub async fn dirs(args: &ArgMatches<'static>) -> Result<(PathBuf, PathBuf)> {
-	let mut origins = HashSet::new();
+	let mut paths = HashSet::new();
 	for path in args.values_of("paths").unwrap_or_default() {
-		let path = canonicalize(path).into_diagnostic()?;
+		paths.insert(
+			canonicalize(path).into_diagnostic()?
+		);
+	}
+
+	if paths.is_empty() {
+		debug!("no paths, using current directory");
+		paths.insert(canonicalize(".").into_diagnostic()?);
+	}
+
+	debug!(?paths, "resolved all watched paths");
+
+	let mut origins = HashSet::new();
+	for path in paths {
 		origins.extend(project::origins(&path).await);
 	}
 
 	debug!(?origins, "resolved all project origins");
 
 	let project_origin =
-		canonicalize(common_prefix(&origins).unwrap_or_else(|| PathBuf::from(".")))
+		canonicalize(common_prefix(&origins).ok_or_else(|| miette!("no common prefix, but this should never fail"))?)
 			.into_diagnostic()?;
 	debug!(?project_origin, "resolved common/project origin");
 
