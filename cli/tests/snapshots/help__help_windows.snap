@@ -3,7 +3,7 @@ source: cli/tests/help.rs
 expression: String::from_utf8(output.stdout).unwrap()
 
 ---
-watchexec 1.18.10
+watchexec 1.18.11
 Execute commands when watched files change
 
 USAGE:
