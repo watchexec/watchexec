@@ -1,6 +1,8 @@
-use git_config::file::GitConfig;
+use git_config::{
+	file::{from_paths, GitConfig},
+	values::Path as GitPath,
+};
 use std::{
-	borrow::Cow,
 	collections::HashSet,
 	env,
 	io::{Error, ErrorKind},
@@ -67,16 +69,15 @@ pub async fn from_origin(path: impl AsRef<Path>) -> (Vec<IgnoreFile>, Vec<Error>
 		Ok(Some(path)) => match GitConfig::open(&path) {
 			Err(err) => errors.push(Error::new(ErrorKind::Other, err)),
 			Ok(config) => {
-				if let Ok(excludes) = config.value::<Cow<[u8]>>("core", None, "excludesFile") {
-					match String::from_utf8(excludes.into_owned()) {
+				if let Ok(excludes) = config.value::<GitPath>("core", None, "excludesFile") {
+					match excludes.interpolate(None) {
 						Ok(e) => {
-							let excludes = PathBuf::from(e);
 							discover_file(
 								&mut files,
 								&mut errors,
 								None,
 								Some(ProjectType::Git),
-								excludes,
+								e.into(),
 							)
 							.await;
 						}
@@ -204,19 +205,19 @@ pub async fn from_environment() -> (Vec<IgnoreFile>, Vec<Error>) {
 	}
 
 	let mut found_git_global = false;
-	match GitConfig::from_env_paths() {
+	let options = from_paths::Options::default();
+	match GitConfig::from_env_paths(&options) {
 		Err(err) => errors.push(Error::new(ErrorKind::Other, err)),
 		Ok(config) => {
-			if let Ok(excludes) = config.value::<Cow<[u8]>>("core", None, "excludesFile") {
-				match String::from_utf8(excludes.into_owned()) {
+			if let Ok(excludes) = config.value::<GitPath>("core", None, "excludesFile") {
+				match excludes.interpolate(None) {
 					Ok(e) => {
-						let excludes = PathBuf::from(e);
 						if discover_file(
 							&mut files,
 							&mut errors,
 							None,
 							Some(ProjectType::Git),
-							excludes,
+							e.into(),
 						)
 						.await
 						{
