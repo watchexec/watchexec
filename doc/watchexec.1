@@ -1,7 +1,7 @@
 .\" generated with Ronn/v0.7.3
 .\" http://github.com/rtomayko/ronn/tree/0.7.3
 .
-.TH "WATCHEXEC" "1" "March 2022" "" ""
+.TH "WATCHEXEC" "1" "April 2022" "" ""
 .
 .SH "NAME"
 \fBwatchexec\fR \- execute commands when watched files change
@@ -145,6 +145,21 @@ Print the version of watchexec\.
 .TP
 \fB\-h\fR, \fB\-\-help\fR
 Print a help message\.
+.
+.SH "PATHS"
+By default, Watchexec watches the current directory\. This can be changed with the \fB\-\-watch\fR option, which can be passed multiple times\.
+.
+.P
+Upon starting, Watchexec resolves a "project origin" from the watched paths\. To do so, it recurses up every parent directory from each watched path, looking for file and directory patterns which indicate a project origin among many different software systems, such as a Git repo, Cargo crate, licensing files, readmes, workspace configuration, etc\. For the full current list, consult the source at \fBlib/src/project\.rs\fR\.
+.
+.P
+Once it has a list of "potential project origins", it resolves the common prefix they all have, and uses this as the overall project origin\. Note that the home directory is excluded from potential origins unless it\'s explicitly requested as a watched path\.
+.
+.P
+The overall project origin is used to find and resolve ignore files, such that in most cases it acts as one would expect for a tool that runs anywhere inside a project\.
+.
+.P
+For this reason, it is not recommended to use Watchexec for watching disparate folders in a filesystem, where those would resolve to a too\-broad project origin\.
 .
 .SH "ENVIRONMENT"
 In variables that contain lists of paths, the separator is as for the \fB$PATH\fR environment variable (a colon, or semicolon on Windows)\.
