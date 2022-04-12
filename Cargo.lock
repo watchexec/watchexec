@@ -2623,6 +2623,7 @@ dependencies = [
  "assert_cmd",
  "clap",
  "console-subscriber",
+ "dirs 4.0.0",
  "dunce",
  "embed-resource",
  "futures",
