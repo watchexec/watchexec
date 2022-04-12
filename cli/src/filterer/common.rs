@@ -20,10 +20,22 @@ pub async fn dirs(args: &ArgMatches<'static>) -> Result<(PathBuf, PathBuf)> {
 		.into_diagnostic()?;
 	debug!(?curdir, "current directory");
 
+	let homedir = dirs::home_dir()
+		.map(canonicalize)
+		.transpose()
+		.into_diagnostic()?;
+	debug!(?homedir, "home directory");
+
 	let mut paths = HashSet::new();
 	for path in args.values_of("paths").unwrap_or_default() {
 		paths.insert(canonicalize(path).into_diagnostic()?);
 	}
+
+	let homedir_requested = homedir.as_ref().map_or(false, |home| paths.contains(home));
+	debug!(
+		?homedir_requested,
+		"resolved whether the homedir is explicitly requested"
+	);
 
 	if paths.is_empty() {
 		debug!("no paths, using current directory");
@@ -35,6 +47,14 @@ pub async fn dirs(args: &ArgMatches<'static>) -> Result<(PathBuf, PathBuf)> {
 	let mut origins = HashSet::new();
 	for path in paths {
 		origins.extend(project::origins(&path).await);
+	}
+
+	match (homedir, homedir_requested) {
+		(Some(ref dir), false) if origins.contains(dir) => {
+			debug!("removing homedir from origins");
+			origins.remove(dir);
+		}
+		_ => {}
 	}
 
 	if origins.is_empty() {
