@@ -1,3 +1,5 @@
+#![deny(rust_2018_idioms)]
+
 use std::env::var;
 
 use miette::{IntoDiagnostic, Result};

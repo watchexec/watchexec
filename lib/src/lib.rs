@@ -94,6 +94,7 @@
 #![doc(html_favicon_url = "https://watchexec.github.io/logo:watchexec.svg")]
 #![doc(html_logo_url = "https://watchexec.github.io/logo:watchexec.svg")]
 #![warn(clippy::unwrap_used, missing_docs)]
+#![deny(rust_2018_idioms)]
 #![cfg_attr(not(target_os = "fuchsia"), forbid(unsafe_code))]
 // see event::ProcessEnd for why this is disabled on fuchsia
 

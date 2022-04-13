@@ -50,7 +50,7 @@ impl<T> fmt::Debug for SwapLock<T>
 where
 	T: fmt::Debug + Clone,
 {
-	fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
 		f.debug_struct("SwapLock")
 			.field("(watch)", &self.r)
 			.finish()

@@ -69,7 +69,7 @@ pub async fn from_origin(path: impl AsRef<Path>) -> (Vec<IgnoreFile>, Vec<Error>
 		Ok(Some(path)) => match GitConfig::open(&path) {
 			Err(err) => errors.push(Error::new(ErrorKind::Other, err)),
 			Ok(config) => {
-				if let Ok(excludes) = config.value::<GitPath>("core", None, "excludesFile") {
+				if let Ok(excludes) = config.value::<GitPath<'_>>("core", None, "excludesFile") {
 					match excludes.interpolate(None) {
 						Ok(e) => {
 							discover_file(
@@ -209,7 +209,7 @@ pub async fn from_environment() -> (Vec<IgnoreFile>, Vec<Error>) {
 	match GitConfig::from_env_paths(&options) {
 		Err(err) => errors.push(Error::new(ErrorKind::Other, err)),
 		Ok(config) => {
-			if let Ok(excludes) = config.value::<GitPath>("core", None, "excludesFile") {
+			if let Ok(excludes) = config.value::<GitPath<'_>>("core", None, "excludesFile") {
 				match excludes.interpolate(None) {
 					Ok(e) => {
 						if discover_file(
