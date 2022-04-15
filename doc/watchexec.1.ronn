@@ -3,7 +3,9 @@ watchexec(1) -- execute commands when watched files change
 
 ## SYNOPSIS
 
-watchexec [`--exts` | `-e` <extensions>]... [`--filter` | `-f` <pattern>]... [`--ignore` | `-i` <pattern>]... [`--watch` | `-w` <path>]... [`--restart` | `-r`] [`--clear` | `-c`] [`--postpone` | `-p`] [`--force-poll` <interval>] [`--debounce` | `-d` <interval>] [`--no-vcs-ignore`] [`--no-default-ignore`] [`--verbose` | `-v` | `-vv` | `-vvv` | `-vvvv`] [`--changes-only`] [`--version` | `-V`] [--] <command> [<argument>...]
+watchexec [OPTIONS] [--] <command> [<argument>...]
+watchexec -V|--version
+watchexec [-h|--help]
 
 ## DESCRIPTION
 
@@ -13,19 +15,27 @@ At startup, the specified <command> (passing any supplied <argument>s) is run on
 
 ## OPTIONS
 
+### Command options
+
 * <command>:
 Command to run when watched files are modified, and at startup, unless `--postpone` is specified. All <argument>s are passed to <command>. If you pass flags to the command, you should separate it with `--`, for example: `watchexec -w src -- rsync -a src dest`.
 
 Behaviour depends on the value of `--shell`: for all except `none`, every part of <command> is joined together into one string with a single ascii space character, and given to the shell as described. For `none`, each distinct element of <command> is passed as per the execvp(3) convention: first argument is the program, as a file or searched in the `PATH`, rest are arguments.
 
-* `-e`, `--exts` <extensions>:
-Comma-separated list of file extensions to filter by. Leading dots (.rs) are allowed. (This is a shorthand for `-f`).
+* `-E`, `--env` <key=value pair>:
+Set additional environment variables on the command (not to Watchexec itself). Can be given multiple times (one per variable to set).
 
-* `-f`, `--filter` <pattern>:
-Ignores modifications from paths that do not match <pattern>. This option can be specified multiple times, where a match on any given pattern causes the path to trigger <command>.
+* `-n`:
+Shorthand for `--shell=none`.
 
-* `-s`, `--signal`:
-Sends the specified signal (e.g. `SIGKILL`) to the command. Defaults to `SIGTERM`.
+* `--no-process-group`:
+Do not use a process group when running <command>.
+
+* `--no-environment`:
+Do not set WATCHEXEC_*_PATH environment variables for the command.
+
+* `--no-shell`:
+Deprecated. Alias for `--shell=none`.
 
 * `--shell` <shell>:
 Change the shell used to run the command. Set to `none` to run the command directly without a shell.
@@ -40,54 +50,19 @@ If not a special value, the string provided may contain arguments to the shell a
 
 See the [EXAMPLES] for uses of each of these.
 
-* `--no-shell`:
-Deprecated. Alias for `--shell=none`.
+* `--workdir <path>`:
+Set the working directory of the command (not of Watchexec itself!). By default not set, and inherited from the Watchexec instance as is usual.
 
-* `-n`:
-Shorthand for `--shell=none`.
+### Filtering options
 
-* `--no-meta`:
-Ignore metadata changes.
+* `-e`, `--exts` <extensions>:
+Comma-separated list of file extensions to filter by. Leading dots (.rs) are allowed. (This is a shorthand for `-f`).
 
-* `--no-environment`:
-Do not set WATCHEXEC_*_PATH environment variables for the command.
+* `-f`, `--filter` <pattern>:
+Ignores modifications from paths that do not match <pattern>. This option can be specified multiple times, where a match on any given pattern causes the path to trigger <command>.
 
 * `-i`, `--ignore` <pattern>:
 Ignores modifications from paths that match <pattern>. This option can be specified multiple times, and a match on any pattern causes the path to be ignored.
-
-* `-w`, `--watch` <path>:
-Monitor a specific path for changes. By default, the current working directory is watched. This may be specified multiple times, where a change in any watched directory (and subdirectories) causes <command> to be executed.
-
-* `-r`, `--restart`:
-Terminates the command if it is still running when subsequent file modifications are detected. By default, sends `SIGTERM`; use `--signal` to change that.
-
-* `-W`, `--watch-when-idle`:
-Ignore events while the process is still running. This is distinct from `--restart` in that with this option, events received while the command is running will not trigger a new run immediately after the current command is done.
-
-This behaviour will become the default in v2.0.
-
-* `--no-process-group`:
-Do not use a process group when running <command>.
-
-* `-c`, `--clear`:
-Clears the screen before executing <command>.
-
-* `-p`, `--postpone`:
-Postpone execution of <command> until the first file modification is detected.
-
-* `--force-poll` <interval>:
-Poll for changes every <interval> ms instead of using system-specific notification mechanisms (such as inotify). This is useful when you are monitoring NFS shares.
-
-* `-d`, `--debounce`:
-Set the timeout between detected change and command execution, to avoid restarting too frequently when there are many events; defaults to 100ms.
-
-* `--no-vcs-ignore`:
-Skip loading of version control system (VCS) ignore files. By default, watchexec loads .gitignore, .hgignore, and other such files in the current directory (or child directories as applicable) and uses them to filter change events.
-
-* `--no-project-ignore`, `--no-ignore` (deprecated alias):
-Skip loading of project-local ignore files (include VCS ignore files). By default, watchexec loads .ignore, .gitignore, .hgignore, and other such files in the current directory (or child directories as applicable) and uses them to filter change events.
-
-The `--no-ignore` alias will be replaced by a new option in 2.0.0, beware!
 
 * `--no-default-ignore`:
 Skip default ignore statements. By default, watchexec ignores common temporary files for you, for example `*.swp`, `*.pyc`, and `.DS_Store`, as well as the data directories of known VCS: `.bzr`, `_darcs`, `.fossil-settings`, `.git`, `.hg`, `.pijul`, and `.svn`.
@@ -95,17 +70,60 @@ Skip default ignore statements. By default, watchexec ignores common temporary f
 * `--no-global-ignore`:
 Skip loading of global ignore files. By default, watchexec loads $HOME/.gitignore and other such global files and uses them to filter change events.
 
-* `--project-origin` <path>:
-Overrides the project origin, where ignore files are resolved from (see PATHS section below).
+* `--no-meta`:
+Ignore metadata changes.
 
-* `-v`, `--verbose`, `-vv`, etc:
-Prints diagnostic and debugging messages to STDERR. Increase the amount of `v`s to get progressively more output: for bug reports use **three**, and for deep debugging **four** can be helpful.
+* `--no-project-ignore`, `--no-ignore` (deprecated alias):
+Skip loading of project-local ignore files (include VCS ignore files). By default, watchexec loads .ignore, .gitignore, .hgignore, and other such files in the current directory (or child directories as applicable) and uses them to filter change events.
+
+The `--no-ignore` alias will be replaced by a new option in 2.0.0, beware!
+
+* `--no-vcs-ignore`:
+Skip loading of version control system (VCS) ignore files. By default, watchexec loads .gitignore, .hgignore, and other such files in the current directory (or child directories as applicable) and uses them to filter change events.
+
+* `--project-origin` <path>:
+Overrides the project origin, where ignore files are resolved from (see [PATHS] section below).
+
+* `-w`, `--watch` <path>:
+Monitor a specific path for changes. By default, the current working directory is watched. This may be specified multiple times, where a change in any watched directory (and subdirectories) causes <command> to be executed.
+
+### Behaviour options
+
+* `-d`, `--debounce`:
+Set the timeout between detected change and command execution, to avoid restarting too frequently when there are many events; defaults to 100ms.
+
+* `--force-poll` <interval>:
+Poll for changes every <interval> ms instead of using system-specific notification mechanisms (such as inotify). This is useful when you are monitoring NFS shares.
+
+* `-p`, `--postpone`:
+Postpone execution of <command> until the first file modification is detected.
+
+* `-r`, `--restart`:
+Terminates the command if it is still running when subsequent file modifications are detected. By default, sends `SIGTERM`; use `--signal` to change that.
+
+* `-s`, `--signal`:
+Sends the specified signal (e.g. `SIGKILL`) to the command. Defaults to `SIGTERM`.
+
+* `-W`, `--watch-when-idle`:
+Ignore events while the process is still running. This is distinct from `--restart` in that with this option, events received while the command is running will not trigger a new run immediately after the current command is done.
+
+This behaviour will become the default in v2.0.
+
+### Output options
+
+* `-c`, `--clear`:
+Clears the screen before executing <command>.
+
+* `-N`, `--notify`:
+Sends desktop notifications on command start and command end.
+
+### Debugging options
 
 * `--print-events`, `--changes-only` (deprecated alias):
 Prints the events (changed paths, etc) that have triggered an action to STDERR.
 
-* `-N`, `--notify`:
-Sends desktop notifications on command start and command end.
+* `-v`, `--verbose`, `-vv`, etc:
+Prints diagnostic and debugging messages to STDERR. Increase the amount of `v`s to get progressively more output: for bug reports use **three**, and for deep debugging **four** can be helpful.
 
 * `-V`, `--version`:
 Print the version of watchexec.
