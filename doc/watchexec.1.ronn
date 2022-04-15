@@ -87,11 +87,16 @@ Skip loading of version control system (VCS) ignore files. By default, watchexec
 * `--no-project-ignore`, `--no-ignore` (deprecated alias):
 Skip loading of project-local ignore files (include VCS ignore files). By default, watchexec loads .ignore, .gitignore, .hgignore, and other such files in the current directory (or child directories as applicable) and uses them to filter change events.
 
+The `--no-ignore` alias will be replaced by a new option in 2.0.0, beware!
+
 * `--no-default-ignore`:
 Skip default ignore statements. By default, watchexec ignores common temporary files for you, for example `*.swp`, `*.pyc`, and `.DS_Store`, as well as the data directories of known VCS: `.bzr`, `_darcs`, `.fossil-settings`, `.git`, `.hg`, `.pijul`, and `.svn`.
 
 * `--no-global-ignore`:
 Skip loading of global ignore files. By default, watchexec loads $HOME/.gitignore and other such global files and uses them to filter change events.
+
+* `--project-origin` <path>:
+Overrides the project origin, where ignore files are resolved from (see PATHS section below).
 
 * `-v`, `--verbose`, `-vv`, etc:
 Prints diagnostic and debugging messages to STDERR. Increase the amount of `v`s to get progressively more output: for bug reports use **three**, and for deep debugging **four** can be helpful.
@@ -119,6 +124,8 @@ Once it has a list of "potential project origins", it resolves the common prefix
 The overall project origin is used to find and resolve ignore files, such that in most cases it acts as one would expect for a tool that runs anywhere inside a project.
 
 For this reason, it is not recommended to use Watchexec for watching disparate folders in a filesystem, where those would resolve to a too-broad project origin.
+
+The project origin can be overridden with the `--project-origin` option.
 
 ## ENVIRONMENT
 
