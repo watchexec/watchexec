@@ -37,7 +37,6 @@ Call/restart `python server.py` when any Python file in the current directory (a
 
 More usage examples: [in the CLI README](./cli/#usage-examples)!
 
-
 ## Install
 
 <a href="https://repology.org/project/watchexec/versions"><img align="right" src="https://repology.org/badge/vertical-allrepos/watchexec.svg" alt="Packaging status"></a>
@@ -47,7 +46,9 @@ More usage examples: [in the CLI README](./cli/#usage-examples)!
 - From source with Cargo: `cargo install watchexec-cli`
 - From binary with Binstall: `cargo binstall watchexec-cli`
 
-All options in detail: [in the CLI README](./cli/#installation).
+All options in detail: [in the CLI README](./cli/#installation)
+and [in the manual page](./doc/watchexec.1.ronn).
+
 
 ## Augment
 

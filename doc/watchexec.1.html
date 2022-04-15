@@ -82,7 +82,9 @@
 
 <h2 id="SYNOPSIS">SYNOPSIS</h2>
 
-<p>watchexec [<code>--exts</code> | <code>-e</code> <var>extensions</var>]... [<code>--filter</code> | <code>-f</code> <var>pattern</var>]... [<code>--ignore</code> | <code>-i</code> <var>pattern</var>]... [<code>--watch</code> | <code>-w</code> <var>path</var>]... [<code>--restart</code> | <code>-r</code>] [<code>--clear</code> | <code>-c</code>] [<code>--postpone</code> | <code>-p</code>] [<code>--force-poll</code> <var>interval</var>] [<code>--debounce</code> | <code>-d</code> <var>interval</var>] [<code>--no-vcs-ignore</code>] [<code>--no-default-ignore</code>] [<code>--verbose</code> | <code>-v</code> | <code>-vv</code> | <code>-vvv</code> | <code>-vvvv</code>] [<code>--changes-only</code>] [<code>--version</code> | <code>-V</code>] [--] <var>command</var> [<var>argument</var>...]</p>
+<p>watchexec [OPTIONS] [--] <var>command</var> [<var>argument</var>...]
+watchexec -V|--version
+watchexec [-h|--help]</p>
 
 <h2 id="DESCRIPTION">DESCRIPTION</h2>
 
@@ -92,6 +94,8 @@
 
 <h2 id="OPTIONS">OPTIONS</h2>
 
+<h3 id="Command-options">Command options</h3>
+
 <dl>
 <dt class="flush"><var>command</var></dt><dd>Command to run when watched files are modified, and at startup, unless <code>--postpone</code> is specified. All <var>argument</var>s are passed to <var>command</var>. If you pass flags to the command, you should separate it with <code>--</code>, for example: <code>watchexec -w src -- rsync -a src dest</code>.</dd>
 </dl>
@@ -100,9 +104,11 @@
 <p>Behaviour depends on the value of <code>--shell</code>: for all except <code>none</code>, every part of <var>command</var> is joined together into one string with a single ascii space character, and given to the shell as described. For <code>none</code>, each distinct element of <var>command</var> is passed as per the <span class="man-ref">execvp<span class="s">(3)</span></span> convention: first argument is the program, as a file or searched in the <code>PATH</code>, rest are arguments.</p>
 
 <dl>
-<dt><code>-e</code>, <code>--exts</code> <var>extensions</var></dt><dd><p>Comma-separated list of file extensions to filter by. Leading dots (.rs) are allowed. (This is a shorthand for <code>-f</code>).</p></dd>
-<dt><code>-f</code>, <code>--filter</code> <var>pattern</var></dt><dd><p>Ignores modifications from paths that do not match <var>pattern</var>. This option can be specified multiple times, where a match on any given pattern causes the path to trigger <var>command</var>.</p></dd>
-<dt><code>-s</code>, <code>--signal</code></dt><dd><p>Sends the specified signal (e.g. <code>SIGKILL</code>) to the command. Defaults to <code>SIGTERM</code>.</p></dd>
+<dt><code>-E</code>, <code>--env</code> <var>key=value pair</var></dt><dd><p>Set additional environment variables on the command (not to Watchexec itself). Can be given multiple times (one per variable to set).</p></dd>
+<dt class="flush"><code>-n</code></dt><dd><p>Shorthand for <code>--shell=none</code>.</p></dd>
+<dt><code>--no-process-group</code></dt><dd><p>Do not use a process group when running <var>command</var>.</p></dd>
+<dt><code>--no-environment</code></dt><dd><p>Do not set WATCHEXEC<em>*</em>PATH environment variables for the command.</p></dd>
+<dt><code>--no-shell</code></dt><dd><p>Deprecated. Alias for <code>--shell=none</code>.</p></dd>
 <dt><code>--shell</code> <var>shell</var></dt><dd><p>Change the shell used to run the command. Set to <code>none</code> to run the command directly without a shell.</p></dd>
 </dl>
 
@@ -118,32 +124,59 @@
 <p>See the <a href="#EXAMPLES" title="EXAMPLES" data-bare-link="true">EXAMPLES</a> for uses of each of these.</p>
 
 <dl>
-<dt><code>--no-shell</code></dt><dd><p>Deprecated. Alias for <code>--shell=none</code>.</p></dd>
-<dt class="flush"><code>-n</code></dt><dd><p>Shorthand for <code>--shell=none</code>.</p></dd>
-<dt><code>--no-meta</code></dt><dd><p>Ignore metadata changes.</p></dd>
-<dt><code>--no-environment</code></dt><dd><p>Do not set WATCHEXEC<em>*</em>PATH environment variables for the command.</p></dd>
+<dt><code>--workdir &lt;path></code></dt><dd>Set the working directory of the command (not of Watchexec itself!). By default not set, and inherited from the Watchexec instance as is usual.</dd>
+</dl>
+
+
+<h3 id="Filtering-options">Filtering options</h3>
+
+<dl>
+<dt><code>-e</code>, <code>--exts</code> <var>extensions</var></dt><dd><p>Comma-separated list of file extensions to filter by. Leading dots (.rs) are allowed. (This is a shorthand for <code>-f</code>).</p></dd>
+<dt><code>-f</code>, <code>--filter</code> <var>pattern</var></dt><dd><p>Ignores modifications from paths that do not match <var>pattern</var>. This option can be specified multiple times, where a match on any given pattern causes the path to trigger <var>command</var>.</p></dd>
 <dt><code>-i</code>, <code>--ignore</code> <var>pattern</var></dt><dd><p>Ignores modifications from paths that match <var>pattern</var>. This option can be specified multiple times, and a match on any pattern causes the path to be ignored.</p></dd>
+<dt><code>--no-default-ignore</code></dt><dd><p>Skip default ignore statements. By default, watchexec ignores common temporary files for you, for example <code>*.swp</code>, <code>*.pyc</code>, and <code>.DS_Store</code>, as well as the data directories of known VCS: <code>.bzr</code>, <code>_darcs</code>, <code>.fossil-settings</code>, <code>.git</code>, <code>.hg</code>, <code>.pijul</code>, and <code>.svn</code>.</p></dd>
+<dt><code>--no-global-ignore</code></dt><dd><p>Skip loading of global ignore files. By default, watchexec loads $HOME/.gitignore and other such global files and uses them to filter change events.</p></dd>
+<dt><code>--no-meta</code></dt><dd><p>Ignore metadata changes.</p></dd>
+<dt><code>--no-project-ignore</code>, <code>--no-ignore</code> (deprecated alias)</dt><dd><p>Skip loading of project-local ignore files (include VCS ignore files). By default, watchexec loads .ignore, .gitignore, .hgignore, and other such files in the current directory (or child directories as applicable) and uses them to filter change events.</p></dd>
+</dl>
+
+
+<p>The <code>--no-ignore</code> alias will be replaced by a new option in 2.0.0, beware!</p>
+
+<dl>
+<dt><code>--no-vcs-ignore</code></dt><dd><p>Skip loading of version control system (VCS) ignore files. By default, watchexec loads .gitignore, .hgignore, and other such files in the current directory (or child directories as applicable) and uses them to filter change events.</p></dd>
+<dt><code>--project-origin</code> <var>path</var></dt><dd><p>Overrides the project origin, where ignore files are resolved from (see <a href="#PATHS" title="PATHS" data-bare-link="true">PATHS</a> section below).</p></dd>
 <dt><code>-w</code>, <code>--watch</code> <var>path</var></dt><dd><p>Monitor a specific path for changes. By default, the current working directory is watched. This may be specified multiple times, where a change in any watched directory (and subdirectories) causes <var>command</var> to be executed.</p></dd>
+</dl>
+
+
+<h3 id="Behaviour-options">Behaviour options</h3>
+
+<dl>
+<dt><code>-d</code>, <code>--debounce</code></dt><dd><p>Set the timeout between detected change and command execution, to avoid restarting too frequently when there are many events; defaults to 100ms.</p></dd>
+<dt><code>--force-poll</code> <var>interval</var></dt><dd><p>Poll for changes every <var>interval</var> ms instead of using system-specific notification mechanisms (such as inotify). This is useful when you are monitoring NFS shares.</p></dd>
+<dt><code>-p</code>, <code>--postpone</code></dt><dd><p>Postpone execution of <var>command</var> until the first file modification is detected.</p></dd>
 <dt><code>-r</code>, <code>--restart</code></dt><dd><p>Terminates the command if it is still running when subsequent file modifications are detected. By default, sends <code>SIGTERM</code>; use <code>--signal</code> to change that.</p></dd>
+<dt><code>-s</code>, <code>--signal</code></dt><dd><p>Sends the specified signal (e.g. <code>SIGKILL</code>) to the command. Defaults to <code>SIGTERM</code>.</p></dd>
 <dt><code>-W</code>, <code>--watch-when-idle</code></dt><dd><p>Ignore events while the process is still running. This is distinct from <code>--restart</code> in that with this option, events received while the command is running will not trigger a new run immediately after the current command is done.</p></dd>
 </dl>
 
 
 <p>This behaviour will become the default in v2.0.</p>
 
+<h3 id="Output-options">Output options</h3>
+
 <dl>
-<dt><code>--no-process-group</code></dt><dd><p>Do not use a process group when running <var>command</var>.</p></dd>
 <dt><code>-c</code>, <code>--clear</code></dt><dd><p>Clears the screen before executing <var>command</var>.</p></dd>
-<dt><code>-p</code>, <code>--postpone</code></dt><dd><p>Postpone execution of <var>command</var> until the first file modification is detected.</p></dd>
-<dt><code>--force-poll</code> <var>interval</var></dt><dd><p>Poll for changes every <var>interval</var> ms instead of using system-specific notification mechanisms (such as inotify). This is useful when you are monitoring NFS shares.</p></dd>
-<dt><code>-d</code>, <code>--debounce</code></dt><dd><p>Set the timeout between detected change and command execution, to avoid restarting too frequently when there are many events; defaults to 100ms.</p></dd>
-<dt><code>--no-vcs-ignore</code></dt><dd><p>Skip loading of version control system (VCS) ignore files. By default, watchexec loads .gitignore, .hgignore, and other such files in the current directory (or child directories as applicable) and uses them to filter change events.</p></dd>
-<dt><code>--no-project-ignore</code>, <code>--no-ignore</code> (deprecated alias)</dt><dd><p>Skip loading of project-local ignore files (include VCS ignore files). By default, watchexec loads .ignore, .gitignore, .hgignore, and other such files in the current directory (or child directories as applicable) and uses them to filter change events.</p></dd>
-<dt><code>--no-default-ignore</code></dt><dd><p>Skip default ignore statements. By default, watchexec ignores common temporary files for you, for example <code>*.swp</code>, <code>*.pyc</code>, and <code>.DS_Store</code>, as well as the data directories of known VCS: <code>.bzr</code>, <code>_darcs</code>, <code>.fossil-settings</code>, <code>.git</code>, <code>.hg</code>, <code>.pijul</code>, and <code>.svn</code>.</p></dd>
-<dt><code>--no-global-ignore</code></dt><dd><p>Skip loading of global ignore files. By default, watchexec loads $HOME/.gitignore and other such global files and uses them to filter change events.</p></dd>
-<dt><code>-v</code>, <code>--verbose</code>, <code>-vv</code>, etc</dt><dd><p>Prints diagnostic and debugging messages to STDERR. Increase the amount of <code>v</code>s to get progressively more output: for bug reports use <strong>three</strong>, and for deep debugging <strong>four</strong> can be helpful.</p></dd>
-<dt><code>--print-events</code>, <code>--changes-only</code> (deprecated alias)</dt><dd><p>Prints the events (changed paths, etc) that have triggered an action to STDERR.</p></dd>
 <dt><code>-N</code>, <code>--notify</code></dt><dd><p>Sends desktop notifications on command start and command end.</p></dd>
+</dl>
+
+
+<h3 id="Debugging-options">Debugging options</h3>
+
+<dl>
+<dt><code>--print-events</code>, <code>--changes-only</code> (deprecated alias)</dt><dd><p>Prints the events (changed paths, etc) that have triggered an action to STDERR.</p></dd>
+<dt><code>-v</code>, <code>--verbose</code>, <code>-vv</code>, etc</dt><dd><p>Prints diagnostic and debugging messages to STDERR. Increase the amount of <code>v</code>s to get progressively more output: for bug reports use <strong>three</strong>, and for deep debugging <strong>four</strong> can be helpful.</p></dd>
 <dt><code>-V</code>, <code>--version</code></dt><dd><p>Print the version of watchexec.</p></dd>
 <dt><code>-h</code>, <code>--help</code></dt><dd><p>Print a help message.</p></dd>
 </dl>
@@ -160,6 +193,8 @@
 <p>The overall project origin is used to find and resolve ignore files, such that in most cases it acts as one would expect for a tool that runs anywhere inside a project.</p>
 
 <p>For this reason, it is not recommended to use Watchexec for watching disparate folders in a filesystem, where those would resolve to a too-broad project origin.</p>
+
+<p>The project origin can be overridden with the <code>--project-origin</code> option.</p>
 
 <h2 id="ENVIRONMENT">ENVIRONMENT</h2>
 

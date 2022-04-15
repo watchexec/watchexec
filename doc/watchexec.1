@@ -7,7 +7,7 @@
 \fBwatchexec\fR \- execute commands when watched files change
 .
 .SH "SYNOPSIS"
-watchexec [\fB\-\-exts\fR | \fB\-e\fR \fIextensions\fR]\.\.\. [\fB\-\-filter\fR | \fB\-f\fR \fIpattern\fR]\.\.\. [\fB\-\-ignore\fR | \fB\-i\fR \fIpattern\fR]\.\.\. [\fB\-\-watch\fR | \fB\-w\fR \fIpath\fR]\.\.\. [\fB\-\-restart\fR | \fB\-r\fR] [\fB\-\-clear\fR | \fB\-c\fR] [\fB\-\-postpone\fR | \fB\-p\fR] [\fB\-\-force\-poll\fR \fIinterval\fR] [\fB\-\-debounce\fR | \fB\-d\fR \fIinterval\fR] [\fB\-\-no\-vcs\-ignore\fR] [\fB\-\-no\-default\-ignore\fR] [\fB\-\-verbose\fR | \fB\-v\fR | \fB\-vv\fR | \fB\-vvv\fR | \fB\-vvvv\fR] [\fB\-\-changes\-only\fR] [\fB\-\-version\fR | \fB\-V\fR] [\-\-] \fIcommand\fR [\fIargument\fR\.\.\.]
+watchexec [OPTIONS] [\-\-] \fIcommand\fR [\fIargument\fR\.\.\.] watchexec \-V|\-\-version watchexec [\-h|\-\-help]
 .
 .SH "DESCRIPTION"
 Recursively monitors the current directory for changes, executing the command when a filesystem change is detected\. By default, watchexec uses efficient kernel\-level mechanisms to watch for changes\.
@@ -17,6 +17,8 @@ At startup, the specified \fIcommand\fR (passing any supplied \fIargument\fRs) i
 .
 .SH "OPTIONS"
 .
+.SS "Command options"
+.
 .TP
 \fIcommand\fR
 Command to run when watched files are modified, and at startup, unless \fB\-\-postpone\fR is specified\. All \fIargument\fRs are passed to \fIcommand\fR\. If you pass flags to the command, you should separate it with \fB\-\-\fR, for example: \fBwatchexec \-w src \-\- rsync \-a src dest\fR\.
@@ -25,16 +27,24 @@ Command to run when watched files are modified, and at startup, unless \fB\-\-po
 Behaviour depends on the value of \fB\-\-shell\fR: for all except \fBnone\fR, every part of \fIcommand\fR is joined together into one string with a single ascii space character, and given to the shell as described\. For \fBnone\fR, each distinct element of \fIcommand\fR is passed as per the execvp(3) convention: first argument is the program, as a file or searched in the \fBPATH\fR, rest are arguments\.
 .
 .TP
-\fB\-e\fR, \fB\-\-exts\fR \fIextensions\fR
-Comma\-separated list of file extensions to filter by\. Leading dots (\.rs) are allowed\. (This is a shorthand for \fB\-f\fR)\.
+\fB\-E\fR, \fB\-\-env\fR \fIkey=value pair\fR
+Set additional environment variables on the command (not to Watchexec itself)\. Can be given multiple times (one per variable to set)\.
 .
 .TP
-\fB\-f\fR, \fB\-\-filter\fR \fIpattern\fR
-Ignores modifications from paths that do not match \fIpattern\fR\. This option can be specified multiple times, where a match on any given pattern causes the path to trigger \fIcommand\fR\.
+\fB\-n\fR
+Shorthand for \fB\-\-shell=none\fR\.
 .
 .TP
-\fB\-s\fR, \fB\-\-signal\fR
-Sends the specified signal (e\.g\. \fBSIGKILL\fR) to the command\. Defaults to \fBSIGTERM\fR\.
+\fB\-\-no\-process\-group\fR
+Do not use a process group when running \fIcommand\fR\.
+.
+.TP
+\fB\-\-no\-environment\fR
+Do not set WATCHEXEC\fI*\fRPATH environment variables for the command\.
+.
+.TP
+\fB\-\-no\-shell\fR
+Deprecated\. Alias for \fB\-\-shell=none\fR\.
 .
 .TP
 \fB\-\-shell\fR \fIshell\fR
@@ -56,67 +66,22 @@ If not a special value, the string provided may contain arguments to the shell a
 See the \fIEXAMPLES\fR for uses of each of these\.
 .
 .TP
-\fB\-\-no\-shell\fR
-Deprecated\. Alias for \fB\-\-shell=none\fR\.
+\fB\-\-workdir <path>\fR
+Set the working directory of the command (not of Watchexec itself!)\. By default not set, and inherited from the Watchexec instance as is usual\.
+.
+.SS "Filtering options"
 .
 .TP
-\fB\-n\fR
-Shorthand for \fB\-\-shell=none\fR\.
+\fB\-e\fR, \fB\-\-exts\fR \fIextensions\fR
+Comma\-separated list of file extensions to filter by\. Leading dots (\.rs) are allowed\. (This is a shorthand for \fB\-f\fR)\.
 .
 .TP
-\fB\-\-no\-meta\fR
-Ignore metadata changes\.
-.
-.TP
-\fB\-\-no\-environment\fR
-Do not set WATCHEXEC\fI*\fRPATH environment variables for the command\.
+\fB\-f\fR, \fB\-\-filter\fR \fIpattern\fR
+Ignores modifications from paths that do not match \fIpattern\fR\. This option can be specified multiple times, where a match on any given pattern causes the path to trigger \fIcommand\fR\.
 .
 .TP
 \fB\-i\fR, \fB\-\-ignore\fR \fIpattern\fR
 Ignores modifications from paths that match \fIpattern\fR\. This option can be specified multiple times, and a match on any pattern causes the path to be ignored\.
-.
-.TP
-\fB\-w\fR, \fB\-\-watch\fR \fIpath\fR
-Monitor a specific path for changes\. By default, the current working directory is watched\. This may be specified multiple times, where a change in any watched directory (and subdirectories) causes \fIcommand\fR to be executed\.
-.
-.TP
-\fB\-r\fR, \fB\-\-restart\fR
-Terminates the command if it is still running when subsequent file modifications are detected\. By default, sends \fBSIGTERM\fR; use \fB\-\-signal\fR to change that\.
-.
-.TP
-\fB\-W\fR, \fB\-\-watch\-when\-idle\fR
-Ignore events while the process is still running\. This is distinct from \fB\-\-restart\fR in that with this option, events received while the command is running will not trigger a new run immediately after the current command is done\.
-.
-.P
-This behaviour will become the default in v2\.0\.
-.
-.TP
-\fB\-\-no\-process\-group\fR
-Do not use a process group when running \fIcommand\fR\.
-.
-.TP
-\fB\-c\fR, \fB\-\-clear\fR
-Clears the screen before executing \fIcommand\fR\.
-.
-.TP
-\fB\-p\fR, \fB\-\-postpone\fR
-Postpone execution of \fIcommand\fR until the first file modification is detected\.
-.
-.TP
-\fB\-\-force\-poll\fR \fIinterval\fR
-Poll for changes every \fIinterval\fR ms instead of using system\-specific notification mechanisms (such as inotify)\. This is useful when you are monitoring NFS shares\.
-.
-.TP
-\fB\-d\fR, \fB\-\-debounce\fR
-Set the timeout between detected change and command execution, to avoid restarting too frequently when there are many events; defaults to 100ms\.
-.
-.TP
-\fB\-\-no\-vcs\-ignore\fR
-Skip loading of version control system (VCS) ignore files\. By default, watchexec loads \.gitignore, \.hgignore, and other such files in the current directory (or child directories as applicable) and uses them to filter change events\.
-.
-.TP
-\fB\-\-no\-project\-ignore\fR, \fB\-\-no\-ignore\fR (deprecated alias)
-Skip loading of project\-local ignore files (include VCS ignore files)\. By default, watchexec loads \.ignore, \.gitignore, \.hgignore, and other such files in the current directory (or child directories as applicable) and uses them to filter change events\.
 .
 .TP
 \fB\-\-no\-default\-ignore\fR
@@ -127,16 +92,76 @@ Skip default ignore statements\. By default, watchexec ignores common temporary 
 Skip loading of global ignore files\. By default, watchexec loads $HOME/\.gitignore and other such global files and uses them to filter change events\.
 .
 .TP
-\fB\-v\fR, \fB\-\-verbose\fR, \fB\-vv\fR, etc
-Prints diagnostic and debugging messages to STDERR\. Increase the amount of \fBv\fRs to get progressively more output: for bug reports use \fBthree\fR, and for deep debugging \fBfour\fR can be helpful\.
+\fB\-\-no\-meta\fR
+Ignore metadata changes\.
+.
+.TP
+\fB\-\-no\-project\-ignore\fR, \fB\-\-no\-ignore\fR (deprecated alias)
+Skip loading of project\-local ignore files (include VCS ignore files)\. By default, watchexec loads \.ignore, \.gitignore, \.hgignore, and other such files in the current directory (or child directories as applicable) and uses them to filter change events\.
+.
+.P
+The \fB\-\-no\-ignore\fR alias will be replaced by a new option in 2\.0\.0, beware!
+.
+.TP
+\fB\-\-no\-vcs\-ignore\fR
+Skip loading of version control system (VCS) ignore files\. By default, watchexec loads \.gitignore, \.hgignore, and other such files in the current directory (or child directories as applicable) and uses them to filter change events\.
+.
+.TP
+\fB\-\-project\-origin\fR \fIpath\fR
+Overrides the project origin, where ignore files are resolved from (see \fIPATHS\fR section below)\.
+.
+.TP
+\fB\-w\fR, \fB\-\-watch\fR \fIpath\fR
+Monitor a specific path for changes\. By default, the current working directory is watched\. This may be specified multiple times, where a change in any watched directory (and subdirectories) causes \fIcommand\fR to be executed\.
+.
+.SS "Behaviour options"
+.
+.TP
+\fB\-d\fR, \fB\-\-debounce\fR
+Set the timeout between detected change and command execution, to avoid restarting too frequently when there are many events; defaults to 100ms\.
+.
+.TP
+\fB\-\-force\-poll\fR \fIinterval\fR
+Poll for changes every \fIinterval\fR ms instead of using system\-specific notification mechanisms (such as inotify)\. This is useful when you are monitoring NFS shares\.
+.
+.TP
+\fB\-p\fR, \fB\-\-postpone\fR
+Postpone execution of \fIcommand\fR until the first file modification is detected\.
+.
+.TP
+\fB\-r\fR, \fB\-\-restart\fR
+Terminates the command if it is still running when subsequent file modifications are detected\. By default, sends \fBSIGTERM\fR; use \fB\-\-signal\fR to change that\.
+.
+.TP
+\fB\-s\fR, \fB\-\-signal\fR
+Sends the specified signal (e\.g\. \fBSIGKILL\fR) to the command\. Defaults to \fBSIGTERM\fR\.
+.
+.TP
+\fB\-W\fR, \fB\-\-watch\-when\-idle\fR
+Ignore events while the process is still running\. This is distinct from \fB\-\-restart\fR in that with this option, events received while the command is running will not trigger a new run immediately after the current command is done\.
+.
+.P
+This behaviour will become the default in v2\.0\.
+.
+.SS "Output options"
+.
+.TP
+\fB\-c\fR, \fB\-\-clear\fR
+Clears the screen before executing \fIcommand\fR\.
+.
+.TP
+\fB\-N\fR, \fB\-\-notify\fR
+Sends desktop notifications on command start and command end\.
+.
+.SS "Debugging options"
 .
 .TP
 \fB\-\-print\-events\fR, \fB\-\-changes\-only\fR (deprecated alias)
 Prints the events (changed paths, etc) that have triggered an action to STDERR\.
 .
 .TP
-\fB\-N\fR, \fB\-\-notify\fR
-Sends desktop notifications on command start and command end\.
+\fB\-v\fR, \fB\-\-verbose\fR, \fB\-vv\fR, etc
+Prints diagnostic and debugging messages to STDERR\. Increase the amount of \fBv\fRs to get progressively more output: for bug reports use \fBthree\fR, and for deep debugging \fBfour\fR can be helpful\.
 .
 .TP
 \fB\-V\fR, \fB\-\-version\fR
@@ -160,6 +185,9 @@ The overall project origin is used to find and resolve ignore files, such that i
 .
 .P
 For this reason, it is not recommended to use Watchexec for watching disparate folders in a filesystem, where those would resolve to a too\-broad project origin\.
+.
+.P
+The project origin can be overridden with the \fB\-\-project\-origin\fR option\.
 .
 .SH "ENVIRONMENT"
 In variables that contain lists of paths, the separator is as for the \fB$PATH\fR environment variable (a colon, or semicolon on Windows)\.
