@@ -28,8 +28,10 @@ FLAGS:
     -v, --verbose              Print debugging messages (-v, -vv, -vvv, -vvvv; use -vvv for bug reports)
 
 OPTIONS:
+    -E, --env <name=value>...                Add an environment variable to the command
+        --workdir <path>                     Change the working directory of the command
     -d, --debounce <milliseconds>            Set the timeout between detected change and command execution, defaults to
-                                             100ms
+                                             50ms
     -e, --exts <extensions>                  Comma-separated list of file extensions to watch (e.g. js,css,html)
     -f, --filter <pattern>...                Ignore all modifications except those matching the pattern
     -i, --ignore <pattern>...                Ignore modifications to paths matching the pattern

@@ -2,7 +2,6 @@
 source: cli/tests/help.rs
 assertion_line: 16
 expression: "String::from_utf8(output.stdout).unwrap()"
-
 ---
 watchexec 1.18.12
 Execute commands when watched files change
@@ -29,6 +28,8 @@ FLAGS:
     -v, --verbose              Print debugging messages (-v, -vv, -vvv, -vvvv; use -vvv for bug reports)
 
 OPTIONS:
+    -E, --env <name=value>...                Add an environment variable to the command
+        --workdir <path>                     Change the working directory of the command
     -d, --debounce <milliseconds>            Set the timeout between detected change and command execution, defaults to
                                              50ms
     -e, --exts <extensions>                  Comma-separated list of file extensions to watch (e.g. js,css,html)
