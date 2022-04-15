@@ -47,7 +47,7 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches<'static>> {
 			.multiple(true)
 			.takes_value(true))
 		.arg(Arg::with_name("clear")
-			.help_heading(Some(OPTSET_BEHAVIOUR))
+			.help_heading(Some(OPTSET_OUTPUT))
 			.help("Clear screen before executing command")
 			.short("c")
 			.long("clear"))
@@ -135,7 +135,7 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches<'static>> {
 			.short("n")
 			.long("no-shell"))
 		.arg(Arg::with_name("no-environment")
-			.help_heading(Some(OPTSET_OUTPUT))
+			.help_heading(Some(OPTSET_COMMAND))
 			.help("Do not set WATCHEXEC_*_PATH environment variables for the command")
 			.long("no-environment"))
 		.arg(Arg::with_name("no-process-group")
@@ -158,7 +158,20 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches<'static>> {
 			.help_heading(Some(OPTSET_FILTERING))
 			.help("Override the project origin: the directory from which ignore files are detected")
 			.value_name("path")
-			.long("project-origin"));
+			.long("project-origin"))
+		.arg(Arg::with_name("command-workdir")
+			.help_heading(Some(OPTSET_COMMAND))
+			.help("Change the working directory of the command")
+			.value_name("path")
+			.long("workdir"))
+		.arg(Arg::with_name("command-env")
+			.help_heading(Some(OPTSET_COMMAND))
+			.help("Add an environment variable to the command")
+			.value_name("name=value")
+			.long("env")
+			.short("E")
+			.number_of_values(1)
+			.multiple(true));
 
 	let app = if tagged_filterer {
 		app.arg(
