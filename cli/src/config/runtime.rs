@@ -1,8 +1,12 @@
-use std::{convert::Infallible, env::current_dir, path::Path, str::FromStr, time::Duration};
+use std::{
+	collections::HashMap, convert::Infallible, env::current_dir, ffi::OsString, path::Path,
+	str::FromStr, time::Duration,
+};
 
 use clap::ArgMatches;
-use miette::{IntoDiagnostic, Result};
+use miette::{miette, IntoDiagnostic, Result};
 use notify_rust::Notification;
+use tracing::debug;
 use watchexec::{
 	action::{Action, Outcome, PostSpawn, PreSpawn},
 	command::Shell,
@@ -196,18 +200,54 @@ pub fn runtime(args: &ArgMatches<'static>) -> Result<RuntimeConfig> {
 		fut
 	});
 
+	let mut add_envs = HashMap::new();
+	for pair in args.values_of_lossy("command-env").unwrap_or_default() {
+		if let Some((k, v)) = pair.split_once('=') {
+			add_envs.insert(k.to_owned(), OsString::from(v));
+		} else {
+			return Err(miette!("{pair} is not in key=value format"));
+		}
+	}
+	debug!(
+		?add_envs,
+		"additional environment variables to add to command"
+	);
+
+	let workdir = args
+		.value_of_os("command-workdir")
+		.map(|wkd| Path::new(wkd).to_owned());
+
 	let no_env = args.is_present("no-environment");
-	config.on_pre_spawn(move |prespawn: PreSpawn| async move {
-		if !no_env {
-			let envs = summarise_events_to_env(prespawn.events.iter());
-			if let Some(mut command) = prespawn.command().await {
-				for (k, v) in envs {
-					command.env(format!("WATCHEXEC_{}_PATH", k), v);
+	config.on_pre_spawn(move |prespawn: PreSpawn| {
+		let add_envs = add_envs.clone();
+		let workdir = workdir.clone();
+		async move {
+			if !no_env || !add_envs.is_empty() || workdir.is_some() {
+				if let Some(mut command) = prespawn.command().await {
+					let mut envs = add_envs.clone();
+
+					if !no_env {
+						envs.extend(
+							summarise_events_to_env(prespawn.events.iter())
+								.into_iter()
+								.map(|(k, v)| (format!("WATCHEXEC_{}_PATH", k), v)),
+						);
+					}
+
+					for (k, v) in envs {
+						debug!(?k, ?v, "inserting environment variable");
+						command.env(k, v);
+					}
+
+					if let Some(ref workdir) = workdir {
+						debug!(?workdir, "set command workdir");
+						command.current_dir(workdir);
+					}
 				}
 			}
-		}
 
-		Ok::<(), Infallible>(())
+			Ok::<(), Infallible>(())
+		}
 	});
 
 	config.on_post_spawn(SyncFnHandler::from(move |postspawn: PostSpawn| {
