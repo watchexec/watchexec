@@ -3,7 +3,6 @@ name: Merge (with bors)
 on:
   push:
     branches:
-      - main
       - staging
       - trying
     tags-ignore:
