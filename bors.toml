@@ -1,3 +1,4 @@
-status = ["Check & Test on %", "Check on MSRV"]
+status = ["Merge test on %"]
+pr_status = ["PR check on %"]
 use_squash_merge = true
 delete_merged_branches = true
