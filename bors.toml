@@ -1,4 +1,5 @@
 status = ["Merge test on %"]
-pr_status = ["PR check on %"]
+pr_status = ["PR check on ubuntu"]
 use_squash_merge = true
 delete_merged_branches = true
+update_base_for_deletes = true
