@@ -1,24 +1,7 @@
-on:
-  workflow_dispatch:
-  pull_request:
-    paths:
-      - "cli/**"
-      - "lib/**"
-      - "/Cargo.*"
-  push:
-    branches:
-      - main
-      - try/**
-    tags-ignore:
-      - "cli-v*.*.*"
-      - "lib-v*.*.*"
-    paths:
-      - "cli/**"
-      - "lib/**"
-      - "/Cargo.*"
-      - ".github/**"
+name: PR checks
 
-name: Checks & Tests
+on:
+  pull_request:
 
 jobs:
   check:
@@ -29,7 +12,7 @@ jobs:
           - windows
           - macos
 
-    name: Check & Test on ${{ matrix.platform }}
+    name: PR check on ${{ matrix.platform }}
     runs-on: "${{ matrix.platform }}-latest"
 
     steps:
@@ -42,26 +25,5 @@ jobs:
       - run: rustup component add clippy
       - uses: actions-rs/cargo@v1
         with:
-          command: check
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-      - uses: actions-rs/cargo@v1
-        with:
           command: clippy
-
-  msrv:
-    name: Check on MSRV
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: 1.58.0
-          override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --package watchexec
 
