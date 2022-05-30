@@ -1,0 +1,3 @@
+status = ["Check & Test on %", "Check on MSRV"]
+use_squash_merge = true
+delete_merged_branches = true
