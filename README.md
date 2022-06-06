@@ -57,6 +57,7 @@ Watchexec pairs well with:
 
 - [checkexec](https://github.com/kurtbuilds/checkexec): to run only when source files are newer than a target file
 - [just](https://github.com/casey/just): a modern alternative to `make`
+- [mprocs](https://github.com/pvolok/mprocs): lightweight command multiplexing
 - [systemfd](https://github.com/mitsuhiko/systemfd): socket-passing in development
 
 ## Extend
