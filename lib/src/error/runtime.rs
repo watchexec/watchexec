@@ -125,7 +125,9 @@ pub enum RuntimeError {
 	#[diagnostic(code(watchexec::runtime::clearscreen))]
 	Clearscreen(#[from] clearscreen::Error),
 
-	/// Error received when parsing a glob (possibly from an [`IgnoreFile`](crate::ignore::files::IgnoreFile)) fails.
+	/// Error received when parsing a glob (possibly from an [`IgnoreFile`]) fails.
+	///
+	/// [`IgnoreFile`]: crate::ignore::IgnoreFile
 	#[error("cannot parse glob from ignore '{file:?}': {err}")]
 	#[diagnostic(code(watchexec::runtime::ignore_glob))]
 	GlobsetGlob {
@@ -138,7 +140,9 @@ pub enum RuntimeError {
 		// TODO: extract glob error into diagnostic
 	},
 
-	/// Error received when an [`IgnoreFile`](crate::ignore::files::IgnoreFile) cannot be read.
+	/// Error received when an [`IgnoreFile`] cannot be read.
+	///
+	/// [`IgnoreFile`]: crate::ignore::IgnoreFile
 	#[error("cannot read ignore '{file}': {err}")]
 	#[diagnostic(code(watchexec::runtime::ignore_file_read))]
 	IgnoreFileRead {
@@ -153,7 +157,7 @@ pub enum RuntimeError {
 	/// Error emitted by a [`Filterer`](crate::filter::Filterer).
 	///
 	/// With built-in filterers this will probably be a dynbox of
-	/// [`TaggedFiltererError`](crate::filter::tagged::error::TaggedFiltererError), but it is
+	/// [`TaggedFiltererError`](crate::error::TaggedFiltererError), but it is
 	/// possible to use a custom filterer which emits a different error type.
 	#[error("{kind} filterer: {err}")]
 	#[diagnostic(code(watchexec::runtime::filterer))]

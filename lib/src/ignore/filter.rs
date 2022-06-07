@@ -20,7 +20,7 @@ use super::files::IgnoreFile;
 ///
 /// This reads and compiles ignore files, and should be used for handling ignore files. It's created
 /// with a project origin and a list of ignore files, and new ignore files can be added later
-/// (unless [`finish`](Filter::finish()) is called).
+/// (unless [`finish`](IgnoreFilterer::finish()) is called).
 ///
 /// It implements [`Filterer`] so it can be used directly in another filterer; it is not designed to
 /// be used as a standalone filterer.
