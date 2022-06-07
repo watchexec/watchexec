@@ -1,7 +1,3 @@
-use git_config::{
-	file::{from_paths, GitConfig},
-	values::Path as GitPath,
-};
 use std::{
 	collections::HashSet,
 	env,
@@ -9,6 +5,10 @@ use std::{
 	path::{Path, PathBuf},
 };
 
+use git_config::{
+	file::{from_paths, GitConfig},
+	values::Path as GitPath,
+};
 use tokio::fs::{metadata, read_dir};
 use tracing::{trace, trace_span};
 
@@ -474,7 +474,7 @@ impl DirTourist {
 
 	pub(crate) async fn add_last_file_to_filter(
 		&mut self,
-		files: &mut Vec<IgnoreFile>,
+		files: &mut [IgnoreFile],
 		errors: &mut Vec<Error>,
 	) {
 		if let Some(ig) = files.last() {

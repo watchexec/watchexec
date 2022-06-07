@@ -88,10 +88,6 @@ impl IgnoreFilterer {
 		for (file, content) in files_contents.into_iter().flatten() {
 			let _span = trace_span!("loading ignore file", ?file).entered();
 			for line in content.lines() {
-				if line.is_empty() || line.starts_with('#') {
-					continue;
-				}
-
 				trace!(?line, "adding ignore line");
 				builder
 					.add_line(file.applies_in.clone(), line)

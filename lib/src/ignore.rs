@@ -7,3 +7,4 @@ pub use filter::*;
 
 mod files;
 mod filter;
+pub mod tree;
