@@ -33,6 +33,9 @@ impl GlobsetFilterer {
 	/// second is used to ignore paths (matching paths will fail the pattern). If the filter list is
 	/// empty, only the ignore list will be used. If both lists are empty, the filter always passes.
 	///
+	/// Ignores and filters are passed as a tuple of the glob pattern as a string and an optional
+	/// path of the folder the pattern should apply in (e.g. the folder a gitignore file is in).
+	///
 	/// The extensions list is used to filter files by extension.
 	///
 	/// Non-path events are always passed.
