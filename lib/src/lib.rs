@@ -63,6 +63,7 @@
 //!         }
 //!     });
 //!
+//!     we.reconfigure(runtime);
 //!     we.main().await.into_diagnostic()?;
 //!     Ok(())
 //! }
