@@ -58,7 +58,13 @@ impl Watchexec {
 	/// Note that `RuntimeConfig` is not a "live" or "shared" instance: if using reconfiguration,
 	/// you'll usually pass a `clone()` of your `RuntimeConfig` instance to this function; changes
 	/// made to the instance you _keep_ will not automatically be used by Watchexec, you need to
-	/// call [`reconfigure()`] with your updated config to apply the changes.
+	/// call [`reconfigure()`](Watchexec::reconfigure) with your updated config to apply the changes.
+	///
+	/// Watchexec will subscribe to most signals sent to the process it runs in and send them, as
+	/// [`Event`]s, to the action handler. At minimum, you should check for interrupt/ctrl-c events
+	/// and return an [`Outcome::Exit`], otherwise hitting ctrl-c will do nothing.
+	///
+	/// [`Outcome::Exit`]: crate::action::Outcome::Exit
 	pub fn new(
 		mut init: InitConfig,
 		mut runtime: RuntimeConfig,
