@@ -35,6 +35,34 @@ async fn exact_filename() {
 }
 
 #[tokio::test]
+async fn exact_filename_in_folder() {
+	let filterer = filt(&["sub/Cargo.toml"], &[], &[]).await;
+
+	filterer.file_doesnt_pass("Cargo.toml");
+	filterer.file_does_pass("sub/Cargo.toml");
+	filterer.file_doesnt_pass("/test/foo/bar/Cargo.toml");
+	filterer.file_doesnt_pass("Cargo.json");
+	filterer.file_doesnt_pass("Gemfile.toml");
+	filterer.file_doesnt_pass("FINAL-FINAL.docx");
+	filterer.dir_doesnt_pass("/a/folder");
+	filterer.dir_does_pass("/test/sub/Cargo.toml");
+}
+
+#[tokio::test]
+async fn exact_filename_in_hidden_folder() {
+	let filterer = filt(&[".sub/Cargo.toml"], &[], &[]).await;
+
+	filterer.file_doesnt_pass("Cargo.toml");
+	filterer.file_does_pass(".sub/Cargo.toml");
+	filterer.file_doesnt_pass("/test/foo/bar/Cargo.toml");
+	filterer.file_doesnt_pass("Cargo.json");
+	filterer.file_doesnt_pass("Gemfile.toml");
+	filterer.file_doesnt_pass("FINAL-FINAL.docx");
+	filterer.dir_doesnt_pass("/a/folder");
+	filterer.dir_does_pass("/test/.sub/Cargo.toml");
+}
+
+#[tokio::test]
 async fn exact_filenames_multiple() {
 	let filterer = filt(&["Cargo.toml", "package.json"], &[], &[]).await;
 
@@ -162,6 +190,35 @@ async fn ignore_exact_filename() {
 	filterer.dir_does_pass("/a/folder");
 	filterer.dir_doesnt_pass("/test/Cargo.toml");
 }
+
+#[tokio::test]
+async fn ignore_exact_filename_in_folder() {
+	let filterer = filt(&[], &["sub/Cargo.toml"], &[]).await;
+
+	filterer.file_does_pass("Cargo.toml");
+	filterer.file_doesnt_pass("sub/Cargo.toml");
+	filterer.file_does_pass("/test/foo/bar/Cargo.toml");
+	filterer.file_does_pass("Cargo.json");
+	filterer.file_does_pass("Gemfile.toml");
+	filterer.file_does_pass("FINAL-FINAL.docx");
+	filterer.dir_does_pass("/a/folder");
+	filterer.dir_doesnt_pass("/test/sub/Cargo.toml");
+}
+
+#[tokio::test]
+async fn ignore_exact_filename_in_hidden_folder() {
+	let filterer = filt(&[], &[".sub/Cargo.toml"], &[]).await;
+
+	filterer.file_does_pass("Cargo.toml");
+	filterer.file_doesnt_pass(".sub/Cargo.toml");
+	filterer.file_does_pass("/test/foo/bar/Cargo.toml");
+	filterer.file_does_pass("Cargo.json");
+	filterer.file_does_pass("Gemfile.toml");
+	filterer.file_does_pass("FINAL-FINAL.docx");
+	filterer.dir_does_pass("/a/folder");
+	filterer.dir_doesnt_pass("/test/.sub/Cargo.toml");
+}
+
 
 #[tokio::test]
 async fn ignore_exact_filenames_multiple() {
