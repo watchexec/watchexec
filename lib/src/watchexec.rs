@@ -54,6 +54,11 @@ impl Watchexec {
 	///
 	/// Returns an [`Arc`] for convenience; use [`try_unwrap`][Arc::try_unwrap()] to get the value
 	/// directly if needed.
+	///
+	/// Note that `RuntimeConfig` is not a "live" or "shared" instance: if using reconfiguration,
+	/// you'll usually pass a `clone()` of your `RuntimeConfig` instance to this function; changes
+	/// made to the instance you _keep_ will not automatically be used by Watchexec, you need to
+	/// call [`reconfigure()`] with your updated config to apply the changes.
 	pub fn new(
 		mut init: InitConfig,
 		mut runtime: RuntimeConfig,
