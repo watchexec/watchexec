@@ -14,9 +14,12 @@ use crate::ignore::{IgnoreFile, IgnoreFilterer};
 /// A path-only filterer based on globsets.
 ///
 /// This filterer mimics the behavior of the `watchexec` v1 filter, but does not match it exactly,
-/// due to differing internals. It is intended to be used as a stopgap until the tagged filterer
+/// due to differing internals. It is intended to be used as a stopgap until the "tagged" filterer
 /// or another advanced filterer, reaches a stable state or becomes the default. As such it does not
 /// have an updatable configuration.
+///
+/// While it is experimental, the ["tagged" filterer](crate::filter::tagged) is generally easier
+/// and more intuitive to use in code for new applications.
 #[derive(Debug)]
 pub struct GlobsetFilterer {
 	origin: PathBuf,
@@ -35,6 +38,7 @@ impl GlobsetFilterer {
 	///
 	/// Ignores and filters are passed as a tuple of the glob pattern as a string and an optional
 	/// path of the folder the pattern should apply in (e.g. the folder a gitignore file is in).
+	/// A `None` to the latter will mark the pattern as being global.
 	///
 	/// The extensions list is used to filter files by extension.
 	///
