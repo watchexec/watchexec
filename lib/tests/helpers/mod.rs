@@ -9,7 +9,7 @@ use std::{
 
 use watchexec::{
 	error::RuntimeError,
-	event::{filekind::FileEventKind, Event, FileType, ProcessEnd, Source, Tag},
+	event::{filekind::FileEventKind, Event, FileType, Priority, ProcessEnd, Source, Tag},
 	filter::{
 		globset::GlobsetFilterer,
 		tagged::{files::FilterFile, Filter, Matcher, Op, Pattern, TaggedFilterer},
@@ -25,6 +25,7 @@ pub mod ignore {
 	pub use super::ignore_filt as filt;
 	pub use super::Applies;
 	pub use super::PathHarness;
+	pub use watchexec::event::Priority;
 }
 
 pub mod globset {
@@ -32,6 +33,7 @@ pub mod globset {
 	pub use super::ig_file as file;
 	pub use super::Applies;
 	pub use super::PathHarness;
+	pub use watchexec::event::Priority;
 }
 
 pub mod tagged {
@@ -42,6 +44,7 @@ pub mod tagged {
 	pub use super::PathHarness;
 	pub use super::TaggedHarness;
 	pub use super::{filter, glob_filter, notglob_filter};
+	pub use watchexec::event::Priority;
 }
 
 pub mod tagged_ff {
@@ -61,7 +64,7 @@ pub trait PathHarness: Filterer {
 			metadata: Default::default(),
 		};
 
-		self.check_event(&event)
+		self.check_event(&event, Priority::Normal)
 	}
 
 	fn path_pass(&self, path: &str, file_type: Option<FileType>, pass: bool) {
@@ -122,16 +125,35 @@ impl PathHarness for TaggedFilterer {}
 impl PathHarness for IgnoreFilterer {}
 
 pub trait TaggedHarness {
-	fn check_tag(&self, tag: Tag) -> std::result::Result<bool, RuntimeError>;
+	fn check_tag(&self, tag: Tag, priority: Priority) -> std::result::Result<bool, RuntimeError>;
+
+	fn priority_pass(&self, priority: Priority, pass: bool) {
+		tracing::info!(?priority, ?pass, "check");
+
+		assert_eq!(
+			self.check_tag(Tag::Source(Source::Filesystem), priority)
+				.unwrap(),
+			pass,
+			"{priority:?} (expected {})",
+			if pass { "pass" } else { "fail" }
+		);
+	}
+
+	fn priority_does_pass(&self, priority: Priority) {
+		self.priority_pass(priority, true);
+	}
+
+	fn priority_doesnt_pass(&self, priority: Priority) {
+		self.priority_pass(priority, false);
+	}
 
 	fn tag_pass(&self, tag: Tag, pass: bool) {
 		tracing::info!(?tag, ?pass, "check");
 
 		assert_eq!(
-			self.check_tag(tag.clone()).unwrap(),
+			self.check_tag(tag.clone(), Priority::Normal).unwrap(),
 			pass,
-			"{:?} (expected {})",
-			tag,
+			"{tag:?} (expected {})",
 			if pass { "pass" } else { "fail" }
 		);
 	}
@@ -178,13 +200,13 @@ pub trait TaggedHarness {
 }
 
 impl TaggedHarness for TaggedFilterer {
-	fn check_tag(&self, tag: Tag) -> std::result::Result<bool, RuntimeError> {
+	fn check_tag(&self, tag: Tag, priority: Priority) -> std::result::Result<bool, RuntimeError> {
 		let event = Event {
 			tags: vec![tag],
 			metadata: Default::default(),
 		};
 
-		self.check_event(&event)
+		self.check_event(&event, priority)
 	}
 }
 

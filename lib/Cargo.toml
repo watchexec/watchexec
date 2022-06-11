@@ -16,6 +16,7 @@ rust-version = "1.58.0"
 edition = "2021"
 
 [dependencies]
+async-priority-channel = "0.1.0"
 async-recursion = "1.0.0"
 async-stream = "0.3.2"
 atomic-take = "1.0.0"
@@ -40,11 +41,10 @@ features = ["with-tokio"]
 version = "=5.0.0-pre.14"
 
 [dependencies.tokio]
-version = "1.15.0"
+version = "1.19.2"
 features = [
 	"fs",
 	"io-std",
-	"parking_lot",
 	"process",
 	"rt",
 	"rt-multi-thread",

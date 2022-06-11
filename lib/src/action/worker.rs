@@ -3,6 +3,7 @@ use std::{
 	time::{Duration, Instant},
 };
 
+use async_priority_channel as priority;
 use tokio::{
 	sync::{
 		mpsc,
@@ -14,7 +15,7 @@ use tracing::{debug, trace};
 
 use crate::{
 	error::{CriticalError, RuntimeError},
-	event::Event,
+	event::{Event, Priority},
 	handler::rte,
 };
 
@@ -28,8 +29,8 @@ use super::{outcome_worker::OutcomeWorker, process_holder::ProcessHolder, Action
 pub async fn worker(
 	working: watch::Receiver<WorkingData>,
 	errors: mpsc::Sender<RuntimeError>,
-	events_tx: mpsc::Sender<Event>,
-	mut events: mpsc::Receiver<Event>,
+	events_tx: priority::Sender<Event, Priority>,
+	events: priority::Receiver<Event, Priority>,
 ) -> Result<(), CriticalError> {
 	let mut last = Instant::now();
 	let mut set = Vec::new();
@@ -37,6 +38,11 @@ pub async fn worker(
 	let outcome_gen = OutcomeWorker::newgen();
 
 	loop {
+		if events.is_closed() {
+			trace!("events channel closed, stopping");
+			break;
+		}
+
 		let maxtime = if set.is_empty() {
 			trace!("nothing in set, waiting forever for next event");
 			Duration::from_secs(u64::MAX)
@@ -54,19 +60,27 @@ pub async fn worker(
 			}
 		} else {
 			trace!(?maxtime, "waiting for event");
-			match timeout(maxtime, events.recv()).await {
+			let maybe_event = timeout(maxtime, events.recv()).await;
+			if events.is_closed() {
+				trace!("events channel closed during timeout, stopping");
+				break;
+			}
+
+			match maybe_event {
 				Err(_timeout) => {
 					trace!("timed out, cycling");
 					continue;
 				}
-				Ok(None) => break,
-				Ok(Some(event)) => {
-					trace!(?event, "got event");
+				Ok(Err(_empty)) => break,
+				Ok(Ok((event, priority))) => {
+					trace!(?event, ?priority, "got event");
 
-					if event.is_empty() {
+					if priority == Priority::Urgent {
+						trace!("urgent event, by-passing filters");
+					} else if event.is_empty() {
 						trace!("empty event, by-passing filters");
 					} else {
-						let filtered = working.borrow().filterer.check_event(&event);
+						let filtered = working.borrow().filterer.check_event(&event, priority);
 						match filtered {
 							Err(err) => {
 								trace!(%err, "filter errored on event");

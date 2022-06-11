@@ -37,11 +37,10 @@ default-features = false
 features = ["wrap_help"]
 
 [dependencies.tokio]
-version = "1.15.0"
+version = "1.19.2"
 features = [
 	"fs",
 	"io-std",
-	"parking_lot",
 	"process",
 	"rt",
 	"rt-multi-thread",

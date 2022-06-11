@@ -426,3 +426,30 @@ async fn complete_with_any_signal() {
 	filterer.complete_doesnt_pass(Some(ProcessEnd::Success));
 	filterer.complete_doesnt_pass(None);
 }
+
+#[tokio::test]
+async fn priority_auto() {
+	let filterer = filt(&[filter("priority=normal")]).await;
+
+	filterer.priority_doesnt_pass(Priority::Low);
+	filterer.priority_does_pass(Priority::Normal);
+	filterer.priority_doesnt_pass(Priority::High);
+}
+
+#[tokio::test]
+async fn priority_set() {
+	let filterer = filt(&[filter("priority:=normal,high")]).await;
+
+	filterer.priority_doesnt_pass(Priority::Low);
+	filterer.priority_does_pass(Priority::Normal);
+	filterer.priority_does_pass(Priority::High);
+}
+
+#[tokio::test]
+async fn priority_none() {
+	let filterer = filt(&[]).await;
+
+	filterer.priority_does_pass(Priority::Low);
+	filterer.priority_does_pass(Priority::Normal);
+	filterer.priority_does_pass(Priority::High);
+}

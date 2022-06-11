@@ -1,3 +1,4 @@
+use async_priority_channel as priority;
 use command_group::AsyncCommandGroup;
 use tokio::{
 	process::Command,
@@ -11,7 +12,7 @@ use tracing::{debug, error, trace};
 
 use crate::{
 	error::RuntimeError,
-	event::{Event, Source, Tag},
+	event::{Event, Priority, Source, Tag},
 	signal::process::SubSignal,
 };
 
@@ -39,7 +40,7 @@ impl Supervisor {
 	/// Spawns the command, the supervision task, and returns a new control object.
 	pub fn spawn(
 		errors: Sender<RuntimeError>,
-		events: Sender<Event>,
+		events: priority::Sender<Event, Priority>,
 		command: &mut Command,
 		grouped: bool,
 	) -> Result<Self, RuntimeError> {
@@ -140,7 +141,7 @@ impl Supervisor {
 					};
 
 					debug!(?event, "creating synthetic process completion event");
-					if let Err(err) = events.send(event).await {
+					if let Err(err) = events.send(event, Priority::Low).await {
 						error!(%err, "while sending process completion event");
 						errors
 							.send(RuntimeError::EventChannelSend {

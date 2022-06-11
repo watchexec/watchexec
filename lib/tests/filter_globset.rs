@@ -219,7 +219,6 @@ async fn ignore_exact_filename_in_hidden_folder() {
 	filterer.dir_doesnt_pass("/test/.sub/Cargo.toml");
 }
 
-
 #[tokio::test]
 async fn ignore_exact_filenames_multiple() {
 	let filterer = filt(&[], &["Cargo.toml", "package.json"], &[]).await;
@@ -401,7 +400,7 @@ async fn multipath_allow_on_any_one_pass() {
 		metadata: Default::default(),
 	};
 
-	assert!(filterer.check_event(&event).unwrap());
+	assert!(filterer.check_event(&event, Priority::Normal).unwrap());
 }
 
 #[tokio::test]
@@ -451,17 +450,23 @@ async fn nonpath_event_passes() {
 	let filterer = filt(&[], &[], &["py"]).await;
 
 	assert!(filterer
-		.check_event(&Event {
-			tags: vec![Tag::Source(Source::Internal)],
-			metadata: Default::default(),
-		})
+		.check_event(
+			&Event {
+				tags: vec![Tag::Source(Source::Internal)],
+				metadata: Default::default(),
+			},
+			Priority::Normal
+		)
 		.unwrap());
 
 	assert!(filterer
-		.check_event(&Event {
-			tags: vec![Tag::Source(Source::Keyboard)],
-			metadata: Default::default(),
-		})
+		.check_event(
+			&Event {
+				tags: vec![Tag::Source(Source::Keyboard)],
+				metadata: Default::default(),
+			},
+			Priority::Normal
+		)
 		.unwrap());
 }
 

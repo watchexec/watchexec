@@ -474,7 +474,7 @@ impl DirTourist {
 
 	pub(crate) async fn add_last_file_to_filter(
 		&mut self,
-		files: &mut Vec<IgnoreFile>,
+		files: &mut [IgnoreFile],
 		errors: &mut Vec<Error>,
 	) {
 		if let Some(ig) = files.last() {

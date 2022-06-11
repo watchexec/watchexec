@@ -2,7 +2,10 @@
 
 use std::sync::Arc;
 
-use crate::{error::RuntimeError, event::Event};
+use crate::{
+	error::RuntimeError,
+	event::{Event, Priority},
+};
 
 pub mod globset;
 pub mod tagged;
@@ -19,17 +22,17 @@ pub trait Filterer: std::fmt::Debug + Send + Sync {
 	/// the watchexec error handler. While the type signature supports any [`RuntimeError`], it's
 	/// preferred that you create your own error type and return it wrapped in the
 	/// [`RuntimeError::Filterer`] variant with the name of your filterer as `kind`.
-	fn check_event(&self, event: &Event) -> Result<bool, RuntimeError>;
+	fn check_event(&self, event: &Event, priority: Priority) -> Result<bool, RuntimeError>;
 }
 
 impl Filterer for () {
-	fn check_event(&self, _event: &Event) -> Result<bool, RuntimeError> {
+	fn check_event(&self, _event: &Event, _priority: Priority) -> Result<bool, RuntimeError> {
 		Ok(true)
 	}
 }
 
 impl<T: Filterer> Filterer for Arc<T> {
-	fn check_event(&self, event: &Event) -> Result<bool, RuntimeError> {
-		Arc::as_ref(self).check_event(event)
+	fn check_event(&self, event: &Event, priority: Priority) -> Result<bool, RuntimeError> {
+		Arc::as_ref(self).check_event(event, priority)
 	}
 }

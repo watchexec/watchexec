@@ -256,6 +256,45 @@ impl fmt::Display for Source {
 	}
 }
 
+/// The priority of the event in the queue.
+///
+/// In the event queue, events are inserted with a priority, such that more important events are
+/// delivered ahead of others. This is especially important when there is a large amount of events
+/// generated and relatively slow filtering, as events can become noticeably delayed, and may give
+/// the impression of stalling.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
+pub enum Priority {
+	/// Low priority
+	///
+	/// Used for:
+	/// - process completion events
+	Low,
+
+	/// Normal priority
+	///
+	/// Used for:
+	/// - filesystem events
+	Normal,
+
+	/// High priority
+	///
+	/// Used for:
+	/// - signals to main process, except Interrupt and Terminate
+	High,
+
+	/// Urgent events bypass filtering entirely.
+	///
+	/// Used for:
+	/// - Interrupt and Terminate signals to main process
+	Urgent,
+}
+
+impl Default for Priority {
+	fn default() -> Self {
+		Self::Normal
+	}
+}
+
 impl Event {
 	/// Returns true if the event has an Internal source tag.
 	pub fn is_internal(&self) -> bool {

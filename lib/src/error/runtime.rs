@@ -2,9 +2,12 @@ use std::path::PathBuf;
 
 use miette::Diagnostic;
 use thiserror::Error;
-use tokio::sync::mpsc;
 
-use crate::{event::Event, fs::Watcher, signal::process::SubSignal};
+use crate::{
+	event::{Event, Priority},
+	fs::Watcher,
+	signal::process::SubSignal,
+};
 
 /// Errors which _may_ be recoverable, transient, or only affect a part of the operation, and should
 /// be reported to the user and/or acted upon programatically, but will not outright stop watchexec.
@@ -65,7 +68,7 @@ pub enum RuntimeError {
 
 		/// The underlying error.
 		#[source]
-		err: mpsc::error::SendError<Event>,
+		err: async_priority_channel::SendError<(Event, Priority)>,
 	},
 
 	/// Error received when an event cannot be sent to the event channel.
@@ -79,7 +82,7 @@ pub enum RuntimeError {
 
 		/// The underlying error.
 		#[source]
-		err: mpsc::error::TrySendError<Event>,
+		err: async_priority_channel::TrySendError<(Event, Priority)>,
 	},
 
 	/// Error received when a [`Handler`][crate::handler::Handler] errors.
