@@ -7,7 +7,7 @@ watchexec 1.19.0
 Execute commands when watched files change
 
 USAGE:
-    watchexec [OPTIONS] <command>...
+    watchexec.exe [OPTIONS] <command>...
 
 OPTIONS:
     -h, --help       Print help information
