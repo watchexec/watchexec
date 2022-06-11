@@ -16,6 +16,7 @@ rust-version = "1.58.0"
 edition = "2021"
 
 [dependencies]
+async-priority-channel = "0.1.0"
 async-recursion = "1.0.0"
 async-stream = "0.3.2"
 atomic-take = "1.0.0"
@@ -31,7 +32,6 @@ once_cell = "1.8.0"
 regex = "1.5.4"
 thiserror = "1.0.26"
 unicase = "2.6.0"
-async-priority-channel = "0.1.0"
 
 [dependencies.command-group]
 version = "1.0.8"
