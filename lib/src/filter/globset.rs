@@ -7,7 +7,7 @@ use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use tracing::{debug, trace, trace_span};
 
 use crate::error::RuntimeError;
-use crate::event::{Event, FileType};
+use crate::event::{Event, FileType, Priority};
 use crate::filter::Filterer;
 use crate::ignore::{IgnoreFile, IgnoreFilterer};
 
@@ -105,14 +105,14 @@ impl Filterer for GlobsetFilterer {
 	/// Filter an event.
 	///
 	/// This implementation never errors.
-	fn check_event(&self, event: &Event) -> Result<bool, RuntimeError> {
+	fn check_event(&self, event: &Event, priority: Priority) -> Result<bool, RuntimeError> {
 		let _span = trace_span!("filterer_check").entered();
 
 		{
 			trace!("checking internal ignore filterer");
 			if !self
 				.ignore_files
-				.check_event(event)
+				.check_event(event, priority)
 				.expect("IgnoreFilterer never errors")
 			{
 				trace!("internal ignore filterer matched (fail)");

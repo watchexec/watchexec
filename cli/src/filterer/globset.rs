@@ -10,7 +10,7 @@ use watchexec::{
 	error::RuntimeError,
 	event::{
 		filekind::{FileEventKind, ModifyKind},
-		Event, Tag,
+		Event, Priority, Tag,
 	},
 	filter::{globset::GlobsetFilterer, Filterer},
 };
@@ -77,7 +77,7 @@ pub struct WatchexecFilterer {
 }
 
 impl Filterer for WatchexecFilterer {
-	fn check_event(&self, event: &Event) -> Result<bool, RuntimeError> {
+	fn check_event(&self, event: &Event, priority: Priority) -> Result<bool, RuntimeError> {
 		let is_meta = event.tags.iter().any(|tag| {
 			matches!(
 				tag,
@@ -88,7 +88,7 @@ impl Filterer for WatchexecFilterer {
 		if self.no_meta && is_meta {
 			Ok(false)
 		} else {
-			self.inner.check_event(event)
+			self.inner.check_event(event, priority)
 		}
 	}
 }

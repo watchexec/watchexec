@@ -283,7 +283,15 @@ pub enum Priority {
 	///
 	/// Used for:
 	/// - signals to main process
+	///
+	/// Urgent events bypass filtering entirely.
 	Urgent,
+}
+
+impl Default for Priority {
+	fn default() -> Self {
+		Self::Normal
+	}
 }
 
 impl Event {

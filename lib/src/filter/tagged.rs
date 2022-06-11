@@ -13,7 +13,7 @@ use unicase::UniCase;
 
 use crate::error::RuntimeError;
 use crate::error::TaggedFiltererError;
-use crate::event::{Event, FileType, ProcessEnd, Tag};
+use crate::event::{Event, FileType, Priority, ProcessEnd, Tag};
 use crate::filter::Filterer;
 use crate::ignore::{IgnoreFile, IgnoreFilterer};
 use crate::signal::process::SubSignal;
@@ -70,7 +70,8 @@ mod parse;
 /// | [Source](Matcher::Source)                       | `:=` (in set) |
 /// | [Process](Matcher::Process)                     | `:=` (in set) |
 /// | [Signal](Matcher::Signal)                       | `:=` (in set) |
-/// | [ProcessCompletion](Matcher::ProcessCompletion) | `*=` (glob) |
+/// | [ProcessCompletion](Matcher::ProcessCompletion) | `*=` (glob)   |
+/// | [Priority](Matcher::Priority)                   | `:=` (in set) |
 ///
 /// [Matchers][Matcher] correspond to Tags, but are not one-to-one: the `path` matcher operates on
 /// the `path` part of the `Path` tag, and the `type` matcher operates on the `file_type`, for
@@ -86,6 +87,7 @@ mod parse;
 /// | [Process](Matcher::Process)        | `process` or `pid` | [Process](Tag::Process)            |
 /// | [Signal](Matcher::Signal)          | `signal` | [Signal](Tag::Signal)                        |
 /// | [ProcessCompletion](Matcher::ProcessCompletion) | `complete` or `exit` | [ProcessCompletion](Tag::ProcessCompletion) |
+/// | [Priority](Matcher::Priority)      | `priority` | special: event [Priority] |
 ///
 /// Filters are checked in order, grouped per tag and per matcher. Filter groups may be checked in
 /// any order, but the filters in the groups are checked in add order. Path glob filters are always
@@ -125,20 +127,60 @@ pub struct TaggedFilterer {
 }
 
 impl Filterer for TaggedFilterer {
-	fn check_event(&self, event: &Event) -> Result<bool, RuntimeError> {
-		self.check(event).map_err(|e| e.into())
+	fn check_event(&self, event: &Event, priority: Priority) -> Result<bool, RuntimeError> {
+		self.check(event, priority).map_err(|e| e.into())
 	}
 }
 
 impl TaggedFilterer {
-	fn check(&self, event: &Event) -> Result<bool, TaggedFiltererError> {
+	fn check(&self, event: &Event, priority: Priority) -> Result<bool, TaggedFiltererError> {
 		let _span = trace_span!("filterer_check").entered();
-		trace!(?event, "checking event");
+		trace!(?event, ?priority, "checking event");
+
+		{
+			trace!("checking priority");
+			if let Some(filters) = self.filters.borrow().get(&Matcher::Priority).cloned() {
+				trace!(filters=%filters.len(), "found some filters for priority");
+				//
+				let mut pri_match = true;
+				for filter in &filters {
+					let _span = trace_span!("checking filter against priority", ?filter).entered();
+					let applies = filter.matches(match priority {
+						Priority::Low => "low",
+						Priority::Normal => "normal",
+						Priority::High => "high",
+						Priority::Urgent => unreachable!("urgent by-passes filtering"),
+					})?;
+					if filter.negate {
+						if applies {
+							trace!(prev=%pri_match, now=%true, "negate filter passes, passing this priority");
+							pri_match = true;
+							break;
+						} else {
+							trace!(prev=%pri_match, now=%pri_match, "negate filter fails, ignoring");
+						}
+					} else {
+						trace!(prev=%pri_match, this=%applies, now=%(pri_match&applies), "filter applies to priority");
+						pri_match &= applies;
+					}
+				}
+
+				if !pri_match {
+					trace!("priority fails check, failing entire event");
+					return Ok(false);
+				}
+			} else {
+				trace!("no filters for priority, skipping (pass)");
+			}
+		}
 
 		{
 			trace!("checking internal ignore filterer");
 			let igf = self.ignore_filterer.borrow();
-			if !igf.check_event(event).expect("IgnoreFilterer never errors") {
+			if !igf
+				.check_event(event, priority)
+				.expect("IgnoreFilterer never errors")
+			{
 				trace!("internal ignore filterer matched (fail)");
 				return Ok(false);
 			}
@@ -741,6 +783,11 @@ pub enum Matcher {
 	/// This is only present for events issued when the subprocess exits. The value is matched on
 	/// both the exit code as an integer, and either `success` or `fail`, whichever succeeds.
 	ProcessCompletion,
+
+	/// The [`Priority`] of the event.
+	///
+	/// This is never `urgent`, as urgent events bypass filtering.
+	Priority,
 }
 
 impl Matcher {

@@ -10,7 +10,7 @@ use tracing::{trace, trace_span};
 
 use crate::{
 	error::RuntimeError,
-	event::{Event, FileType},
+	event::{Event, FileType, Priority},
 	filter::Filterer,
 };
 
@@ -259,8 +259,8 @@ impl Filterer for IgnoreFilterer {
 	/// Filter an event.
 	///
 	/// This implementation never errors. It returns `Ok(false)` if the event is ignored according
-	/// to the ignore files, and `Ok(true)` otherwise.
-	fn check_event(&self, event: &Event) -> Result<bool, RuntimeError> {
+	/// to the ignore files, and `Ok(true)` otherwise. It ignores event priority.
+	fn check_event(&self, event: &Event, _priority: Priority) -> Result<bool, RuntimeError> {
 		let _span = trace_span!("filterer_check").entered();
 		let mut pass = true;
 

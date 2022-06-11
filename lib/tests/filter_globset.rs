@@ -400,7 +400,7 @@ async fn multipath_allow_on_any_one_pass() {
 		metadata: Default::default(),
 	};
 
-	assert!(filterer.check_event(&event).unwrap());
+	assert!(filterer.check_event(&event, Priority::Normal).unwrap());
 }
 
 #[tokio::test]
@@ -450,17 +450,23 @@ async fn nonpath_event_passes() {
 	let filterer = filt(&[], &[], &["py"]).await;
 
 	assert!(filterer
-		.check_event(&Event {
-			tags: vec![Tag::Source(Source::Internal)],
-			metadata: Default::default(),
-		})
+		.check_event(
+			&Event {
+				tags: vec![Tag::Source(Source::Internal)],
+				metadata: Default::default(),
+			},
+			Priority::Normal
+		)
 		.unwrap());
 
 	assert!(filterer
-		.check_event(&Event {
-			tags: vec![Tag::Source(Source::Keyboard)],
-			metadata: Default::default(),
-		})
+		.check_event(
+			&Event {
+				tags: vec![Tag::Source(Source::Keyboard)],
+				metadata: Default::default(),
+			},
+			Priority::Normal
+		)
 		.unwrap());
 }
 

@@ -64,10 +64,12 @@ pub async fn worker(
 				Ok(Ok((event, priority))) => {
 					trace!(?event, ?priority, "got event");
 
-					if event.is_empty() {
+					if priority == Priority::Urgent {
+						trace!("urgent event, by-passing filters");
+					} else if event.is_empty() {
 						trace!("empty event, by-passing filters");
 					} else {
-						let filtered = working.borrow().filterer.check_event(&event);
+						let filtered = working.borrow().filterer.check_event(&event, priority);
 						match filtered {
 							Err(err) => {
 								trace!(%err, "filter errored on event");
