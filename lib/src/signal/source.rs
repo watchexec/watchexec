@@ -188,7 +188,16 @@ async fn send_event(
 	};
 
 	trace!(?event, "processed signal into event");
-	if let Err(err) = events.send(event, Priority::Urgent).await {
+	if let Err(err) = events
+		.send(
+			event,
+			match sig {
+				MainSignal::Interrupt | MainSignal::Terminate => Priority::Urgent,
+				_ => Priority::High,
+			},
+		)
+		.await
+	{
 		errors
 			.send(RuntimeError::EventChannelSend {
 				ctx: "signals",

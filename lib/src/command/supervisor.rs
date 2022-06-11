@@ -141,7 +141,7 @@ impl Supervisor {
 					};
 
 					debug!(?event, "creating synthetic process completion event");
-					if let Err(err) = events.send(event, Priority::High).await {
+					if let Err(err) = events.send(event, Priority::Low).await {
 						error!(%err, "while sending process completion event");
 						errors
 							.send(RuntimeError::EventChannelSend {

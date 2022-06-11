@@ -265,6 +265,9 @@ impl fmt::Display for Source {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub enum Priority {
 	/// Low priority
+	///
+	/// Used for:
+	/// - process completion events
 	Low,
 
 	/// Normal priority
@@ -276,15 +279,13 @@ pub enum Priority {
 	/// High priority
 	///
 	/// Used for:
-	/// - process completion events
+	/// - signals to main process, except Interrupt and Terminate
 	High,
 
-	/// Urgent priority
+	/// Urgent events bypass filtering entirely.
 	///
 	/// Used for:
-	/// - signals to main process
-	///
-	/// Urgent events bypass filtering entirely.
+	/// - Interrupt and Terminate signals to main process
 	Urgent,
 }
 

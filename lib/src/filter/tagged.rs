@@ -729,9 +729,6 @@ impl Filter {
 #[non_exhaustive]
 pub enum Matcher {
 	/// The presence of a tag on an event.
-	///
-	/// You should be extremely careful using this, as it's possible to make it impossible to quit
-	/// Watchexec by e.g. not allowing signals to go through and thus ignoring Ctrl-C.
 	Tag,
 
 	/// A path in a filesystem event. Paths are always canonicalised.
@@ -774,8 +771,11 @@ pub enum Matcher {
 	/// A signal sent to the main process.
 	///
 	/// This can be matched both on the signal number as an integer, and on the signal name as a
-	/// string. On Windows, only these signal names is supported: `BREAK`, and `CTRL_C`. Matching is
+	/// string. On Windows, only `BREAK` is supported; `CTRL_C` parses but won't work. Matching is
 	/// on both uppercase and lowercase forms.
+	///
+	/// Interrupt signals (`TERM` and `INT` on Unix, `CTRL_C` on Windows) are parsed, but these are
+	/// marked Urgent internally to Watchexec, and thus bypass filtering entirely.
 	Signal,
 
 	/// The exit status of a subprocess.
