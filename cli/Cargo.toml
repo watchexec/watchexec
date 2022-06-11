@@ -25,7 +25,7 @@ console-subscriber = { version = "0.1.0", optional = true }
 dirs = "4.0.0"
 dunce = "1.0.2"
 futures = "0.3.17"
-miette = { version = "3.2.0", features = ["fancy"] }
+miette = { version = "4.7.1", features = ["fancy"] }
 notify-rust = "4.5.2"
 tracing = "0.1.26"
 tracing-log = "0.1.3"
