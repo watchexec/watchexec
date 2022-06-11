@@ -1,11 +1,15 @@
 use std::time::Duration;
 
+use async_priority_channel as priority;
 use miette::{IntoDiagnostic, Result};
 use tokio::{
 	sync::{mpsc, watch},
 	time::sleep,
 };
-use watchexec::{event::Event, fs};
+use watchexec::{
+	event::{Event, Priority},
+	fs,
+};
 
 // Run with: `env RUST_LOG=debug cargo run --example fs`,
 // then touch some files within the first 15 seconds, and afterwards.
@@ -13,7 +17,7 @@ use watchexec::{event::Event, fs};
 async fn main() -> Result<()> {
 	tracing_subscriber::fmt::init();
 
-	let (ev_s, mut ev_r) = mpsc::channel::<Event>(1024);
+	let (ev_s, ev_r) = priority::bounded::<Event, Priority>(1024);
 	let (er_s, mut er_r) = mpsc::channel(64);
 	let (wd_s, wd_r) = watch::channel(fs::WorkingData::default());
 
@@ -22,14 +26,14 @@ async fn main() -> Result<()> {
 	wd_s.send(wkd.clone()).into_diagnostic()?;
 
 	tokio::spawn(async move {
-		while let Some(e) = ev_r.recv().await {
-			tracing::info!("event: {:?}", e);
+		while let Ok((event, priority)) = ev_r.recv().await {
+			tracing::info!("event ({priority:?}): {event:?}");
 		}
 	});
 
 	tokio::spawn(async move {
-		while let Some(e) = er_r.recv().await {
-			tracing::error!("error: {}", e);
+		while let Some(error) = er_r.recv().await {
+			tracing::error!("error: {error}");
 		}
 	});
 

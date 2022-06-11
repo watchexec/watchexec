@@ -1,9 +1,10 @@
 use std::process::exit;
 
+use async_priority_channel as priority;
 use miette::Result;
 use tokio::sync::mpsc;
 use watchexec::{
-	event::{Event, Tag},
+	event::{Event, Priority, Tag},
 	signal::{self, source::MainSignal},
 };
 
@@ -14,22 +15,22 @@ use watchexec::{
 async fn main() -> Result<()> {
 	tracing_subscriber::fmt::init();
 
-	let (ev_s, mut ev_r) = mpsc::channel::<Event>(1024);
+	let (ev_s, ev_r) = priority::bounded::<Event, Priority>(1024);
 	let (er_s, mut er_r) = mpsc::channel(64);
 
 	tokio::spawn(async move {
-		while let Some(e) = ev_r.recv().await {
-			tracing::info!("event: {:?}", e);
+		while let Ok((event, priority)) = ev_r.recv().await {
+			tracing::info!("event {priority:?}: {event:?}");
 
-			if e.tags.contains(&Tag::Signal(MainSignal::Terminate)) {
+			if event.tags.contains(&Tag::Signal(MainSignal::Terminate)) {
 				exit(0);
 			}
 		}
 	});
 
 	tokio::spawn(async move {
-		while let Some(e) = er_r.recv().await {
-			tracing::error!("{}", e);
+		while let Some(error) = er_r.recv().await {
+			tracing::error!("error: {error}");
 		}
 	});
 
