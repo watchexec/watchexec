@@ -12,7 +12,7 @@ use watchexec::{
 	ignore::IgnoreFile,
 };
 
-pub async fn tagged(args: &ArgMatches<'static>) -> Result<Arc<TaggedFilterer>> {
+pub async fn tagged(args: &ArgMatches) -> Result<Arc<TaggedFilterer>> {
 	let (project_origin, workdir) = super::common::dirs(args).await?;
 	let vcs_types = super::common::vcs_types(&project_origin).await;
 	let ignores = super::common::ignores(args, &vcs_types, &project_origin).await;

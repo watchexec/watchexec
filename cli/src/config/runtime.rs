@@ -18,7 +18,7 @@ use watchexec::{
 	signal::{process::SubSignal, source::MainSignal},
 };
 
-pub fn runtime(args: &ArgMatches<'static>) -> Result<RuntimeConfig> {
+pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 	let mut config = RuntimeConfig::default();
 
 	config.command(

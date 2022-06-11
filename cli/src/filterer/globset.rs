@@ -15,7 +15,7 @@ use watchexec::{
 	filter::{globset::GlobsetFilterer, Filterer},
 };
 
-pub async fn globset(args: &ArgMatches<'static>) -> Result<Arc<WatchexecFilterer>> {
+pub async fn globset(args: &ArgMatches) -> Result<Arc<WatchexecFilterer>> {
 	let (project_origin, workdir) = super::common::dirs(args).await?;
 	let vcs_types = super::common::vcs_types(&project_origin).await;
 	let ignore_files = super::common::ignores(args, &vcs_types, &project_origin).await;

@@ -32,9 +32,8 @@ tracing-log = "0.1.3"
 watchexec = { version = "=2.0.0-pre.14", path = "../lib" }
 
 [dependencies.clap]
-version = "2.33.3"
-default-features = false
-features = ["wrap_help"]
+version = "3.1.18"
+features = ["cargo", "wrap_help"]
 
 [dependencies.tokio]
 version = "1.19.2"
