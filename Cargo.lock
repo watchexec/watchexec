@@ -349,7 +349,7 @@ dependencies = [
  "strsim",
  "termcolor",
  "terminal_size",
- "textwrap 0.15.0",
+ "textwrap",
 ]
 
 [[package]]
@@ -1229,7 +1229,7 @@ dependencies = [
  "supports-hyperlinks",
  "supports-unicode",
  "terminal_size",
- "textwrap 0.15.0",
+ "textwrap",
  "thiserror",
  "unicode-width",
 ]
@@ -2149,22 +2149,14 @@ checksum = "507e9898683b6c43a9aa55b64259b721b52ba226e0f3779137e50ad114a4c90b"
 
 [[package]]
 name = "textwrap"
-version = "0.14.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0066c8d12af8b5acd21e00547c3797fde4e8677254a7ee429176ccebbe93dd80"
-dependencies = [
- "smawk",
- "unicode-linebreak",
- "unicode-width",
-]
-
-[[package]]
-name = "textwrap"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1141d4d61095b28419e22cb0bbf02755f5e54e0526f97f1e3d1d160e60885fb"
 dependencies = [
+ "smawk",
  "terminal_size",
+ "unicode-linebreak",
+ "unicode-width",
 ]
 
 [[package]]
@@ -2589,7 +2581,7 @@ checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
 
 [[package]]
 name = "watchexec"
-version = "2.0.0-pre.14"
+version = "2.0.0"
 dependencies = [
  "async-priority-channel",
  "async-recursion 1.0.0",
@@ -2635,6 +2627,39 @@ dependencies = [
  "tracing",
  "tracing-log",
  "tracing-subscriber",
+ "watchexec",
+ "watchexec-filterer-globset",
+ "watchexec-filterer-tagged",
+]
+
+[[package]]
+name = "watchexec-filterer-globset"
+version = "1.0.0"
+dependencies = [
+ "dunce",
+ "ignore",
+ "miette",
+ "thiserror",
+ "tracing",
+ "tracing-subscriber",
+ "watchexec",
+]
+
+[[package]]
+name = "watchexec-filterer-tagged"
+version = "0.1.0"
+dependencies = [
+ "dunce",
+ "globset",
+ "ignore",
+ "miette",
+ "nom 7.1.1",
+ "regex",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "unicase",
  "watchexec",
 ]
 

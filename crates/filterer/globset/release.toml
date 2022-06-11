@@ -1,0 +1,11 @@
+pre-release-hook = ["../bin/pre-release-pull"]
+pre-release-commit-message = "globset filterer: v{{version}}"
+tag-prefix = "filterer-globset-"
+tag-message = "watchexec-filterer-globset {{version}}"
+
+[[pre-release-replacements]]
+file = "../cli/Cargo.toml"
+search = "^watchexec-filterer-globset = \\{ version = \"=[\\d.]+(-.+)?\", path = \"../filterer/globset\" \\}"
+replace = "watchexec-filterer-globset = { version = \"={{version}}\", path = \"../filterer/globset\" }"
+prerelease = true
+min = 0
