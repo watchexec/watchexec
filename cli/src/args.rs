@@ -9,11 +9,11 @@ use std::{
 use clap::{crate_version, Arg, ArgMatches, Command};
 use miette::{Context, IntoDiagnostic, Result};
 
-const OPTSET_FILTERING: &str = "Filtering options:";
-const OPTSET_COMMAND: &str = "Command options:";
-const OPTSET_DEBUGGING: &str = "Debugging options:";
-const OPTSET_OUTPUT: &str = "Output options:";
-const OPTSET_BEHAVIOUR: &str = "Behaviour options:";
+const OPTSET_FILTERING: &str = "Filtering options";
+const OPTSET_COMMAND: &str = "Command options";
+const OPTSET_DEBUGGING: &str = "Debugging options";
+const OPTSET_OUTPUT: &str = "Output options";
+const OPTSET_BEHAVIOUR: &str = "Behaviour options";
 
 pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches> {
 	let app = Command::new("watchexec")
