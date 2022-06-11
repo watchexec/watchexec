@@ -139,7 +139,7 @@ async fn imp_worker(
 #[cfg(windows)]
 async fn imp_worker(
 	errors: mpsc::Sender<RuntimeError>,
-	events: mpsc::Sender<Event>,
+	events: priority::Sender<Event, Priority>,
 ) -> Result<(), CriticalError> {
 	use tokio::signal::windows::{ctrl_break, ctrl_c};
 
