@@ -3,6 +3,7 @@ use std::sync::{
 	Arc,
 };
 
+use async_priority_channel as priority;
 use clearscreen::ClearScreen;
 use futures::Future;
 use tokio::{
@@ -11,7 +12,12 @@ use tokio::{
 };
 use tracing::{debug, error, trace, warn};
 
-use crate::{command::Supervisor, error::RuntimeError, event::Event, handler::rte};
+use crate::{
+	command::Supervisor,
+	error::RuntimeError,
+	event::{Event, Priority},
+	handler::rte,
+};
 
 use super::{process_holder::ProcessHolder, Outcome, PostSpawn, PreSpawn, WorkingData};
 
@@ -23,7 +29,7 @@ pub struct OutcomeWorker {
 	gen: usize,
 	gencheck: Arc<AtomicUsize>,
 	errors_c: mpsc::Sender<RuntimeError>,
-	events_c: mpsc::Sender<Event>,
+	events_c: priority::Sender<Event, Priority>,
 }
 
 impl OutcomeWorker {
@@ -38,7 +44,7 @@ impl OutcomeWorker {
 		process: ProcessHolder,
 		gencheck: Arc<AtomicUsize>,
 		errors_c: mpsc::Sender<RuntimeError>,
-		events_c: mpsc::Sender<Event>,
+		events_c: priority::Sender<Event, Priority>,
 	) {
 		let gen = gencheck.fetch_add(1, Ordering::SeqCst).wrapping_add(1);
 		let this = Self {

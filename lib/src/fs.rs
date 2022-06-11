@@ -8,13 +8,14 @@ use std::{
 	time::Duration,
 };
 
+use async_priority_channel as priority;
 use notify::Watcher as _;
 use tokio::sync::{mpsc, watch};
 use tracing::{debug, error, trace, warn};
 
 use crate::{
 	error::{CriticalError, FsWatcherError, RuntimeError},
-	event::{Event, Source, Tag},
+	event::{Event, Priority, Source, Tag},
 };
 
 /// What kind of filesystem watcher to use.
@@ -135,12 +136,13 @@ impl AsRef<Path> for WatchedPath {
 /// Direct usage:
 ///
 /// ```no_run
+/// use async_priority_channel as priority;
 /// use tokio::sync::{mpsc, watch};
 /// use watchexec::fs::{worker, WorkingData};
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (ev_s, _) = mpsc::channel(1024);
+///     let (ev_s, _) = priority::bounded(1024);
 ///     let (er_s, _) = mpsc::channel(64);
 ///     let (wd_s, wd_r) = watch::channel(WorkingData::default());
 ///
@@ -155,7 +157,7 @@ impl AsRef<Path> for WatchedPath {
 pub async fn worker(
 	mut working: watch::Receiver<WorkingData>,
 	errors: mpsc::Sender<RuntimeError>,
-	events: mpsc::Sender<Event>,
+	events: priority::Sender<Event, Priority>,
 ) -> Result<(), CriticalError> {
 	debug!("launching filesystem worker");
 
@@ -291,7 +293,7 @@ fn notify_multi_path_errors(
 fn process_event(
 	nev: Result<notify::Event, notify::Error>,
 	kind: Watcher,
-	n_events: mpsc::Sender<Event>,
+	n_events: priority::Sender<Event, Priority>,
 ) -> Result<(), RuntimeError> {
 	let nev = nev.map_err(|err| RuntimeError::FsWatcher {
 		kind,
@@ -331,7 +333,7 @@ fn process_event(
 
 	trace!(event = ?ev, "processed notify event into watchexec event");
 	n_events
-		.try_send(ev)
+		.try_send(ev, Priority::Normal)
 		.map_err(|err| RuntimeError::EventChannelTrySend {
 			ctx: "fs watcher",
 			err,

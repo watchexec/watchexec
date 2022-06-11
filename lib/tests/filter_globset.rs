@@ -219,7 +219,6 @@ async fn ignore_exact_filename_in_hidden_folder() {
 	filterer.dir_doesnt_pass("/test/.sub/Cargo.toml");
 }
 
-
 #[tokio::test]
 async fn ignore_exact_filenames_multiple() {
 	let filterer = filt(&[], &["Cargo.toml", "package.json"], &[]).await;

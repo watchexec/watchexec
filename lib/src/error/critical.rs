@@ -2,7 +2,7 @@ use miette::Diagnostic;
 use thiserror::Error;
 use tokio::{sync::mpsc, task::JoinError};
 
-use crate::event::Event;
+use crate::event::{Event, Priority};
 
 use super::RuntimeError;
 
@@ -60,7 +60,7 @@ pub enum CriticalError {
 	/// Error received when an event cannot be sent to the events channel.
 	#[error("cannot send event to internal channel: {0}")]
 	#[diagnostic(code(watchexec::critical::event_channel_send))]
-	EventChannelSend(#[from] mpsc::error::SendError<Event>),
+	EventChannelSend(#[from] async_priority_channel::SendError<(Event, Priority)>),
 
 	/// Error received when joining the main watchexec task.
 	#[error("main task join: {0}")]

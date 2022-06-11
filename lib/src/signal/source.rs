@@ -1,11 +1,12 @@
 //! Event source for signals / notifications sent to the main process.
 
+use async_priority_channel as priority;
 use tokio::{select, sync::mpsc};
 use tracing::{debug, trace};
 
 use crate::{
 	error::{CriticalError, RuntimeError},
-	event::{Event, Source, Tag},
+	event::{Event, Priority, Source, Tag},
 };
 
 /// A notification sent to the main (watchexec) process.
@@ -76,11 +77,12 @@ pub enum MainSignal {
 ///
 /// ```no_run
 /// use tokio::sync::mpsc;
+/// use async_priority_channel as priority;
 /// use watchexec::signal::source::worker;
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (ev_s, _) = mpsc::channel(1024);
+///     let (ev_s, _) = priority::bounded(1024);
 ///     let (er_s, _) = mpsc::channel(64);
 ///
 ///     worker(er_s, ev_s).await?;
@@ -89,7 +91,7 @@ pub enum MainSignal {
 /// ```
 pub async fn worker(
 	errors: mpsc::Sender<RuntimeError>,
-	events: mpsc::Sender<Event>,
+	events: priority::Sender<Event, Priority>,
 ) -> Result<(), CriticalError> {
 	imp_worker(errors, events).await
 }
@@ -97,7 +99,7 @@ pub async fn worker(
 #[cfg(unix)]
 async fn imp_worker(
 	errors: mpsc::Sender<RuntimeError>,
-	events: mpsc::Sender<Event>,
+	events: priority::Sender<Event, Priority>,
 ) -> Result<(), CriticalError> {
 	use tokio::signal::unix::{signal, SignalKind};
 
@@ -166,10 +168,9 @@ async fn imp_worker(
 	}
 }
 
-// TODO: figure out how to prioritise signals.
 async fn send_event(
 	errors: mpsc::Sender<RuntimeError>,
-	events: mpsc::Sender<Event>,
+	events: priority::Sender<Event, Priority>,
 	sig: MainSignal,
 ) -> Result<(), CriticalError> {
 	let tags = vec![
@@ -187,7 +188,7 @@ async fn send_event(
 	};
 
 	trace!(?event, "processed signal into event");
-	if let Err(err) = events.send(event).await {
+	if let Err(err) = events.send(event, Priority::Urgent).await {
 		errors
 			.send(RuntimeError::EventChannelSend {
 				ctx: "signals",

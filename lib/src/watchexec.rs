@@ -4,6 +4,7 @@ use std::{
 	sync::Arc,
 };
 
+use async_priority_channel as priority;
 use atomic_take::AtomicTake;
 use futures::FutureExt;
 use miette::Diagnostic;
@@ -20,7 +21,7 @@ use crate::{
 	action,
 	config::{InitConfig, RuntimeConfig},
 	error::{CriticalError, ReconfigError, RuntimeError},
-	event::Event,
+	event::{Event, Priority},
 	fs,
 	handler::{rte, Handler},
 	signal,
@@ -40,7 +41,7 @@ pub struct Watchexec {
 	action_watch: watch::Sender<action::WorkingData>,
 	fs_watch: watch::Sender<fs::WorkingData>,
 
-	event_input: mpsc::Sender<Event>,
+	event_input: priority::Sender<Event, Priority>,
 }
 
 impl fmt::Debug for Watchexec {
@@ -71,7 +72,7 @@ impl Watchexec {
 	) -> Result<Arc<Self>, CriticalError> {
 		debug!(?init, ?runtime, pid=%std::process::id(), version=%env!("CARGO_PKG_VERSION"), "initialising");
 
-		let (ev_s, ev_r) = mpsc::channel(init.event_channel_size);
+		let (ev_s, ev_r) = priority::bounded(init.event_channel_size);
 		let (ac_s, ac_r) = watch::channel(take(&mut runtime.action));
 		let (fs_s, fs_r) = watch::channel(fs::WorkingData::default());
 
@@ -152,8 +153,8 @@ impl Watchexec {
 	/// (for example, on start).
 	///
 	/// Hint: use [`Event::default()`] to send an empty event (which won't be filtered).
-	pub async fn send_event(&self, event: Event) -> Result<(), CriticalError> {
-		self.event_input.send(event).await?;
+	pub async fn send_event(&self, event: Event, priority: Priority) -> Result<(), CriticalError> {
+		self.event_input.send(event, priority).await?;
 		Ok(())
 	}
 

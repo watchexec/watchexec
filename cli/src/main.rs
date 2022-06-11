@@ -2,10 +2,13 @@
 
 use std::env::var;
 
-use tracing_log::LogTracer;
 use miette::{IntoDiagnostic, Result};
 use tracing::debug;
-use watchexec::{event::Event, Watchexec};
+use tracing_log::LogTracer;
+use watchexec::{
+	event::{Event, Priority},
+	Watchexec,
+};
 
 mod args;
 mod config;
@@ -67,7 +70,7 @@ async fn main() -> Result<()> {
 	let wx = Watchexec::new(init, runtime)?;
 
 	if !args.is_present("postpone") {
-		wx.send_event(Event::default()).await?;
+		wx.send_event(Event::default(), Priority::Urgent).await?;
 	}
 
 	wx.main().await.into_diagnostic()??;
