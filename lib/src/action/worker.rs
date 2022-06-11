@@ -38,6 +38,11 @@ pub async fn worker(
 	let outcome_gen = OutcomeWorker::newgen();
 
 	loop {
+		if events.is_closed() {
+			trace!("events channel closed, stopping");
+			break;
+		}
+
 		let maxtime = if set.is_empty() {
 			trace!("nothing in set, waiting forever for next event");
 			Duration::from_secs(u64::MAX)
@@ -55,7 +60,13 @@ pub async fn worker(
 			}
 		} else {
 			trace!(?maxtime, "waiting for event");
-			match timeout(maxtime, events.recv()).await {
+			let maybe_event = timeout(maxtime, events.recv()).await;
+			if events.is_closed() {
+				trace!("events channel closed during timeout, stopping");
+				break;
+			}
+
+			match maybe_event {
 				Err(_timeout) => {
 					trace!("timed out, cycling");
 					continue;

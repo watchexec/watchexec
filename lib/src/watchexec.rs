@@ -112,6 +112,9 @@ impl Watchexec {
 			try_join!(action, error_hook, fs, signal)
 				.map(drop)
 				.or_else(|e| {
+					// Close event channel to signal worker task to stop
+					ev_s.close();
+
 					if matches!(e, CriticalError::Exit) {
 						trace!("got graceful exit request via critical error, erasing the error");
 						Ok(())
