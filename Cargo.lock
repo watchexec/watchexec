@@ -2640,6 +2640,7 @@ dependencies = [
  "ignore",
  "miette",
  "thiserror",
+ "tokio",
  "tracing",
  "tracing-subscriber",
  "watchexec",

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use watchexec::filter::tagged::TaggedFilterer;
+use watchexec_filterer_tagged::TaggedFilterer;
 
 mod helpers;
 use helpers::tagged::*;

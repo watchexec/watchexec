@@ -1,23 +1,20 @@
 use std::{
 	ffi::OsString,
 	path::{Path, PathBuf},
-	sync::Arc,
 };
 
 use watchexec::{
 	error::RuntimeError,
-	event::{filekind::FileEventKind, Event, FileType, Priority, ProcessEnd, Source, Tag},
+	event::{Event, FileType, Priority, Tag},
 	filter::Filterer,
 	ignore::{IgnoreFile, IgnoreFilterer},
 	project::ProjectType,
-	signal::source::MainSignal,
 };
 
 use watchexec_filterer_globset::GlobsetFilterer;
 
 pub mod globset {
 	pub use super::globset_filt as filt;
-	pub use super::ig_file as file;
 	pub use super::Applies;
 	pub use super::PathHarness;
 	pub use watchexec::event::Priority;
@@ -124,27 +121,6 @@ pub async fn globset_filt(
 	)
 	.await
 	.expect("making filterer")
-}
-
-pub async fn ignore_filt(origin: &str, ignore_files: &[IgnoreFile]) -> IgnoreFilterer {
-	tracing_init();
-	let origin = dunce::canonicalize(".").unwrap().join(origin);
-	IgnoreFilterer::new(origin, ignore_files)
-		.await
-		.expect("making filterer")
-}
-
-pub fn ig_file(name: &str) -> IgnoreFile {
-	let path = dunce::canonicalize(".")
-		.unwrap()
-		.join("tests")
-		.join("ignores")
-		.join(name);
-	IgnoreFile {
-		path,
-		applies_in: None,
-		applies_to: None,
-	}
 }
 
 pub trait Applies {

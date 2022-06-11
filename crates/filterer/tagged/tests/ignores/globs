@@ -1,0 +1,11 @@
+Cargo.toml
+package.json
+*.gemspec
+test-*
+*.sw*
+sources.*/
+/output.*
+**/possum
+zebra/**
+elep/**/hant
+song/**/bird/

@@ -35,3 +35,13 @@ features = [
 
 [dev-dependencies]
 tracing-subscriber = "0.3.6"
+
+[dev-dependencies.tokio]
+version = "1.19.2"
+features = [
+	"fs",
+	"io-std",
+	"rt",
+	"rt-multi-thread",
+	"macros",
+]
