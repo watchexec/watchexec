@@ -1,4 +1,4 @@
-pre-release-hook = ["../bin/pre-release-pull"]
+pre-release-hook = ["../../bin/pre-release-pull"]
 pre-release-commit-message = "lib: v{{version}}"
 tag-prefix = "lib-"
 tag-message = "watchexec-lib {{version}}"
@@ -16,10 +16,3 @@ search = "^date-released: .+"
 replace = "date-released: {{date}}"
 prerelease = true
 max = 1
-
-[[pre-release-replacements]]
-file = "../cli/Cargo.toml"
-search = "^watchexec = \\{ version = \"=[\\d.]+(-.+)?\", path = \"../lib\" \\}"
-replace = "watchexec = { version = \"={{version}}\", path = \"../lib\" }"
-prerelease = true
-min = 0
