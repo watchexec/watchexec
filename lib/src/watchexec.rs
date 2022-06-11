@@ -1,18 +1,21 @@
 use std::{
 	fmt,
+	future::Future,
 	mem::{replace, take},
+	ops::{Deref, DerefMut},
+	pin::Pin,
 	sync::Arc,
+	task::{Context, Poll},
 };
 
 use async_priority_channel as priority;
 use atomic_take::AtomicTake;
-use futures::FutureExt;
 use miette::Diagnostic;
 use once_cell::sync::OnceCell;
 use tokio::{
 	spawn,
 	sync::{mpsc, watch, Notify},
-	task::{JoinError, JoinHandle},
+	task::JoinHandle,
 	try_join,
 };
 use tracing::{debug, error, trace};
@@ -95,21 +98,15 @@ impl Watchexec {
 
 			let eh = replace(&mut init.error_handler, Box::new(()) as _);
 
-			macro_rules! subtask {
-				($name:ident, $task:expr) => {{
-					debug!(subtask=%stringify!($name), "spawning subtask");
-					spawn($task).then(|jr| async { flatten(jr) })
-				}};
-			}
-
-			let action = subtask!(
-				action,
-				action::worker(ac_r, er_s.clone(), ev_s.clone(), ev_r)
+			let action = SubTask::spawn(
+				"action",
+				action::worker(ac_r, er_s.clone(), ev_s.clone(), ev_r),
 			);
-			let fs = subtask!(fs, fs::worker(fs_r, er_s.clone(), ev_s.clone()));
-			let signal = subtask!(signal, signal::source::worker(er_s.clone(), ev_s.clone()));
+			let fs = SubTask::spawn("fs", fs::worker(fs_r, er_s.clone(), ev_s.clone()));
+			let signal =
+				SubTask::spawn("signal", signal::source::worker(er_s.clone(), ev_s.clone()));
 
-			let error_hook = subtask!(error_hook, error_hook(er_r, eh));
+			let error_hook = SubTask::spawn("error_hook", error_hook(er_r, eh));
 
 			// Use Tokio TaskSet when that lands
 			try_join!(action, error_hook, fs, signal)
@@ -173,13 +170,6 @@ impl Watchexec {
 			.take()
 			.expect("Watchexec::main was called twice")
 	}
-}
-
-#[inline]
-fn flatten(join_res: Result<Result<(), CriticalError>, JoinError>) -> Result<(), CriticalError> {
-	join_res
-		.map_err(CriticalError::MainTaskJoin)
-		.and_then(|x| x)
 }
 
 async fn error_hook(
@@ -275,5 +265,64 @@ impl ErrorHook {
 				err: error,
 			})
 			.ok();
+	}
+}
+
+#[derive(Debug)]
+struct SubTask {
+	name: &'static str,
+	handle: JoinHandle<Result<(), CriticalError>>,
+}
+
+impl SubTask {
+	pub fn spawn(
+		name: &'static str,
+		task: impl Future<Output = Result<(), CriticalError>> + Send + 'static,
+	) -> Self {
+		debug!(subtask=%name, "spawning subtask");
+		Self {
+			name,
+			handle: spawn(task),
+		}
+	}
+}
+
+impl Drop for SubTask {
+	fn drop(&mut self) {
+		debug!(subtask=%self.name, "aborting subtask");
+		self.handle.abort();
+	}
+}
+
+impl Deref for SubTask {
+	type Target = JoinHandle<Result<(), CriticalError>>;
+
+	fn deref(&self) -> &Self::Target {
+		&self.handle
+	}
+}
+
+impl DerefMut for SubTask {
+	fn deref_mut(&mut self) -> &mut Self::Target {
+		&mut self.handle
+	}
+}
+
+impl Future for SubTask {
+	type Output = Result<(), CriticalError>;
+
+	fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+		let subtask = self.name;
+		match Pin::new(&mut Pin::into_inner(self).handle).poll(cx) {
+			Poll::Pending => Poll::Pending,
+			Poll::Ready(join_res) => {
+				debug!(%subtask, "finishing subtask");
+				Poll::Ready(
+					join_res
+						.map_err(CriticalError::MainTaskJoin)
+						.and_then(|x| x),
+				)
+			}
+		}
 	}
 }

@@ -41,11 +41,10 @@ features = ["with-tokio"]
 version = "=5.0.0-pre.14"
 
 [dependencies.tokio]
-version = "1.15.0"
+version = "1.19.2"
 features = [
 	"fs",
 	"io-std",
-	"parking_lot",
 	"process",
 	"rt",
 	"rt-multi-thread",
