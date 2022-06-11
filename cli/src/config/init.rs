@@ -10,7 +10,7 @@ use watchexec::{
 	ErrorHook,
 };
 
-pub fn init(_args: &ArgMatches<'static>) -> Result<InitConfig> {
+pub fn init(_args: &ArgMatches) -> Result<InitConfig> {
 	let mut config = InitConfig::default();
 	config.on_error(SyncFnHandler::from(
 		|err: ErrorHook| -> std::result::Result<(), Infallible> {

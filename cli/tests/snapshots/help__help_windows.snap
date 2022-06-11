@@ -1,54 +1,73 @@
 ---
 source: cli/tests/help.rs
-expression: String::from_utf8(output.stdout).unwrap()
-
+assertion_line: 16
+expression: "String::from_utf8(output.stdout).unwrap()"
 ---
 watchexec 1.19.0
 Execute commands when watched files change
 
 USAGE:
-    watchexec.exe [FLAGS] [OPTIONS] <command>...
-
-FLAGS:
-    -c, --clear                Clear screen before executing command
-    -h, --help                 Prints help information
-        --no-default-ignore    Skip auto-ignoring of commonly ignored globs
-        --no-environment       Do not set WATCHEXEC_*_PATH environment variables for the command
-        --no-global-ignore     Skip auto-loading of global or environment-wide ignore files
-        --no-meta              Ignore metadata changes
-        --no-process-group     Do not use a process group when running the command
-        --no-project-ignore    Skip auto-loading of project ignore files (.gitignore, .ignore, etc)
-    -n, --no-shell             Do not wrap command in a shell. Deprecated: use --shell=none instead.
-        --no-vcs-ignore        Skip auto-loading of VCS (Git, etc) ignore files
-    -N, --notify               Send a desktop notification when the command ends
-    -p, --postpone             Wait until first change to execute command
-        --print-events         Print events that trigger actions
-    -r, --restart              Restart the process if it's still running. Shorthand for --on-busy-update=restart
-    -V, --version              Prints version information
-    -v, --verbose              Print debugging messages (-v, -vv, -vvv, -vvvv; use -vvv for bug reports)
+    watchexec.exe [OPTIONS] <command>...
 
 OPTIONS:
-    -E, --env <name=value>...                Add an environment variable to the command
-        --workdir <path>                     Change the working directory of the command
-    -d, --debounce <milliseconds>            Set the timeout between detected change and command execution, defaults to
-                                             50ms
-    -e, --exts <extensions>                  Comma-separated list of file extensions to watch (e.g. js,css,html)
-    -f, --filter <pattern>...                Ignore all modifications except those matching the pattern
-    -i, --ignore <pattern>...                Ignore modifications to paths matching the pattern
-        --on-busy-update <on-busy-update>    Select the behaviour to use when receiving events while the command is
-                                             running. Current default is queue, will change to do-nothing in 2.0.
-                                             [possible values: do-nothing, queue, restart, signal]
-    -w, --watch <path>...                    Watch a specific file or directory
-        --force-poll <interval>              Force polling mode (interval in milliseconds)
-        --project-origin <path>              Override the project origin: the directory from which ignore files are
-                                             detected
-        --shell <shell>                      Use a different shell, or `none`. Try --shell=powershell, which will become
-                                             the default in 2.0.
-    -s, --signal <signal>                    Specify the signal to send when using --on-busy-update=signal
+    -h, --help       Print help information
+    -V, --version    Print version information
 
-ARGS:
-    <command>...    Command to execute
+Command options:
+    -E, --env <name=value>    Add an environment variable to the command
+    -n, --no-shell            Do not wrap command in a shell. Deprecated: use --shell=none instead.
+        --no-environment      Do not set WATCHEXEC_*_PATH environment variables for the command
+        --no-process-group    Do not use a process group when running the command
+        --shell <shell>       Use a different shell, or `none`. Try --shell=powershell, which will
+                              become the default in 2.0.
+        --workdir <path>      Change the working directory of the command
+    <command>...          Command to execute
 
-Use @argfile as first argument to load arguments from the file `argfile` (one argument per line) which will be inserted
-in place of the @argfile (further arguments on the CLI will override or add onto those in the file).
+Filtering options:
+    -e, --exts <extensions>        Comma-separated list of file extensions to watch (e.g.
+                                   js,css,html)
+    -f, --filter <pattern>         Ignore all modifications except those matching the pattern
+    -i, --ignore <pattern>         Ignore modifications to paths matching the pattern
+        --no-default-ignore        Skip auto-ignoring of commonly ignored globs
+        --no-global-ignore         Skip auto-loading of global or environment-wide ignore files
+        --no-meta                  Ignore metadata changes
+        --no-project-ignore        Skip auto-loading of project ignore files (.gitignore, .ignore,
+                                   etc)
+        --no-vcs-ignore            Skip auto-loading of VCS (Git, etc) ignore files
+        --project-origin <path>    Override the project origin: the directory from which ignore
+                                   files are detected
+    -w, --watch <path>             Watch a specific file or directory
+
+Output options:
+    -c, --clear     Clear screen before executing command
+    -N, --notify    Send a desktop notification when the command ends
+
+Behaviour options:
+    -d, --debounce <milliseconds>
+            Set the timeout between detected change and command execution, defaults to 50ms
+
+        --force-poll <interval>
+            Force polling mode (interval in milliseconds)
+
+        --on-busy-update <on-busy-update>
+            Select the behaviour to use when receiving events while the command is running. Current
+            default is queue, will change to do-nothing in 2.0. [possible values: do-nothing, queue,
+            restart, signal]
+
+    -p, --postpone
+            Wait until first change to execute command
+
+    -r, --restart
+            Restart the process if it's still running. Shorthand for --on-busy-update=restart
+
+    -s, --signal <signal>
+            Specify the signal to send when using --on-busy-update=signal
+
+Debugging options:
+        --print-events    Print events that trigger actions
+    -v, --verbose         Print debugging messages (-v, -vv, -vvv, -vvvv; use -vvv for bug reports)
+
+Use @argfile as first argument to load arguments from the file `argfile` (one argument per line)
+which will be inserted in place of the @argfile (further arguments on the CLI will override or add
+onto those in the file).
 

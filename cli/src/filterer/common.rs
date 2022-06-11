@@ -14,7 +14,7 @@ use watchexec::{
 	project::{self, ProjectType},
 };
 
-pub async fn dirs(args: &ArgMatches<'static>) -> Result<(PathBuf, PathBuf)> {
+pub async fn dirs(args: &ArgMatches) -> Result<(PathBuf, PathBuf)> {
 	let curdir = env::current_dir()
 		.and_then(canonicalize)
 		.into_diagnostic()?;
@@ -94,7 +94,7 @@ pub async fn vcs_types(origin: &Path) -> Vec<ProjectType> {
 }
 
 pub async fn ignores(
-	args: &ArgMatches<'static>,
+	args: &ArgMatches,
 	vcs_types: &[ProjectType],
 	origin: &Path,
 ) -> Vec<IgnoreFile> {
