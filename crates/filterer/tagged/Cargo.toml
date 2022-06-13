@@ -45,7 +45,5 @@ version = "1.19.2"
 features = [
 	"fs",
 	"io-std",
-	"rt",
-	"rt-multi-thread",
-	"macros",
+	"sync",
 ]

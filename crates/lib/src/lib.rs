@@ -109,7 +109,6 @@ pub mod fs;
 pub mod ignore;
 pub mod paths;
 pub mod signal;
-pub mod swaplock;
 
 // the core experience
 pub mod config;

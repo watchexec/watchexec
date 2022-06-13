@@ -12,12 +12,10 @@ use watchexec::{
 	event::{Event, FileType, Priority, ProcessEnd, Tag},
 	filter::Filterer,
 	ignore::{IgnoreFile, IgnoreFilterer},
-	signal::process::SubSignal,
-	signal::source::MainSignal,
-	swaplock::SwapLock,
+	signal::{process::SubSignal, source::MainSignal},
 };
 
-use crate::{Filter, Matcher, Op, Pattern, TaggedFiltererError};
+use crate::{swaplock::SwapLock, Filter, Matcher, Op, Pattern, TaggedFiltererError};
 
 /// A complex filterer that can match any event tag and supports different matching operators.
 ///

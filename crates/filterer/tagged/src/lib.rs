@@ -84,3 +84,4 @@ mod files;
 mod filter;
 mod filterer;
 mod parse;
+mod swaplock;
