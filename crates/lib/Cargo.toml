@@ -37,6 +37,10 @@ unicase = "2.6.0"
 version = "1.0.8"
 features = ["with-tokio"]
 
+[dependencies.ignore-file]
+version = "1.0.0"
+path = "../ignore-file"
+
 [dependencies.notify]
 version = "=5.0.0-pre.14"
 

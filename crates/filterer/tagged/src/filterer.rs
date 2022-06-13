@@ -3,15 +3,15 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use dunce::canonicalize;
-use ignore::gitignore::{Gitignore, GitignoreBuilder};
-use ignore::Match;
+use ignore::{Match, gitignore::{Gitignore, GitignoreBuilder}};
+use ignore_file::IgnoreFile;
 use tracing::{debug, trace, trace_span};
 
 use watchexec::{
 	error::RuntimeError,
 	event::{Event, FileType, Priority, ProcessEnd, Tag},
 	filter::Filterer,
-	ignore::{IgnoreFile, IgnoreFilterer},
+	ignore::IgnoreFilterer,
 	signal::{process::SubSignal, source::MainSignal},
 };
 

@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use clap::ArgMatches;
 use futures::future::try_join_all;
+use ignore_file::IgnoreFile;
 use miette::{IntoDiagnostic, Result};
 use tracing::{debug, trace, warn};
-use watchexec::ignore::IgnoreFile;
 use watchexec_filterer_tagged::{
 	discover_files_from_environment, Filter, FilterFile, Matcher, Op, Pattern, TaggedFilterer,
 };

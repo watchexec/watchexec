@@ -5,6 +5,7 @@ use ignore::{
 	gitignore::{Gitignore, GitignoreBuilder},
 	Match,
 };
+use ignore_file::IgnoreFile;
 use tokio::fs::read_to_string;
 use tracing::{trace, trace_span};
 
@@ -13,8 +14,6 @@ use crate::{
 	event::{Event, FileType, Priority},
 	filter::Filterer,
 };
-
-use super::files::IgnoreFile;
 
 /// A path-only filterer dedicated to ignore files.
 ///

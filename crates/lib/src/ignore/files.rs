@@ -9,6 +9,7 @@ use std::{
 	path::{Path, PathBuf},
 };
 
+use ignore_file::IgnoreFile;
 use project_origins::ProjectType;
 use tokio::fs::{metadata, read_dir};
 use tracing::{trace, trace_span};
@@ -16,22 +17,6 @@ use tracing::{trace, trace_span};
 use crate::paths::PATH_SEPARATOR;
 
 use super::IgnoreFilterer;
-
-/// An ignore file.
-///
-/// This records both the path to the ignore file and some basic metadata about it: which project
-/// type it applies to if any, and which subtree it applies in if any (`None` = global ignore file).
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct IgnoreFile {
-	/// The path to the ignore file.
-	pub path: PathBuf,
-
-	/// The path to the subtree the ignore file applies to, or `None` for global ignores.
-	pub applies_in: Option<PathBuf>,
-
-	/// Which project type the ignore file applies to, or was found through.
-	pub applies_to: Option<ProjectType>,
-}
 
 /// Finds all ignore files in the given directory and subdirectories.
 ///

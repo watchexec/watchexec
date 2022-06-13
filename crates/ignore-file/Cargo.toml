@@ -1,0 +1,19 @@
+[package]
+name = "ignore-file"
+version = "1.0.0"
+
+authors = ["Félix Saparelli <felix@passcod.name>"]
+license = "Apache-2.0"
+description = "Wrapper type around an ignore file path"
+keywords = ["ignore", "file"]
+
+documentation = "https://docs.rs/ignore-file"
+repository = "https://github.com/watchexec/watchexec"
+readme = "README.md"
+
+rust-version = "1.58.0"
+edition = "2021"
+
+[dependencies.project-origins]
+version = "1.0.0"
+path = "../project-origins"

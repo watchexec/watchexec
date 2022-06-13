@@ -5,8 +5,9 @@ use std::{
 	str::FromStr,
 };
 
+use ignore_file::IgnoreFile;
 use tokio::fs::read_to_string;
-use watchexec::ignore::{discover_file, IgnoreFile};
+use watchexec::ignore::discover_file;
 
 use crate::{Filter, TaggedFiltererError};
 

@@ -5,6 +5,7 @@ members = [
 	"crates/cli",
 	"crates/filterer/globset",
 	"crates/filterer/tagged",
+	"crates/ignore-file",
 	"crates/project-origins",
 ]
 

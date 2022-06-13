@@ -6,13 +6,11 @@ use std::{
 
 use clap::ArgMatches;
 use dunce::canonicalize;
+use ignore_file::IgnoreFile;
 use miette::{miette, IntoDiagnostic, Result};
 use project_origins::ProjectType;
 use tracing::{debug, warn};
-use watchexec::{
-	ignore::{self, IgnoreFile},
-	paths::common_prefix,
-};
+use watchexec::{ignore, paths::common_prefix};
 
 pub async fn dirs(args: &ArgMatches) -> Result<(PathBuf, PathBuf)> {
 	let curdir = env::current_dir()
