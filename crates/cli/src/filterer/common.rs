@@ -10,7 +10,7 @@ use ignore_files::IgnoreFile;
 use miette::{miette, IntoDiagnostic, Result};
 use project_origins::ProjectType;
 use tracing::{debug, warn};
-use watchexec::{paths::common_prefix};
+use watchexec::paths::common_prefix;
 
 pub async fn dirs(args: &ArgMatches) -> Result<(PathBuf, PathBuf)> {
 	let curdir = env::current_dir()

@@ -7,7 +7,7 @@ use ignore::{
 	gitignore::{Gitignore, GitignoreBuilder},
 	Match,
 };
-use ignore_files::{IgnoreFilter, IgnoreFile};
+use ignore_files::{IgnoreFile, IgnoreFilter};
 use tracing::{debug, trace, trace_span};
 use watchexec::{
 	error::RuntimeError,

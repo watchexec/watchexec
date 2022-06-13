@@ -9,7 +9,7 @@ use std::{
 };
 
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
-use ignore_files::{Error, IgnoreFilter, IgnoreFile};
+use ignore_files::{Error, IgnoreFile, IgnoreFilter};
 use tracing::{debug, trace, trace_span};
 use watchexec::{
 	error::RuntimeError,

@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use futures::stream::{FuturesUnordered, StreamExt};
 use ignore::{
-	gitignore::{Gitignore, Glob, GitignoreBuilder},
+	gitignore::{Gitignore, GitignoreBuilder, Glob},
 	Match,
 };
 use tokio::fs::read_to_string;
@@ -48,12 +48,12 @@ impl IgnoreFilter {
 			.iter()
 			.map(|file| async move {
 				trace!(?file, "loading ignore file");
-				let content = read_to_string(&file.path).await.map_err(|err| {
-					Error::Read {
+				let content = read_to_string(&file.path)
+					.await
+					.map_err(|err| Error::Read {
 						file: file.path.clone(),
 						err,
-					}
-				})?;
+					})?;
 				Ok((file.clone(), content))
 			})
 			.collect::<FuturesUnordered<_>>()
@@ -130,13 +130,12 @@ impl IgnoreFilter {
 	pub async fn add_file(&mut self, file: &IgnoreFile) -> Result<(), Error> {
 		if let Some(ref mut builder) = self.builder {
 			trace!(?file, "reading ignore file");
-			let content =
-				read_to_string(&file.path)
-					.await
-					.map_err(|err| Error::Read {
-						file: file.path.clone(),
-						err,
-					})?;
+			let content = read_to_string(&file.path)
+				.await
+				.map_err(|err| Error::Read {
+					file: file.path.clone(),
+					err,
+				})?;
 
 			let _span = trace_span!("loading ignore file", ?file).entered();
 			for line in content.lines() {

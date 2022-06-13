@@ -128,7 +128,11 @@ pub enum RuntimeError {
 
 	/// Error received from the [`ignore-files`](ignore_files) crate.
 	#[error("ignore files: {0}")]
-	IgnoreFiles(#[diagnostic_source] #[from] ignore_files::Error),
+	IgnoreFiles(
+		#[diagnostic_source]
+		#[from]
+		ignore_files::Error,
+	),
 
 	/// Error emitted by a [`Filterer`](crate::filter::Filterer).
 	///

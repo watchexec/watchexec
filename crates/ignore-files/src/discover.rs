@@ -13,7 +13,7 @@ use project_origins::ProjectType;
 use tokio::fs::{metadata, read_dir};
 use tracing::{trace, trace_span};
 
-use crate::{IgnoreFilter, IgnoreFile};
+use crate::{IgnoreFile, IgnoreFilter};
 
 /// The separator for paths used in environment variables.
 #[cfg(unix)]
