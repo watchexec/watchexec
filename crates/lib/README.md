@@ -112,7 +112,7 @@ There are also separate, standalone crates used to build Watchexec which you can
 - **[Command Group](https://docs.rs/command-group)** augments the std and tokio `Command` with
   support for process groups, portable between Unix and Windows.
 
-- **[Ignore discover](https://docs.rs/ignore-discover)** discovers project-local and global ignore files.
+- **[Ignore files](https://docs.rs/ignore-files)** finds, parses, and interprets ignore files.
 
 - **[Project Origins](https://docs.rs/project-origins)** finds the origin (or root) path of a
   project, and what kind of project it is.

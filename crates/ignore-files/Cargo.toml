@@ -1,13 +1,13 @@
 [package]
-name = "ignore-file"
+name = "ignore-files"
 version = "1.0.0"
 
 authors = ["Félix Saparelli <felix@passcod.name>"]
 license = "Apache-2.0"
-description = "Wrapper type around an ignore file path"
-keywords = ["ignore", "file"]
+description = "Find, parse, and interpret ignore files"
+keywords = ["ignore", "files", "discover", "find"]
 
-documentation = "https://docs.rs/ignore-file"
+documentation = "https://docs.rs/ignore-files"
 repository = "https://github.com/watchexec/watchexec"
 readme = "README.md"
 

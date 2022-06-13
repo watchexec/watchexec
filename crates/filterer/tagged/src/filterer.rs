@@ -7,7 +7,7 @@ use ignore::{
 	gitignore::{Gitignore, GitignoreBuilder},
 	Match,
 };
-use ignore_file::IgnoreFile;
+use ignore_files::IgnoreFile;
 use tracing::{debug, trace, trace_span};
 
 use watchexec::{

@@ -1,7 +1,10 @@
-//! Wrapper around an ignore file path.
+//! Find, parse, and interpret ignore files.
 //!
-//! This is a single-type crate that defines the [`IgnoreFile`] type, a wrapper around a path to an
-//! ignore file, where it applies, and what project type it is for.
+//! Ignore files are files that contain ignore patterns, often following the `.gitignore` format.
+//! There may be one or more global ignore files, which apply everywhere, and one or more per-folder
+//! ignore files, which apply to a specific folder and its subfolders. Furthermore, there may be
+//! more ignore files in _these_ subfolders, and so on. Discovering and interpreting all of these in
+//! a single context is not a simple task: this is what this crate provides.
 
 use std::path::PathBuf;
 

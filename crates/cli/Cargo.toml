@@ -37,9 +37,9 @@ watchexec-filterer-tagged = { version = "0.1.0", path = "../filterer/tagged" }
 version = "3.1.18"
 features = ["cargo", "wrap_help"]
 
-[dependencies.ignore-file]
+[dependencies.ignore-files]
 version = "1.0.0"
-path = "../ignore-file"
+path = "../ignore-files"
 
 [dependencies.project-origins]
 version = "1.0.0"

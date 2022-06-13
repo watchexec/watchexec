@@ -22,9 +22,9 @@ thiserror = "1.0.26"
 tracing = "0.1.26"
 watchexec = { version = "2.0.0", path = "../../lib" }
 
-[dependencies.ignore-file]
+[dependencies.ignore-files]
 version = "1.0.0"
-path = "../../ignore-file"
+path = "../../ignore-files"
 
 [dev-dependencies]
 dunce = "1.0.2"

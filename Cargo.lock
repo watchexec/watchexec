@@ -1023,7 +1023,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ignore-file"
+name = "ignore-files"
 version = "1.0.0"
 dependencies = [
  "project-origins",
@@ -2613,7 +2613,7 @@ dependencies = [
  "git-config",
  "globset",
  "ignore",
- "ignore-file",
+ "ignore-files",
  "libc",
  "miette",
  "nom 7.1.1",
@@ -2640,7 +2640,7 @@ dependencies = [
  "dunce",
  "embed-resource",
  "futures",
- "ignore-file",
+ "ignore-files",
  "insta",
  "miette",
  "mimalloc",
@@ -2661,7 +2661,7 @@ version = "1.0.0"
 dependencies = [
  "dunce",
  "ignore",
- "ignore-file",
+ "ignore-files",
  "miette",
  "project-origins",
  "thiserror",
@@ -2678,7 +2678,7 @@ dependencies = [
  "dunce",
  "globset",
  "ignore",
- "ignore-file",
+ "ignore-files",
  "miette",
  "nom 7.1.1",
  "project-origins",

@@ -5,7 +5,7 @@ use ignore::{
 	gitignore::{Gitignore, Glob, GitignoreBuilder},
 	Match,
 };
-use ignore_file::IgnoreFile;
+use ignore_files::IgnoreFile;
 use tokio::fs::read_to_string;
 use tracing::{trace, trace_span};
 

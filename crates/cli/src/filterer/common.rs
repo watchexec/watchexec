@@ -6,7 +6,7 @@ use std::{
 
 use clap::ArgMatches;
 use dunce::canonicalize;
-use ignore_file::IgnoreFile;
+use ignore_files::IgnoreFile;
 use miette::{miette, IntoDiagnostic, Result};
 use project_origins::ProjectType;
 use tracing::{debug, warn};

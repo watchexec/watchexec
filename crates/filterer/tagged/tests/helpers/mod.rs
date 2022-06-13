@@ -6,7 +6,7 @@ use std::{
 	sync::Arc,
 };
 
-use ignore_file::IgnoreFile;
+use ignore_files::IgnoreFile;
 use project_origins::ProjectType;
 use watchexec::{
 	error::RuntimeError,

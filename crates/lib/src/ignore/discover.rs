@@ -9,7 +9,7 @@ use std::{
 	path::{Path, PathBuf},
 };
 
-use ignore_file::IgnoreFile;
+use ignore_files::IgnoreFile;
 use project_origins::ProjectType;
 use tokio::fs::{metadata, read_dir};
 use tracing::{trace, trace_span};

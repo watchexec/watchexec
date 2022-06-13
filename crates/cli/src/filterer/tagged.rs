@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use clap::ArgMatches;
 use futures::future::try_join_all;
-use ignore_file::IgnoreFile;
+use ignore_files::IgnoreFile;
 use miette::{IntoDiagnostic, Result};
 use tracing::{debug, trace, warn};
 use watchexec_filterer_tagged::{

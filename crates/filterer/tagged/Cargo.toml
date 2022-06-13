@@ -27,9 +27,9 @@ regex = "1.5.4"
 unicase = "2.6.0"
 watchexec = { version = "2.0.0", path = "../../lib" }
 
-[dependencies.ignore-file]
+[dependencies.ignore-files]
 version = "1.0.0"
-path = "../../ignore-file"
+path = "../../ignore-files"
 
 [dependencies.tokio]
 version = "1.19.2"
