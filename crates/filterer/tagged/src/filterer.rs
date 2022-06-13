@@ -3,7 +3,10 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use dunce::canonicalize;
-use ignore::{Match, gitignore::{Gitignore, GitignoreBuilder}};
+use ignore::{
+	gitignore::{Gitignore, GitignoreBuilder},
+	Match,
+};
 use ignore_file::IgnoreFile;
 use tracing::{debug, trace, trace_span};
 
@@ -11,7 +14,7 @@ use watchexec::{
 	error::RuntimeError,
 	event::{Event, FileType, Priority, ProcessEnd, Tag},
 	filter::Filterer,
-	ignore::IgnoreFilterer,
+	ignore::{IgnoreFilter, IgnoreFilterer},
 	signal::{process::SubSignal, source::MainSignal},
 };
 
@@ -295,7 +298,7 @@ impl TaggedFilterer {
 		})?;
 		Ok(Arc::new(Self {
 			filters: SwapLock::new(HashMap::new()),
-			ignore_filterer: SwapLock::new(IgnoreFilterer::empty(&origin)),
+			ignore_filterer: SwapLock::new(IgnoreFilterer(IgnoreFilter::empty(&origin))),
 			glob_compiled: SwapLock::new(None),
 			not_glob_compiled: SwapLock::new(None),
 			workdir: canonicalize(workdir.into()).map_err(|err| TaggedFiltererError::IoError {
@@ -508,7 +511,8 @@ impl TaggedFilterer {
 	pub async fn add_ignore_file(&self, file: &IgnoreFile) -> Result<(), TaggedFiltererError> {
 		let mut new = { self.ignore_filterer.borrow().clone() };
 
-		new.add_file(file)
+		new.0
+			.add_file(file)
 			.await
 			.map_err(TaggedFiltererError::Ignore)?;
 		self.ignore_filterer

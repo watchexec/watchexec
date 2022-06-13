@@ -12,7 +12,7 @@ use watchexec::{
 	error::RuntimeError,
 	event::{filekind::FileEventKind, Event, FileType, Priority, ProcessEnd, Source, Tag},
 	filter::Filterer,
-	ignore::IgnoreFilterer,
+	ignore::{IgnoreFilter, IgnoreFilterer},
 	signal::source::MainSignal,
 };
 
@@ -206,10 +206,10 @@ fn tracing_init() {
 		.ok();
 }
 
-pub async fn ignore_filt(origin: &str, ignore_files: &[IgnoreFile]) -> IgnoreFilterer {
+pub async fn ignore_filt(origin: &str, ignore_files: &[IgnoreFile]) -> IgnoreFilter {
 	tracing_init();
 	let origin = dunce::canonicalize(".").unwrap().join(origin);
-	IgnoreFilterer::new(origin, ignore_files)
+	IgnoreFilter::new(origin, ignore_files)
 		.await
 		.expect("making filterer")
 }

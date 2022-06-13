@@ -16,7 +16,7 @@ use tracing::{trace, trace_span};
 
 use crate::paths::PATH_SEPARATOR;
 
-use super::IgnoreFilterer;
+use super::IgnoreFilter;
 
 /// Finds all ignore files in the given directory and subdirectories.
 ///
@@ -337,7 +337,7 @@ struct DirTourist {
 	to_visit: Vec<PathBuf>,
 	to_skip: HashSet<PathBuf>,
 	pub errors: Vec<std::io::Error>,
-	filter: IgnoreFilterer,
+	filter: IgnoreFilter,
 }
 
 #[derive(Debug)]
@@ -351,7 +351,7 @@ impl DirTourist {
 	pub async fn new(base: &Path, files: &[IgnoreFile]) -> Result<Self, Error> {
 		let base = dunce::canonicalize(base)?;
 		trace!("create IgnoreFilterer for visiting directories");
-		let mut filter = IgnoreFilterer::new(&base, files)
+		let mut filter = IgnoreFilter::new(&base, files)
 			.await
 			.map_err(|err| Error::new(ErrorKind::Other, err))?;
 

@@ -15,7 +15,7 @@ use watchexec::{
 	error::RuntimeError,
 	event::{Event, FileType, Priority},
 	filter::Filterer,
-	ignore::IgnoreFilterer,
+	ignore::{IgnoreFilter, IgnoreFilterer},
 };
 
 /// A simple filterer in the style of the watchexec v1.17 filter.
@@ -77,15 +77,16 @@ impl GlobsetFilterer {
 		let extensions: Vec<OsString> = extensions.into_iter().collect();
 
 		let mut ignore_files =
-			IgnoreFilterer::new(origin, &ignore_files.into_iter().collect::<Vec<_>>()).await?;
+			IgnoreFilter::new(origin, &ignore_files.into_iter().collect::<Vec<_>>()).await?;
 		ignore_files.finish();
+		let ignore_files = IgnoreFilterer(ignore_files);
 
 		debug!(
 			?origin,
 			num_filters=%filters.num_ignores(),
 			num_neg_filters=%filters.num_whitelists(),
 			num_ignores=%ignores.num_ignores(),
-			num_in_ignore_files=?ignore_files.num_ignores(),
+			num_in_ignore_files=?ignore_files.0.num_ignores(),
 			num_neg_ignores=%ignores.num_whitelists(),
 			num_extensions=%extensions.len(),
 		"globset filterer built");

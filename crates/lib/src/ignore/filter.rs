@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use futures::stream::{FuturesUnordered, StreamExt};
 use ignore::{
-	gitignore::{Gitignore, GitignoreBuilder},
+	gitignore::{Gitignore, Glob, GitignoreBuilder},
 	Match,
 };
 use ignore_file::IgnoreFile;
@@ -11,26 +11,21 @@ use tracing::{trace, trace_span};
 
 use crate::{
 	error::RuntimeError,
-	event::{Event, FileType, Priority},
-	filter::Filterer,
 };
 
-/// A path-only filterer dedicated to ignore files.
+/// A mutable filter dedicated to ignore files and trees of ignore files.
 ///
 /// This reads and compiles ignore files, and should be used for handling ignore files. It's created
 /// with a project origin and a list of ignore files, and new ignore files can be added later
 /// (unless [`finish`](IgnoreFilterer::finish()) is called).
-///
-/// It implements [`Filterer`] so it can be used directly in another filterer; it is not designed to
-/// be used as a standalone filterer.
 #[derive(Clone, Debug)]
-pub struct IgnoreFilterer {
+pub struct IgnoreFilter {
 	origin: PathBuf,
 	builder: Option<GitignoreBuilder>,
 	compiled: Gitignore,
 }
 
-impl IgnoreFilterer {
+impl IgnoreFilter {
 	/// Create a new empty filterer.
 	///
 	/// Prefer [`new()`](IgnoreFilterer::new()) if you have ignore files ready to use.
@@ -216,6 +211,17 @@ impl IgnoreFilterer {
 		Ok(())
 	}
 
+	/// Match a particular path against the ignore set.
+	pub fn match_path(&self, path: &Path, is_dir: bool) -> Match<&Glob> {
+		if path.strip_prefix(&self.origin).is_ok() {
+			trace!("checking against path or parents");
+			self.compiled.matched_path_or_any_parents(path, is_dir)
+		} else {
+			trace!("checking against path only");
+			self.compiled.matched(path, is_dir)
+		}
+	}
+
 	/// Check a particular folder path against the ignore set.
 	///
 	/// Returns `false` if the folder should be ignored.
@@ -226,13 +232,7 @@ impl IgnoreFilterer {
 		let _span = trace_span!("check_dir", ?path).entered();
 
 		trace!("checking against compiled ignore files");
-		match if path.strip_prefix(&self.origin).is_ok() {
-			trace!("checking against path or parents");
-			self.compiled.matched_path_or_any_parents(path, true)
-		} else {
-			trace!("checking against path only");
-			self.compiled.matched(path, true)
-		} {
+		match self.match_path(path, true) {
 			Match::None => {
 				trace!("no match (pass)");
 				true
@@ -251,51 +251,5 @@ impl IgnoreFilterer {
 				true
 			}
 		}
-	}
-}
-
-impl Filterer for IgnoreFilterer {
-	/// Filter an event.
-	///
-	/// This implementation never errors. It returns `Ok(false)` if the event is ignored according
-	/// to the ignore files, and `Ok(true)` otherwise. It ignores event priority.
-	fn check_event(&self, event: &Event, _priority: Priority) -> Result<bool, RuntimeError> {
-		let _span = trace_span!("filterer_check").entered();
-		let mut pass = true;
-
-		for (path, file_type) in event.paths() {
-			let _span = trace_span!("checking_against_compiled", ?path, ?file_type).entered();
-			let is_dir = file_type
-				.map(|t| matches!(t, FileType::Dir))
-				.unwrap_or(false);
-
-			match if path.strip_prefix(&self.origin).is_ok() {
-				trace!("checking against path or parents");
-				self.compiled.matched_path_or_any_parents(path, is_dir)
-			} else {
-				trace!("checking against path only");
-				self.compiled.matched(path, is_dir)
-			} {
-				Match::None => {
-					trace!("no match (pass)");
-					pass &= true;
-				}
-				Match::Ignore(glob) => {
-					if glob.from().map_or(true, |f| path.strip_prefix(f).is_ok()) {
-						trace!(?glob, "positive match (fail)");
-						pass &= false;
-					} else {
-						trace!(?glob, "positive match, but not in scope (ignore)");
-					}
-				}
-				Match::Whitelist(glob) => {
-					trace!(?glob, "negative match (pass)");
-					pass = true;
-				}
-			}
-		}
-
-		trace!(?pass, "verdict");
-		Ok(pass)
 	}
 }

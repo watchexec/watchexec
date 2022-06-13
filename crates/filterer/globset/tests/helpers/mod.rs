@@ -9,7 +9,7 @@ use watchexec::{
 	error::RuntimeError,
 	event::{Event, FileType, Priority, Tag},
 	filter::Filterer,
-	ignore::IgnoreFilterer,
+	ignore::{ IgnoreFilterer},
 };
 
 use watchexec_filterer_globset::GlobsetFilterer;
