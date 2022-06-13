@@ -108,7 +108,6 @@ pub mod filter;
 pub mod fs;
 pub mod ignore;
 pub mod paths;
-pub mod project;
 pub mod signal;
 pub mod swaplock;
 

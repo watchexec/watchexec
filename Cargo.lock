@@ -1643,6 +1643,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "project-origins"
+version = "1.0.0"
+dependencies = [
+ "dunce",
+ "futures",
+ "miette",
+ "tokio",
+ "tokio-stream",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "prost"
 version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2599,6 +2611,7 @@ dependencies = [
  "nom 7.1.1",
  "notify",
  "once_cell",
+ "project-origins",
  "regex",
  "thiserror",
  "tokio",
@@ -2623,6 +2636,7 @@ dependencies = [
  "miette",
  "mimalloc",
  "notify-rust",
+ "project-origins",
  "tokio",
  "tracing",
  "tracing-log",
@@ -2639,6 +2653,7 @@ dependencies = [
  "dunce",
  "ignore",
  "miette",
+ "project-origins",
  "thiserror",
  "tokio",
  "tracing",
@@ -2655,6 +2670,7 @@ dependencies = [
  "ignore",
  "miette",
  "nom 7.1.1",
+ "project-origins",
  "regex",
  "thiserror",
  "tokio",

@@ -37,6 +37,10 @@ watchexec-filterer-tagged = { version = "0.1.0", path = "../filterer/tagged" }
 version = "3.1.18"
 features = ["cargo", "wrap_help"]
 
+[dependencies.project-origins]
+version = "1.0.0"
+path = "../project-origins"
+
 [dependencies.tokio]
 version = "1.19.2"
 features = [

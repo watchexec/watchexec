@@ -1,4 +1,14 @@
-//! Detect project type and origin.
+//! Resolve project origins and kinds from a path.
+//!
+//! This crate originated in [Watchexec](https://docs.rs/watchexec): it is used to resolve where a
+//! project's origin (or root) is, starting either at that origin, or within a subdirectory of it.
+//!
+//! This crate also provides the kind of project it is, and defines two categories within this:
+//! version control systems, and software development environments.
+//!
+//! As it is possible to find several project origins, of different or similar kinds, from a given
+//! directory and walking up, [`origins`] returns a set, rather than a single path. Determining
+//! which of these is the "one true origin" (if necessary) is left to the caller.
 
 use std::{
 	collections::{HashMap, HashSet},

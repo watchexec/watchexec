@@ -6,12 +6,12 @@ use std::{
 	sync::Arc,
 };
 
+use project_origins::ProjectType;
 use watchexec::{
 	error::RuntimeError,
 	event::{filekind::FileEventKind, Event, FileType, Priority, ProcessEnd, Source, Tag},
 	filter::Filterer,
 	ignore::{IgnoreFile, IgnoreFilterer},
-	project::ProjectType,
 	signal::source::MainSignal,
 };
 

@@ -3,12 +3,12 @@ use std::{
 	path::{Path, PathBuf},
 };
 
+use project_origins::ProjectType;
 use watchexec::{
 	error::RuntimeError,
 	event::{Event, FileType, Priority, Tag},
 	filter::Filterer,
 	ignore::{IgnoreFile, IgnoreFilterer},
-	project::ProjectType,
 };
 
 use watchexec_filterer_globset::GlobsetFilterer;

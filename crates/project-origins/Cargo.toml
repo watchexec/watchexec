@@ -1,0 +1,30 @@
+[package]
+name = "project-origins"
+version = "1.0.0"
+
+authors = ["Félix Saparelli <felix@passcod.name>"]
+license = "Apache-2.0"
+description = "Resolve project origins and kinds from a path"
+keywords = ["project", "origin", "root", "git"]
+
+documentation = "https://docs.rs/project-origins"
+repository = "https://github.com/watchexec/watchexec"
+readme = "README.md"
+
+rust-version = "1.58.0"
+edition = "2021"
+
+[dependencies]
+futures = "0.3.21"
+tokio-stream = "0.1.9"
+
+[dependencies.tokio]
+version = "1.19.2"
+features = [
+	"fs",
+]
+
+[dev-dependencies]
+dunce = "1.0.2"
+miette = "4.7.1"
+tracing-subscriber = "0.3.11"

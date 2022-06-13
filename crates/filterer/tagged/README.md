@@ -14,4 +14,4 @@ _The default filterer implementation for Watchexec._
 - Status: maintained.
 
 [docs]: https://docs.rs/watchexec-filterer-globset
-[license]: ../LICENSE
+[license]: ../../../LICENSE

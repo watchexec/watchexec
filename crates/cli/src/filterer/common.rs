@@ -7,11 +7,11 @@ use std::{
 use clap::ArgMatches;
 use dunce::canonicalize;
 use miette::{miette, IntoDiagnostic, Result};
+use project_origins::ProjectType;
 use tracing::{debug, warn};
 use watchexec::{
 	ignore::{self, IgnoreFile},
 	paths::common_prefix,
-	project::{self, ProjectType},
 };
 
 pub async fn dirs(args: &ArgMatches) -> Result<(PathBuf, PathBuf)> {
@@ -50,7 +50,7 @@ pub async fn dirs(args: &ArgMatches) -> Result<(PathBuf, PathBuf)> {
 
 		let mut origins = HashSet::new();
 		for path in paths {
-			origins.extend(project::origins(&path).await);
+			origins.extend(project_origins::origins(&path).await);
 		}
 
 		match (homedir, homedir_requested) {
@@ -84,7 +84,7 @@ pub async fn dirs(args: &ArgMatches) -> Result<(PathBuf, PathBuf)> {
 }
 
 pub async fn vcs_types(origin: &Path) -> Vec<ProjectType> {
-	let vcs_types = project::types(origin)
+	let vcs_types = project_origins::types(origin)
 		.await
 		.into_iter()
 		.filter(|pt| pt.is_vcs())

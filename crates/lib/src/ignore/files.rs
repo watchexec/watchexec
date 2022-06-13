@@ -9,10 +9,11 @@ use std::{
 	path::{Path, PathBuf},
 };
 
+use project_origins::ProjectType;
 use tokio::fs::{metadata, read_dir};
 use tracing::{trace, trace_span};
 
-use crate::{paths::PATH_SEPARATOR, project::ProjectType};
+use crate::paths::PATH_SEPARATOR;
 
 use super::IgnoreFilterer;
 

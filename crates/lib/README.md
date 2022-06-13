@@ -11,10 +11,10 @@ _The library which powers [Watchexec CLI](https://watchexec.github.io) and other
 - **[API documentation][docs]**.
 - Licensed under [Apache 2.0][license].
 - Minimum Supported Rust Version: 1.58.0 (incurs a minor semver bump).
-- Status: in preview (`2.0.0-pre.N` series).
+- Status: maintained.
 
-[docs]: https://docs.rs/watchexec/2.0.0-pre.6
-[license]: ../LICENSE
+[docs]: https://docs.rs/watchexec
+[license]: ../../LICENSE
 
 
 ## Quick start
@@ -76,8 +76,8 @@ async fn main() -> Result<()> {
 
 ## Kitchen sink
 
-The library also exposes a large amount of components which are available to make your own tool, or
-to make anything else you may want:
+The library also exposes a number of components which are available to make your own tool, or to
+make anything else you may want:
 
 - **[Command handling](https://docs.rs/watchexec/2.0.0-pre.6/watchexec/command/index.html)**, to
   build a command with an arbitrary shell, deal with grouped and ungrouped processes the same way,
@@ -89,13 +89,20 @@ to make anything else you may want:
 - Finding **[a common prefix](https://docs.rs/watchexec/2.0.0-pre.6/watchexec/paths/fn.common_prefix.html)**
   of a set of paths.
 
-- Detecting the **[origin(s)](https://docs.rs/watchexec/2.0.0-pre.6/watchexec/project/fn.origins.html)**
-  and **[types](https://docs.rs/watchexec/2.0.0-pre.6/watchexec/project/fn.types.html)** of projects.
-
-- Discovering project-local and global
-  **[ignore files](https://docs.rs/watchexec/2.0.0-pre.6/watchexec/ignore/index.html)**.
-
 - And [more][docs]!
+
+Filterers are split into their own crates, so they can be evolved independently:
+
+- The **[Globset](https://docs.rs/watchexec-filterer-globset) filterer** implements the default
+  Watchexec filter, and mimics the pre-1.18 behaviour as much as possible.
+
+- The **[Tagged](https://docs.rs/watchexec-filterer-tagged) filterer** is an experiment in creating
+  a more powerful filtering solution, which can operate on every part of events, not just their
+  paths.
+
+- The **[Ignore](https://docs.rs/watchexec-filterer-ignore) filterer** implements ignore-file
+  semantics, and especially supports _trees_ of ignore files. It is used as a subfilterer in both
+  of the main filterers above.
 
 There are also separate, standalone crates used to build Watchexec which you can tap into:
 
@@ -105,11 +112,7 @@ There are also separate, standalone crates used to build Watchexec which you can
 - **[Command Group](https://docs.rs/command-group)** augments the std and tokio `Command` with
   support for process groups, portable between Unix and Windows.
 
+- **[Ignore files](https://docs.rs/ignore-files)** discovers project-local and global ignore files.
 
-## Tagged filters (alpha)
-
-This library is also the home of Watchexec's current _two_ filtering implementations: the v1
-behaviour which has proven confusing and inconsistent over the years, and an upcoming complete
-overhaul called "tagged filtering" which will potentially replace the legacy one.
-
-Have a look at the [docs](https://docs.rs/watchexec/2.0.0-pre.6/watchexec/filter/tagged/struct.TaggedFilterer.html)!
+- **[Project Origins](https://docs.rs/project-origins)** finds the origin (or root) path of a
+  project, and what kind of project it is.
