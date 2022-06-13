@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use miette::Diagnostic;
 use thiserror::Error;
 
@@ -127,19 +125,6 @@ pub enum RuntimeError {
 	#[error("clear screen: {0}")]
 	#[diagnostic(code(watchexec::runtime::clearscreen))]
 	Clearscreen(#[from] clearscreen::Error),
-
-	/// Error received when parsing a glob fails.
-	#[error("cannot parse glob from ignore '{file:?}': {err}")]
-	#[diagnostic(code(watchexec::runtime::ignore_glob))]
-	GlobsetGlob {
-		/// The path to the erroring ignore file.
-		file: Option<PathBuf>,
-
-		/// The underlying error.
-		#[source]
-		err: ignore::Error,
-		// TODO: extract glob error into diagnostic
-	},
 
 	/// Error received from the [`ignore-files`](ignore_files) crate.
 	#[error("ignore files: {0}")]

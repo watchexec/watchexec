@@ -9,7 +9,7 @@ use std::{
 };
 
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
-use ignore_files::{IgnoreFilter, IgnoreFile};
+use ignore_files::{Error, IgnoreFilter, IgnoreFile};
 use tracing::{debug, trace, trace_span};
 use watchexec::{
 	error::RuntimeError,
@@ -48,7 +48,7 @@ impl GlobsetFilterer {
 		ignores: impl IntoIterator<Item = (String, Option<PathBuf>)>,
 		ignore_files: impl IntoIterator<Item = IgnoreFile>,
 		extensions: impl IntoIterator<Item = OsString>,
-	) -> Result<Self, RuntimeError> {
+	) -> Result<Self, Error> {
 		let origin = origin.as_ref();
 		let mut filters_builder = GitignoreBuilder::new(&origin);
 		let mut ignores_builder = GitignoreBuilder::new(&origin);
@@ -57,22 +57,22 @@ impl GlobsetFilterer {
 			trace!(filter=?&filter, "add filter to globset filterer");
 			filters_builder
 				.add_line(in_path.clone(), &filter)
-				.map_err(|err| RuntimeError::GlobsetGlob { file: in_path, err })?;
+				.map_err(|err| Error::Glob { file: in_path, err })?;
 		}
 
 		for (ignore, in_path) in ignores {
 			trace!(ignore=?&ignore, "add ignore to globset filterer");
 			ignores_builder
 				.add_line(in_path.clone(), &ignore)
-				.map_err(|err| RuntimeError::GlobsetGlob { file: in_path, err })?;
+				.map_err(|err| Error::Glob { file: in_path, err })?;
 		}
 
 		let filters = filters_builder
 			.build()
-			.map_err(|err| RuntimeError::GlobsetGlob { file: None, err })?;
+			.map_err(|err| Error::Glob { file: None, err })?;
 		let ignores = ignores_builder
 			.build()
-			.map_err(|err| RuntimeError::GlobsetGlob { file: None, err })?;
+			.map_err(|err| Error::Glob { file: None, err })?;
 
 		let extensions: Vec<OsString> = extensions.into_iter().collect();
 
