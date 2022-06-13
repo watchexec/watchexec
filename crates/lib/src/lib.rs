@@ -106,7 +106,6 @@ pub mod error;
 pub mod event;
 pub mod filter;
 pub mod fs;
-pub mod ignore;
 pub mod paths;
 pub mod signal;
 

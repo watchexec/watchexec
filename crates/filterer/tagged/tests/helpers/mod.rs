@@ -12,10 +12,9 @@ use watchexec::{
 	error::RuntimeError,
 	event::{filekind::FileEventKind, Event, FileType, Priority, ProcessEnd, Source, Tag},
 	filter::Filterer,
-	ignore::{ IgnoreFilterer},
 	signal::source::MainSignal,
 };
-
+use watchexec_filterer_ignore::IgnoreFilterer;
 use watchexec_filterer_tagged::{Filter, FilterFile, Matcher, Op, Pattern, TaggedFilterer};
 
 pub mod tagged {

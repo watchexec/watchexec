@@ -4,8 +4,8 @@ use ignore::gitignore::Gitignore;
 use miette::Diagnostic;
 use thiserror::Error;
 use tokio::sync::watch::error::SendError;
-
-use watchexec::{error::RuntimeError, ignore::IgnoreFilterer};
+use watchexec::error::RuntimeError;
+use watchexec_filterer_ignore::IgnoreFilterer;
 
 use crate::{Filter, Matcher};
 

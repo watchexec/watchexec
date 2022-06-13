@@ -9,10 +9,9 @@ use watchexec::{
 	error::RuntimeError,
 	event::{Event, FileType, Priority, Tag},
 	filter::Filterer,
-	ignore::{ IgnoreFilterer},
 };
-
 use watchexec_filterer_globset::GlobsetFilterer;
+use watchexec_filterer_ignore::IgnoreFilterer;
 
 pub mod globset {
 	pub use super::globset_filt as filt;

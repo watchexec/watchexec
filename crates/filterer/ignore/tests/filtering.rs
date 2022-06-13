@@ -1,4 +1,4 @@
-use watchexec::ignore::IgnoreFilterer;
+use watchexec_filterer_ignore::IgnoreFilterer;
 
 mod helpers;
 use helpers::ignore::*;

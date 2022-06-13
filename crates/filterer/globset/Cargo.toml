@@ -7,7 +7,7 @@ license = "Apache-2.0"
 description = "Watchexec filterer component based on globset"
 keywords = ["watchexec", "filterer", "globset"]
 
-documentation = "https://docs.rs/watchexec"
+documentation = "https://docs.rs/watchexec-filterer-globset"
 homepage = "https://watchexec.github.io"
 repository = "https://github.com/watchexec/watchexec"
 readme = "README.md"
@@ -25,6 +25,10 @@ watchexec = { version = "2.0.0", path = "../../lib" }
 [dependencies.ignore-files]
 version = "1.0.0"
 path = "../../ignore-files"
+
+[dependencies.watchexec-filterer-ignore]
+version = "1.0.0"
+path = "../ignore"
 
 [dev-dependencies]
 dunce = "1.0.2"

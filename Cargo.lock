@@ -2677,6 +2677,21 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "watchexec",
+ "watchexec-filterer-ignore",
+]
+
+[[package]]
+name = "watchexec-filterer-ignore"
+version = "1.0.0"
+dependencies = [
+ "dunce",
+ "ignore",
+ "ignore-files",
+ "project-origins",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "watchexec",
 ]
 
 [[package]]
@@ -2697,6 +2712,7 @@ dependencies = [
  "tracing-subscriber",
  "unicase",
  "watchexec",
+ "watchexec-filterer-ignore",
 ]
 
 [[package]]

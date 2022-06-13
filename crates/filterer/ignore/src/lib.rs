@@ -7,7 +7,7 @@ use ignore::Match;
 use ignore_files::IgnoreFilter;
 use tracing::{trace, trace_span};
 
-use crate::{
+use watchexec::{
 	error::RuntimeError,
 	event::{Event, FileType, Priority},
 	filter::Filterer,

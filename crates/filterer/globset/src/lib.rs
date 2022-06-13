@@ -15,8 +15,8 @@ use watchexec::{
 	error::RuntimeError,
 	event::{Event, FileType, Priority},
 	filter::Filterer,
-	ignore::{ IgnoreFilterer},
 };
+use watchexec_filterer_ignore::IgnoreFilterer;
 
 /// A simple filterer in the style of the watchexec v1.17 filter.
 #[derive(Debug)]

@@ -9,14 +9,13 @@ use ignore::{
 };
 use ignore_files::{IgnoreFilter, IgnoreFile};
 use tracing::{debug, trace, trace_span};
-
 use watchexec::{
 	error::RuntimeError,
 	event::{Event, FileType, Priority, ProcessEnd, Tag},
 	filter::Filterer,
-	ignore::{ IgnoreFilterer},
 	signal::{process::SubSignal, source::MainSignal},
 };
+use watchexec_filterer_ignore::IgnoreFilterer;
 
 use crate::{swaplock::SwapLock, Filter, Matcher, Op, Pattern, TaggedFiltererError};
 

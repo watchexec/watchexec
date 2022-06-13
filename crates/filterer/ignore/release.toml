@@ -1,0 +1,4 @@
+pre-release-hook = ["../../../bin/pre-release-pull"]
+pre-release-commit-message = "ignore filterer: v{{version}}"
+tag-prefix = "filterer-ignore-"
+tag-message = "watchexec-filterer-ignore {{version}}"
