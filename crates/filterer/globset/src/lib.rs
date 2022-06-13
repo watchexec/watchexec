@@ -9,13 +9,13 @@ use std::{
 };
 
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
-use ignore_files::IgnoreFile;
+use ignore_files::{IgnoreFilter, IgnoreFile};
 use tracing::{debug, trace, trace_span};
 use watchexec::{
 	error::RuntimeError,
 	event::{Event, FileType, Priority},
 	filter::Filterer,
-	ignore::{IgnoreFilter, IgnoreFilterer},
+	ignore::{ IgnoreFilterer},
 };
 
 /// A simple filterer in the style of the watchexec v1.17 filter.

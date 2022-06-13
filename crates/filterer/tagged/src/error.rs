@@ -63,7 +63,7 @@ pub enum TaggedFiltererError {
 	/// Error received about the internal ignore filterer.
 	#[error("ignore filterer: {0}")]
 	#[diagnostic(code(watchexec::filter::tagged::ignore))]
-	Ignore(#[source] RuntimeError),
+	Ignore(#[source] ignore_files::Error),
 
 	/// Error received when a new ignore filterer cannot be swapped in.
 	#[error("cannot swap in new ignore filterer: {0:?}")]

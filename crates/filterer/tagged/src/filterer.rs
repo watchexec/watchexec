@@ -7,14 +7,14 @@ use ignore::{
 	gitignore::{Gitignore, GitignoreBuilder},
 	Match,
 };
-use ignore_files::IgnoreFile;
+use ignore_files::{IgnoreFilter, IgnoreFile};
 use tracing::{debug, trace, trace_span};
 
 use watchexec::{
 	error::RuntimeError,
 	event::{Event, FileType, Priority, ProcessEnd, Tag},
 	filter::Filterer,
-	ignore::{IgnoreFilter, IgnoreFilterer},
+	ignore::{ IgnoreFilterer},
 	signal::{process::SubSignal, source::MainSignal},
 };
 

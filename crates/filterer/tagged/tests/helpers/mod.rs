@@ -6,13 +6,13 @@ use std::{
 	sync::Arc,
 };
 
-use ignore_files::IgnoreFile;
+use ignore_files::{IgnoreFilter, IgnoreFile};
 use project_origins::ProjectType;
 use watchexec::{
 	error::RuntimeError,
 	event::{filekind::FileEventKind, Event, FileType, Priority, ProcessEnd, Source, Tag},
 	filter::Filterer,
-	ignore::{IgnoreFilter, IgnoreFilterer},
+	ignore::{ IgnoreFilterer},
 	signal::source::MainSignal,
 };
 

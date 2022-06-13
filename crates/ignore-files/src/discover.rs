@@ -1,7 +1,3 @@
-use git_config::{
-	file::{from_paths, GitConfig},
-	values::Path as GitPath,
-};
 use std::{
 	collections::HashSet,
 	env,
@@ -9,14 +5,22 @@ use std::{
 	path::{Path, PathBuf},
 };
 
-use ignore_files::IgnoreFile;
+use git_config::{
+	file::{from_paths, GitConfig},
+	values::Path as GitPath,
+};
 use project_origins::ProjectType;
 use tokio::fs::{metadata, read_dir};
 use tracing::{trace, trace_span};
 
-use crate::paths::PATH_SEPARATOR;
+use crate::{IgnoreFilter, IgnoreFile};
 
-use super::IgnoreFilter;
+/// The separator for paths used in environment variables.
+#[cfg(unix)]
+const PATH_SEPARATOR: &str = ":";
+/// The separator for paths used in environment variables.
+#[cfg(not(unix))]
+const PATH_SEPARATOR: &str = ";";
 
 /// Finds all ignore files in the given directory and subdirectories.
 ///
@@ -170,24 +174,29 @@ pub async fn from_origin(path: impl AsRef<Path>) -> (Vec<IgnoreFile>, Vec<Error>
 
 /// Finds all ignore files that apply to the current runtime.
 ///
+/// Takes an optional `appname` for the calling application for looking at an environment variable
+/// and an application-specific config location.
+///
 /// This considers:
 /// - User-specific git ignore files (e.g. `~/.gitignore`)
 /// - Git configurable ignore files (e.g. with `core.excludesFile` in system or user config)
-/// - `$XDG_CONFIG_HOME/watchexec/ignore`, as well as other locations (APPDATA on Windows…)
-/// - Files from the `WATCHEXEC_IGNORE_FILES` environment variable (separated the same was as `PATH`)
+/// - `$XDG_CONFIG_HOME/{appname}/ignore`, as well as other locations (APPDATA on Windows…)
+/// - Files from the `{APPNAME}_IGNORE_FILES` environment variable (separated the same was as `PATH`)
 ///
 /// All errors (permissions, etc) are collected and returned alongside the ignore files: you may
 /// want to show them to the user while still using whatever ignores were successfully found. Errors
 /// from files not being found are silently ignored (the files are just not returned).
-pub async fn from_environment() -> (Vec<IgnoreFile>, Vec<Error>) {
+pub async fn from_environment(appname: Option<&str>) -> (Vec<IgnoreFile>, Vec<Error>) {
 	let mut files = Vec::new();
 	let mut errors = Vec::new();
 
-	for path in env::var("WATCHEXEC_IGNORE_FILES")
-		.unwrap_or_default()
-		.split(PATH_SEPARATOR)
-	{
-		discover_file(&mut files, &mut errors, None, None, PathBuf::from(path)).await;
+	if let Some(name) = appname {
+		for path in env::var(format!("{}_IGNORE_FILES", name.to_uppercase()))
+			.unwrap_or_default()
+			.split(PATH_SEPARATOR)
+		{
+			discover_file(&mut files, &mut errors, None, None, PathBuf::from(path)).await;
+		}
 	}
 
 	let mut found_git_global = false;
@@ -263,23 +272,25 @@ pub async fn from_environment() -> (Vec<IgnoreFile>, Vec<Error>) {
 		}
 	}
 
-	let mut wgis = Vec::with_capacity(5);
-	if let Ok(home) = env::var("XDG_CONFIG_HOME") {
-		wgis.push(Path::new(&home).join("watchexec/ignore"));
-	}
-	if let Ok(home) = env::var("APPDATA") {
-		wgis.push(Path::new(&home).join("watchexec/ignore"));
-	}
-	if let Ok(home) = env::var("USERPROFILE") {
-		wgis.push(Path::new(&home).join(".watchexec/ignore"));
-	}
-	if let Ok(home) = env::var("HOME") {
-		wgis.push(Path::new(&home).join(".watchexec/ignore"));
-	}
+	if let Some(name) = appname {
+		let mut wgis = Vec::with_capacity(4);
+		if let Ok(home) = env::var("XDG_CONFIG_HOME") {
+			wgis.push(Path::new(&home).join(format!("{name}/ignore")));
+		}
+		if let Ok(home) = env::var("APPDATA") {
+			wgis.push(Path::new(&home).join(format!("{name}/ignore")));
+		}
+		if let Ok(home) = env::var("USERPROFILE") {
+			wgis.push(Path::new(&home).join(format!(".{name}/ignore")));
+		}
+		if let Ok(home) = env::var("HOME") {
+			wgis.push(Path::new(&home).join(format!(".{name}/ignore")));
+		}
 
-	for path in wgis {
-		if discover_file(&mut files, &mut errors, None, None, path).await {
-			break;
+		for path in wgis {
+			if discover_file(&mut files, &mut errors, None, None, path).await {
+				break;
+			}
 		}
 	}
 

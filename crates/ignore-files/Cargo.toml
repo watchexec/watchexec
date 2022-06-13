@@ -14,6 +14,16 @@ readme = "README.md"
 rust-version = "1.58.0"
 edition = "2021"
 
+[dependencies]
+futures = "0.3.21"
+ignore = "0.4.18"
+git-config = "0.2.0"
+tokio = { version = "1.19.2", default-features = false, features = ["fs"] }
+tracing = "0.1.35"
+dunce = "1.0.2"
+miette = "4.7.1"
+thiserror = "1.0.31"
+
 [dependencies.project-origins]
 version = "1.0.0"
 path = "../project-origins"

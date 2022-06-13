@@ -10,6 +10,18 @@ use std::path::PathBuf;
 
 use project_origins::ProjectType;
 
+#[doc(inline)]
+pub use discover::*;
+mod discover;
+
+#[doc(inline)]
+pub use error::*;
+mod error;
+
+#[doc(inline)]
+pub use filter::*;
+mod filter;
+
 /// An ignore file.
 ///
 /// This records both the path to the ignore file and some basic metadata about it: which project

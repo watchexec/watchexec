@@ -839,9 +839,9 @@ dependencies = [
 
 [[package]]
 name = "git-hash"
-version = "0.9.4"
+version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e05d7e760613f4118cdccaf881fc9d1323c3ea596d156aac25a4eb44b428f11e"
+checksum = "3d3f93912499fa8935199743365e276e37551ceecf871c8be558dcf158abfc85"
 dependencies = [
  "hex",
  "quick-error",
@@ -1026,7 +1026,15 @@ dependencies = [
 name = "ignore-files"
 version = "1.0.0"
 dependencies = [
+ "dunce",
+ "futures",
+ "git-config",
+ "ignore",
+ "miette",
  "project-origins",
+ "thiserror",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

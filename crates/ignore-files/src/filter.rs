@@ -5,13 +5,10 @@ use ignore::{
 	gitignore::{Gitignore, Glob, GitignoreBuilder},
 	Match,
 };
-use ignore_files::IgnoreFile;
 use tokio::fs::read_to_string;
 use tracing::{trace, trace_span};
 
-use crate::{
-	error::RuntimeError,
-};
+use crate::{Error, IgnoreFile};
 
 /// A mutable filter dedicated to ignore files and trees of ignore files.
 ///
@@ -42,7 +39,7 @@ impl IgnoreFilter {
 	///
 	/// Use [`empty()`](IgnoreFilterer::empty()) if you want an empty filterer,
 	/// or to construct one outside an async environment.
-	pub async fn new(origin: impl AsRef<Path>, files: &[IgnoreFile]) -> Result<Self, RuntimeError> {
+	pub async fn new(origin: impl AsRef<Path>, files: &[IgnoreFile]) -> Result<Self, Error> {
 		let origin = origin.as_ref();
 		let _span = trace_span!("build_filterer", ?origin);
 
@@ -52,7 +49,7 @@ impl IgnoreFilter {
 			.map(|file| async move {
 				trace!(?file, "loading ignore file");
 				let content = read_to_string(&file.path).await.map_err(|err| {
-					RuntimeError::IgnoreFileRead {
+					Error::Read {
 						file: file.path.clone(),
 						err,
 					}
@@ -69,10 +66,10 @@ impl IgnoreFilter {
 			})
 			.unzip();
 
-		let errors: Vec<RuntimeError> = errors.into_iter().flatten().collect();
+		let errors: Vec<Error> = errors.into_iter().flatten().collect();
 		if !errors.is_empty() {
 			trace!("found {} errors", errors.len());
-			return Err(RuntimeError::Set(errors));
+			return Err(Error::Multi(errors));
 		}
 
 		// TODO: different parser/adapter for non-git-syntax ignore files?
@@ -89,7 +86,7 @@ impl IgnoreFilter {
 				trace!(?line, "adding ignore line");
 				builder
 					.add_line(file.applies_in.clone(), line)
-					.map_err(|err| RuntimeError::GlobsetGlob {
+					.map_err(|err| Error::Glob {
 						file: Some(file.path.clone()),
 						err,
 					})?;
@@ -99,7 +96,7 @@ impl IgnoreFilter {
 		trace!("compiling globset");
 		let compiled = builder
 			.build()
-			.map_err(|err| RuntimeError::GlobsetGlob { file: None, err })?;
+			.map_err(|err| Error::Glob { file: None, err })?;
 
 		trace!(
 			files=%files.len(),
@@ -130,13 +127,13 @@ impl IgnoreFilter {
 	/// Reads and adds an ignore file, if the builder is available.
 	///
 	/// Does nothing silently otherwise.
-	pub async fn add_file(&mut self, file: &IgnoreFile) -> Result<(), RuntimeError> {
+	pub async fn add_file(&mut self, file: &IgnoreFile) -> Result<(), Error> {
 		if let Some(ref mut builder) = self.builder {
 			trace!(?file, "reading ignore file");
 			let content =
 				read_to_string(&file.path)
 					.await
-					.map_err(|err| RuntimeError::IgnoreFileRead {
+					.map_err(|err| Error::Read {
 						file: file.path.clone(),
 						err,
 					})?;
@@ -150,7 +147,7 @@ impl IgnoreFilter {
 				trace!(?line, "adding ignore line");
 				builder
 					.add_line(file.applies_in.clone(), line)
-					.map_err(|err| RuntimeError::GlobsetGlob {
+					.map_err(|err| Error::Glob {
 						file: Some(file.path.clone()),
 						err,
 					})?;
@@ -162,13 +159,13 @@ impl IgnoreFilter {
 		Ok(())
 	}
 
-	fn recompile(&mut self, file: PathBuf) -> Result<(), RuntimeError> {
+	fn recompile(&mut self, file: PathBuf) -> Result<(), Error> {
 		if let Some(builder) = &mut self.builder {
 			let pre_ignores = self.compiled.num_ignores();
 			let pre_allows = self.compiled.num_whitelists();
 
 			trace!("recompiling globset");
-			let recompiled = builder.build().map_err(|err| RuntimeError::GlobsetGlob {
+			let recompiled = builder.build().map_err(|err| Error::Glob {
 				file: Some(file),
 				err,
 			})?;
@@ -191,7 +188,7 @@ impl IgnoreFilter {
 		&mut self,
 		globs: &[&str],
 		applies_in: Option<PathBuf>,
-	) -> Result<(), RuntimeError> {
+	) -> Result<(), Error> {
 		if let Some(ref mut builder) = self.builder {
 			let _span = trace_span!("loading ignore globs", ?globs).entered();
 			for line in globs {
@@ -202,7 +199,7 @@ impl IgnoreFilter {
 				trace!(?line, "adding ignore line");
 				builder
 					.add_line(applies_in.clone(), line)
-					.map_err(|err| RuntimeError::GlobsetGlob { file: None, err })?;
+					.map_err(|err| Error::Glob { file: None, err })?;
 			}
 
 			self.recompile("manual glob".into())?;

@@ -128,9 +128,7 @@ pub enum RuntimeError {
 	#[diagnostic(code(watchexec::runtime::clearscreen))]
 	Clearscreen(#[from] clearscreen::Error),
 
-	/// Error received when parsing a glob (possibly from an [`IgnoreFile`]) fails.
-	///
-	/// [`IgnoreFile`]: crate::ignore::IgnoreFile
+	/// Error received when parsing a glob fails.
 	#[error("cannot parse glob from ignore '{file:?}': {err}")]
 	#[diagnostic(code(watchexec::runtime::ignore_glob))]
 	GlobsetGlob {
@@ -143,19 +141,9 @@ pub enum RuntimeError {
 		// TODO: extract glob error into diagnostic
 	},
 
-	/// Error received when an [`IgnoreFile`] cannot be read.
-	///
-	/// [`IgnoreFile`]: crate::ignore::IgnoreFile
-	#[error("cannot read ignore '{file}': {err}")]
-	#[diagnostic(code(watchexec::runtime::ignore_file_read))]
-	IgnoreFileRead {
-		/// The path to the erroring ignore file.
-		file: PathBuf,
-
-		/// The underlying error.
-		#[source]
-		err: std::io::Error,
-	},
+	/// Error received from the [`ignore-files`](ignore_files) crate.
+	#[error("ignore files: {0}")]
+	IgnoreFiles(#[diagnostic_source] #[from] ignore_files::Error),
 
 	/// Error emitted by a [`Filterer`](crate::filter::Filterer).
 	///
@@ -176,9 +164,4 @@ pub enum RuntimeError {
 		#[source]
 		err: Box<dyn std::error::Error + Send + Sync>,
 	},
-
-	/// A set of related [`RuntimeError`]s.
-	#[error("related: {0:?}")]
-	#[diagnostic(code(watchexec::runtime::set))]
-	Set(#[related] Vec<RuntimeError>),
 }

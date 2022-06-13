@@ -10,7 +10,7 @@ use ignore_files::IgnoreFile;
 use miette::{miette, IntoDiagnostic, Result};
 use project_origins::ProjectType;
 use tracing::{debug, warn};
-use watchexec::{ignore, paths::common_prefix};
+use watchexec::{paths::common_prefix};
 
 pub async fn dirs(args: &ArgMatches) -> Result<(PathBuf, PathBuf)> {
 	let curdir = env::current_dir()
@@ -96,7 +96,7 @@ pub async fn ignores(
 	vcs_types: &[ProjectType],
 	origin: &Path,
 ) -> Vec<IgnoreFile> {
-	let (mut ignores, errors) = ignore::from_origin(origin).await;
+	let (mut ignores, errors) = ignore_files::from_origin(origin).await;
 	for err in errors {
 		warn!("while discovering project-local ignore files: {}", err);
 	}
@@ -127,7 +127,7 @@ pub async fn ignores(
 		debug!(?ignores, "filtered ignores to only those for project vcs");
 	}
 
-	let (mut global_ignores, errors) = ignore::from_environment().await;
+	let (mut global_ignores, errors) = ignore_files::from_environment(Some("watchexec")).await;
 	for err in errors {
 		warn!("while discovering global ignore files: {}", err);
 	}
