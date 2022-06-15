@@ -1,4 +1,3 @@
-pre-release-hook = ["../../../bin/pre-release-pull"]
-pre-release-commit-message = "tagged filterer: v{{version}}"
+pre-release-commit-message = "release: filterer-tagged v{{version}}"
 tag-prefix = "filterer-tagged-"
 tag-message = "watchexec-filterer-tagged {{version}}"

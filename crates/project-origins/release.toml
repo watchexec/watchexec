@@ -1,4 +1,3 @@
-pre-release-hook = ["../../bin/pre-release-pull"]
-pre-release-commit-message = "project origins: v{{version}}"
+pre-release-commit-message = "release: project-origins v{{version}}"
 tag-prefix = "project-origins-"
 tag-message = "project-origins {{version}}"

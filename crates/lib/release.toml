@@ -1,5 +1,4 @@
-pre-release-hook = ["../../bin/pre-release-pull"]
-pre-release-commit-message = "lib: v{{version}}"
+pre-release-commit-message = "release: lib v{{version}}"
 tag-prefix = "lib-"
 tag-message = "watchexec-lib {{version}}"
 
