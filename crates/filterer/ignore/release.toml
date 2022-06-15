@@ -1,3 +1,10 @@
 pre-release-commit-message = "release: filterer-ignore v{{version}}"
 tag-prefix = "filterer-ignore-"
 tag-message = "watchexec-filterer-ignore {{version}}"
+
+[[pre-release-replacements]]
+file = "CHANGELOG.md"
+search = "^## Next.*$"
+replace = "## Next (YYYY-MM-DD)\n\n## v{{version}} ({{date}})"
+prerelease = true
+max = 1
