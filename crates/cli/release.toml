@@ -8,20 +8,6 @@ tag-message = "watchexec {{version}}"
 publish = false
 
 [[pre-release-replacements]]
-file = "../CITATION.cff"
-search = "^version: \"?[\\d.]+(-.+)?\"?"
-replace = "version: \"{{version}}\""
-prerelease = true
-max = 1
-
-[[pre-release-replacements]]
-file = "../CITATION.cff"
-search = "^date-released: .+(-.+)?"
-replace = "date-released: {{date}}"
-prerelease = true
-max = 1
-
-[[pre-release-replacements]]
 file = "watchexec.exe.manifest"
 search = "^		version=\"[\\d.]+[.]0\""
 replace = "		version=\"{{version}}.0\""
@@ -39,5 +25,19 @@ max = 1
 file = "tests/snapshots/help__help_unix.snap"
 search = "watchexec [\\d.]+(-.+)?"
 replace = "watchexec {{version}}"
+prerelease = true
+max = 1
+
+[[pre-release-replacements]]
+file = "../../CITATION.cff"
+search = "^version: \"?[\\d.]+(-.+)?\"?"
+replace = "version: \"{{version}}\""
+prerelease = true
+max = 1
+
+[[pre-release-replacements]]
+file = "../../CITATION.cff"
+search = "^date-released: .+"
+replace = "date-released: {{date}}"
 prerelease = true
 max = 1

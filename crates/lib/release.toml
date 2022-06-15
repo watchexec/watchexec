@@ -1,17 +1,3 @@
 pre-release-commit-message = "release: lib v{{version}}"
 tag-prefix = "lib-"
 tag-message = "watchexec-lib {{version}}"
-
-[[pre-release-replacements]]
-file = "../../CITATION.cff"
-search = "^version: \"?[\\d.]+(-.+)?\"?"
-replace = "version: \"{{version}}\""
-prerelease = true
-max = 1
-
-[[pre-release-replacements]]
-file = "../../CITATION.cff"
-search = "^date-released: .+"
-replace = "date-released: {{date}}"
-prerelease = true
-max = 1
