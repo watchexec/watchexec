@@ -1,0 +1,29 @@
+name: Tag a release
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  make-tag:
+    runs-on: ubuntu-latest
+    # because only bors can push to main, and it squashes, only PRs
+    # that are named `release: {crate-name} v{version}` will get tagged!
+    # the commit message will look like: `release: {crate-name} v{version} (#{pr-number})`
+    if: "startsWith(github.event.head_commit.message, 'release: ')"
+    steps:
+      - name: Extract tag from commit message
+        run: |
+          set -euxo pipefail
+          message="${{ github.event.head_commit.message }}"
+          crate="$(cut -d ' ' -f 2 <<< "${message}")"
+          version="$(cut -d ' ' -f 3 <<< "${message}" | tr -d 'v')"
+          echo "CUSTOM_TAG=${crate}-${version}" >> $GITHUB_ENV
+
+      - uses: actions/checkout@v2
+      - name: Bump version and push tag
+        id: tag_version
+        uses: mathieudutour/github-tag-action@v6.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          custom_tag: ${{ env.CUSTOM_TAG }}

@@ -1,0 +1,10 @@
+pre-release-commit-message = "release: filterer-globset v{{version}}"
+tag-prefix = "filterer-globset-"
+tag-message = "watchexec-filterer-globset {{version}}"
+
+[[pre-release-replacements]]
+file = "CHANGELOG.md"
+search = "^## Next.*$"
+replace = "## Next (YYYY-MM-DD)\n\n## v{{version}} ({{date}})"
+prerelease = true
+max = 1

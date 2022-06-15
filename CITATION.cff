@@ -3,9 +3,8 @@
 cff-version: "1.1.0"
 message: |
   If you use this software, please cite it using these metadata.
-  The library has its own CITATION.cff file in lib/.
 
-title: Watchexec (command-line tool)
+title: Watchexec
 version: "1.19.0"
 date-released: 2022-04-15
 

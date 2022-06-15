@@ -1,0 +1,64 @@
+[package]
+name = "watchexec"
+version = "2.0.0"
+
+authors = ["Matt Green <mattgreenrocks@gmail.com>", "Félix Saparelli <felix@passcod.name>"]
+license = "Apache-2.0"
+description = "Library to execute commands in response to file modifications"
+keywords = ["watcher", "filesystem", "watchexec"]
+
+documentation = "https://docs.rs/watchexec"
+homepage = "https://watchexec.github.io"
+repository = "https://github.com/watchexec/watchexec"
+readme = "README.md"
+
+rust-version = "1.58.0"
+edition = "2021"
+
+[dependencies]
+async-priority-channel = "0.1.0"
+async-recursion = "1.0.0"
+atomic-take = "1.0.0"
+clearscreen = "1.0.9"
+dunce = "1.0.2"
+futures = "0.3.16"
+miette = "4.7.1"
+once_cell = "1.8.0"
+thiserror = "1.0.26"
+
+[dependencies.command-group]
+version = "1.0.8"
+features = ["with-tokio"]
+
+[dependencies.ignore-files]
+version = "1.0.0"
+path = "../ignore-files"
+
+[dependencies.notify]
+version = "=5.0.0-pre.15"
+
+[dependencies.project-origins]
+version = "1.0.0"
+path = "../project-origins"
+
+[dependencies.tokio]
+version = "1.19.2"
+features = [
+	"fs",
+	"io-std",
+	"process",
+	"rt",
+	"rt-multi-thread",
+	"signal",
+	"sync",
+]
+
+[dependencies.tracing]
+version = "0.1.26"
+features = ["log"]
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2.104"
+
+[dev-dependencies]
+tracing-subscriber = "0.3.6"

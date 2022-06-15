@@ -1,0 +1,100 @@
+name: Open a release PR
+on:
+  workflow_dispatch:
+    inputs:
+      crate:
+        description: Crate to release
+        required: true
+        type: choice
+        choices:
+          - cli
+          - lib
+          - filterer-globset
+          - filterer-ignore
+          - filterer-tagged
+          - ignore-files
+          - project-origins
+      version:
+        description: Version to release
+        required: true
+        type: string
+
+jobs:
+  make-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install cargo-release
+        uses: baptiste0928/cargo-install@v1
+        with:
+          crate: cargo-release
+          version: "0.21"
+
+      - uses: actions/checkout@v2
+        with:
+          ref: main
+      - name: Make branch "release-${{ inputs.crate }}-${{ inputs.version }}"
+        run: git switch -c "release-${{ inputs.crate }}-${{ inputs.version }}"
+
+      - name: Find crate name
+        run: |
+          set -euxo pipefail
+          pushd "crates/${{ inputs.crate }}"
+          crate_name=$(head Cargo.toml -n2 | grep name | cut -d '"' -f2)
+          echo "crate_name=${crate_name}" >> $GITHUB_ENV
+          popd
+
+      - name: Do release
+        run: |
+          set -euxo pipefail
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          cargo release \
+            --execute \
+            --no-push \
+            --no-tag \
+            --no-publish \
+            --no-confirm \
+            --verbose \
+            --allow-branch "release-${{ inputs.crate }}-${{ inputs.version }}"
+            --package "${{ env.crate_name }}" \
+            "${{ inputs.version }}"
+
+      - name: Push new branch
+        run: |
+          set -euxo pipefail
+          git push origin "release-${{ inputs.crate }}-${{ inputs.version }}"
+
+  make-pr:
+    runs-on: ubuntu-latest
+    needs: make-branch
+    steps:
+      - run: |
+          set -euxo pipefail
+          title="release: ${{ inputs.crate }} v${{ inputs.version }}"
+          body="This is a release PR for **${{ inputs.crate }}** to version **${{ inputs.version }}**."
+          if [[ "${{ inputs.crate }}" == "cli" ]]; then
+            body="$body
+
+            Upon merging, this will automatically build the CLI and create a GitHub release. You still need to manually publish the cargo crate."
+          else
+            body="$body
+
+            Upon merging, you will still need to manually publish the cargo crate."
+          fi
+          body="$body
+
+          \`\`\`
+          $ cd crates/${{ inputs.crate }}
+          $ cargo publish
+          \`\`\`
+
+          To merge this release, review the changes then say:
+
+          \`\`\`
+          bors r+
+          \`\`\`"
+
+          pr_url=$(gh pr create --title "$title" --body "$body" --base main --head "release-${{ inputs.crate }}-${{ inputs.version }}" --label "release")
+          gh pr comment "$pr_url" --body "bors single on\nbors p=10"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

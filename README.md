@@ -61,9 +61,11 @@ Watchexec pairs well with:
 
 ## Extend
 
-- [watchexec library](./lib/): to create more specialised watchexec-powered tools! such as:
+- [watchexec library](./crates/lib/): to create more specialised watchexec-powered tools! such as:
   - [cargo watch](https://github.com/watchexec/cargo-watch): for Rust/Cargo projects.
 - [clearscreen](https://github.com/watchexec/clearscreen): to clear the (terminal) screen on every platform.
 - [command group](https://github.com/watchexec/command-group): to run commands in process groups.
+- [ignore files](./crates/ignore-files/): to find, parse, and interpret ignore files.
+- [project origins](./crates/project-origins/): to find the origin(s) directory of a project.
 - [notify](https://github.com/notify-rs/notify): to respond to file modifications (third-party).
 - [globset](https://crates.io/crates/globset): to match globs (third-party).

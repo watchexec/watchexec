@@ -349,7 +349,7 @@ dependencies = [
  "strsim",
  "termcolor",
  "terminal_size",
- "textwrap 0.15.0",
+ "textwrap",
 ]
 
 [[package]]
@@ -839,9 +839,9 @@ dependencies = [
 
 [[package]]
 name = "git-hash"
-version = "0.9.4"
+version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e05d7e760613f4118cdccaf881fc9d1323c3ea596d156aac25a4eb44b428f11e"
+checksum = "3d3f93912499fa8935199743365e276e37551ceecf871c8be558dcf158abfc85"
 dependencies = [
  "hex",
  "quick-error",
@@ -1020,6 +1020,21 @@ dependencies = [
  "thread_local",
  "walkdir",
  "winapi-util",
+]
+
+[[package]]
+name = "ignore-files"
+version = "1.0.0"
+dependencies = [
+ "dunce",
+ "futures",
+ "git-config",
+ "ignore",
+ "miette",
+ "project-origins",
+ "thiserror",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -1229,7 +1244,7 @@ dependencies = [
  "supports-hyperlinks",
  "supports-unicode",
  "terminal_size",
- "textwrap 0.15.0",
+ "textwrap",
  "thiserror",
  "unicode-width",
 ]
@@ -1346,9 +1361,9 @@ dependencies = [
 
 [[package]]
 name = "notify"
-version = "5.0.0-pre.14"
+version = "5.0.0-pre.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d13c22db70a63592e098fb51735bab36646821e6389a0ba171f3549facdf0b74"
+checksum = "553f9844ad0b0824605c20fb55a661679782680410abfb1a8144c2e7e437e7a7"
 dependencies = [
  "bitflags",
  "crossbeam-channel",
@@ -1640,6 +1655,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c54b25569025b7fc9651de43004ae593a75ad88543b17178aa5e1b9c4f15f56f"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "project-origins"
+version = "1.0.0"
+dependencies = [
+ "dunce",
+ "futures",
+ "miette",
+ "tokio",
+ "tokio-stream",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -2149,22 +2176,14 @@ checksum = "507e9898683b6c43a9aa55b64259b721b52ba226e0f3779137e50ad114a4c90b"
 
 [[package]]
 name = "textwrap"
-version = "0.14.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0066c8d12af8b5acd21e00547c3797fde4e8677254a7ee429176ccebbe93dd80"
-dependencies = [
- "smawk",
- "unicode-linebreak",
- "unicode-width",
-]
-
-[[package]]
-name = "textwrap"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1141d4d61095b28419e22cb0bbf02755f5e54e0526f97f1e3d1d160e60885fb"
 dependencies = [
+ "smawk",
  "terminal_size",
+ "unicode-linebreak",
+ "unicode-width",
 ]
 
 [[package]]
@@ -2589,31 +2608,25 @@ checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
 
 [[package]]
 name = "watchexec"
-version = "2.0.0-pre.14"
+version = "2.0.0"
 dependencies = [
  "async-priority-channel",
  "async-recursion 1.0.0",
- "async-stream",
  "atomic-take",
  "clearscreen",
  "command-group",
  "dunce",
  "futures",
- "git-config",
- "globset",
- "ignore",
+ "ignore-files",
  "libc",
  "miette",
- "nom 7.1.1",
  "notify",
  "once_cell",
- "regex",
+ "project-origins",
  "thiserror",
  "tokio",
- "tokio-stream",
  "tracing",
  "tracing-subscriber",
- "unicase",
 ]
 
 [[package]]
@@ -2627,15 +2640,69 @@ dependencies = [
  "dunce",
  "embed-resource",
  "futures",
+ "ignore-files",
  "insta",
  "miette",
  "mimalloc",
  "notify-rust",
+ "project-origins",
  "tokio",
  "tracing",
  "tracing-log",
  "tracing-subscriber",
  "watchexec",
+ "watchexec-filterer-globset",
+ "watchexec-filterer-tagged",
+]
+
+[[package]]
+name = "watchexec-filterer-globset"
+version = "1.0.0"
+dependencies = [
+ "dunce",
+ "ignore",
+ "ignore-files",
+ "project-origins",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "watchexec",
+ "watchexec-filterer-ignore",
+]
+
+[[package]]
+name = "watchexec-filterer-ignore"
+version = "1.0.0"
+dependencies = [
+ "dunce",
+ "ignore",
+ "ignore-files",
+ "project-origins",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "watchexec",
+]
+
+[[package]]
+name = "watchexec-filterer-tagged"
+version = "0.1.0"
+dependencies = [
+ "dunce",
+ "globset",
+ "ignore",
+ "ignore-files",
+ "miette",
+ "nom 7.1.1",
+ "project-origins",
+ "regex",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "unicase",
+ "watchexec",
+ "watchexec-filterer-ignore",
 ]
 
 [[package]]
