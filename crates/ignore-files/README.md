@@ -4,7 +4,7 @@
 ![MSRV: 1.58.0 (minor)](https://badgen.net/badge/MSRV/1.58.0%20%28minor%29/0b7261)
 [![CI status](https://github.com/watchexec/watchexec/actions/workflows/check.yml/badge.svg)](https://github.com/watchexec/watchexec/actions/workflows/check.yml)
 
-# Project origins
+# Ignore files
 
 _Find, parse, and interpret ignore files._
 
