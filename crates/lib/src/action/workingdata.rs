@@ -6,11 +6,11 @@ use std::{
 
 use once_cell::sync::OnceCell;
 use tokio::{
-	process::Command,
+	process::Command as TokioCommand,
 	sync::{Mutex, OwnedMutexGuard},
 };
 
-use crate::{command::Shell, event::Event, filter::Filterer, handler::HandlerLock};
+use crate::{command::Command, event::Event, filter::Filterer, handler::HandlerLock};
 
 use super::Outcome;
 
@@ -47,8 +47,8 @@ pub struct WorkingData {
 	/// A handler triggered before a command is spawned.
 	///
 	/// This handler is called with the [`PreSpawn`] environment, which provides mutable access to
-	/// the [`Command`] which is about to be run. See the notes on the [`PreSpawn::command()`]
-	/// method for important information on what you can do with it.
+	/// the [`Command`](TokioCommand) which is about to be run. See the notes on the
+	/// [`PreSpawn::command()`] method for important information on what you can do with it.
 	///
 	/// Returning an error from the handler will stop the action from processing further, and issue
 	/// a [`RuntimeError`][crate::error::RuntimeError] to the error channel.
@@ -64,13 +64,10 @@ pub struct WorkingData {
 	/// issue a [`RuntimeError`][crate::error::RuntimeError] to the error channel.
 	pub post_spawn_handler: HandlerLock<PostSpawn>,
 
-	/// Command to execute.
+	/// Commands to execute.
 	///
-	/// When `shell` is [`Shell::None`], this is expected to be in “execvp(3)” format: first
-	/// program, rest arguments. Otherwise, all elements will be joined together with a single space
-	/// and passed to the shell. More control can then be obtained by providing a 1-element vec, and
-	/// doing your own joining and/or escaping there.
-	pub command: Vec<String>,
+	/// These will be run in order, and an error will stop early.
+	pub command: Vec<Command>,
 
 	/// Whether to use process groups (on Unix) or job control (on Windows) to run the command.
 	///
@@ -80,11 +77,6 @@ pub struct WorkingData {
 	/// the value in [`PostSpawn`] instead of reading this one, as it may have changed in the
 	/// meantime.
 	pub grouped: bool,
-
-	/// The shell to use to run the command.
-	///
-	/// See the [`Shell`] enum documentation for more details.
-	pub shell: Shell,
 
 	/// The filterer implementation to use when filtering events.
 	///
@@ -96,7 +88,6 @@ impl fmt::Debug for WorkingData {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		f.debug_struct("WorkingData")
 			.field("throttle", &self.throttle)
-			.field("shell", &self.shell)
 			.field("command", &self.command)
 			.field("grouped", &self.grouped)
 			.field("filterer", &self.filterer)
@@ -113,7 +104,6 @@ impl Default for WorkingData {
 			pre_spawn_handler: Default::default(),
 			post_spawn_handler: Default::default(),
 			command: Vec::new(),
-			shell: Shell::default(),
 			grouped: true,
 			filterer: Arc::new(()),
 		}
@@ -165,28 +155,26 @@ impl Action {
 #[non_exhaustive]
 pub struct PreSpawn {
 	/// The command which is about to be spawned.
-	///
-	/// This is the final command, after the [`Shell`] has been applied.
-	pub command: Vec<String>,
+	pub command: Command,
 
 	/// The collected events which triggered the action this command issues from.
 	pub events: Arc<[Event]>,
 
-	command_w: Weak<Mutex<Command>>,
+	to_spawn_w: Weak<Mutex<TokioCommand>>,
 }
 
 impl PreSpawn {
-	pub(super) fn new(
+	pub(crate) fn new(
 		command: Command,
-		cmd: Vec<String>,
+		to_spawn: TokioCommand,
 		events: Arc<[Event]>,
-	) -> (Self, Arc<Mutex<Command>>) {
-		let arc = Arc::new(Mutex::new(command));
+	) -> (Self, Arc<Mutex<TokioCommand>>) {
+		let arc = Arc::new(Mutex::new(to_spawn));
 		(
 			Self {
-				command: cmd,
+				command,
 				events,
-				command_w: Arc::downgrade(&arc),
+				to_spawn_w: Arc::downgrade(&arc),
 			},
 			arc.clone(),
 		)
@@ -199,8 +187,8 @@ impl PreSpawn {
 	/// documentation about handlers for more.
 	///
 	/// This will always return `Some()` under normal circumstances.
-	pub async fn command(&self) -> Option<OwnedMutexGuard<Command>> {
-		if let Some(arc) = self.command_w.upgrade() {
+	pub async fn command(&self) -> Option<OwnedMutexGuard<TokioCommand>> {
+		if let Some(arc) = self.to_spawn_w.upgrade() {
 			Some(arc.lock_owned().await)
 		} else {
 			None
@@ -216,8 +204,8 @@ impl PreSpawn {
 #[derive(Clone, Debug)]
 #[non_exhaustive]
 pub struct PostSpawn {
-	/// The final command the process was spawned with.
-	pub command: Vec<String>,
+	/// The command the process was spawned with.
+	pub command: Command,
 
 	/// The collected events which triggered the action the command issues from.
 	pub events: Arc<[Event]>,

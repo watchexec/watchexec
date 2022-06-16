@@ -1,18 +1,22 @@
+use std::sync::Arc;
+
 use async_priority_channel as priority;
 use command_group::AsyncCommandGroup;
 use tokio::{
-	process::Command,
 	select, spawn,
 	sync::{
 		mpsc::{self, Sender},
 		watch,
 	},
 };
-use tracing::{debug, error, trace};
+use tracing::{debug, debug_span, error, trace, Span};
 
 use crate::{
+	action::{PostSpawn, PreSpawn},
+	command::Command,
 	error::RuntimeError,
 	event::{Event, Priority, Source, Tag},
+	handler::{rte, HandlerLock},
 	signal::process::SubSignal,
 };
 
@@ -24,136 +28,171 @@ enum Intervention {
 	Signal(SubSignal),
 }
 
-/// A task which supervises a process.
+/// A task which supervises a sequence of processes.
 ///
-/// This spawns a process from a [`Command`] and waits for it to complete while handling
-/// interventions to it: orders to terminate it, or to send a signal to it. It also immediately
-/// issues a [`Tag::ProcessCompletion`] event when the process completes.
+/// This spawns processes from a vec of [`Command`]s in order and waits for each to complete while
+/// handling interventions to itself: orders to terminate, or to send a signal to the current
+/// process. It also immediately issues a [`Tag::ProcessCompletion`] event when the set completes.
 #[derive(Debug)]
 pub struct Supervisor {
-	id: u32,
 	intervene: Sender<Intervention>,
 	ongoing: watch::Receiver<bool>,
 }
 
 impl Supervisor {
-	/// Spawns the command, the supervision task, and returns a new control object.
+	/// Spawns the command set, the supervision task, and returns a new control object.
 	pub fn spawn(
 		errors: Sender<RuntimeError>,
 		events: priority::Sender<Event, Priority>,
-		command: &mut Command,
+		mut commands: Vec<Command>,
 		grouped: bool,
+		actioned_events: Arc<[Event]>,
+		pre_spawn_handler: HandlerLock<PreSpawn>,
+		post_spawn_handler: HandlerLock<PostSpawn>,
 	) -> Result<Self, RuntimeError> {
-		debug!(%grouped, ?command, "spawning command");
-		let (process, id) = if grouped {
-			let proc = command.group_spawn().map_err(|err| RuntimeError::IoError {
-				about: "spawning process group",
-				err,
-			})?;
-			let id = proc.id().ok_or(RuntimeError::ProcessDeadOnArrival)?;
-			debug!(pgid=%id, "process group spawned");
-			(Process::Grouped(proc), id)
-		} else {
-			let proc = command.spawn().map_err(|err| RuntimeError::IoError {
-				about: "spawning process (ungrouped)",
-				err,
-			})?;
-			let id = proc.id().ok_or(RuntimeError::ProcessDeadOnArrival)?;
-			debug!(pid=%id, "process spawned");
-			(Process::Ungrouped(proc), id)
-		};
+		// get commands in reverse order so pop() returns the next to run
+		commands.reverse();
+		let next = commands.pop().ok_or(RuntimeError::NoCommands)?;
 
 		let (notify, waiter) = watch::channel(true);
 		let (int_s, int_r) = mpsc::channel(8);
 
 		spawn(async move {
-			let mut process = process;
+			let span = debug_span!("supervisor");
+
+			let mut next = next;
+			let mut commands = commands;
 			let mut int = int_r;
 
-			debug!(?process, "starting task to watch on process");
-
 			loop {
-				select! {
-					p = process.wait() => {
-						match p {
-							Ok(_) => break, // deal with it below
-							Err(err) => {
-								error!(%err, "while waiting on process");
-								errors.send(err).await.ok();
-								trace!("marking process as done");
-								notify.send(false).unwrap_or_else(|e| trace!(%e, "error sending process complete"));
-								trace!("closing supervisor task early");
-								return;
-							}
-						}
-					},
-					Some(int) = int.recv() => {
-						match int {
-							Intervention::Kill => {
-								if let Err(err) = process.kill().await {
-									error!(%err, "while killing process");
-									errors.send(err).await.ok();
-									trace!("continuing to watch command");
+				let (mut process, pid) = match spawn_process(
+					span.clone(),
+					next,
+					grouped,
+					actioned_events.clone(),
+					pre_spawn_handler.clone(),
+					post_spawn_handler.clone(),
+				)
+				.await
+				{
+					Ok(pp) => pp,
+					Err(err) => {
+						let _enter = span.enter();
+						error!(%err, "while spawning process");
+						errors.send(err).await.ok();
+						trace!("marking process as done");
+						notify
+							.send(false)
+							.unwrap_or_else(|e| trace!(%e, "error sending process complete"));
+						trace!("closing supervisor task early");
+						return;
+					}
+				};
+
+				span.in_scope(|| debug!(?process, ?pid, "spawned process"));
+
+				loop {
+					select! {
+						p = process.wait() => {
+							match p {
+								Ok(_) => break, // deal with it below
+								Err(err) => {
+									let _enter = span.enter();
+									error!(%err, "while waiting on process");
+									errors.try_send(err).ok();
+									trace!("marking process as done");
+									notify.send(false).unwrap_or_else(|e| trace!(%e, "error sending process complete"));
+									trace!("closing supervisor task early");
+									return;
 								}
 							}
-							#[cfg(unix)]
-							Intervention::Signal(sig) => {
-								if let Some(sig) = sig.to_nix() {
-									if let Err(err) = process.signal(sig) {
-										error!(%err, "while sending signal to process");
-										errors.send(err).await.ok();
+						},
+						Some(int) = int.recv() => {
+							match int {
+								Intervention::Kill => {
+									if let Err(err) = process.kill().await {
+									let _enter = span.enter();
+										error!(%err, "while killing process");
+										errors.try_send(err).ok();
 										trace!("continuing to watch command");
 									}
-								} else {
+								}
+								#[cfg(unix)]
+								Intervention::Signal(sig) => {
+									let _enter = span.enter();
+									if let Some(sig) = sig.to_nix() {
+										if let Err(err) = process.signal(sig) {
+											error!(%err, "while sending signal to process");
+											errors.try_send(err).ok();
+											trace!("continuing to watch command");
+										}
+									} else {
+										let err = RuntimeError::UnsupportedSignal(sig);
+										error!(%err, "while sending signal to process");
+										errors.try_send(err).ok();
+										trace!("continuing to watch command");
+									}
+								}
+								#[cfg(windows)]
+								Intervention::Signal(sig) => {
+									let _enter = span.enter();
+									// https://github.com/watchexec/watchexec/issues/219
 									let err = RuntimeError::UnsupportedSignal(sig);
 									error!(%err, "while sending signal to process");
-									errors.send(err).await.ok();
+									errors.try_send(err).ok();
 									trace!("continuing to watch command");
 								}
 							}
-							#[cfg(windows)]
-							Intervention::Signal(sig) => {
-								// https://github.com/watchexec/watchexec/issues/219
-								let err = RuntimeError::UnsupportedSignal(sig);
-								error!(%err, "while sending signal to process");
-								errors.send(err).await.ok();
-								trace!("continuing to watch command");
-							}
+						}
+						else => break,
+					}
+				}
+
+				span.in_scope(|| trace!("got out of loop, waiting once more"));
+				match process.wait().await {
+					Err(err) => {
+						let _enter = span.enter();
+						error!(%err, "while waiting on process");
+						errors.try_send(err).ok();
+					}
+					Ok(status) => {
+						let event = span.in_scope(|| {
+							let event = Event {
+								tags: vec![
+									Tag::Source(Source::Internal),
+									Tag::ProcessCompletion(status.map(|s| s.into())),
+								],
+								metadata: Default::default(),
+							};
+
+							debug!(?event, "creating synthetic process completion event");
+							event
+						});
+
+						if let Err(err) = events.send(event, Priority::Low).await {
+							let _enter = span.enter();
+							error!(%err, "while sending process completion event");
+							errors
+								.try_send(RuntimeError::EventChannelSend {
+									ctx: "command supervisor",
+									err,
+								})
+								.ok();
 						}
 					}
-					else => break,
+				}
+
+				let _enter = span.enter();
+				if let Some(cmd) = commands.pop() {
+					debug!(?cmd, "queuing up next command");
+					next = cmd;
+				} else {
+					debug!("no more commands to supervise");
+					break;
 				}
 			}
 
-			trace!("got out of loop, waiting once more");
-			match process.wait().await {
-				Err(err) => {
-					error!(%err, "while waiting on process");
-					errors.send(err).await.ok();
-				}
-				Ok(status) => {
-					let event = Event {
-						tags: vec![
-							Tag::Source(Source::Internal),
-							Tag::ProcessCompletion(status.map(|s| s.into())),
-						],
-						metadata: Default::default(),
-					};
-
-					debug!(?event, "creating synthetic process completion event");
-					if let Err(err) = events.send(event, Priority::Low).await {
-						error!(%err, "while sending process completion event");
-						errors
-							.send(RuntimeError::EventChannelSend {
-								ctx: "command supervisor",
-								err,
-							})
-							.await
-							.ok();
-					}
-				}
-			}
-
+			let _enter = span.enter();
 			trace!("marking process as done");
 			notify
 				.send(false)
@@ -162,19 +201,9 @@ impl Supervisor {
 		});
 
 		Ok(Self {
-			id,
 			ongoing: waiter,
 			intervene: int_s,
 		})
-	}
-
-	/// Get the PID of the process or process group.
-	///
-	/// This always successfully returns a PID, even if the process has already exited, as the PID
-	/// is held as soon as the process spawns. Take care not to use this for process manipulation
-	/// once the process has exited, as the ID may have been reused already.
-	pub fn id(&self) -> u32 {
-		self.id
 	}
 
 	/// Issues a signal to the process.
@@ -238,4 +267,77 @@ impl Supervisor {
 
 		Ok(())
 	}
+}
+
+async fn spawn_process(
+	span: Span,
+	command: Command,
+	grouped: bool,
+	actioned_events: Arc<[Event]>,
+	pre_spawn_handler: HandlerLock<PreSpawn>,
+	post_spawn_handler: HandlerLock<PostSpawn>,
+) -> Result<(Process, u32), RuntimeError> {
+	let (pre_spawn, spawnable) = span.in_scope::<_, Result<_, RuntimeError>>(|| {
+		debug!(%grouped, ?command, "preparing command");
+		let mut spawnable = command.to_spawnable()?;
+		spawnable.kill_on_drop(true);
+
+		debug!("running pre-spawn handler");
+		Ok(PreSpawn::new(
+			command.clone(),
+			spawnable,
+			actioned_events.clone(),
+		))
+	})?;
+
+	pre_spawn_handler
+		.call(pre_spawn)
+		.await
+		.map_err(|e| rte("action pre-spawn", e))?;
+
+	let (proc, id, post_spawn) = span.in_scope::<_, Result<_, RuntimeError>>(|| {
+		let mut spawnable = Arc::try_unwrap(spawnable)
+			.map_err(|_| RuntimeError::HandlerLockHeld("pre-spawn"))?
+			.into_inner();
+
+		debug!(command=?spawnable, "spawning command");
+		let (proc, id) = if grouped {
+			let proc = spawnable
+				.group_spawn()
+				.map_err(|err| RuntimeError::IoError {
+					about: "spawning process group",
+					err,
+				})?;
+			let id = proc.id().ok_or(RuntimeError::ProcessDeadOnArrival)?;
+			debug!(pgid=%id, "process group spawned");
+			(Process::Grouped(proc), id)
+		} else {
+			let proc = spawnable.spawn().map_err(|err| RuntimeError::IoError {
+				about: "spawning process (ungrouped)",
+				err,
+			})?;
+			let id = proc.id().ok_or(RuntimeError::ProcessDeadOnArrival)?;
+			debug!(pid=%id, "process spawned");
+			(Process::Ungrouped(proc), id)
+		};
+
+		debug!("running post-spawn handler");
+		Ok((
+			proc,
+			id,
+			PostSpawn {
+				command: command.clone(),
+				events: actioned_events.clone(),
+				id,
+				grouped,
+			},
+		))
+	})?;
+
+	post_spawn_handler
+		.call(post_spawn)
+		.await
+		.map_err(|e| rte("action post-spawn", e))?;
+
+	Ok((proc, id))
 }
