@@ -68,7 +68,7 @@ jobs:
             --no-publish \
             --no-confirm \
             --verbose \
-            --config "${{ env.crate_path }}" \
+            --config "${{ env.crate_path }}/release.toml" \
             --allow-branch "${{ env.branch_name }}" \
             --package "${{ env.crate_name }}" \
             "${{ inputs.version }}"
