@@ -42,7 +42,7 @@ More usage examples: [in the CLI README](./cli/#usage-examples)!
 
 <a href="https://repology.org/project/watchexec/versions"><img align="right" src="https://repology.org/badge/vertical-allrepos/watchexec.svg" alt="Packaging status"></a>
 
-- As pre-built binary package: https://watchexec.github.io/downloads/
+- As pre-built binary package: [from Github](https://github.com/watchexec/watchexec/releases/latest), [from the website](https://watchexec.github.io/downloads/)
 - With your package manager for Arch, Homebrew, Nix, Scoop, Chocolatey…
 - From source with Cargo: `cargo install watchexec-cli`
 - From binary with Binstall: `cargo binstall watchexec-cli`
