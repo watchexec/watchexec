@@ -1,3 +1,10 @@
 pre-release-commit-message = "release: lib v{{version}}"
 tag-prefix = "lib-"
 tag-message = "watchexec-lib {{version}}"
+
+[[pre-release-replacements]]
+file = "CHANGELOG.md"
+search = "^## Next.*$"
+replace = "## Next (YYYY-MM-DD)\n\n## v{{version}} ({{date}})"
+prerelease = true
+max = 1
