@@ -82,27 +82,23 @@ jobs:
       - name: Create PR
         run: |
           set -euxo pipefail
+
+          nl=$'\n'
+          br=$'\n\n'
+          fence='```\n'
+          ecnef='\n```'
+
           title="release: ${{ inputs.crate }} v${{ inputs.version }}"
-          body="This is a release PR for **${{ inputs.crate }}** to version **${{ inputs.version }}**."
+          body_intro="This is a release PR for **${{ inputs.crate }}** to version **${{ inputs.version }}**."
           if [[ "${{ inputs.crate }}" == "cli" ]]; then
-            body="$body
-
-            Upon merging, this will automatically build the CLI and create a GitHub release. You still need to manually publish the cargo crate."
+            body_merge="Upon merging, this will automatically build the CLI and create a GitHub release. You still need to manually publish the cargo crate."
           else
-            body="$body
-
-            Upon merging, you will still need to manually publish the cargo crate."
+            body_merge="Upon merging, you will still need to manually publish the cargo crate."
           fi
-          body="$body
 
-          \`\`\`
-          $ cd crates/${{ env.crate_path }}
-          $ cargo publish
-          \`\`\`
+          body_outro="${fence}$ cd crates/${{ env.crate_path }}${nl}$ cargo publish${ecnef}${br}To merge this release, review the changes then say:${br}\`bors r+ p=10\`"
 
-          To merge this release, review the changes then say:
-
-          `bors r+ p=10`
+          body="${body_intro}${br}${body_merge}${br}${body_outro}"
 
           gh pr create --title "$title" --body "$body" --base main --head "${{ env.branch_name }}" --label "release"
         env:

@@ -9,8 +9,9 @@ use notify_rust::Notification;
 use tracing::debug;
 use watchexec::{
 	action::{Action, Outcome, PostSpawn, PreSpawn},
-	command::Shell,
+	command::{Command, Shell},
 	config::RuntimeConfig,
+	error::RuntimeError,
 	event::ProcessEnd,
 	fs::Watcher,
 	handler::SyncFnHandler,
@@ -21,10 +22,7 @@ use watchexec::{
 pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 	let mut config = RuntimeConfig::default();
 
-	config.command(
-		args.values_of("command")
-			.expect("(clap) Bug: command is not present")
-	);
+	config.command(interpret_command_args(args)?);
 
 	config.pathset(match args.values_of_os("paths") {
 		Some(paths) => paths.map(|os| Path::new(os).to_owned()).collect(),
@@ -47,22 +45,6 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 	if args.is_present("no-process-group") {
 		config.command_grouped(false);
 	}
-
-	config.command_shell(if args.is_present("no-shell") {
-		Shell::None
-	} else if let Some(s) = args.value_of("shell") {
-		if s.eq_ignore_ascii_case("powershell") {
-			Shell::Powershell
-		} else if s.eq_ignore_ascii_case("none") {
-			Shell::None
-		} else if s.eq_ignore_ascii_case("cmd") {
-			cmd_shell(s.into())
-		} else {
-			Shell::Unix(s.into())
-		}
-	} else {
-		default_shell()
-	});
 
 	let clear = args.is_present("clear");
 	let notif = args.is_present("notif");
@@ -253,7 +235,7 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 		if notif {
 			Notification::new()
 				.summary("Watchexec: change detected")
-				.body(&format!("Running `{}`", postspawn.command.join(" ")))
+				.body(&format!("Running {}", postspawn.command))
 				.show()
 				.map(drop)
 				.unwrap_or_else(|err| {
@@ -265,6 +247,55 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 	}));
 
 	Ok(config)
+}
+
+fn interpret_command_args(args: &ArgMatches) -> Result<Command> {
+	let mut cmd = args
+		.values_of("command")
+		.expect("(clap) Bug: command is not present")
+		.map(|s| s.to_string())
+		.collect::<Vec<_>>();
+
+	Ok(if args.is_present("no-shell") {
+		Command::Exec {
+			prog: cmd.remove(0),
+			args: cmd,
+		}
+	} else {
+		let (shell, shopts) = if let Some(s) = args.value_of("shell") {
+			if s.is_empty() {
+				return Err(RuntimeError::CommandShellEmptyShell).into_diagnostic();
+			} else if s.eq_ignore_ascii_case("powershell") {
+				(Shell::Powershell, Vec::new())
+			} else if s.eq_ignore_ascii_case("none") {
+				return Ok(Command::Exec {
+					prog: cmd.remove(0),
+					args: cmd,
+				});
+			} else if s.eq_ignore_ascii_case("cmd") {
+				(cmd_shell(s.into()), Vec::new())
+			} else {
+				let sh = s.split_ascii_whitespace().collect::<Vec<_>>();
+
+				// UNWRAP: checked by first if branch
+				#[allow(clippy::unwrap_used)]
+				let (shprog, shopts) = sh.split_first().unwrap();
+
+				(
+					Shell::Unix(shprog.to_string()),
+					shopts.iter().map(|s| s.to_string()).collect(),
+				)
+			}
+		} else {
+			(default_shell(), Vec::new())
+		};
+
+		Command::Shell {
+			shell,
+			args: shopts,
+			command: cmd.join(" "),
+		}
+	})
 }
 
 // until 2.0, then Powershell

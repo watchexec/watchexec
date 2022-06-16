@@ -15,20 +15,12 @@ jobs:
     if: "startsWith(github.event.head_commit.message, 'release: ')"
     steps:
       - name: Extract tag from commit message
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           set -euxo pipefail
 
-          read -r -d '' message <<'COMMITMESSAGESEPARATOR'
-          ${{ github.event.head_commit.message }}
-          COMMITMESSAGESEPARATOR
-
-          # trim both ends
-          message="${message#"${message%%[![:space:]]*}"}"
-          message="${message%"${message##*[![:space:]]}"}"
-
-          # get first line
-          message="$(head -n1 <<< "$message")"
-
+          message="$(head -n1 <<< "$COMMIT_MESSAGE")"
           crate="$(cut -d ' ' -f 2 <<< "${message}")"
           version="$(cut -d ' ' -f 3 <<< "${message}")"
           echo "CUSTOM_TAG=${crate}-${version}" >> $GITHUB_ENV

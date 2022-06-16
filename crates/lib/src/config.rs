@@ -4,7 +4,7 @@ use std::{fmt, path::Path, sync::Arc, time::Duration};
 
 use crate::{
 	action::{Action, PostSpawn, PreSpawn},
-	command::Shell,
+	command::Command,
 	filter::Filterer,
 	fs::Watcher,
 	handler::{Handler, HandlerLock},
@@ -61,25 +61,23 @@ impl RuntimeConfig {
 		self
 	}
 
-	/// Set the shell to use to invoke commands.
-	pub fn command_shell(&mut self, shell: Shell) -> &mut Self {
-		self.action.shell = shell;
-		self
-	}
-
 	/// Toggle whether to use process groups or not.
 	pub fn command_grouped(&mut self, grouped: bool) -> &mut Self {
 		self.action.grouped = grouped;
 		self
 	}
 
-	/// Set the command to run on action.
-	pub fn command<I, S>(&mut self, command: I) -> &mut Self
-	where
-		I: IntoIterator<Item = S>,
-		S: AsRef<str>,
-	{
-		self.action.command = command.into_iter().map(|c| c.as_ref().to_owned()).collect();
+	/// Set a single command to run on action.
+	///
+	/// This is a convenience for `.commands(vec![Command...])`.
+	pub fn command(&mut self, command: Command) -> &mut Self {
+		self.action.commands = vec![command];
+		self
+	}
+
+	/// Set the commands to run on action.
+	pub fn commands(&mut self, commands: impl Into<Vec<Command>>) -> &mut Self {
+		self.action.commands = commands.into();
 		self
 	}
 
