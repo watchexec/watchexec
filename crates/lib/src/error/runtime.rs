@@ -121,6 +121,27 @@ pub enum RuntimeError {
 	#[diagnostic(code(watchexec::runtime::unsupported_signal))]
 	UnsupportedSignal(SubSignal),
 
+	/// Error received when there are no commands to run.
+	///
+	/// This is generally a programmer error and should be caught earlier.
+	#[error("no commands to run")]
+	#[diagnostic(code(watchexec::runtime::no_commands))]
+	NoCommands,
+
+	/// Error received when trying to render a [`Command::Shell`](crate::command::Command) that has no `command`
+	///
+	/// This is generally a programmer error and should be caught earlier.
+	#[error("empty shelled command")]
+	#[diagnostic(code(watchexec::runtime::command_shell::empty_command))]
+	CommandShellEmptyCommand,
+
+	/// Error received when trying to render a [`Shell::Unix`](crate::command::Shell) with an empty shell
+	///
+	/// This is generally a programmer error and should be caught earlier.
+	#[error("empty shell program")]
+	#[diagnostic(code(watchexec::runtime::command_shell::empty_shell))]
+	CommandShellEmptyShell,
+
 	/// Error received when clearing the screen.
 	#[error("clear screen: {0}")]
 	#[diagnostic(code(watchexec::runtime::clearscreen))]
@@ -128,6 +149,7 @@ pub enum RuntimeError {
 
 	/// Error received from the [`ignore-files`](ignore_files) crate.
 	#[error("ignore files: {0}")]
+	#[diagnostic(code(watchexec::runtime::ignore_files))]
 	IgnoreFiles(
 		#[diagnostic_source]
 		#[from]

@@ -9,7 +9,7 @@ use std::{
 };
 
 use async_priority_channel as priority;
-use notify::{Watcher as _, poll::PollWatcherConfig};
+use notify::{poll::PollWatcherConfig, Watcher as _};
 use tokio::sync::{mpsc, watch};
 use tracing::{debug, error, trace, warn};
 

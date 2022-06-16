@@ -10,6 +10,14 @@ First "stable" release of the library.
     - These five new crates live in the watchexec monorepo, rather than being completely separate like `command-group` and `clearscreen`
     - This makes the main library bit less likely to change as often as it did, so it was finally time to release 2.0.0!
 
+- **Change: the Action worker now launches a set of Commands**
+    - A new type `Command` replaces and augments `Shell`, making explicit which style of calling will be used
+    - The action working data now takes a `Vec<Command>`, so multiple commands to be run as a set
+    - Commands in the set are run sequentially, with an error interrupting the sequence
+    - It is thus possible to run both "shelled" and "raw exec" commands in a set
+    - `PreSpawn` and `PostSpawn` handlers are run per Command, not per command set
+    - This new style should be preferred over sending command lines like `cmd1 && cmd2`
+
 - **Change: the event queue is now a priority queue**
     - Shutting down the runtime is faster and more predictable. No more hanging after hitting Ctrl-C if there's tonnes of events coming in!
     - Signals sent to the main process have higher priority
@@ -22,6 +30,7 @@ First "stable" release of the library.
 - Improvement: the main subtasks of the runtime are now aborted on error
 - Improvement: the event queue is explicitly closed when shutting down
 - Improvement: the action worker will check if the event queue is closed more often, to shutdown early
+- Improvement: `kill_on_drop` is set on Commands, which will be a little more eager to terminate processes when we're done with them
 
 Other miscellaneous:
 

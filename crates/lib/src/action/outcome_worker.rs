@@ -16,10 +16,9 @@ use crate::{
 	command::Supervisor,
 	error::RuntimeError,
 	event::{Event, Priority},
-	handler::rte,
 };
 
-use super::{process_holder::ProcessHolder, Outcome, PostSpawn, PreSpawn, WorkingData};
+use super::{process_holder::ProcessHolder, Outcome, WorkingData};
 
 #[derive(Clone)]
 pub struct OutcomeWorker {
@@ -119,50 +118,29 @@ impl OutcomeWorker {
 				debug!(outcome=?o, "meaningless without a process, not doing anything");
 			}
 			(_, Outcome::Start) => {
-				let (cmd, shell, grouped, pre_spawn_handler, post_spawn_handler) = {
+				let (cmds, grouped, pre_spawn_handler, post_spawn_handler) = {
 					let wrk = self.working.borrow();
 					(
-						wrk.command.clone(),
-						wrk.shell.clone(),
+						wrk.commands.clone(),
 						wrk.grouped,
 						wrk.pre_spawn_handler.clone(),
 						wrk.post_spawn_handler.clone(),
 					)
 				};
 
-				if cmd.is_empty() {
-					warn!("tried to start a command without anything to run");
+				if cmds.is_empty() {
+					warn!("tried to start commands without anything to run");
 				} else {
-					let command = shell.to_command(&cmd);
-					let (pre_spawn, command) =
-						PreSpawn::new(command, cmd.clone(), self.events.clone());
-
-					debug!("running pre-spawn handler");
-					notry!(pre_spawn_handler.call(pre_spawn))
-						.map_err(|e| rte("action pre-spawn", e))?;
-
-					let mut command = Arc::try_unwrap(command)
-						.map_err(|_| RuntimeError::HandlerLockHeld("pre-spawn"))?
-						.into_inner();
-
 					trace!("spawning supervisor for command");
 					let sup = Supervisor::spawn(
 						self.errors_c.clone(),
 						self.events_c.clone(),
-						&mut command,
+						cmds,
 						grouped,
+						self.events.clone(),
+						pre_spawn_handler,
+						post_spawn_handler,
 					)?;
-
-					debug!("running post-spawn handler");
-					let post_spawn = PostSpawn {
-						command: cmd.clone(),
-						events: self.events.clone(),
-						id: sup.id(),
-						grouped,
-					};
-					notry!(post_spawn_handler.call(post_spawn))
-						.map_err(|e| rte("action post-spawn", e))?;
-
 					notry!(self.process.replace(sup));
 				}
 			}
