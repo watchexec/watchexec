@@ -20,7 +20,7 @@ on:
         type: string
 
 jobs:
-  make-branch:
+  make-release-pr:
     runs-on: ubuntu-latest
     steps:
       - name: Install cargo-release
@@ -64,11 +64,8 @@ jobs:
           set -euxo pipefail
           git push origin "release-${{ inputs.crate }}-${{ inputs.version }}"
 
-  make-pr:
-    runs-on: ubuntu-latest
-    needs: make-branch
-    steps:
-      - run: |
+      - name: Create PR
+        run: |
           set -euxo pipefail
           title="release: ${{ inputs.crate }} v${{ inputs.version }}"
           body="This is a release PR for **${{ inputs.crate }}** to version **${{ inputs.version }}**."
