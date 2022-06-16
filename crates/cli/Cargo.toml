@@ -71,6 +71,7 @@ version = "0.3.6"
 features = [
 	"env-filter",
 	"fmt",
+	"json",
 ]
 
 [target.'cfg(target_env = "musl")'.dependencies]

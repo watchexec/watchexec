@@ -1,6 +1,6 @@
 #![deny(rust_2018_idioms)]
 
-use std::env::var;
+use std::{fs::File, sync::Mutex, env::var};
 
 use miette::{IntoDiagnostic, Result};
 use tracing::debug;
@@ -37,6 +37,10 @@ async fn main() -> Result<()> {
 
 	{
 		let verbosity = args.occurrences_of("verbose");
+		let log_file = if let Some(file) = args.value_of("log-file") {
+			Some(File::create(file).into_diagnostic()?)
+		} else { None };
+
 		let mut builder = tracing_subscriber::fmt().with_env_filter(match verbosity {
 			0 => "watchexec-cli=warn",
 			1 => "watchexec=debug,watchexec-cli=debug",
@@ -49,7 +53,9 @@ async fn main() -> Result<()> {
 			builder = builder.with_span_events(FmtSpan::NEW | FmtSpan::CLOSE);
 		}
 
-		if verbosity > 3 {
+		if let Some(writer) = log_file {
+			builder.json().with_writer(Mutex::new(writer)).try_init().ok();
+		} else if verbosity > 3 {
 			builder.pretty().try_init().ok();
 		} else {
 			builder.try_init().ok();
