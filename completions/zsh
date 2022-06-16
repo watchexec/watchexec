@@ -20,6 +20,7 @@ args=(
 	'(-W --watch-when-idle)'{-W,--watch-when-idle}'[Ignore events while the command is still running]'
 	'(-V --version)'{-V,--version}'[Prints version information]'
 	'(-v --verbose)'{-v,-vv,-vvv,-vvvv,--verbose}'[Print debugging messages to stderr]'
+	'--log-file=[Output logs to a file, in JSON format]:path:_path_files -/'
 	'(-N --notify)'{-N,--notify}'[Send desktop notifications on command start and end]'
 	'--print-events[Print triggering events to stderr (changed paths, etc)]'
 	'(-d --debounce)'{-d+,--debounce=}'[Set the timeout between detected change and command execution, defaults to 100ms]:milliseconds'

@@ -80,7 +80,7 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches> {
 			.help("Write debugging messages to file in JSON format (use for bug reports)")
 			.long("log-file")
 			.takes_value(true)
-			.value_name("filename.json"))
+			.value_name("path"))
 		.arg(Arg::new("print-events")
 			.help_heading(Some(OPTSET_DEBUGGING))
 			.help("Print events that trigger actions")
