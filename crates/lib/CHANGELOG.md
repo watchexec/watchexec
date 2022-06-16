@@ -30,6 +30,7 @@ First "stable" release of the library.
 - Improvement: the main subtasks of the runtime are now aborted on error
 - Improvement: the event queue is explicitly closed when shutting down
 - Improvement: the action worker will check if the event queue is closed more often, to shutdown early
+- Improvement: `kill_on_drop` is set on Commands, which will be a little more eager to terminate processes when we're done with them
 
 Other miscellaneous:
 
