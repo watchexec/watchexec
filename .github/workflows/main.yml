@@ -5,8 +5,7 @@ on:
     branches:
       - main
     tags-ignore:
-      - "cli-v*.*.*"
-      - "lib-v*.*.*"
+      - "*"
 
 jobs:
   check:
