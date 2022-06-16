@@ -9,6 +9,7 @@ use futures::Future;
 use tokio::{
 	spawn,
 	sync::{mpsc, watch::Receiver},
+	time::sleep,
 };
 use tracing::{debug, error, trace, warn};
 
@@ -173,6 +174,10 @@ impl OutcomeWorker {
 
 			(true, Outcome::Wait) => {
 				notry!(self.process.wait())?;
+			}
+
+			(_, Outcome::Sleep(time)) => {
+				notry!(sleep(time));
 			}
 
 			(_, Outcome::Clear) => {
