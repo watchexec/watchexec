@@ -22,7 +22,7 @@ use watchexec::{
 pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 	let mut config = RuntimeConfig::default();
 
-	config.command(interpret_command_args(&args)?);
+	config.command(interpret_command_args(args)?);
 
 	config.pathset(match args.values_of_os("paths") {
 		Some(paths) => paths.map(|os| Path::new(os).to_owned()).collect(),
@@ -283,7 +283,7 @@ fn interpret_command_args(args: &ArgMatches) -> Result<Command> {
 
 				(
 					Shell::Unix(shprog.to_string()),
-					shopts.into_iter().map(|s| s.to_string()).collect(),
+					shopts.iter().map(|s| s.to_string()).collect(),
 				)
 			}
 		} else {

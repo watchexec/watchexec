@@ -24,7 +24,10 @@ async fn main() -> Result<()> {
 
 	let mut runtime = RuntimeConfig::default();
 	runtime.pathset(["src", "dontexist", "examples"]);
-	runtime.command(Command::Exec { prog: "date".into(), args: Vec::new() });
+	runtime.command(Command::Exec {
+		prog: "date".into(),
+		args: Vec::new(),
+	});
 
 	let wx = Watchexec::new(init, runtime.clone())?;
 	let w = wx.clone();
