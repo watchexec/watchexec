@@ -70,6 +70,7 @@ jobs:
             --verbose \
             --config "${{ env.crate_path }}/release.toml" \
             --allow-branch "${{ env.branch_name }}" \
+            --dependent-version upgrade \
             --package "${{ env.crate_name }}" \
             "${{ inputs.version }}"
 

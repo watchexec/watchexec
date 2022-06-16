@@ -1,6 +1,6 @@
 [package]
 name = "watchexec-filterer-ignore"
-version = "1.0.0"
+version = "1.0.0-almost-there"
 
 authors = ["Félix Saparelli <felix@passcod.name>"]
 license = "Apache-2.0"
@@ -18,10 +18,10 @@ edition = "2021"
 [dependencies]
 ignore = "0.4.18"
 tracing = "0.1.26"
-watchexec = { version = "2.0.0", path = "../../lib" }
+watchexec = { version = "2.0.0-almost-there", path = "../../lib" }
 
 [dependencies.ignore-files]
-version = "1.0.0"
+version = "1.0.0-almost-there"
 path = "../../ignore-files"
 
 [dev-dependencies]
@@ -29,7 +29,7 @@ dunce = "1.0.2"
 tracing-subscriber = "0.3.6"
 
 [dev-dependencies.project-origins]
-version = "1.0.0"
+version = "1.0.0-almost-there"
 path = "../../project-origins"
 
 [dev-dependencies.tokio]

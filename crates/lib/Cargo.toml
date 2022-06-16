@@ -1,6 +1,6 @@
 [package]
 name = "watchexec"
-version = "2.0.0"
+version = "2.0.0-almost-there"
 
 authors = ["Matt Green <mattgreenrocks@gmail.com>", "Félix Saparelli <felix@passcod.name>"]
 license = "Apache-2.0"
@@ -31,14 +31,14 @@ version = "1.0.8"
 features = ["with-tokio"]
 
 [dependencies.ignore-files]
-version = "1.0.0"
+version = "1.0.0-almost-there"
 path = "../ignore-files"
 
 [dependencies.notify]
 version = "=5.0.0-pre.15"
 
 [dependencies.project-origins]
-version = "1.0.0"
+version = "1.0.0-almost-there"
 path = "../project-origins"
 
 [dependencies.tokio]

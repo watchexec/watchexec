@@ -1,6 +1,6 @@
 [package]
 name = "watchexec-filterer-tagged"
-version = "0.1.0"
+version = "0.1.0-almost-there"
 
 authors = ["Félix Saparelli <felix@passcod.name>"]
 license = "Apache-2.0"
@@ -25,10 +25,10 @@ ignore = "0.4.18"
 nom = "7.0.0"
 regex = "1.5.4"
 unicase = "2.6.0"
-watchexec = { version = "2.0.0", path = "../../lib" }
+watchexec = { version = "2.0.0-almost-there", path = "../../lib" }
 
 [dependencies.ignore-files]
-version = "1.0.0"
+version = "1.0.0-almost-there"
 path = "../../ignore-files"
 
 [dependencies.tokio]
@@ -38,14 +38,14 @@ features = [
 ]
 
 [dependencies.watchexec-filterer-ignore]
-version = "1.0.0"
+version = "1.0.0-almost-there"
 path = "../ignore"
 
 [dev-dependencies]
 tracing-subscriber = "0.3.6"
 
 [dev-dependencies.project-origins]
-version = "1.0.0"
+version = "1.0.0-almost-there"
 path = "../../project-origins"
 
 [dev-dependencies.tokio]
