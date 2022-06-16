@@ -1,6 +1,6 @@
 #![deny(rust_2018_idioms)]
 
-use std::{fs::File, sync::Mutex, env::var};
+use std::{env::var, fs::File, sync::Mutex};
 
 use miette::{IntoDiagnostic, Result};
 use tracing::debug;
@@ -39,7 +39,9 @@ async fn main() -> Result<()> {
 		let verbosity = args.occurrences_of("verbose");
 		let log_file = if let Some(file) = args.value_of("log-file") {
 			Some(File::create(file).into_diagnostic()?)
-		} else { None };
+		} else {
+			None
+		};
 
 		let mut builder = tracing_subscriber::fmt().with_env_filter(match verbosity {
 			0 => "watchexec-cli=warn",
@@ -54,7 +56,11 @@ async fn main() -> Result<()> {
 		}
 
 		if let Some(writer) = log_file {
-			builder.json().with_writer(Mutex::new(writer)).try_init().ok();
+			builder
+				.json()
+				.with_writer(Mutex::new(writer))
+				.try_init()
+				.ok();
 		} else if verbosity > 3 {
 			builder.pretty().try_init().ok();
 		} else {
@@ -62,7 +68,7 @@ async fn main() -> Result<()> {
 		}
 	}
 
-	debug!(version=%env!("CARGO_PKG_VERSION"), "constructing Watchexec from CLI");
+	debug!(version=%env!("CARGO_PKG_VERSION"), ?args, "constructing Watchexec from CLI");
 
 	let init = config::init(&args)?;
 	let mut runtime = config::runtime(&args)?;

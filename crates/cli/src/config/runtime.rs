@@ -6,7 +6,7 @@ use std::{
 use clap::ArgMatches;
 use miette::{miette, IntoDiagnostic, Result};
 use notify_rust::Notification;
-use tracing::debug;
+use tracing::{debug, debug_span};
 use watchexec::{
 	action::{Action, Outcome, PostSpawn, PreSpawn},
 	command::{Command, Shell},
@@ -20,6 +20,7 @@ use watchexec::{
 };
 
 pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
+	let _span = debug_span!("args-runtime").entered();
 	let mut config = RuntimeConfig::default();
 
 	config.command(interpret_command_args(args)?);
@@ -74,6 +75,12 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 
 	let print_events = args.is_present("print-events");
 	let once = args.is_present("once");
+	let delay_run = args
+		.value_of("delay-run")
+		.map(|d| u64::from_str(d))
+		.transpose()
+		.into_diagnostic()?
+		.map(Duration::from_secs);
 
 	config.on_action(move |action: Action| {
 		let fut = async { Ok::<(), Infallible>(()) };
@@ -85,7 +92,14 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 		}
 
 		if once {
-			action.outcome(Outcome::both(Outcome::Start, Outcome::wait(Outcome::Exit)));
+			action.outcome(Outcome::both(
+				if let Some(delay) = &delay_run {
+					Outcome::both(Outcome::Sleep(delay.clone()), Outcome::Start)
+				} else {
+					Outcome::Start
+				},
+				Outcome::wait(Outcome::Exit),
+			));
 			return fut;
 		}
 
@@ -158,22 +172,25 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 			}
 		}
 
-		let when_running = match (clear, on_busy.as_str()) {
-			(_, "do-nothing") => Outcome::DoNothing,
-			(true, "restart") => {
-				Outcome::both(Outcome::Stop, Outcome::both(Outcome::Clear, Outcome::Start))
-			}
-			(false, "restart") => Outcome::both(Outcome::Stop, Outcome::Start),
-			(_, "signal") => Outcome::Signal(signal),
-			(true, "queue") => Outcome::wait(Outcome::both(Outcome::Clear, Outcome::Start)),
-			(false, "queue") => Outcome::wait(Outcome::Start),
-			_ => Outcome::DoNothing,
-		};
-
-		let when_idle = if clear {
+		let start = if clear {
 			Outcome::both(Outcome::Clear, Outcome::Start)
 		} else {
 			Outcome::Start
+		};
+
+		let start = if let Some(delay) = &delay_run {
+			Outcome::both(Outcome::Sleep(delay.clone()), start)
+		} else {
+			start
+		};
+
+		let when_idle = start.clone();
+		let when_running = match on_busy.as_str() {
+			"do-nothing" => Outcome::DoNothing,
+			"restart" => start,
+			"signal" => Outcome::Signal(signal),
+			"queue" => Outcome::wait(start),
+			_ => Outcome::DoNothing,
 		};
 
 		action.outcome(Outcome::if_running(when_running, when_idle));

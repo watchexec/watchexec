@@ -8,6 +8,7 @@ use std::{
 
 use clap::{crate_version, Arg, ArgMatches, Command};
 use miette::{Context, IntoDiagnostic, Result};
+use tracing::debug;
 
 const OPTSET_FILTERING: &str = "Filtering options";
 const OPTSET_COMMAND: &str = "Command options";
@@ -108,6 +109,12 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches> {
 			.help("Wait until first change to execute command")
 			.short('p')
 			.long("postpone"))
+		.arg(Arg::new("delay-run")
+			.help_heading(Some(OPTSET_BEHAVIOUR))
+			.help("Whenever starting the command, sleep some seconds first")
+			.long("delay-run")
+			.takes_value(true)
+			.value_name("seconds"))
 		.arg(Arg::new("poll")
 			.help_heading(Some(OPTSET_BEHAVIOUR))
 			.help("Force polling mode (interval in milliseconds)")
@@ -262,5 +269,6 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches> {
 		}
 	}
 
+	debug!(?raw_args, "parsing arguments");
 	Ok(app.get_matches_from(raw_args))
 }

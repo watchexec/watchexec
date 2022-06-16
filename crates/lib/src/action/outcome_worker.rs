@@ -155,7 +155,9 @@ impl OutcomeWorker {
 			}
 
 			(_, Outcome::Sleep(time)) => {
+				trace!(?time, "sleeping");
 				notry!(sleep(time));
+				trace!(?time, "done sleeping");
 			}
 
 			(_, Outcome::Clear) => {

@@ -2,6 +2,8 @@
 
 use std::{fmt, path::Path, sync::Arc, time::Duration};
 
+use tracing::debug;
+
 use crate::{
 	action::{Action, PostSpawn, PreSpawn},
 	command::Command,
@@ -19,6 +21,9 @@ use crate::{
 /// Use [`RuntimeConfig::default()`] to build a new one, or modify an existing one. This struct is
 /// marked non-exhaustive such that new options may be added without breaking change. You can make
 /// changes through the fields directly, or use the convenience (chainable!) methods instead.
+///
+/// Another advantage of using the convenience methods is that each one contains a call to the
+/// [`debug!`] macro, providing insight into what config your application sets for "free".
 ///
 /// You should see the detailed documentation on [fs::WorkingData][crate::fs::WorkingData] and
 /// [action::WorkingData][crate::action::WorkingData] for important information and particulars
@@ -46,11 +51,13 @@ impl RuntimeConfig {
 		P: AsRef<Path>,
 	{
 		self.fs.pathset = pathset.into_iter().map(|p| p.as_ref().into()).collect();
+		debug!(pathset=?self.fs.pathset, "RuntimeConfig: pathset");
 		self
 	}
 
 	/// Set the file watcher type to use.
 	pub fn file_watcher(&mut self, watcher: Watcher) -> &mut Self {
+		debug!(?watcher, "RuntimeConfig: watcher");
 		self.fs.watcher = watcher;
 		self
 	}
@@ -58,11 +65,13 @@ impl RuntimeConfig {
 	/// Set the action throttle.
 	pub fn action_throttle(&mut self, throttle: impl Into<Duration>) -> &mut Self {
 		self.action.throttle = throttle.into();
+		debug!(throttle=?self.action.throttle, "RuntimeConfig: throttle");
 		self
 	}
 
 	/// Toggle whether to use process groups or not.
 	pub fn command_grouped(&mut self, grouped: bool) -> &mut Self {
+		debug!(?grouped, "RuntimeConfig: command_grouped");
 		self.action.grouped = grouped;
 		self
 	}
@@ -71,6 +80,7 @@ impl RuntimeConfig {
 	///
 	/// This is a convenience for `.commands(vec![Command...])`.
 	pub fn command(&mut self, command: Command) -> &mut Self {
+		debug!(?command, "RuntimeConfig: command");
 		self.action.commands = vec![command];
 		self
 	}
@@ -78,23 +88,27 @@ impl RuntimeConfig {
 	/// Set the commands to run on action.
 	pub fn commands(&mut self, commands: impl Into<Vec<Command>>) -> &mut Self {
 		self.action.commands = commands.into();
+		debug!(commands=?self.action.commands, "RuntimeConfig: commands");
 		self
 	}
 
 	/// Set the filterer implementation to use.
 	pub fn filterer(&mut self, filterer: Arc<dyn Filterer>) -> &mut Self {
+		debug!(?filterer, "RuntimeConfig: filterer");
 		self.action.filterer = filterer;
 		self
 	}
 
 	/// Set the action handler.
 	pub fn on_action(&mut self, handler: impl Handler<Action> + Send + 'static) -> &mut Self {
+		debug!("RuntimeConfig: on_action");
 		self.action.action_handler = HandlerLock::new(Box::new(handler));
 		self
 	}
 
 	/// Set the pre-spawn handler.
 	pub fn on_pre_spawn(&mut self, handler: impl Handler<PreSpawn> + Send + 'static) -> &mut Self {
+		debug!("RuntimeConfig: on_pre_spawn");
 		self.action.pre_spawn_handler = HandlerLock::new(Box::new(handler));
 		self
 	}
@@ -104,6 +118,7 @@ impl RuntimeConfig {
 		&mut self,
 		handler: impl Handler<PostSpawn> + Send + 'static,
 	) -> &mut Self {
+		debug!("RuntimeConfig: on_post_spawn");
 		self.action.post_spawn_handler = HandlerLock::new(Box::new(handler));
 		self
 	}
@@ -168,6 +183,7 @@ impl InitConfig {
 	///
 	/// See the [documentation on the field](InitConfig#structfield.error_handler) for more details.
 	pub fn on_error(&mut self, handler: impl Handler<ErrorHook> + Send + 'static) -> &mut Self {
+		debug!("InitConfig: on_error");
 		self.error_handler = Box::new(handler) as _;
 		self
 	}
@@ -176,6 +192,7 @@ impl InitConfig {
 	///
 	/// See the [documentation on the field](InitConfig#structfield.error_channel_size) for more details.
 	pub fn error_channel_size(&mut self, size: usize) -> &mut Self {
+		debug!(?size, "InitConfig: error_channel_size");
 		self.error_channel_size = size;
 		self
 	}
@@ -184,6 +201,7 @@ impl InitConfig {
 	///
 	/// See the [documentation on the field](InitConfig#structfield.event_channel_size) for more details.
 	pub fn event_channel_size(&mut self, size: usize) -> &mut Self {
+		debug!(?size, "InitConfig: event_channel_size");
 		self.event_channel_size = size;
 		self
 	}
