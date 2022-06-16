@@ -5,7 +5,7 @@
 
 use std::{
 	ffi::OsString,
-	path::{Path, PathBuf, MAIN_SEPARATOR},
+	path::{Path, PathBuf},
 };
 
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
@@ -150,6 +150,7 @@ impl Filterer for GlobsetFilterer {
 					#[cfg(unix)]
 					if let Ok(based) = path.strip_prefix(&self.origin) {
 						let rebased = {
+							use std::path::MAIN_SEPARATOR;
 							let mut b = self.origin.clone().into_os_string();
 							b.push(PathBuf::from(String::from(MAIN_SEPARATOR)));
 							b.push(PathBuf::from(String::from(MAIN_SEPARATOR)));
