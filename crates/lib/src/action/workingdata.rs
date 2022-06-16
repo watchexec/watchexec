@@ -67,7 +67,7 @@ pub struct WorkingData {
 	/// Commands to execute.
 	///
 	/// These will be run in order, and an error will stop early.
-	pub command: Vec<Command>,
+	pub commands: Vec<Command>,
 
 	/// Whether to use process groups (on Unix) or job control (on Windows) to run the command.
 	///
@@ -88,7 +88,7 @@ impl fmt::Debug for WorkingData {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		f.debug_struct("WorkingData")
 			.field("throttle", &self.throttle)
-			.field("command", &self.command)
+			.field("commands", &self.commands)
 			.field("grouped", &self.grouped)
 			.field("filterer", &self.filterer)
 			.finish_non_exhaustive()
@@ -98,12 +98,11 @@ impl fmt::Debug for WorkingData {
 impl Default for WorkingData {
 	fn default() -> Self {
 		Self {
-			// set to 50ms here, but will remain 100ms on cli until 2022
 			throttle: Duration::from_millis(50),
 			action_handler: Default::default(),
 			pre_spawn_handler: Default::default(),
 			post_spawn_handler: Default::default(),
-			command: Vec::new(),
+			commands: Vec::new(),
 			grouped: true,
 			filterer: Arc::new(()),
 		}

@@ -71,13 +71,13 @@ impl RuntimeConfig {
 	///
 	/// This is a convenience for `.commands(vec![Command...])`.
 	pub fn command(&mut self, command: Command) -> &mut Self {
-		self.action.command = vec![command];
+		self.action.commands = vec![command];
 		self
 	}
 
 	/// Set the commands to run on action.
 	pub fn commands(&mut self, commands: impl Into<Vec<Command>>) -> &mut Self {
-		self.action.command = commands.into();
+		self.action.commands = commands.into();
 		self
 	}
 

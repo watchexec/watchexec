@@ -121,7 +121,7 @@ impl OutcomeWorker {
 				let (cmds, grouped, pre_spawn_handler, post_spawn_handler) = {
 					let wrk = self.working.borrow();
 					(
-						wrk.command.clone(),
+						wrk.commands.clone(),
 						wrk.grouped,
 						wrk.pre_spawn_handler.clone(),
 						wrk.post_spawn_handler.clone(),
