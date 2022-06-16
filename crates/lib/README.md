@@ -19,13 +19,13 @@ _The library which powers [Watchexec CLI](https://watchexec.github.io) and other
 
 ## Quick start
 
-```rust
+```rust ,no_run
 use miette::{IntoDiagnostic, Result};
 use watchexec::{
     Watchexec,
     action::{Action, Outcome},
     config::{InitConfig, RuntimeConfig},
-    handler::PrintDebug,
+    handler::{Handler as _, PrintDebug},
 };
 
 #[tokio::main]
@@ -64,13 +64,20 @@ async fn main() -> Result<()> {
                 Outcome::both(Outcome::Clear, Outcome::Start),
             ));
 
-            Ok::<(), std::io::Error>(())
+            Ok(())
+
+            // (not normally required! ignore this when implementing)
+            as std::result::Result<_, MietteStub>
         }
     });
 
-    let _ = we.main().await.into_diagnostic()?;
+    we.reconfigure(runtime);
+    we.main().await.into_diagnostic()?;
     Ok(())
 }
+
+// ignore this! it's stuff to make the above code get checked by cargo doc tests!
+struct YourConfigFormat; impl YourConfigFormat { async fn load_from_file(_: &str) -> std::result::Result<Self, MietteStub> { Ok(Self) } fn apply(&self, _: &mut RuntimeConfig) {} } use miette::Diagnostic; use thiserror::Error; #[derive(Debug, Error, Diagnostic)] #[error("stub")] struct MietteStub;
 ```
 
 
