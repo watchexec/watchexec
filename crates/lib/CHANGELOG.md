@@ -31,6 +31,7 @@ First "stable" release of the library.
 - Improvement: the event queue is explicitly closed when shutting down
 - Improvement: the action worker will check if the event queue is closed more often, to shutdown early
 - Improvement: `kill_on_drop` is set on Commands, which will be a little more eager to terminate processes when we're done with them
+- Feature: `Outcome::Sleep` waits for a given duration ([#79](https://github.com/watchexec/watchexec/issues/79))
 
 Other miscellaneous:
 

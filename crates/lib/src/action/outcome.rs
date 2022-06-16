@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use crate::signal::process::SubSignal;
 
 /// The outcome to execute when an action is triggered.
@@ -25,6 +27,9 @@ pub enum Outcome {
 	///
 	/// Does nothing if the command isn't running.
 	Wait,
+
+	/// Sleep for some duration.
+	Sleep(Duration),
 
 	/// Send this signal to the command.
 	///
