@@ -58,10 +58,14 @@ jobs:
             --allow-branch "release-${{ inputs.crate }}-${{ inputs.version }}" \
             --package "${{ env.crate_name }}" \
             "${{ inputs.version }}"
+          git status
+          git diff
 
       - name: Push new branch
         run: |
           set -euxo pipefail
+          git add .
+          git commit -am "release: ${{ inputs.crate }} v${{ inputs.version }}"
           git push origin "release-${{ inputs.crate }}-${{ inputs.version }}"
 
       - name: Create PR
