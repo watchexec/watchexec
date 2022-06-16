@@ -15,7 +15,7 @@ assignees: ''
 - Latest version that worked:
 - Earliest version that doesn't: (don't sweat testing earlier versions if you don't remember or have time, your current version will do)
 - OS:
-- A debug log with `-vvv`:
+- A debug log with `-vvv --log-file ../watchexec.log`:
 
 ```
 ```

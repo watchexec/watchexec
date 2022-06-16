@@ -11,7 +11,7 @@ Please delete this template text before filing, but you _need_ to include the fo
 
 - Watchexec's version
 - The OS you're using
-- A log with `-vvv` (if it has sensitive info you can email it at felix@passcod.name — do that _after_ filing so you can reference the issue ID)
+- A log with `-vvv --log-file ../watchexec.log` (if it has sensitive info you can email it at felix@passcod.name — do that _after_ filing so you can reference the issue ID)
 - A sample command that you've run that has the issue
 
 Thank you
