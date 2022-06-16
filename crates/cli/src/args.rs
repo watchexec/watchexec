@@ -110,7 +110,7 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches> {
 			.long("postpone"))
 		.arg(Arg::new("delay-run")
 			.help_heading(Some(OPTSET_BEHAVIOUR))
-			.help("Whenever starting the command, sleep N seconds first")
+			.help("Whenever starting the command, sleep some seconds first")
 			.long("delay-run")
 			.takes_value(true)
 			.value_name("seconds"))
