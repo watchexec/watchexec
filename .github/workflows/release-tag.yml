@@ -30,7 +30,7 @@ jobs:
           message="$(head -n1 <<< "$message")"
 
           crate="$(cut -d ' ' -f 2 <<< "${message}")"
-          version="$(cut -d ' ' -f 3 <<< "${message}" | tr -d 'v')"
+          version="$(cut -d ' ' -f 3 <<< "${message}")"
           echo "CUSTOM_TAG=${crate}-${version}" >> $GITHUB_ENV
 
       - uses: actions/checkout@v2
