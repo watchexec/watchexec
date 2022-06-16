@@ -59,26 +59,19 @@ pub enum Command {
 pub enum Shell {
 	/// Use the given string as a unix shell invocation.
 	///
-	/// This means two things:
-	/// - the program is invoked with `-c` followed by the command, and
-	/// - the string will be split on space, and the resulting vec used as execvp(3) arguments:
-	///   first is the shell program, rest are additional arguments (which come before the `-c`
-	///   mentioned above). This is a very simplistic approach deliberately: it will not support
-	///   quoted arguments, for example. Use [`Shell::None`] with a custom command vec for that.
+	/// This is invoked with `-c` followed by the command.
 	Unix(String),
 
 	/// Use the Windows CMD.EXE shell.
 	///
-	/// This is invoked with `/C` followed by the command.
+	/// This is `cmd.exe` invoked with `/C` followed by the command.
 	#[cfg(windows)]
 	Cmd,
 
 	/// Use Powershell, on Windows or elsewhere.
 	///
-	/// This is invoked with `-Command` followed by the command.
-	///
-	/// This is preferred over `Unix("pwsh")`, though that will also work on unices due to
-	/// Powershell supporting the `-c` short option.
+	/// This is `powershell.exe` invoked with `-Command` followed by the command on Windows.
+	/// On unices, it is equivalent to `Unix("pwsh")`.
 	Powershell,
 }
 
