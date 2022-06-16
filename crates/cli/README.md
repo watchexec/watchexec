@@ -101,7 +101,7 @@ On Windows, you may prefer to use Powershell:
 
 #### Pre-built
 
-Use the download section on **[the website](https://watchexec.github.io/downloads/)** to obtain the
+Use the download section on [Github](https://github.com/watchexec/watchexec/releases/latest) or [the website](https://watchexec.github.io/downloads/) to obtain the
 package appropriate for your platform and architecture, extract it, and place it in your `PATH`.
 
 There are also Debian/Ubuntu (DEB) and Fedora/RedHat (RPM) packages.
