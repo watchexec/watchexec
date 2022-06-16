@@ -23,7 +23,7 @@ Example use cases:
 * Uses process groups to keep hold of forking programs
 * Provides the paths that changed in environment variables
 * Does not require a language runtime, not tied to any particular language or ecosystem
-* [And more!](./cli/#features)
+* [And more!](./crates/cli/#features)
 
 
 ## Quick start
@@ -36,7 +36,7 @@ Call/restart `python server.py` when any Python file in the current directory (a
 
     $ watchexec -r -e py -- python server.py
 
-More usage examples: [in the CLI README](./cli/#usage-examples)!
+More usage examples: [in the CLI README](./crates/cli/#usage-examples)!
 
 ## Install
 
@@ -47,7 +47,7 @@ More usage examples: [in the CLI README](./cli/#usage-examples)!
 - From source with Cargo: `cargo install watchexec-cli`
 - From binary with Binstall: `cargo binstall watchexec-cli`
 
-All options in detail: [in the CLI README](./cli/#installation)
+All options in detail: [in the CLI README](./crates/cli/#installation)
 and [in the manual page](./doc/watchexec.1.ronn).
 
 
