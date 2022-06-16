@@ -85,8 +85,8 @@ jobs:
 
           nl=$'\n'
           br=$'\n\n'
-          fence='```\n'
-          ecnef='\n```'
+          fence=$'```\n'
+          ecnef=$'\n```'
 
           title="release: ${{ inputs.crate }} v${{ inputs.version }}"
           body_intro="This is a release PR for **${{ inputs.crate }}** to version **${{ inputs.version }}**."
