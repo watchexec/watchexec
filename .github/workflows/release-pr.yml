@@ -55,7 +55,7 @@ jobs:
             --no-publish \
             --no-confirm \
             --verbose \
-            --allow-branch "release-${{ inputs.crate }}-${{ inputs.version }}"
+            --allow-branch "release-${{ inputs.crate }}-${{ inputs.version }}" \
             --package "${{ env.crate_name }}" \
             "${{ inputs.version }}"
 
