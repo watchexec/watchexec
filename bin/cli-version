@@ -1,7 +1,0 @@
-#!/usr/bin/env bash
-
-set -euo pipefail
-bin/manpage
-bin/pre-release-pull
-cargo release -v -p watchexec-cli $*
-echo "REMEMBER to do a 'cargo publish' once CI is done!"
