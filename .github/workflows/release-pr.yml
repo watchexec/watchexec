@@ -96,17 +96,14 @@ jobs:
           body="$body
 
           \`\`\`
-          $ cd crates/${{ inputs.crate }}
+          $ cd crates/${{ env.crate_path }}
           $ cargo publish
           \`\`\`
 
           To merge this release, review the changes then say:
 
-          \`\`\`
-          bors r+
-          \`\`\`"
+          `bors r+ p=10`
 
-          pr_url=$(gh pr create --title "$title" --body "$body" --base main --head "${{ env.branch_name }}" --label "release")
-          gh pr comment "$pr_url" --body "bors single on\nbors p=10"
+          gh pr create --title "$title" --body "$body" --base main --head "${{ env.branch_name }}" --label "release"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
