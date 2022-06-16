@@ -116,3 +116,9 @@ mod watchexec;
 
 #[doc(inline)]
 pub use crate::watchexec::{ErrorHook, Watchexec};
+
+#[doc(hidden)]
+pub mod readme_doc_check {
+	#[doc = include_str!("../README.md")]
+	pub struct Readme;
+}
