@@ -33,7 +33,7 @@ dunce = "1.0.2"
 tracing-subscriber = "0.3.6"
 
 [dev-dependencies.project-origins]
-version = "1.0.0-almost-there"
+version = "1.0.0"
 path = "../../project-origins"
 
 [dev-dependencies.tokio]

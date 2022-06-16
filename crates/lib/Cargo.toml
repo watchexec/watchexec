@@ -38,7 +38,7 @@ path = "../ignore-files"
 version = "=5.0.0-pre.15"
 
 [dependencies.project-origins]
-version = "1.0.0-almost-there"
+version = "1.0.0"
 path = "../project-origins"
 
 [dependencies.tokio]

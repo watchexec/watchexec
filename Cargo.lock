@@ -1659,7 +1659,7 @@ dependencies = [
 
 [[package]]
 name = "project-origins"
-version = "1.0.0-almost-there"
+version = "1.0.0"
 dependencies = [
  "dunce",
  "futures",
