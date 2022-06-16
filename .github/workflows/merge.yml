@@ -6,8 +6,7 @@ on:
       - staging
       - trying
     tags-ignore:
-      - "cli-v*.*.*"
-      - "lib-v*.*.*"
+      - "*"
 
 jobs:
   test:
