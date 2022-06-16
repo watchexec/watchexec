@@ -125,6 +125,9 @@ Prints the events (changed paths, etc) that have triggered an action to STDERR.
 * `-v`, `--verbose`, `-vv`, etc:
 Prints diagnostic and debugging messages to STDERR. Increase the amount of `v`s to get progressively more output: for bug reports use **three**, and for deep debugging **four** can be helpful.
 
+* `--log-file` <path>:
+Writes diagnostic and debugging messages (from the `-v` options) to file instead of STDERR, in JSON format. This is preferrable for reporting bugs. Be careful **not** to write to a file within the purview of Watchexec to avoid recursion!
+
 * `-V`, `--version`:
 Print the version of watchexec.
 
