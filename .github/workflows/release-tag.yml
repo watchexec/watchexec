@@ -15,13 +15,24 @@ jobs:
       - name: Extract tag from commit message
         run: |
           set -euxo pipefail
-          message="${{ github.event.head_commit.message }}"
+
+          read -r -d '' message <<'COMMITMESSAGESEPARATOR'
+          ${{ github.event.head_commit.message }}
+          COMMITMESSAGESEPARATOR
+
+          # trim both ends
+          message="${message#"${message%%[![:space:]]*}"}"
+          message="${message%"${message##*[![:space:]]}"}"
+
+          # get first line
+          message="$(head -n1 <<< "$message")"
+
           crate="$(cut -d ' ' -f 2 <<< "${message}")"
           version="$(cut -d ' ' -f 3 <<< "${message}" | tr -d 'v')"
           echo "CUSTOM_TAG=${crate}-${version}" >> $GITHUB_ENV
 
       - uses: actions/checkout@v2
-      - name: Bump version and push tag
+      - name: Push release tag
         id: tag_version
         uses: mathieudutour/github-tag-action@v6.0
         with:
