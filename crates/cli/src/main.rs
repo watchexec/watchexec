@@ -68,7 +68,7 @@ async fn main() -> Result<()> {
 		}
 	}
 
-	debug!(version=%env!("CARGO_PKG_VERSION"), "constructing Watchexec from CLI");
+	debug!(version=%env!("CARGO_PKG_VERSION"), ?args, "constructing Watchexec from CLI");
 
 	let init = config::init(&args)?;
 	let mut runtime = config::runtime(&args)?;

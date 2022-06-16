@@ -8,6 +8,7 @@ use std::{
 
 use clap::{crate_version, Arg, ArgMatches, Command};
 use miette::{Context, IntoDiagnostic, Result};
+use tracing::debug;
 
 const OPTSET_FILTERING: &str = "Filtering options";
 const OPTSET_COMMAND: &str = "Command options";
@@ -268,5 +269,6 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches> {
 		}
 	}
 
+	debug!(?raw_args, "parsing arguments");
 	Ok(app.get_matches_from(raw_args))
 }

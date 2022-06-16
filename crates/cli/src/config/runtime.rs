@@ -6,7 +6,7 @@ use std::{
 use clap::ArgMatches;
 use miette::{miette, IntoDiagnostic, Result};
 use notify_rust::Notification;
-use tracing::debug;
+use tracing::{debug, debug_span};
 use watchexec::{
 	action::{Action, Outcome, PostSpawn, PreSpawn},
 	command::{Command, Shell},
@@ -20,6 +20,7 @@ use watchexec::{
 };
 
 pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
+	let _span = debug_span!("args-runtime").entered();
 	let mut config = RuntimeConfig::default();
 
 	config.command(interpret_command_args(args)?);
