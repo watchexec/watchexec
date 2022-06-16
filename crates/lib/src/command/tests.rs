@@ -1,4 +1,3 @@
-
 use super::{Command, Shell};
 use command_group::AsyncCommandGroup;
 

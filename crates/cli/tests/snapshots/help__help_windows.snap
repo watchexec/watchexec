@@ -46,6 +46,9 @@ Behaviour options:
     -d, --debounce <milliseconds>
             Set the timeout between detected change and command execution, defaults to 50ms
 
+        --delay-run <seconds>
+            Whenever starting the command, sleep N seconds first
+
         --force-poll <interval>
             Force polling mode (interval in milliseconds)
 
