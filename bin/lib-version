@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-
-set -euo pipefail
-bin/pre-release-pull
-cargo release -v -p watchexec $*
