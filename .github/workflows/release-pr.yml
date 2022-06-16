@@ -32,16 +32,29 @@ jobs:
       - uses: actions/checkout@v2
         with:
           ref: main
-      - name: Make branch "release-${{ inputs.crate }}-${{ inputs.version }}"
-        run: git switch -c "release-${{ inputs.crate }}-${{ inputs.version }}"
 
-      - name: Find crate name
+      - name: Extract info
         run: |
           set -euxo pipefail
-          pushd "crates/${{ inputs.crate }}"
+
+          if [[ "${{ inputs.crate }}" == filterer-* ]]; then
+            crate_path="crates/$(tr '-' '/' <<< "${{ inputs.crate }}")"
+          else
+            crate_path="crates/${{ inputs.crate }}"
+          fi
+
+          pushd "$crate_path"
           crate_name=$(head Cargo.toml -n2 | grep name | cut -d '"' -f2)
-          echo "crate_name=${crate_name}" >> $GITHUB_ENV
           popd
+
+          branch_name="release-${{ inputs.crate }}-${{ inputs.version }}"
+
+          echo "crate_name=${crate_name}" >> $GITHUB_ENV
+          echo "crate_path=${crate_path}" >> $GITHUB_ENV
+          echo "branch_name=${branch_name}" >> $GITHUB_ENV
+
+      - name: Make release branch
+        run: git switch -c "${{ env.branch_name }}"
 
       - name: Do release
         run: |
@@ -55,18 +68,15 @@ jobs:
             --no-publish \
             --no-confirm \
             --verbose \
-            --allow-branch "release-${{ inputs.crate }}-${{ inputs.version }}" \
+            --config "${{ env.crate_path }}" \
+            --allow-branch "${{ env.branch_name }}" \
             --package "${{ env.crate_name }}" \
             "${{ inputs.version }}"
-          git status
-          git diff
 
       - name: Push new branch
         run: |
           set -euxo pipefail
-          git add .
-          git commit -am "release: ${{ inputs.crate }} v${{ inputs.version }}"
-          git push origin "release-${{ inputs.crate }}-${{ inputs.version }}"
+          git push origin "${{ env.branch_name }}"
 
       - name: Create PR
         run: |
@@ -95,7 +105,7 @@ jobs:
           bors r+
           \`\`\`"
 
-          pr_url=$(gh pr create --title "$title" --body "$body" --base main --head "release-${{ inputs.crate }}-${{ inputs.version }}" --label "release")
+          pr_url=$(gh pr create --title "$title" --body "$body" --base main --head "${{ env.branch_name }}" --label "release")
           gh pr comment "$pr_url" --body "bors single on\nbors p=10"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
