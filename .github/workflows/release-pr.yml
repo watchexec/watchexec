@@ -83,6 +83,11 @@ jobs:
         run: |
           set -euxo pipefail
 
+          nl=$'\n'
+          br=$'\n\n'
+          fence='```\n'
+          ecnef='\n```'
+
           title="release: ${{ inputs.crate }} v${{ inputs.version }}"
           body_intro="This is a release PR for **${{ inputs.crate }}** to version **${{ inputs.version }}**."
           if [[ "${{ inputs.crate }}" == "cli" ]]; then
@@ -90,18 +95,9 @@ jobs:
           else
             body_merge="Upon merging, you will still need to manually publish the cargo crate."
           fi
-          read -r -d '' body_outro <<'EOF'
-          \`\`\`
-          $ cd crates/${{ env.crate_path }}
-          $ cargo publish
-          \`\`\`
 
-          To merge this release, review the changes then say:
+          body_outro="${fence}$ cd crates/${{ env.crate_path }}${nl}$ cargo publish${ecnef}${br}To merge this release, review the changes then say:${br}\`bors r+ p=10\`"
 
-          `bors r+ p=10`
-          EOF
-
-          br=$'\n\n'
           body="${body_intro}${br}${body_merge}${br}${body_outro}"
 
           gh pr create --title "$title" --body "$body" --base main --head "${{ env.branch_name }}" --label "release"
