@@ -22,9 +22,8 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 	let mut config = RuntimeConfig::default();
 
 	config.command(
-		args.values_of_lossy("command")
+		args.values_of("command")
 			.expect("(clap) Bug: command is not present")
-			.iter(),
 	);
 
 	config.pathset(match args.values_of_os("paths") {
@@ -201,7 +200,7 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 	});
 
 	let mut add_envs = HashMap::new();
-	for pair in args.values_of_lossy("command-env").unwrap_or_default() {
+	for pair in args.values_of("command-env").unwrap_or_default() {
 		if let Some((k, v)) = pair.split_once('=') {
 			add_envs.insert(k.to_owned(), OsString::from(v));
 		} else {
