@@ -18,7 +18,7 @@ edition = "2021"
 [dependencies]
 ignore = "0.4.18"
 tracing = "0.1.26"
-watchexec = { version = "2.0.0-almost-there", path = "../../lib" }
+watchexec = { version = "2.0.0", path = "../../lib" }
 
 [dependencies.ignore-files]
 version = "1.0.0"
