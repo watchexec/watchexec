@@ -45,6 +45,7 @@ Other miscellaneous:
 - Docs: fix the main example in lib.rs ([#297](https://github.com/watchexec/watchexec/pull/297))
 - Docs: describe a tuple argument in the globset filterer interface
 - Docs: the library crate gains a file-based CHANGELOG.md (and won't go in the Github releases tab anymore)
+- Docs: the library's readme's code block example is now checked as a doc-test
 
 - Meta: PRs are now merged by Bors
 
