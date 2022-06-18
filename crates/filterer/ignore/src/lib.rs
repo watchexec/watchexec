@@ -2,6 +2,9 @@
 //!
 //! This filterer is meant to be used as a backing filterer inside a more complex or complete
 //! filterer, and not as a standalone filterer.
+//!
+//! This is a fairly simple wrapper around the [`ignore_files`] crate, which is probably where you
+//! want to look for any detail or to use this outside of Watchexec.
 
 use ignore::Match;
 use ignore_files::IgnoreFilter;
