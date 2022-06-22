@@ -26,6 +26,7 @@ use watchexec_filterer_ignore::IgnoreFilterer;
 /// A simple filterer in the style of the watchexec v1.17 filter.
 #[derive(Debug)]
 pub struct GlobsetFilterer {
+	#[cfg_attr(not(unix), allow(dead_code))]
 	origin: PathBuf,
 	filters: Gitignore,
 	ignores: Gitignore,

@@ -77,7 +77,7 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 	let once = args.is_present("once");
 	let delay_run = args
 		.value_of("delay-run")
-		.map(|d| u64::from_str(d))
+		.map(u64::from_str)
 		.transpose()
 		.into_diagnostic()?
 		.map(Duration::from_secs);
@@ -94,7 +94,7 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 		if once {
 			action.outcome(Outcome::both(
 				if let Some(delay) = &delay_run {
-					Outcome::both(Outcome::Sleep(delay.clone()), Outcome::Start)
+					Outcome::both(Outcome::Sleep(*delay), Outcome::Start)
 				} else {
 					Outcome::Start
 				},
@@ -179,7 +179,7 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 		};
 
 		let start = if let Some(delay) = &delay_run {
-			Outcome::both(Outcome::Sleep(delay.clone()), start)
+			Outcome::both(Outcome::Sleep(*delay), start)
 		} else {
 			start
 		};
