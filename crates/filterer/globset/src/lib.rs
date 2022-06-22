@@ -3,6 +3,11 @@
 //! This filterer mimics the behavior of the `watchexec` v1 filter, but does not match it exactly,
 //! due to differing internals. It is used as the default filterer in Watchexec CLI currently.
 
+#![doc(html_favicon_url = "https://watchexec.github.io/logo:watchexec.svg")]
+#![doc(html_logo_url = "https://watchexec.github.io/logo:watchexec.svg")]
+#![warn(clippy::unwrap_used, missing_docs)]
+#![deny(rust_2018_idioms)]
+
 use std::{
 	ffi::OsString,
 	path::{Path, PathBuf},
@@ -21,6 +26,7 @@ use watchexec_filterer_ignore::IgnoreFilterer;
 /// A simple filterer in the style of the watchexec v1.17 filter.
 #[derive(Debug)]
 pub struct GlobsetFilterer {
+	#[cfg_attr(not(unix), allow(dead_code))]
 	origin: PathBuf,
 	filters: Gitignore,
 	ignores: Gitignore,

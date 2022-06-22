@@ -45,8 +45,8 @@ async fn main() -> Result<()> {
 
 		let mut builder = tracing_subscriber::fmt().with_env_filter(match verbosity {
 			0 => "watchexec-cli=warn",
-			1 => "watchexec=debug,watchexec-cli=debug",
-			2 => "watchexec=trace,watchexec-cli=trace",
+			1 => "watchexec=debug,watchexec-filterer-globset=debug,watchexec-filterer-ignore=debug,watchexec-filterer-tagged=debug,watchexec-cli=debug",
+			2 => "ignore-files=trace,project-origins=trace,watchexec=trace,watchexec-filterer-globset=trace,watchexec-filterer-ignore=trace,watchexec-filterer-tagged=trace,watchexec-cli=trace",
 			_ => "trace",
 		});
 

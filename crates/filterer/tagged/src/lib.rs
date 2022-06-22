@@ -71,6 +71,11 @@
 //! writing, the ignore crate uses globset internally). Regex syntax is the default syntax of the
 //! [regex] crate.
 
+#![doc(html_favicon_url = "https://watchexec.github.io/logo:watchexec.svg")]
+#![doc(html_logo_url = "https://watchexec.github.io/logo:watchexec.svg")]
+#![warn(clippy::unwrap_used, missing_docs)]
+#![deny(rust_2018_idioms)]
+
 // to make filters
 pub use regex::Regex;
 
