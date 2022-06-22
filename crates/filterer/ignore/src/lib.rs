@@ -6,6 +6,11 @@
 //! This is a fairly simple wrapper around the [`ignore_files`] crate, which is probably where you
 //! want to look for any detail or to use this outside of Watchexec.
 
+#![doc(html_favicon_url = "https://watchexec.github.io/logo:watchexec.svg")]
+#![doc(html_logo_url = "https://watchexec.github.io/logo:watchexec.svg")]
+#![warn(clippy::unwrap_used, missing_docs)]
+#![deny(rust_2018_idioms)]
+
 use ignore::Match;
 use ignore_files::IgnoreFilter;
 use tracing::{trace, trace_span};

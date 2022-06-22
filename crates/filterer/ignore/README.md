@@ -13,5 +13,9 @@ _(Sub)filterer implementation for ignore files._
 - Minimum Supported Rust Version: 1.58.0 (incurs a minor semver bump).
 - Status: maintained.
 
+This is mostly a thin layer above the [ignore-files](../../ignore-files) crate, and is meant to be
+used as part of another more general filterer. However, there's nothing wrong with using it
+directly if all that's needed is to handle ignore files.
+
 [docs]: https://docs.rs/watchexec-filterer-ignore
 [license]: ../../../LICENSE
