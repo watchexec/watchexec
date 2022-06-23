@@ -28,7 +28,7 @@ version = "2.0.0"
 path = "../../lib"
 
 [dependencies.watchexec-filterer-ignore]
-version = "1.0.0-almost-there"
+version = "1.0.0"
 path = "../ignore"
 
 [dev-dependencies]
