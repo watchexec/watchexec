@@ -1,6 +1,6 @@
 [package]
 name = "watchexec-filterer-globset"
-version = "1.0.0-almost-there"
+version = "1.0.0"
 
 authors = ["Matt Green <mattgreenrocks@gmail.com>", "Félix Saparelli <felix@passcod.name>"]
 license = "Apache-2.0"
