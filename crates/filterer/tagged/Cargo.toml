@@ -1,6 +1,6 @@
 [package]
 name = "watchexec-filterer-tagged"
-version = "0.1.0-almost-there"
+version = "0.1.0"
 
 authors = ["Félix Saparelli <felix@passcod.name>"]
 license = "Apache-2.0"
