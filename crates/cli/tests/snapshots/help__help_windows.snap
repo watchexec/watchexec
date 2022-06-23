@@ -1,5 +1,5 @@
 ---
-source: cli/tests/help.rs
+source: crates/cli/tests/help.rs
 assertion_line: 16
 expression: "String::from_utf8(output.stdout).unwrap()"
 ---

@@ -103,21 +103,21 @@ license-file = ["../LICENSE", "0"]
 section = "utility"
 # conf-files = [] # look me up when config file lands
 assets = [
-	["../target/release/watchexec", "usr/bin/", "755"],
+	["../../target/release/watchexec", "usr/bin/", "755"],
 	["README.md", "usr/share/doc/watchexec/README", "644"],
-	["../doc/watchexec.1.html", "usr/share/doc/watchexec/watchexec.1.html", "644"],
-	["../doc/watchexec.1", "usr/share/man/man1/watchexec.1.html", "644"],
-	["../completions/zsh", "usr/share/zsh/site-functions/_watchexec", "644"],
-	["../doc/logo.svg", "usr/share/icons/hicolor/scalable/apps/watchexec.svg", "644"],
+	["../../doc/watchexec.1.html", "usr/share/doc/watchexec/watchexec.1.html", "644"],
+	["../../doc/watchexec.1", "usr/share/man/man1/watchexec.1.html", "644"],
+	["../../completions/zsh", "usr/share/zsh/site-functions/_watchexec", "644"],
+	["../../doc/logo.svg", "usr/share/icons/hicolor/scalable/apps/watchexec.svg", "644"],
 ]
 
 [package.metadata.generate-rpm]
 assets = [
-	{ source = "../target/release/watchexec", dest = "/usr/bin/", mode = "755" },
-	{ source = "../cli/README.md", dest = "/usr/share/doc/watchexec/README", mode = "644", doc = true },
-	{ source = "../doc/watchexec.1.html", dest = "/usr/share/doc/watchexec/watchexec.1.html", mode = "644", doc = true },
-	{ source = "../doc/watchexec.1", dest = "/usr/share/man/man1/watchexec.1.html", mode = "644" },
-	{ source = "../completions/zsh", dest = "/usr/share/zsh/site-functions/_watchexec", mode = "644" },
-	{ source = "../doc/logo.svg", dest = "/usr/share/icons/hicolor/scalable/apps/watchexec.svg", mode = "644" },
+	{ source = "../../target/release/watchexec", dest = "/usr/bin/", mode = "755" },
+	{ source = "README.md", dest = "/usr/share/doc/watchexec/README", mode = "644", doc = true },
+	{ source = "../../doc/watchexec.1.html", dest = "/usr/share/doc/watchexec/watchexec.1.html", mode = "644", doc = true },
+	{ source = "../../doc/watchexec.1", dest = "/usr/share/man/man1/watchexec.1.html", mode = "644" },
+	{ source = "../../completions/zsh", dest = "/usr/share/zsh/site-functions/_watchexec", mode = "644" },
+	{ source = "../../doc/logo.svg", dest = "/usr/share/icons/hicolor/scalable/apps/watchexec.svg", mode = "644" },
 	# set conf = true for config file when that lands
 ]
