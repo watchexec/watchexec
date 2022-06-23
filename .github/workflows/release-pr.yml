@@ -96,7 +96,7 @@ jobs:
             body_merge="Upon merging, you will still need to manually publish the cargo crate."
           fi
 
-          body_outro="${fence}$ cd crates/${{ env.crate_path }}${nl}$ cargo publish${ecnef}${br}To merge this release, review the changes then say:${br}\`bors r+ p=10\`"
+          body_outro="${fence}$ cd ${{ env.crate_path }}${nl}$ cargo publish${ecnef}${br}To merge this release, review the changes then say:${br}| bors r+ p=10 |${nl}|:-:|"
 
           body="${body_intro}${br}${body_merge}${br}${body_outro}"
 
