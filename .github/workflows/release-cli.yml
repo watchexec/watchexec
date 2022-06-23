@@ -135,7 +135,7 @@ jobs:
         run: |
           set -euxo pipefail
 
-          version=$(grep -m1 -F 'version =' cli/Cargo.toml | cut -d\" -f2)
+          version=$(grep -m1 -F 'version =' crates/cli/Cargo.toml | cut -d\" -f2)
 
           if [[ -z "$version" ]]; then
             echo "Error: no version :("
@@ -161,7 +161,7 @@ jobs:
           cp "$bin" "target/release/" # workaround for cargo-deb silliness with targets
 
           cp "$bin" "$dst/"
-          cp -r cli/README.md LICENSE completions doc/{logo.svg,watchexec.1{,.html}} "$dst/"
+          cp -r crates/cli/README.md LICENSE completions doc/{logo.svg,watchexec.1{,.html}} "$dst/"
 
       - name: Archive (tar)
         if: '! startsWith(matrix.name, ''windows-'')'
@@ -248,7 +248,7 @@ jobs:
           set -u
           echo "$RELEASE_KEY" > release.key
           set -x
-          version=$(grep -m1 -F 'version =' cli/Cargo.toml | cut -d\" -f2)
+          version=$(grep -m1 -F 'version =' crates/cli/Cargo.toml | cut -d\" -f2)
           for algo in B3 SHA512; do
             echo | rsign sign \
               -p .github/workflows/release.pub \
