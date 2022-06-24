@@ -99,7 +99,7 @@ pkg-fmt = "zip"
 
 [package.metadata.deb]
 maintainer = "Félix Saparelli <felix@passcod.name>"
-license-file = ["../LICENSE", "0"]
+license-file = ["../../LICENSE", "0"]
 section = "utility"
 # conf-files = [] # look me up when config file lands
 assets = [
