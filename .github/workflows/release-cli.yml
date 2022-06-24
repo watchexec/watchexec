@@ -8,6 +8,28 @@ on:
       - "cli-v*.*.*"
 
 jobs:
+  info:
+    name: Gather info
+    runs-on: ubuntu-latest
+    outputs:
+      cli_version: steps.version.outputs.cli_version
+    steps:
+      - uses: actions/checkout@v2
+      - name: Extract version
+        id: version
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          version=$(grep -m1 -F 'version =' crates/cli/Cargo.toml | cut -d\" -f2)
+
+          if [[ -z "$version" ]]; then
+            echo "Error: no version :("
+            exit 1
+          fi
+
+          echo "::set-output name=cli_version::$version"
+
   build:
     strategy:
       matrix:
@@ -83,8 +105,13 @@ jobs:
           #  experimental: true
 
     name: Binaries for ${{ matrix.name }}
+    needs: info
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.experimental }}
+
+    env:
+      version: ${{ needs.info.outputs.cli_version }}
+      dst: watchexec-${{ needs.info.outputs.cli_version }}-${{ matrix.target }}
 
     steps:
       - uses: actions/checkout@v2
@@ -131,20 +158,6 @@ jobs:
           command: build
           args: --package watchexec-cli --release --locked --target ${{ matrix.target }}
 
-      - name: Extract version
-        shell: bash
-        run: |
-          set -euxo pipefail
-
-          version=$(grep -m1 -F 'version =' crates/cli/Cargo.toml | cut -d\" -f2)
-
-          if [[ -z "$version" ]]; then
-            echo "Error: no version :("
-            exit 1
-          fi
-
-          echo "$version" > VERSION
-
       - name: Package
         shell: bash
         run: |
@@ -154,8 +167,6 @@ jobs:
           bin="target/${{ matrix.target }}/release/watchexec${ext}"
           objcopy --compress-debug-sections "$bin" || strip "$bin" || true
 
-          version=$(cat VERSION)
-          dst="watchexec-${version}-${{ matrix.target }}"
           mkdir "$dst"
 
           mkdir -p "target/release"
@@ -166,38 +177,21 @@ jobs:
 
       - name: Archive (tar)
         if: '! startsWith(matrix.name, ''windows-'')'
-        shell: bash
-        run: |
-          set -euxo pipefail
-          version=$(cat VERSION)
-          dst="watchexec-${version}-${{ matrix.target }}"
-          tar cavf "$dst.tar.xz" "$dst"
+        run: tar cavf "$dst.tar.xz" "$dst"
       - name: Archive (deb)
         if: startsWith(matrix.name, 'linux-')
-        shell: bash
-        run: |
-          set -euxo pipefail
-          version=$(cat VERSION)
-          dst="watchexec-${version}-${{ matrix.target }}"
-          cargo deb -p watchexec-cli --no-build --no-strip --target ${{ matrix.target }} --output "$dst.deb"
+        run: cargo deb -p watchexec-cli --no-build --no-strip --target ${{ matrix.target }} --output "$dst.deb"
       - name: Archive (rpm)
         if: startsWith(matrix.name, 'linux-')
         shell: bash
         run: |
           set -euxo pipefail
           shopt -s globstar
-          version=$(cat VERSION)
-          dst="watchexec-${version}-${{ matrix.target }}"
           cargo generate-rpm -p crates/cli --target "${{ matrix.target }}" --target-dir "target/${{ matrix.target }}"
           mv target/**/*.rpm "$dst.rpm"
       - name: Archive (zip)
         if: startsWith(matrix.name, 'windows-')
-        shell: bash
-        run: |
-          set -euxo pipefail
-          version=$(cat VERSION)
-          dst="watchexec-${version}-${{ matrix.target }}"
-          7z a "$dst.zip" "$dst"
+        run: 7z a "$dst.zip" "$dst"
 
       - uses: actions/upload-artifact@v2
         with:
@@ -211,10 +205,14 @@ jobs:
             watchexec-*.zip
 
   sign:
-    needs: build
+    needs: [build, info]
 
     name: Checksum and sign
     runs-on: ubuntu-latest
+
+    env:
+      version: ${{ needs.info.outputs.cli_version }}
+      tag_name: cli-v${{ needs.info.outputs.cli_version }}
 
     steps:
       - uses: actions/checkout@v2
@@ -249,7 +247,6 @@ jobs:
           set -u
           echo "$RELEASE_KEY" > release.key
           set -x
-          version=$(grep -m1 -F 'version =' crates/cli/Cargo.toml | cut -d\" -f2)
           for algo in B3 SHA512; do
             echo | rsign sign \
               -p .github/workflows/release.pub \
@@ -264,6 +261,7 @@ jobs:
 
       - uses: softprops/action-gh-release@v1
         with:
+          tag_name: ${{ env.tag_name }}
           files: |
             watchexec-*.tar.xz
             watchexec-*.tar.zst
