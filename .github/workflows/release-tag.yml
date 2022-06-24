@@ -13,6 +13,9 @@ jobs:
     # that are named `release: {crate-name} v{version}` will get tagged!
     # the commit message will look like: `release: {crate-name} v{version} (#{pr-number})`
     if: "startsWith(github.event.head_commit.message, 'release: ')"
+
+    outputs:
+      tag_name: ${{ steps.extract.outputs.tag }}
     steps:
       - name: Extract tag from commit message
         env:
@@ -24,6 +27,7 @@ jobs:
           crate="$(cut -d ' ' -f 2 <<< "${message}")"
           version="$(cut -d ' ' -f 3 <<< "${message}")"
           echo "CUSTOM_TAG=${crate}-${version}" >> $GITHUB_ENV
+          echo "::set-output name=tag::${crate}-${version}"
 
       - uses: actions/checkout@v2
       - name: Push release tag
@@ -34,7 +38,8 @@ jobs:
           custom_tag: ${{ env.CUSTOM_TAG }}
           tag_prefix: ''
 
-      - name: Release CLI
-        if: "startsWith(env.CUSTOM_TAG, 'cli-v')"
-        uses: ./.github/workflows/release-cli.yml
-        secrets: inherit
+  release-cli:
+    needs: make-tag
+    if: "startsWith(needs.make-tag.outputs.tag_name, 'cli-v')"
+    uses: ./.github/workflows/release-cli.yml
+    secrets: inherit
