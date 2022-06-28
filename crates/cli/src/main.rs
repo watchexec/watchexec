@@ -4,7 +4,6 @@ use std::{env::var, fs::File, sync::Mutex};
 
 use miette::{IntoDiagnostic, Result};
 use tracing::{warn, debug};
-use tracing_log::LogTracer;
 use watchexec::{
 	event::{Event, Priority},
 	Watchexec,
@@ -20,7 +19,6 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-	LogTracer::init().into_diagnostic()?;
 
 	#[cfg(feature = "dev-console")] {
 		console_subscriber::try_init().ok();
