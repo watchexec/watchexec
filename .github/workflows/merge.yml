@@ -47,4 +47,4 @@ jobs:
         with:
           command: test
       - name: Check that CLI runs
-        run: cargo run -p watchexec-cli -- -1 echo
+        run: cargo run -p watchexec-cli -- --quit-after-runs=1 echo
