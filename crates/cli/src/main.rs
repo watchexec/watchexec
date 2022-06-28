@@ -3,7 +3,7 @@
 use std::{env::var, fs::File, sync::Mutex};
 
 use miette::{IntoDiagnostic, Result};
-use tracing::{warn, debug};
+use tracing::{debug, warn, info};
 use watchexec::{
 	event::{Event, Priority},
 	Watchexec,
@@ -19,15 +19,27 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+	let mut log_on = false;
 
-	#[cfg(feature = "dev-console")] {
-		console_subscriber::try_init().ok();
-		warn!("dev-console enabled");
+	#[cfg(feature = "dev-console")]
+	match console_subscriber::try_init() {
+		Ok(_) => {
+			warn!("dev-console enabled");
+			log_on = true;
+		}
+		Err(e) => {
+			eprintln!("Failed to initialise tokio console, falling back to normal logging\n{e}")
+		}
 	}
 
-	if var("RUST_LOG").is_ok() && cfg!(not(feature = "dev-console")) {
-		tracing_subscriber::fmt::try_init().ok();
-		warn!(RUST_LOG=%var("RUST_LOG").unwrap(), "logging configured from RUST_LOG");
+	if !log_on && var("RUST_LOG").is_ok() {
+		match tracing_subscriber::fmt::try_init() {
+			Ok(_) => {
+				warn!(RUST_LOG=%var("RUST_LOG").unwrap(), "logging configured from RUST_LOG");
+				log_on = true;
+			}
+			Err(e) => eprintln!("Failed to initialise logging with RUST_LOG, falling back\n{e}"),
+		}
 	}
 
 	let tagged_filterer = var("WATCHEXEC_FILTERER")
@@ -36,9 +48,12 @@ async fn main() -> Result<()> {
 
 	let args = args::get_args(tagged_filterer)?;
 
-	{
+	if log_on {
+		warn!("ignoring logging options from args");
+	} else {
 		let verbosity = args.occurrences_of("verbose");
 		let log_file = if let Some(file) = args.value_of_os("log-file") {
+			// TODO: use tracing-appender instead
 			Some(File::create(file).into_diagnostic()?)
 		} else {
 			None
@@ -56,16 +71,18 @@ async fn main() -> Result<()> {
 			builder = builder.with_span_events(FmtSpan::NEW | FmtSpan::CLOSE);
 		}
 
-		if let Some(writer) = log_file {
+		match if let Some(writer) = log_file {
 			builder
 				.json()
 				.with_writer(Mutex::new(writer))
 				.try_init()
-				.ok();
 		} else if verbosity > 3 {
-			builder.pretty().try_init().ok();
+			builder.pretty().try_init()
 		} else {
-			builder.try_init().ok();
+			builder.try_init()
+		} {
+			Ok(_) => info!("logging initialised"),
+			Err(e) => eprintln!("Failed to initialise logging, continuing with none\n{e}"),
 		}
 	}
 
