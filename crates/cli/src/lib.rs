@@ -3,7 +3,7 @@
 use std::{env::var, fs::File, sync::Mutex};
 
 use miette::{IntoDiagnostic, Result};
-use tracing::{debug, warn, info};
+use tracing::{debug, info, warn};
 use watchexec::{
 	event::{Event, Priority},
 	Watchexec,
@@ -51,7 +51,7 @@ pub async fn run() -> Result<()> {
 		warn!("ignoring logging options from args");
 	} else {
 		let verbosity = args.occurrences_of("verbose");
-		let log_file = if let Some(file) = args.value_of("log-file") {
+		let log_file = if let Some(file) = args.value_of_os("log-file") {
 			// TODO: use tracing-appender instead
 			Some(File::create(file).into_diagnostic()?)
 		} else {
@@ -71,10 +71,7 @@ pub async fn run() -> Result<()> {
 		}
 
 		match if let Some(writer) = log_file {
-			builder
-				.json()
-				.with_writer(Mutex::new(writer))
-				.try_init()
+			builder.json().with_writer(Mutex::new(writer)).try_init()
 		} else if verbosity > 3 {
 			builder.pretty().try_init()
 		} else {
