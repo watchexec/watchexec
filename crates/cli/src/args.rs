@@ -6,7 +6,7 @@ use std::{
 	path::Path,
 };
 
-use clap::{crate_version, Arg, ArgMatches, Command};
+use clap::{crate_version, value_parser, Arg, ArgMatches, Command};
 use miette::{Context, IntoDiagnostic, Result};
 use tracing::debug;
 
@@ -145,7 +145,13 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches> {
 			.help_heading(Some(OPTSET_COMMAND))
 			.help("Do not use a process group when running the command")
 			.long("no-process-group"))
-		.arg(Arg::new("once").short('1').hide(true))
+		.arg(Arg::new("quit-after-n-runs")
+			.help_heading(Some(OPTSET_BEHAVIOUR))
+			.help("Quit gracefully after n runs")
+			.long("quit-after-runs")
+			.value_name("n")
+			.hide(!cfg!(debug_assertions))
+			.value_parser(value_parser!(u8).range(1..)))
 		.arg(Arg::new("watch-when-idle")
 			.help_heading(Some(OPTSET_BEHAVIOUR))
 			.help("Deprecated alias for --on-busy-update=do-nothing, which will become the default in 2.0.")

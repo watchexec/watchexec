@@ -1,6 +1,7 @@
 use std::{
 	collections::HashMap, convert::Infallible, env::current_dir, ffi::OsString, path::Path,
 	str::FromStr, time::Duration,
+	sync::{Arc, atomic::{AtomicU8, Ordering}}
 };
 
 use clap::ArgMatches;
@@ -74,7 +75,7 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 	}
 
 	let print_events = args.is_present("print-events");
-	let once = args.is_present("once");
+	let quit_after_n_runs = args.get_one::<u8>("quit-after-n-runs").map(|n| Arc::new(AtomicU8::new(*n)));
 	let delay_run = args
 		.value_of("delay-run")
 		.map(u64::from_str)
@@ -91,16 +92,22 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 			}
 		}
 
-		if once {
-			action.outcome(Outcome::both(
-				if let Some(delay) = &delay_run {
-					Outcome::both(Outcome::Sleep(*delay), Outcome::Start)
-				} else {
-					Outcome::Start
-				},
-				Outcome::wait(Outcome::Exit),
-			));
-			return fut;
+		if let Some(runs) = quit_after_n_runs.clone() {
+			let remaining = runs.fetch_sub(1, Ordering::SeqCst);
+			if remaining <= 1 {
+				debug!("quitting after n runs");
+				action.outcome(Outcome::both(
+					if let Some(delay) = &delay_run {
+						Outcome::both(Outcome::Sleep(*delay), Outcome::Start)
+					} else {
+						Outcome::Start
+					},
+					Outcome::wait(Outcome::Exit),
+				));
+				return fut;
+			} else {
+				debug!(?remaining, "getting closer to quitting");
+			}
 		}
 
 		let signals: Vec<MainSignal> = action.events.iter().flat_map(|e| e.signals()).collect();
