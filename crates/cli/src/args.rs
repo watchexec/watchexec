@@ -17,7 +17,7 @@ const OPTSET_OUTPUT: &str = "Output options";
 const OPTSET_BEHAVIOUR: &str = "Behaviour options";
 
 pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches> {
-	let app = Command::new("watchexec")
+	let mut app = Command::new("watchexec")
 		.version(crate_version!())
 		.about("Execute commands when watched files change")
 		.after_help("Use @argfile as first argument to load arguments from the file `argfile` (one argument per line) which will be inserted in place of the @argfile (further arguments on the CLI will override or add onto those in the file).")
@@ -177,6 +177,16 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches> {
 			.short('E')
 			.number_of_values(1)
 			.multiple_occurrences(true));
+
+	// none of these are mutually exclusive, but it should be rare to unintentionally have two on
+	if cfg!(debug_assertions) {
+		app = app.before_help("⚠ DEBUG BUILD ⚠");
+	} else if cfg!(feature = "dev-console") {
+		app = app.before_help("⚠ DEV CONSOLE ENABLED ⚠");
+	} else if std::env::var("RUST_LOG").is_ok() {
+		app =
+			app.before_help("⚠ RUST_LOG environment variable set, logging options have no effect");
+	}
 
 	let app = if tagged_filterer {
 		app.arg(

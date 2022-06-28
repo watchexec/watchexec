@@ -2661,7 +2661,6 @@ dependencies = [
  "project-origins",
  "tokio",
  "tracing",
- "tracing-log",
  "tracing-subscriber",
  "watchexec",
  "watchexec-filterer-globset",
