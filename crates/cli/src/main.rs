@@ -37,7 +37,7 @@ async fn main() -> Result<()> {
 
 	{
 		let verbosity = args.occurrences_of("verbose");
-		let log_file = if let Some(file) = args.value_of("log-file") {
+		let log_file = if let Some(file) = args.value_of_os("log-file") {
 			Some(File::create(file).into_diagnostic()?)
 		} else {
 			None
