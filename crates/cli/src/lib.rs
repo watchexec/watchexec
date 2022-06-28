@@ -3,7 +3,7 @@
 use std::{env::var, fs::File, sync::Mutex};
 
 use miette::{IntoDiagnostic, Result};
-use tracing::{debug, info, warn};
+use tracing::{info, warn, debug};
 use watchexec::{
 	event::{Event, Priority},
 	Watchexec,
@@ -46,11 +46,11 @@ pub async fn run() -> Result<()> {
 		.unwrap_or(false);
 
 	let args = args::get_args(tagged_filterer)?;
+	let verbosity = args.occurrences_of("verbose");
 
 	if log_on {
 		warn!("ignoring logging options from args");
-	} else {
-		let verbosity = args.occurrences_of("verbose");
+	} else if verbosity > 0 {
 		let log_file = if let Some(file) = args.value_of_os("log-file") {
 			// TODO: use tracing-appender instead
 			Some(File::create(file).into_diagnostic()?)
@@ -59,9 +59,10 @@ pub async fn run() -> Result<()> {
 		};
 
 		let mut builder = tracing_subscriber::fmt().with_env_filter(match verbosity {
-			0 => "watchexec_cli=warn",
-			1 => "watchexec=debug,watchexec_filterer_globset=debug,watchexec_filterer_ignore=debug,watchexec_filterer_tagged=debug,watchexec_cli=debug",
-			2 => "ignore_files=trace,project_origins=trace,watchexec=trace,watchexec_filterer_globset=trace,watchexec_filterer_ignore=trace,watchexec_filterer_tagged=trace,watchexec_cli=trace",
+			0 => unreachable!("checked by if earlier"),
+			1 => "warn",
+			2 => "info",
+			3 => "debug",
 			_ => "trace",
 		});
 
@@ -82,7 +83,8 @@ pub async fn run() -> Result<()> {
 		}
 	}
 
-	debug!(version=%env!("CARGO_PKG_VERSION"), ?args, "constructing Watchexec from CLI");
+	info!(version=%env!("CARGO_PKG_VERSION"), "constructing Watchexec from CLI");
+	debug!(?args, "arguments");
 
 	let init = config::init(&args)?;
 	let mut runtime = config::runtime(&args)?;
@@ -93,13 +95,17 @@ pub async fn run() -> Result<()> {
 		filterer::globset(&args).await?
 	});
 
+	info!("initialising Watchexec runtime");
 	let wx = Watchexec::new(init, runtime)?;
 
 	if !args.is_present("postpone") {
+		debug!("kicking off with empty event");
 		wx.send_event(Event::default(), Priority::Urgent).await?;
 	}
 
+	info!("running main loop");
 	wx.main().await.into_diagnostic()??;
+	info!("done with main loop");
 
 	Ok(())
 }

@@ -9,7 +9,7 @@ use dunce::canonicalize;
 use ignore_files::IgnoreFile;
 use miette::{miette, IntoDiagnostic, Result};
 use project_origins::ProjectType;
-use tracing::{debug, warn};
+use tracing::{debug, warn, info};
 use watchexec::paths::common_prefix;
 
 pub async fn dirs(args: &ArgMatches) -> Result<(PathBuf, PathBuf)> {
@@ -73,10 +73,10 @@ pub async fn dirs(args: &ArgMatches) -> Result<(PathBuf, PathBuf)> {
 		)
 		.into_diagnostic()?
 	};
-	debug!(?project_origin, "resolved common/project origin");
+	info!(?project_origin, "resolved common/project origin");
 
 	let workdir = curdir;
-	debug!(?workdir, "resolved working directory");
+	info!(?workdir, "resolved working directory");
 
 	Ok((project_origin, workdir))
 }
@@ -87,7 +87,7 @@ pub async fn vcs_types(origin: &Path) -> Vec<ProjectType> {
 		.into_iter()
 		.filter(|pt| pt.is_vcs())
 		.collect::<Vec<_>>();
-	debug!(?vcs_types, "resolved vcs types");
+	info!(?vcs_types, "resolved vcs types");
 	vcs_types
 }
 
@@ -194,5 +194,6 @@ pub async fn ignores(
 		debug!(?ignores, "filtered ignores to exclude VCS-specific ignores");
 	}
 
+	info!(files=?ignores.iter().map(|ig| ig.path.as_path()).collect::<Vec<_>>(), "found some ignores");
 	ignores
 }
