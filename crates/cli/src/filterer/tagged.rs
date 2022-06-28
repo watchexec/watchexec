@@ -4,7 +4,7 @@ use clap::ArgMatches;
 use futures::future::try_join_all;
 use ignore_files::IgnoreFile;
 use miette::{IntoDiagnostic, Result};
-use tracing::{debug, trace, warn};
+use tracing::{info, trace, warn};
 use watchexec_filterer_tagged::{
 	discover_files_from_environment, Filter, FilterFile, Matcher, Op, Pattern, TaggedFilterer,
 };
@@ -29,14 +29,14 @@ pub async fn tagged(args: &ArgMatches) -> Result<Arc<TaggedFilterer>> {
 		});
 		filter_files.push(file);
 	}
-	debug!(?filter_files, "resolved command filter files");
+	info!(?filter_files, "resolved command filter files");
 
 	if !args.is_present("no-global-filters") {
 		let (global_filter_files, errors) = discover_files_from_environment().await;
 		for err in errors {
 			warn!("while discovering project-local filter files: {}", err);
 		}
-		debug!(?global_filter_files, "discovered global filter files");
+		info!(?global_filter_files, "discovered global filter files");
 		filter_files.extend(global_filter_files);
 	}
 
@@ -85,9 +85,9 @@ pub async fn tagged(args: &ArgMatches) -> Result<Arc<TaggedFilterer>> {
 		});
 	}
 
-	debug!(filters=%filters.len(), "parsed filters");
 	trace!(?filters, "all filters");
 	filterer.add_filters(&filters).await?;
 
+	info!(filters=%filters.len(), "initialising Tagged filterer");
 	Ok(filterer)
 }

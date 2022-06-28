@@ -6,6 +6,7 @@ use std::{
 
 use clap::ArgMatches;
 use miette::{IntoDiagnostic, Result};
+use tracing::info;
 use watchexec::{
 	error::RuntimeError,
 	event::{
@@ -62,6 +63,7 @@ pub async fn globset(args: &ArgMatches) -> Result<Arc<WatchexecFilterer>> {
 		.flat_map(|s| s.split(b','))
 		.map(|e| os_strip_prefix(e, b'.'));
 
+	info!("initialising Globset filterer");
 	Ok(Arc::new(WatchexecFilterer {
 		inner: GlobsetFilterer::new(project_origin, filters, ignores, ignore_files, exts)
 			.await
