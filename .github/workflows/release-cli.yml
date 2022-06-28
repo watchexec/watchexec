@@ -191,6 +191,7 @@ jobs:
           mv target/**/*.rpm "$dst.rpm"
       - name: Archive (zip)
         if: startsWith(matrix.name, 'windows-')
+        shell: bash
         run: 7z a "$dst.zip" "$dst"
 
       - uses: actions/upload-artifact@v2
