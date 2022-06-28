@@ -18,7 +18,7 @@ pub async fn dirs(args: &ArgMatches) -> Result<(PathBuf, PathBuf)> {
 		.into_diagnostic()?;
 	debug!(?curdir, "current directory");
 
-	let project_origin = if let Some(origin) = args.value_of("project-origin") {
+	let project_origin = if let Some(origin) = args.value_of_os("project-origin") {
 		debug!(?origin, "project origin override");
 		canonicalize(origin).into_diagnostic()?
 	} else {

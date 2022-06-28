@@ -34,7 +34,8 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches> {
 			.value_name("path")
 			.number_of_values(1)
 			.multiple_occurrences(true)
-			.takes_value(true))
+			.takes_value(true)
+			.allow_invalid_utf8(true))
 		.arg(Arg::new("clear")
 			.help_heading(Some(OPTSET_OUTPUT))
 			.help("Clear screen before executing command")
@@ -81,7 +82,8 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches> {
 			.help("Write debugging messages to file in JSON format (use for bug reports)")
 			.long("log-file")
 			.takes_value(true)
-			.value_name("path"))
+			.value_name("path")
+			.allow_invalid_utf8(true))
 		.arg(Arg::new("print-events")
 			.help_heading(Some(OPTSET_DEBUGGING))
 			.help("Print events that trigger actions")
@@ -159,12 +161,14 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches> {
 			.help_heading(Some(OPTSET_FILTERING))
 			.help("Override the project origin: the directory from which ignore files are detected")
 			.value_name("path")
-			.long("project-origin"))
+			.long("project-origin")
+			.allow_invalid_utf8(true))
 		.arg(Arg::new("command-workdir")
 			.help_heading(Some(OPTSET_COMMAND))
 			.help("Change the working directory of the command")
 			.value_name("path")
-			.long("workdir"))
+			.long("workdir")
+			.allow_invalid_utf8(true))
 		.arg(Arg::new("command-env")
 			.help_heading(Some(OPTSET_COMMAND))
 			.help("Add an environment variable to the command")
@@ -195,7 +199,8 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches> {
 				.number_of_values(1)
 				.multiple_occurrences(true)
 				.takes_value(true)
-				.value_name("path"),
+				.value_name("path")
+				.allow_invalid_utf8(true),
 		)
 		.arg(
 			Arg::new("no-global-filters")
@@ -216,7 +221,8 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches> {
 				.help("Comma-separated list of file extensions to watch (e.g. js,css,html)")
 				.short('e')
 				.long("exts")
-				.takes_value(true),
+				.takes_value(true)
+				.allow_invalid_utf8(true),
 		)
 		.arg(
 			Arg::new("filter")
