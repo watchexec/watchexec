@@ -66,11 +66,10 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 		.value_of("signal")
 		.map(SubSignal::from_str)
 		.transpose()
-		.into_diagnostic()?
-		.unwrap_or(SubSignal::Terminate);
+		.into_diagnostic()?;
 
 	if args.is_present("kill") {
-		signal = SubSignal::ForceStop;
+		signal = Some(SubSignal::ForceStop);
 	}
 
 	let print_events = args.is_present("print-events");
@@ -187,8 +186,18 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 		let when_idle = start.clone();
 		let when_running = match on_busy.as_str() {
 			"do-nothing" => Outcome::DoNothing,
-			"restart" => start,
-			"signal" => Outcome::Signal(signal),
+			"restart" => Outcome::both(
+				if let Some(sig) = signal {
+					Outcome::both(
+						Outcome::Signal(sig),
+						Outcome::both(Outcome::Sleep(Duration::from_secs(60)), Outcome::Stop),
+					)
+				} else {
+					Outcome::Stop
+				},
+				start,
+			),
+			"signal" => Outcome::Signal(signal.unwrap_or(SubSignal::Terminate)),
 			"queue" => Outcome::wait(start),
 			_ => Outcome::DoNothing,
 		};
