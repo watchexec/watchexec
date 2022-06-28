@@ -3,7 +3,7 @@
 use std::{env::var, fs::File, sync::Mutex};
 
 use miette::{IntoDiagnostic, Result};
-use tracing::debug;
+use tracing::{warn, debug};
 use tracing_log::LogTracer;
 use watchexec::{
 	event::{Event, Priority},
@@ -22,11 +22,14 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 async fn main() -> Result<()> {
 	LogTracer::init().into_diagnostic()?;
 
-	#[cfg(feature = "dev-console")]
-	console_subscriber::init();
+	#[cfg(feature = "dev-console")] {
+		console_subscriber::try_init().ok();
+		warn!("dev-console enabled");
+	}
 
 	if var("RUST_LOG").is_ok() && cfg!(not(feature = "dev-console")) {
-		tracing_subscriber::fmt::init();
+		tracing_subscriber::fmt::try_init().ok();
+		warn!(RUST_LOG=%var("RUST_LOG").unwrap(), "logging configured from RUST_LOG");
 	}
 
 	let tagged_filterer = var("WATCHEXEC_FILTERER")
