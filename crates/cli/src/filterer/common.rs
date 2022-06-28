@@ -29,7 +29,7 @@ pub async fn dirs(args: &ArgMatches) -> Result<(PathBuf, PathBuf)> {
 		debug!(?homedir, "home directory");
 
 		let mut paths = HashSet::new();
-		for path in args.values_of("paths").unwrap_or_default() {
+		for path in args.values_of_os("paths").unwrap_or_default() {
 			paths.insert(canonicalize(path).into_diagnostic()?);
 		}
 

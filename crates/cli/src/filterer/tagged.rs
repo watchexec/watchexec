@@ -21,7 +21,7 @@ pub async fn tagged(args: &ArgMatches) -> Result<Arc<TaggedFilterer>> {
 	}
 
 	let mut filter_files = Vec::new();
-	for path in args.values_of_os("filter-file").unwrap_or_default() {
+	for path in args.values_of_os("filter-files").unwrap_or_default() {
 		let file = FilterFile(IgnoreFile {
 			applies_in: None,
 			applies_to: None,
