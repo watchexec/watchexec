@@ -96,9 +96,11 @@ jobs:
             body_merge="Upon merging, you will still need to manually publish the cargo crate."
           fi
 
-          body_outro="${fence}$ cd ${{ env.crate_path }}${nl}$ cargo publish${ecnef}${br}To merge this release, review the changes then say:${br}| bors r+ p=10 |${nl}|:-:|"
+          body_pub="${fence}$ cd ${{ env.crate_path }}${nl}$ cargo publish${ecnef}"
+          body_bors="To merge this release, review the changes then say:${br}| bors r+ p=10 |${nl}|:-:|"
+          body_notes="---${br}Edit release notes into the section below${br}<!-- do not change or remove this heading -->${nl}### Release notes"
 
-          body="${body_intro}${br}${body_merge}${br}${body_outro}"
+          body="${body_intro}${br}${body_merge}${br}${body_pub}${br}${body_bors}${br}${body_notes}${br}"
 
           gh pr create --title "$title" --body "$body" --base main --head "${{ env.branch_name }}" --label "release"
         env:
