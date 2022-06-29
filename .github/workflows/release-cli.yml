@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       cli_version: ${{ steps.version.outputs.cli_version }}
-      release_notes: ${{ steps.notes.outputs.release_notes }}
+      release_notes: ${{ fromJSON(steps.notes.outputs.notes_json) }}
       announce: ${{ steps.announce.outputs.announce }}
     steps:
       - uses: actions/checkout@v2
@@ -43,21 +43,23 @@ jobs:
           set -euxo pipefail
           release_pr=$(head -n1 <<< "${release_commit:-}" | grep -oP '(?<=[(]#)\d+(?=[)])')
           if [[ -z "$release_pr" ]]; then
-            echo "::set-output name=release_notes::"
+            echo "::set-output name=notes_json::null"
             exit
           fi
 
-          notes="$(gh \
+          gh \
             pr --repo "$GITHUB_REPO" \
             view "$release_pr" \
             --json body \
-            --jq '.body | split("### Release notes")[1] // ""')"
-          echo "::set-output name=release_notes::$notes"
+            --jq '"::set-output name=notes_json::\((.body | split("### Release notes")[1] // "") | tojson)"'
 
       - name: Make a new announcement post
         id: announce
         if: endsWith(steps.version.outputs.cli_version, '.0')
         run: echo "::set-output name=announce::Announcements"
+        # TODO: append patch release notes as comments on minor version announce discussion
+        # TODO: add link to discussion from patch release notes
+        # TODO: rename minor version announce discussion to be just CLI vX.Y (remove .0)
 
   build:
     strategy:
@@ -240,9 +242,6 @@ jobs:
     name: Checksum and sign
     runs-on: ubuntu-latest
 
-    env:
-      version: ${{ needs.info.outputs.cli_version }}
-      tag_name: cli-v${{ needs.info.outputs.cli_version }}
 
     steps:
       - uses: actions/checkout@v2
@@ -273,6 +272,7 @@ jobs:
         shell: bash
         env:
           RELEASE_KEY: ${{ secrets.RELEASE_KEY }}
+          version: ${{ needs.info.outputs.cli_version }}
         run: |
           set -u
           echo "$RELEASE_KEY" > release.key
@@ -289,9 +289,10 @@ jobs:
           rm release.key
           cat {B3,SHA512}SUMS.auto.minisig
 
-      - uses: softprops/action-gh-release@v1
+      - uses: softprops/action-gh-release@50195ba7f6f93d1ac97ba8332a178e008ad176aa
         with:
-          tag_name: ${{ env.tag_name }}
+          tag_name: cli-v${{ needs.info.outputs.cli_version }}
+          name: CLI v${{ needs.info.outputs.cli_version }}
           body: ${{ needs.info.outputs.release_notes }}
           append_body: true
           discussion_category_name: ${{ needs.info.outputs.announce }}
