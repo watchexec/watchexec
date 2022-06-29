@@ -13,6 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       cli_version: ${{ steps.version.outputs.cli_version }}
+      release_notes: ${{ steps.notes.outputs.release_notes }}
     steps:
       - uses: actions/checkout@v2
       - name: Extract version
@@ -29,6 +30,27 @@ jobs:
           fi
 
           echo "::set-output name=cli_version::$version"
+      - name: Extract release notes
+        id: notes
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPO: ${{ github.repository }}
+          release_commit: ${{ github.event.head_commit.message }}
+        run: |
+          set -euxo pipefail
+          release_pr=$(head -n1 <<< "${release_commit:-}" | grep -oP '(?<=[(]#)\d+(?=[)])')
+          if [[ -z "$release_pr" ]]; then
+            echo "::set-output name=release_notes::"
+            exit
+          fi
+
+          notes="$(gh \
+            pr --repo "$GITHUB_REPO" \
+            view "$release_pr" \
+            --json body \
+            --jq '.body | split("### Release notes")[1] // ""')"
+          echo "::set-output name=release_notes::$notes"
 
   build:
     strategy:
