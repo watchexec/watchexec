@@ -101,6 +101,7 @@ pkg-fmt = "zip"
 maintainer = "Félix Saparelli <felix@passcod.name>"
 license-file = ["../../LICENSE", "0"]
 section = "utility"
+depends = "libc6, libgcc-s1" # not needed for musl, but see below
 # conf-files = [] # look me up when config file lands
 assets = [
 	["../../target/release/watchexec", "usr/bin/", "755"],
@@ -121,3 +122,11 @@ assets = [
 	{ source = "../../doc/logo.svg", dest = "/usr/share/icons/hicolor/scalable/apps/watchexec.svg", mode = "644" },
 	# set conf = true for config file when that lands
 ]
+
+auto-req = "disabled"
+# technically incorrect when using musl, but these are probably
+# present on every rpm-using system, so let's worry about it if
+# someone asks.
+[package.metadata.generate-rpm.requires]
+glibc = "*"
+libgcc = "*"
