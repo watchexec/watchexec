@@ -14,6 +14,7 @@ jobs:
     outputs:
       cli_version: ${{ steps.version.outputs.cli_version }}
       release_notes: ${{ steps.notes.outputs.release_notes }}
+      announce: ${{ steps.announce.outputs.announce }}
     steps:
       - uses: actions/checkout@v2
       - name: Extract version
@@ -30,6 +31,7 @@ jobs:
           fi
 
           echo "::set-output name=cli_version::$version"
+
       - name: Extract release notes
         id: notes
         shell: bash
@@ -51,6 +53,11 @@ jobs:
             --json body \
             --jq '.body | split("### Release notes")[1] // ""')"
           echo "::set-output name=release_notes::$notes"
+
+      - name: Make a new announcement post
+        id: announce
+        if: endsWith(steps.version.outputs.cli_version, '.0')
+        run: echo "::set-output name=announce::Announcements"
 
   build:
     strategy:
@@ -285,6 +292,9 @@ jobs:
       - uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ env.tag_name }}
+          body: ${{ needs.info.outputs.release_notes }}
+          append_body: true
+          discussion_category_name: ${{ needs.info.outputs.announce }}
           files: |
             watchexec-*.tar.xz
             watchexec-*.tar.zst
