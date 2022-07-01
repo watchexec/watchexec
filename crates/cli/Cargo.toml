@@ -80,10 +80,6 @@ mimalloc = "0.1.26"
 [build-dependencies]
 embed-resource = "1.6.1"
 
-[dev-dependencies]
-assert_cmd = "2.0.4"
-insta = "1.10.0"
-
 [features]
 ## For debugging only: enables the Tokio Console.
 dev-console = ["console-subscriber"]
