@@ -100,7 +100,7 @@ section = "utility"
 depends = "libc6, libgcc-s1" # not needed for musl, but see below
 # conf-files = [] # look me up when config file lands
 assets = [
-	["../../target/release/watchexec", "usr/bin/", "755"],
+	["../../target/release/watchexec", "usr/bin/watchexec", "755"],
 	["README.md", "usr/share/doc/watchexec/README", "644"],
 	["../../doc/watchexec.1.html", "usr/share/doc/watchexec/watchexec.1.html", "644"],
 	["../../doc/watchexec.1", "usr/share/man/man1/watchexec.1.html", "644"],
@@ -110,7 +110,7 @@ assets = [
 
 [package.metadata.generate-rpm]
 assets = [
-	{ source = "../../target/release/watchexec", dest = "/usr/bin/", mode = "755" },
+	{ source = "../../target/release/watchexec", dest = "/usr/bin/watchexec", mode = "755" },
 	{ source = "README.md", dest = "/usr/share/doc/watchexec/README", mode = "644", doc = true },
 	{ source = "../../doc/watchexec.1.html", dest = "/usr/share/doc/watchexec/watchexec.1.html", mode = "644", doc = true },
 	{ source = "../../doc/watchexec.1", dest = "/usr/share/man/man1/watchexec.1.html", mode = "644" },
