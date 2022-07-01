@@ -5,8 +5,8 @@ message: |
   If you use this software, please cite it using these metadata.
 
 title: Watchexec
-version: "1.20.3"
-date-released: 2022-06-29
+version: "1.20.4"
+date-released: 2022-07-01
 
 repository-code: https://github.com/watchexec/watchexec
 license: Apache-2.0
