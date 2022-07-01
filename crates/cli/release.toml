@@ -15,20 +15,6 @@ prerelease = false
 max = 1
 
 [[pre-release-replacements]]
-file = "tests/snapshots/help__help_windows.snap"
-search = "watchexec [\\d.]+(-.+)?"
-replace = "watchexec {{version}}"
-prerelease = true
-max = 1
-
-[[pre-release-replacements]]
-file = "tests/snapshots/help__help_unix.snap"
-search = "watchexec [\\d.]+(-.+)?"
-replace = "watchexec {{version}}"
-prerelease = true
-max = 1
-
-[[pre-release-replacements]]
 file = "../../CITATION.cff"
 search = "^version: \"?[\\d.]+(-.+)?\"?"
 replace = "version: \"{{version}}\""
