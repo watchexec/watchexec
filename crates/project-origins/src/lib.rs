@@ -96,6 +96,11 @@ pub enum ProjectType {
 	/// Detects when a `mix.exs` file is present.
 	Elixir,
 
+	/// Soft: the [Go](https://golang.net) language.
+	///
+	/// Detects when a `go.mod` or `go.sum` file is present.
+	Go,
+
 	/// Soft: [Java](https://www.java.com/)’s [Gradle](https://gradle.org/).
 	///
 	/// Detects when a `build.gradle` file is present.
@@ -233,6 +238,8 @@ pub async fn origins(path: impl AsRef<Path>) -> HashSet<PathBuf> {
 			list.has_file("requirements.txt"),
 			list.has_file("v.mod"),
 			list.has_file("CONTRIBUTING.md"),
+			list.has_file("go.mod"),
+			list.has_file("go.sum"),
 		]
 		.into_iter()
 		.any(|f| f)
@@ -292,6 +299,8 @@ pub async fn types(path: impl AsRef<Path>) -> HashSet<ProjectType> {
 		list.if_has_file("project.clj", ProjectType::Leiningen),
 		list.if_has_file("requirements.txt", ProjectType::Pip),
 		list.if_has_file("v.mod", ProjectType::V),
+		list.if_has_file("go.mod", ProjectType::Go),
+		list.if_has_file("go.sum", ProjectType::Go),
 	]
 	.into_iter()
 	.flatten()
