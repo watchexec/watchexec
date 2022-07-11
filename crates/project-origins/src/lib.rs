@@ -143,6 +143,11 @@ pub enum ProjectType {
 	///
 	/// Detects when a `v.mod` file is present.
 	V,
+
+	/// Soft: the [Zig](https://ziglang.org/) language.
+	///
+	/// Detects when a `build.zig` file is present.
+	Zig,
 }
 
 impl ProjectType {
@@ -241,6 +246,7 @@ pub async fn origins(path: impl AsRef<Path>) -> HashSet<PathBuf> {
 			list.has_file("go.mod"),
 			list.has_file("go.sum"),
 			list.has_file("Pipfile"),
+			list.has_file("build.zig"),
 		]
 		.into_iter()
 		.any(|f| f)
@@ -303,6 +309,7 @@ pub async fn types(path: impl AsRef<Path>) -> HashSet<ProjectType> {
 		list.if_has_file("go.mod", ProjectType::Go),
 		list.if_has_file("go.sum", ProjectType::Go),
 		list.if_has_file("Pipfile", ProjectType::Pip),
+		list.if_has_file("build.zig", ProjectType::Zig),
 	]
 	.into_iter()
 	.flatten()
