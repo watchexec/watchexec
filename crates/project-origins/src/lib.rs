@@ -232,6 +232,7 @@ pub async fn origins(path: impl AsRef<Path>) -> HashSet<PathBuf> {
 			list.has_file("README"),
 			list.has_file("requirements.txt"),
 			list.has_file("v.mod"),
+			list.has_file("CONTRIBUTING.md"),
 		]
 		.into_iter()
 		.any(|f| f)
