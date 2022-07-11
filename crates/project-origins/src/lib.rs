@@ -31,65 +31,112 @@ use tokio_stream::wrappers::ReadDirStream;
 #[non_exhaustive]
 pub enum ProjectType {
 	/// VCS: [Bazaar](https://bazaar.canonical.com/).
+	///
+	/// Detects when a `.bzr` folder or a `.bzrignore` file is present. Bazaar does not support (at
+	/// writing, anyway) ignore files deeper than the repository origin, so this should not
+	/// false-positive.
 	Bazaar,
 
 	/// VCS: [Darcs](http://darcs.net/).
+	///
+	/// Detects when a `_darcs` folder is present.
 	Darcs,
 
 	/// VCS: [Fossil](https://www.fossil-scm.org/).
+	///
+	/// Detects when a `.fossil-settings` folder is present.
 	Fossil,
 
 	/// VCS: [Git](https://git-scm.com/).
+	///
+	/// Detects when a `.git` folder is present, or any of the files `.gitattributes` or
+	/// `.gitmodules`. Does _not_ check or return from the presence of `.gitignore` files, as Git
+	/// supports nested ignores, and that would result in false-positives.
 	Git,
 
 	/// VCS: [Mercurial](https://www.mercurial-scm.org/).
+	///
+	/// Detects when a `.hg` folder is present, or any of the files `.hgignore` or `.hgtags`.
+	/// Mercurial does not support (at writing, anyway) ignore files deeper than the repository
+	/// origin, so this should not false-positive.
 	Mercurial,
 
 	/// VCS: [Pijul](https://pijul.org/).
+	///
+	/// This is not detected at the moment.
 	Pijul,
 
 	/// VCS: [Subversion](https://subversion.apache.org) (aka SVN).
+	///
+	/// Detects when a `.svn` folder is present.
 	Subversion,
 
 	/// Soft: [Ruby](https://www.ruby-lang.org/)’s [Bundler](https://bundler.io/).
+	///
+	/// Detects when a `Gemfile` file is present.
 	Bundler,
 
 	/// Soft: the [C programming language](https://en.wikipedia.org/wiki/C_(programming_language)).
+	///
+	/// Detects when a `.ctags` file is present.
 	C,
 
 	/// Soft: [Rust](https://www.rust-lang.org/)’s [Cargo](https://doc.rust-lang.org/cargo/).
+	///
+	/// Detects Cargo workspaces and Cargo crates through the presence of a `Cargo.toml` file.
 	Cargo,
 
 	/// Soft: the [Docker](https://www.docker.com/) container runtime.
+	///
+	/// Detects when a `Dockerfile` file is present.
 	Docker,
 
 	/// Soft: the [Elixir](https://elixir-lang.org/) language.
+	///
+	/// Detects when a `mix.exs` file is present.
 	Elixir,
 
 	/// Soft: [Java](https://www.java.com/)’s [Gradle](https://gradle.org/).
+	///
+	/// Detects when a `build.gradle` file is present.
 	Gradle,
 
 	/// Soft: [EcmaScript](https://www.ecmascript.org/) (aka JavaScript).
 	///
-	/// This is a catch-all for all `package.json`-based projects.
+	/// Detects when a `package.json` or `cgmanifest.json` file is present.
+	///
+	/// This is a catch-all for all `package.json`-based projects, and does not differentiate
+	/// between NPM, Yarn, PNPM, Node, browser, Deno, Bun, etc.
 	JavaScript,
 
 	/// Soft: [Clojure](https://clojure.org/)’s [Leiningen](https://leiningen.org/).
+	///
+	/// Detects when a `project.clj` file is present.
 	Leiningen,
 
 	/// Soft: [Java](https://www.java.com/)’s [Maven](https://maven.apache.org/).
+	///
+	/// Detects when a `pom.xml` file is present.
 	Maven,
 
 	/// Soft: the [Perl](https://www.perl.org/) language.
+	///
+	/// Detects when a `.perltidyrc` or `Makefile.PL` file is present.
 	Perl,
 
 	/// Soft: the [PHP](https://www.php.net/) language.
+	///
+	/// Detects when a `composer.json` file is present.
 	PHP,
 
 	/// Soft: [Python](https://www.python.org/)’s [Pip](https://www.pip.org/).
+	///
+	/// Detects when a `requirements.txt` file is present.
 	Pip,
 
 	/// Soft: the [V](https://www.v-lang.org/) language.
+	///
+	/// Detects when a `v.mod` file is present.
 	V,
 }
 
@@ -127,6 +174,9 @@ impl ProjectType {
 /// present and indicative of the root or origin path of a project. It's entirely possible to have
 /// multiple such origins show up: for example, a member of a Cargo workspace will list both the
 /// member project and the workspace root as origins.
+///
+/// This looks at a wider variety of files than the [`types`] function does: something can be
+/// detected as an origin but not be able to match to any particular [`ProjectType`].
 pub async fn origins(path: impl AsRef<Path>) -> HashSet<PathBuf> {
 	let mut origins = HashSet::new();
 
