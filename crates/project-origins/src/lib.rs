@@ -136,7 +136,7 @@ pub enum ProjectType {
 
 	/// Soft: [Python](https://www.python.org/)’s [Pip](https://www.pip.org/).
 	///
-	/// Detects when a `requirements.txt` file is present.
+	/// Detects when a `requirements.txt` or `Pipfile` file is present.
 	Pip,
 
 	/// Soft: the [V](https://www.v-lang.org/) language.
@@ -240,6 +240,7 @@ pub async fn origins(path: impl AsRef<Path>) -> HashSet<PathBuf> {
 			list.has_file("CONTRIBUTING.md"),
 			list.has_file("go.mod"),
 			list.has_file("go.sum"),
+			list.has_file("Pipfile"),
 		]
 		.into_iter()
 		.any(|f| f)
@@ -301,6 +302,7 @@ pub async fn types(path: impl AsRef<Path>) -> HashSet<ProjectType> {
 		list.if_has_file("v.mod", ProjectType::V),
 		list.if_has_file("go.mod", ProjectType::Go),
 		list.if_has_file("go.sum", ProjectType::Go),
+		list.if_has_file("Pipfile", ProjectType::Pip),
 	]
 	.into_iter()
 	.flatten()
