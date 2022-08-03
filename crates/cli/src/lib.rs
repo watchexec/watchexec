@@ -13,10 +13,6 @@ mod args;
 mod config;
 mod filterer;
 
-#[cfg(target_env = "musl")]
-#[global_allocator]
-static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
-
 pub async fn run() -> Result<()> {
 	let mut log_on = false;
 
