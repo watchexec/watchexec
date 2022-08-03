@@ -71,6 +71,8 @@ jobs:
           - linux-armhf-gnu
           - linux-arm64-gnu
           - linux-arm64-musl
+          - linux-s390x-gnu
+          - linux-ppc64le-gnu
           - mac-x86-64
           - mac-arm64
           - windows-x86-64
@@ -110,6 +112,18 @@ jobs:
             target: aarch64-unknown-linux-musl
             cross: true
             experimental: true
+
+          - name: linux-s390x-gnu
+            os: ubuntu-latest
+            target: s390x-unknown-linux-gnu
+            cross: true
+            experimental: false
+
+          - name: linux-ppc64le-gnu
+            os: ubuntu-latest
+            target: powerpc64le-unknown-linux-gnu
+            cross: true
+            experimental: false
 
           - name: mac-x86-64
             os: macos-latest
@@ -160,6 +174,12 @@ jobs:
       - name: Add arm7hf-gnu tools
         run: sudo apt install -y gcc-arm-linux-gnueabihf
         if: startsWith(matrix.target, 'armv7-unknown-linux-gnueabihf')
+      - name: Add s390x-gnu tools
+        run: sudo apt install -y gcc-s390x-linux-gnu
+        if: startsWith(matrix.target, 's390x-unknown-linux-gnu')
+      - name: Add ppc64le-gnu tools
+        run: sudo apt install -y gcc-powerpc64le-linux-gnu
+        if: startsWith(matrix.target, 'powerpc64le-unknown-linux-gnu')
 
       - name: Install cargo-deb
         if: startsWith(matrix.name, 'linux-')
