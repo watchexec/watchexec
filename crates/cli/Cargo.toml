@@ -38,7 +38,7 @@ version = "1.0.0"
 path = "../ignore-files"
 
 [dependencies.project-origins]
-version = "1.0.0"
+version = "1.1.0"
 path = "../project-origins"
 
 [dependencies.watchexec]

@@ -25,5 +25,5 @@ miette = "4.7.1"
 thiserror = "1.0.31"
 
 [dependencies.project-origins]
-version = "1.0.0"
+version = "1.1.0"
 path = "../project-origins"
