@@ -110,7 +110,7 @@ Checksums and signatures are available.
 
 #### Cargo (from source)
 
-Requires Rust 1.58.0 or later.
+Only the latest Rust stable is supported, but older versions may work.
 
     $ cargo install watchexec-cli
 

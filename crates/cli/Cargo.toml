@@ -13,7 +13,6 @@ homepage = "https://watchexec.github.io"
 repository = "https://github.com/watchexec/watchexec"
 readme = "README.md"
 
-rust-version = "1.58.0"
 edition = "2021"
 
 [[bin]]
