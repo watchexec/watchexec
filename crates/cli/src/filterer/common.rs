@@ -9,7 +9,7 @@ use dunce::canonicalize;
 use ignore_files::IgnoreFile;
 use miette::{miette, IntoDiagnostic, Result};
 use project_origins::ProjectType;
-use tracing::{debug, warn, info};
+use tracing::{debug, info, warn};
 use watchexec::paths::common_prefix;
 
 pub async fn dirs(args: &ArgMatches) -> Result<(PathBuf, PathBuf)> {

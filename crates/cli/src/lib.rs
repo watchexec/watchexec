@@ -3,7 +3,7 @@
 use std::{env::var, fs::File, sync::Mutex};
 
 use miette::{IntoDiagnostic, Result};
-use tracing::{info, warn, debug};
+use tracing::{debug, info, warn};
 use watchexec::{
 	event::{Event, Priority},
 	Watchexec,
