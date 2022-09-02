@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v1.1.0 (2022-08-24)
+
 - Add support for Go.
 - Add support for Zig.
 - Add `Pipfile` support for Pip.
