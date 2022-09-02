@@ -9,7 +9,7 @@ use std::{
 };
 
 use async_priority_channel as priority;
-use notify::{poll::PollWatcherConfig, Watcher as _};
+use notify::{Config, Watcher as _};
 use tokio::sync::{mpsc, watch};
 use tracing::{debug, error, trace, warn};
 
@@ -47,15 +47,13 @@ impl Watcher {
 		f: impl notify::EventHandler,
 	) -> Result<Box<dyn notify::Watcher + Send>, RuntimeError> {
 		match self {
-			Self::Native => notify::RecommendedWatcher::new(f).map(|w| Box::new(w) as _),
-			Self::Poll(delay) => notify::PollWatcher::with_config(
-				f,
-				PollWatcherConfig {
-					poll_interval: delay,
-					..Default::default()
-				},
-			)
-			.map(|w| Box::new(w) as _),
+			Self::Native => {
+				notify::RecommendedWatcher::new(f, Config::default()).map(|w| Box::new(w) as _)
+			}
+			Self::Poll(delay) => {
+				notify::PollWatcher::new(f, Config::default().with_poll_interval(delay))
+					.map(|w| Box::new(w) as _)
+			}
 		}
 		.map_err(|err| RuntimeError::FsWatcher {
 			kind: self,

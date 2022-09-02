@@ -24,13 +24,13 @@ jobs:
             toolchain: stable
           - name: msrv-ubuntu
             platform: ubuntu
-            toolchain: 1.58.0
+            toolchain: 1.60.0
           - name: msrv-windows
             platform: windows
-            toolchain: 1.58.0
+            toolchain: 1.60.0
           - name: msrv-macos
             platform: macos
-            toolchain: 1.58.0
+            toolchain: 1.60.0
 
     name: Test on ${{ matrix.platform }} with Rust ${{ matrix.toolchain }}
     runs-on: "${{ matrix.platform }}-latest"
