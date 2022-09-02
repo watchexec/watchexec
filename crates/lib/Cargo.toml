@@ -35,7 +35,7 @@ version = "1.0.0"
 path = "../ignore-files"
 
 [dependencies.notify]
-version = "=5.0.0-pre.16"
+version = "5.0.0"
 
 [dependencies.project-origins]
 version = "1.0.0"
