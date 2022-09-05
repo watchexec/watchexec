@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v2.0.1 (2022-09-05)
+
 ## v2.0.0 (2022-06-17)
 
 First "stable" release of the library.
