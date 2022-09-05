@@ -4,6 +4,8 @@
 
 ## v2.0.1 (2022-09-05)
 
+- Update Notify to stable 5.0.0.
+
 ## v2.0.0 (2022-06-17)
 
 First "stable" release of the library.
