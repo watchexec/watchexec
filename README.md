@@ -1,4 +1,3 @@
-[![Bors enabled](https://bors.tech/images/badge_small.svg)](https://app.bors.tech/repositories/45670)
 [![CI status on main branch](https://github.com/watchexec/watchexec/actions/workflows/main.yml/badge.svg)](https://github.com/watchexec/watchexec/actions/workflows/main.yml)
 
 # Watchexec

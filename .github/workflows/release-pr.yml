@@ -9,9 +9,9 @@ on:
         options:
           - cli
           - lib
-          - filterer-globset
-          - filterer-ignore
-          - filterer-tagged
+          - filterer/globset
+          - filterer/ignore
+          - filterer/tagged
           - ignore-files
           - project-origins
       version:
@@ -24,85 +24,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Install cargo-release
-        uses: baptiste0928/cargo-install@v1
+        uses: taiki-e/install-action@v1
         with:
-          crate: cargo-release
-          version: "0.21"
+          tool: cargo-release
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           ref: main
 
-      - name: Extract info
-        run: |
-          set -euxo pipefail
-
-          if [[ "${{ inputs.crate }}" == filterer-* ]]; then
-            crate_path="crates/$(tr '-' '/' <<< "${{ inputs.crate }}")"
-          else
-            crate_path="crates/${{ inputs.crate }}"
-          fi
-
-          pushd "$crate_path"
-          crate_name=$(head Cargo.toml -n2 | grep name | cut -d '"' -f2)
-          popd
-
-          branch_name="release-${{ inputs.crate }}-${{ inputs.version }}"
-
-          echo "crate_name=${crate_name}" >> $GITHUB_ENV
-          echo "crate_path=${crate_path}" >> $GITHUB_ENV
-          echo "branch_name=${branch_name}" >> $GITHUB_ENV
-
-      - name: Make release branch
-        run: git switch -c "${{ env.branch_name }}"
-
-      - name: Do release
-        run: |
-          set -euxo pipefail
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          cargo release \
-            --execute \
-            --no-push \
-            --no-tag \
-            --no-publish \
-            --no-confirm \
-            --verbose \
-            --config "${{ env.crate_path }}/release.toml" \
-            --allow-branch "${{ env.branch_name }}" \
-            --dependent-version upgrade \
-            --package "${{ env.crate_name }}" \
-            "${{ inputs.version }}"
-
-      - name: Push new branch
-        run: |
-          set -euxo pipefail
-          git push origin "${{ env.branch_name }}"
-
-      - name: Create PR
-        run: |
-          set -euxo pipefail
-
-          nl=$'\n'
-          br=$'\n\n'
-          fence=$'```\n'
-          ecnef=$'\n```'
-
-          title="release: ${{ inputs.crate }} v${{ inputs.version }}"
-          body_intro="This is a release PR for **${{ inputs.crate }}** to version **${{ inputs.version }}**."
-          if [[ "${{ inputs.crate }}" == "cli" ]]; then
-            body_merge="Upon merging, this will automatically build the CLI and create a GitHub release. You still need to manually publish the cargo crate."
-            body_notes="---${br}_Edit release notes into the section below:_${br}<!-- do not change or remove this heading -->${nl}### Release notes"
-          else
-            body_merge="Upon merging, you will still need to manually publish the cargo crate."
-            body_notes=""
-          fi
-
-          body_pub="${fence}$ cd ${{ env.crate_path }}${nl}$ cargo publish${ecnef}"
-          body_bors="To merge this release, review the changes then say:${br}| bors r+ p=10 |${nl}|:-:|"
-
-          body="${body_intro}${br}${body_merge}${br}${body_pub}${br}${body_bors}${br}${body_notes}${br}"
-
-          gh pr create --title "$title" --body "$body" --base main --head "${{ env.branch_name }}" --label "release"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: cargo-bins/release-pr@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          version: ${{ inputs.version }}
+          crate-path: crates/${{ inputs.crate }}
+          pr-release-notes: true
+          pr-label: release
+          pr-template-file: .github/workflows/release-pr.ejs

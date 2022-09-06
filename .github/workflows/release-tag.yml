@@ -9,8 +9,8 @@ on:
 jobs:
   make-tag:
     runs-on: ubuntu-latest
-    # because only bors can push to main, and it squashes, only PRs
-    # that are named `release: {crate-name} v{version}` will get tagged!
+    # because we control the release PR title and only allow squashes,
+    # PRs that are named `release: {crate-name} v{version}` will get tagged!
     # the commit message will look like: `release: {crate-name} v{version} (#{pr-number})`
     if: "startsWith(github.event.head_commit.message, 'release: ')"
     steps:
@@ -23,7 +23,11 @@ jobs:
           message="$(head -n1 <<< "$COMMIT_MESSAGE")"
           crate="$(cut -d ' ' -f 2 <<< "${message}")"
           version="$(cut -d ' ' -f 3 <<< "${message}")"
-          echo "CUSTOM_TAG=${crate}-${version}" >> $GITHUB_ENV
+          if [[ "$crate" == "watchexec-cli" ]]; then
+            echo "CUSTOM_TAG=${version}" >> $GITHUB_ENV
+          else
+            echo "CUSTOM_TAG=${crate}-${version}" >> $GITHUB_ENV
+          fi
 
       - uses: actions/checkout@v2
       - name: Push release tag
@@ -36,6 +40,6 @@ jobs:
 
   release-cli:
     needs: make-tag
-    if: "startsWith(github.event.head_commit.message, 'release: cli v')"
+    if: "startsWith(github.event.head_commit.message, 'release: watchexec-cli v')"
     uses: ./.github/workflows/release-cli.yml
     secrets: inherit
