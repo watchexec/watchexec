@@ -218,16 +218,13 @@ jobs:
         run: |
           rustup toolchain install --profile minimal --no-self-update stable
           rustup default stable
+          rustup target add ${{ matrix.target }}
 
       - name: Install cross
         if: matrix.cross
         uses: taiki-e/install-action@v1
         with:
           tool: cross
-
-      - name: Install host target
-        if: "!matrix.cross"
-        run: rustup target add ${{ matrix.target }}
 
       - name: Build (cargo)
         if: "!matrix.cross"
