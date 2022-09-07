@@ -41,3 +41,8 @@ jobs:
           pr-release-notes: ${{ inputs.crate == 'cli' }}
           pr-label: release
           pr-template-file: .github/workflows/release-pr.ejs
+        env:
+          GITSIGN_LOG: /tmp/gitsign.log
+
+      - run: cat /tmp/gitsign.log
+        if: ${{ failure() }}
