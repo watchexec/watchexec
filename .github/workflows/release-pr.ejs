@@ -29,6 +29,8 @@ $ git switch --detach v<%= version.actual %>
 $ cargo publish -p <%= crate.name %>
 ```
 <% } else { %>
+Remember to review the crate's changelog!
+
 Upon merging, this will create the tag `<%= crate.name %>-v<%= version.actual %>`.
 You will still need to manually publish the cargo crate:
 
