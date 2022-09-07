@@ -18,6 +18,7 @@ on:
         description: Version to release
         required: true
         type: string
+        default: patch
 
 jobs:
   make-release-pr:
