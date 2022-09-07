@@ -461,13 +461,7 @@ impl DirTourist {
 
 	pub fn skip(&mut self, path: PathBuf) {
 		let check_path = path.as_path();
-		self.to_visit = self
-			.to_visit
-			.iter()
-			.filter(|p| !p.starts_with(check_path))
-			.cloned()
-			.collect();
-		// TODO: use drain_filter when that lands
+		self.to_visit = self.to_visit.retain(|p| !p.starts_with(check_path));
 
 		self.to_skip.insert(path);
 	}
