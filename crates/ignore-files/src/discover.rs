@@ -5,10 +5,7 @@ use std::{
 	path::{Path, PathBuf},
 };
 
-use git_config::{
-	file::{from_paths, GitConfig},
-	values::Path as GitPath,
-};
+use git_config::{path::interpolate::Context as InterpolateContext, File, Path as GitPath};
 use project_origins::ProjectType;
 use tokio::fs::{metadata, read_dir};
 use tracing::{trace, trace_span};
@@ -56,11 +53,18 @@ pub async fn from_origin(path: impl AsRef<Path>) -> (Vec<IgnoreFile>, Vec<Error>
 	match find_file(base.join(".git/config")).await {
 		Err(err) => errors.push(err),
 		Ok(None) => {}
-		Ok(Some(path)) => match GitConfig::open(&path) {
-			Err(err) => errors.push(Error::new(ErrorKind::Other, err)),
-			Ok(config) => {
+		Ok(Some(path)) => match path.parent().map(File::from_git_dir) {
+			None => errors.push(Error::new(
+				ErrorKind::Other,
+				"unreachable: .git/config must have a parent",
+			)),
+			Some(Err(err)) => errors.push(Error::new(ErrorKind::Other, err)),
+			Some(Ok(config)) => {
 				if let Ok(excludes) = config.value::<GitPath<'_>>("core", None, "excludesFile") {
-					match excludes.interpolate(None) {
+					match excludes.interpolate(InterpolateContext {
+						home_dir: env::var("HOME").ok().map(PathBuf::from).as_deref(),
+						..Default::default()
+					}) {
 						Ok(e) => {
 							discover_file(
 								&mut files,
@@ -200,12 +204,20 @@ pub async fn from_environment(appname: Option<&str>) -> (Vec<IgnoreFile>, Vec<Er
 	}
 
 	let mut found_git_global = false;
-	let options = from_paths::Options::default();
-	match GitConfig::from_env_paths(&options) {
+	match File::from_environment_overrides().map(|mut env| {
+		File::from_globals().map(move |glo| {
+			env.append(glo);
+			env
+		})
+	}) {
 		Err(err) => errors.push(Error::new(ErrorKind::Other, err)),
-		Ok(config) => {
+		Ok(Err(err)) => errors.push(Error::new(ErrorKind::Other, err)),
+		Ok(Ok(config)) => {
 			if let Ok(excludes) = config.value::<GitPath<'_>>("core", None, "excludesFile") {
-				match excludes.interpolate(None) {
+				match excludes.interpolate(InterpolateContext {
+					home_dir: env::var("HOME").ok().map(PathBuf::from).as_deref(),
+					..Default::default()
+				}) {
 					Ok(e) => {
 						if discover_file(
 							&mut files,
