@@ -2,6 +2,10 @@
 
 ## Next (YYYY-MM-DD)
 
+## v2.0.2 (2022-09-07)
+
+- Deps: upgrade to miette 5.3.0
+
 ## v2.0.1 (2022-09-07)
 
 - Deps: upgrade to Notify 5.0.0
