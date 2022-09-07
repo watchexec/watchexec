@@ -24,7 +24,7 @@ version = "1.0.1"
 path = "../../ignore-files"
 
 [dependencies.watchexec]
-version = "2.0.1"
+version = "2.0.2"
 path = "../../lib"
 
 [dependencies.watchexec-filterer-ignore]
