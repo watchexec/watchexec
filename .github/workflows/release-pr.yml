@@ -23,6 +23,7 @@ jobs:
   make-release-pr:
     runs-on: ubuntu-latest
     steps:
+      - uses: chainguard-dev/actions/setup-gitsign@main
       - name: Install cargo-release
         uses: taiki-e/install-action@v1
         with:
