@@ -4,6 +4,8 @@
 
 ## v1.1.1 (2022-09-07)
 
+- Deps: update miette to 5.3.0
+
 ## v1.1.0 (2022-08-24)
 
 - Add support for Go.
