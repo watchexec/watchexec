@@ -245,7 +245,7 @@ jobs:
         shell: bash
         run: 7z a "$dst.zip" "$dst"
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: builds
           retention-days: 1
