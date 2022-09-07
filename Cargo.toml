@@ -11,6 +11,23 @@ members = [
 ]
 
 [profile.release]
+lto = true
 debug = 1 # for stack traces
-lto = "fat"
 codegen-units = 1
+strip = "symbols"
+
+[profile.dev.build-override]
+opt-level = 0
+codegen-units = 1024
+debug = false
+debug-assertions = false
+overflow-checks = false
+incremental = false
+
+[profile.release.build-override]
+opt-level = 0
+codegen-units = 1024
+debug = false
+debug-assertions = false
+overflow-checks = false
+incremental = false
