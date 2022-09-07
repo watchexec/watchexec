@@ -2671,7 +2671,7 @@ dependencies = [
 
 [[package]]
 name = "watchexec-filterer-globset"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "dunce",
  "ignore",
@@ -2700,7 +2700,7 @@ dependencies = [
 
 [[package]]
 name = "watchexec-filterer-tagged"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "dunce",
  "globset",

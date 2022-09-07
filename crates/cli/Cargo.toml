@@ -45,11 +45,11 @@ version = "2.0.1"
 path = "../lib"
 
 [dependencies.watchexec-filterer-globset]
-version = "1.0.0"
+version = "1.0.1"
 path = "../filterer/globset"
 
 [dependencies.watchexec-filterer-tagged]
-version = "0.1.0"
+version = "0.1.1"
 path = "../filterer/tagged"
 
 [dependencies.tokio]
