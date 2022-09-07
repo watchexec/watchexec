@@ -241,7 +241,7 @@ jobs:
           ext=""
           [[ "${{ matrix.name }}" == windows-* ]] && ext=".exe"
           bin="target/${{ matrix.target }}/release/watchexec${ext}"
-          objcopy --compress-debug-sections "$bin" || strip "$bin" || true
+          objcopy --compress-debug-sections "$bin" || true
 
           mkdir "$dst"
 
