@@ -159,7 +159,7 @@ jobs:
       dst: watchexec-${{ needs.info.outputs.cli_version }}-${{ matrix.target }}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: actions/cache@v2
         with:
           path: ~/.cargo/registry
@@ -183,31 +183,38 @@ jobs:
 
       - name: Install cargo-deb
         if: startsWith(matrix.name, 'linux-')
-        uses: baptiste0928/cargo-install@v1
+        uses: taiki-e/install-action@v1
         with:
-          crate: cargo-deb
-          version: 1.34.2
+          tool: cargo-deb
 
       - name: Install cargo-generate-rpm
         if: startsWith(matrix.name, 'linux-')
-        uses: baptiste0928/cargo-install@v1
+        uses: taiki-e/install-action@v1
         with:
-          crate: cargo-generate-rpm
-          version: 0.6.0
+          tool: cargo-generate-rpm
 
-      - uses: actions-rs/toolchain@v1
-        with:
-          target: ${{ matrix.target }}
-          toolchain: stable
-          profile: minimal
-          override: true
+      - name: Configure toolchain
+        run: |
+          rustup toolchain install --profile minimal --no-self-update stable
+          rustup default stable
 
-      - uses: actions-rs/cargo@v1
-        name: Build
+      - name: Install cross
+        if: matrix.cross
+        uses: taiki-e/install-action@v1
         with:
-          use-cross: ${{ matrix.cross }}
-          command: build
-          args: --package watchexec-cli --release --locked --target ${{ matrix.target }}
+          tool: cross
+
+      - name: Install host target
+        if: "!matrix.cross"
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Build (cargo)
+        if: "!matrix.cross"
+        run: cargo build --package watchexec-cli --release --locked --target ${{ matrix.target }}
+
+      - name: Build (cross)
+        if: matrix.cross
+        run: cross build --package watchexec-cli --release --locked --target ${{ matrix.target }}
 
       - name: Package
         shell: bash
@@ -262,21 +269,18 @@ jobs:
     name: Checksum and sign
     runs-on: ubuntu-latest
 
-
     steps:
       - uses: actions/checkout@v2
 
       - name: Install rsign2
-        uses: baptiste0928/cargo-install@v1
+        uses: taiki-e/install-action@v1
         with:
-          crate: rsign2
-          version: 0.6.1
+          tool: rsign2
 
       - name: Install b3sum
-        uses: baptiste0928/cargo-install@v1
+        uses: taiki-e/install-action@v1
         with:
-          crate: b3sum
-          version: 1.3.0
+          tool: b3sum
 
       - uses: actions/download-artifact@v2
         with:
