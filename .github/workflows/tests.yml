@@ -9,6 +9,10 @@ on:
     tags-ignore:
       - "*"
 
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_UNSTABLE_SPARSE_REGISTRY: "true"
+
 jobs:
   test:
     strategy:
@@ -25,15 +29,25 @@ jobs:
     runs-on: "${{ matrix.platform }}-latest"
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: "${{ matrix.toolchain }}"
-          override: true
-      - name: Run test suite
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-      - name: Check that CLI runs
-        run: cargo run -p watchexec-cli -- -1 echo
+    - uses: actions/checkout@v3
+    - name: Configure toolchain
+      run: |
+        rustup toolchain install --profile minimal --no-self-update ${{ matrix.toolchain }}
+        rustup default ${{ matrix.toolchain }}
+    - name: Configure caching
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-${{ matrix.toolchain }}-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-${{ matrix.toolchain }}-
+          ${{ runner.os }}-cargo-
+
+    - name: Run test suite
+      run: cargo test
+    - name: Check that CLI runs
+      run: cargo run -p watchexec-cli -- -1 echo

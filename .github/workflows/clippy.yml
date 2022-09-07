@@ -9,6 +9,10 @@ on:
     tags-ignore:
       - "*"
 
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_UNSTABLE_SPARSE_REGISTRY: "true"
+
 jobs:
   check:
     strategy:
@@ -22,14 +26,24 @@ jobs:
     runs-on: "${{ matrix.platform }}-latest"
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - run: rustup component add clippy
-      - uses: actions-rs/cargo@v1
-        with:
-          command: clippy
+    - uses: actions/checkout@v3
+    - name: Configure toolchain
+      run: |
+        rustup toolchain install --profile minimal --no-self-update nightly
+        rustup default nightly
+        rustup component add clippy
+    - name: Configure caching
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
+
+    - name: Clippy
+      run: cargo clippy -- -D clippy::all
 

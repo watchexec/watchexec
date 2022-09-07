@@ -45,7 +45,7 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches> {
 			.help_heading(Some(OPTSET_BEHAVIOUR))
 			.help("Select the behaviour to use when receiving events while the command is running. Current default is queue, will change to do-nothing in 2.0.")
 			.takes_value(true)
-			.possible_values(&["do-nothing", "queue", "restart", "signal"])
+			.possible_values(["do-nothing", "queue", "restart", "signal"])
 			.long("on-busy-update"))
 		.arg(Arg::new("restart")
 			.help_heading(Some(OPTSET_BEHAVIOUR))
