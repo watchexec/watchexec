@@ -1,6 +1,8 @@
-name: Main branch
+name: Clippy
 
 on:
+  workflow_dispatch:
+  pull_request:
   push:
     branches:
       - main
@@ -16,7 +18,7 @@ jobs:
           - windows
           - macos
 
-    name: Check on ${{ matrix.platform }}
+    name: Clippy on ${{ matrix.platform }}
     runs-on: "${{ matrix.platform }}-latest"
 
     steps:
@@ -26,7 +28,8 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
+      - run: rustup component add clippy
       - uses: actions-rs/cargo@v1
         with:
-          command: check
+          command: clippy
 
