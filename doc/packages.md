@@ -18,3 +18,4 @@
 | Windows | Scoop | [`watchexec`](https://github.com/ScoopInstaller/Main/blob/master/bucket/watchexec.json) | official | `scoop install watchexec` |
 | _Any_ | Crates.io | [`watchexec-cli`](https://crates.io/crates/watchexec-cli) | first-party | `cargo install watchexec-cli` |
 | _Any_ | Binstall | [`watchexec-cli`](https://crates.io/crates/watchexec-cli) | first-party | `cargo binstall watchexec-cli` |
+| _Any_ | Webi | [`watchexec`](https://webinstall.dev/watchexec/) | third-party | varies (see webpage) |

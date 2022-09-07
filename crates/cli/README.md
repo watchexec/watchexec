@@ -97,48 +97,38 @@ On Windows, you may prefer to use Powershell:
 
 ## Installation
 
-### First-party
+### Package manager
 
-#### Pre-built
+Watchexec is in many package managers. A full list of [known packages](../../doc/packages.md) is available,
+and there may be more out there! Please contribute any you find to the list :)
 
-Use the download section on [Github](https://github.com/watchexec/watchexec/releases/latest) or [the website](https://watchexec.github.io/downloads/) to obtain the
-package appropriate for your platform and architecture, extract it, and place it in your `PATH`.
+Common package managers:
+
+- Alpine: `$ apk add watchexec`
+- ArchLinux: `$ pacman -S watchexec`
+- Nix: `$ nix-shell -p watchexec`
+- Homebrew on Mac:  `$ brew install watchexec`
+- Chocolatey on Windows: `#> choco install watchexec`
+
+### [Binstall](https://github.com/cargo-bins/cargo-binstall)
+
+    $ cargo binstall watchexec-cli
+
+### Pre-built binaries
+
+Use the download section on [Github](https://github.com/watchexec/watchexec/releases/latest)
+or [the website](https://watchexec.github.io/downloads/) to obtain the package appropriate for your
+platform and architecture, extract it, and place it in your `PATH`.
 
 There are also Debian/Ubuntu (DEB) and Fedora/RedHat (RPM) packages.
 
 Checksums and signatures are available.
 
-#### Cargo (from source)
+### Cargo (from source)
 
 Only the latest Rust stable is supported, but older versions may work.
 
     $ cargo install watchexec-cli
-
-#### [Binstall](https://github.com/ryankurte/cargo-binstall)
-
-    $ cargo binstall watchexec-cli
-
-### Third-party
-
-These are provided by third parties, caveat emptor!
-
-#### macOS
-
-- Homebrew:  `$ brew install watchexec`
-- Nix/NixOS: `$ nix-env -iA nixpkgs.watchexec`
-- Webi:      `$ curl -sS https://webinstall.dev/watchexec | bash`
-
-#### Linux
-
-- ArchLinux: `$ pacman -S watchexec`
-- Nix/NixOS: `$ nix-env -iA nixpkgs.watchexec`
-- Webi:      `$ curl -sS https://webinstall.dev/watchexec | bash`
-
-#### Windows
-
-- Scoop:      `#> scoop install watchexec`
-- Chocolatey: `#> choco install watchexec`
-- Webi:       `#> curl.exe -A MS https://webinstall.dev/watchexec | powershell`
 
 ## Shell completions
 
