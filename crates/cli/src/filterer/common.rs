@@ -169,7 +169,7 @@ pub async fn ignores(
 			.filter(|ig| {
 				!ig.applies_in
 					.as_ref()
-					.map_or(false, |p| p.starts_with(&origin))
+					.map_or(false, |p| p.starts_with(origin))
 			})
 			.collect::<Vec<_>>();
 		debug!(
