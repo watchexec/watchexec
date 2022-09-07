@@ -16,7 +16,7 @@ jobs:
       release_notes: ${{ fromJSON(steps.notes.outputs.notes_json) }}
       announce: ${{ steps.announce.outputs.announce }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Extract version
         id: version
         shell: bash
@@ -159,7 +159,7 @@ jobs:
       dst: watchexec-${{ needs.info.outputs.cli_version }}-${{ matrix.target }}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: actions/cache@v2
         with:
           path: ~/.cargo/registry
@@ -264,7 +264,7 @@ jobs:
 
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Install rsign2
         uses: baptiste0928/cargo-install@v1
