@@ -29,5 +29,5 @@ jobs:
         rustup default nightly
         rustup component add clippy
     - name: Clippy
-      run: cargo clippy -D clippy::all
+      run: cargo clippy -- -D clippy::all
 
