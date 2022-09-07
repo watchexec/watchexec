@@ -56,8 +56,8 @@ impl GlobsetFilterer {
 		extensions: impl IntoIterator<Item = OsString>,
 	) -> Result<Self, Error> {
 		let origin = origin.as_ref();
-		let mut filters_builder = GitignoreBuilder::new(&origin);
-		let mut ignores_builder = GitignoreBuilder::new(&origin);
+		let mut filters_builder = GitignoreBuilder::new(origin);
+		let mut ignores_builder = GitignoreBuilder::new(origin);
 
 		for (filter, in_path) in filters {
 			trace!(filter=?&filter, "add filter to globset filterer");
