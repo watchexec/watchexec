@@ -84,7 +84,7 @@ embed-resource = "1.6.1"
 dev-console = ["console-subscriber"]
 
 [package.metadata.binstall]
-pkg-url = "{ repo }/releases/download/cli-v{ version }/watchexec-{ version }-{ target }.{ archive-format }"
+pkg-url = "{ repo }/releases/download/v{ version }/watchexec-{ version }-{ target }.{ archive-format }"
 bin-dir = "watchexec-{ version }-{ target }/{ bin }{ binary-ext }"
 pkg-fmt = "txz"
 
