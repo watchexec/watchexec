@@ -32,6 +32,15 @@ jobs:
         rustup toolchain install --profile minimal --no-self-update nightly
         rustup default nightly
         rustup component add clippy
+
+    # https://github.com/actions/cache/issues/752
+    - if: ${{ runner.os == 'Windows' }}
+      name: Use GNU tar
+      shell: cmd
+      run: |
+        echo "Adding GNU tar to PATH"
+        echo C:\Program Files\Git\usr\bin>>"%GITHUB_PATH%"
+
     - name: Configure caching
       uses: actions/cache@v3
       with:
