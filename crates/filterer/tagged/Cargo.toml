@@ -27,7 +27,7 @@ regex = "1.5.4"
 unicase = "2.6.0"
 
 [dependencies.ignore-files]
-version = "1.0.0"
+version = "1.0.1"
 path = "../../ignore-files"
 
 [dependencies.tokio]
