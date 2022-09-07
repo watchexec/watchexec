@@ -16,7 +16,7 @@ rust-version = "1.60.0"
 edition = "2021"
 
 [dependencies]
-miette = "4.7.1"
+miette = "5.3.0"
 thiserror = "1.0.26"
 tracing = "0.1.26"
 dunce = "1.0.2"
