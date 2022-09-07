@@ -333,7 +333,7 @@ jobs:
 
       - uses: softprops/action-gh-release@50195ba7f6f93d1ac97ba8332a178e008ad176aa
         with:
-          tag_name: cli-v${{ needs.info.outputs.cli_version }}
+          tag_name: v${{ needs.info.outputs.cli_version }}
           name: CLI v${{ needs.info.outputs.cli_version }}
           body: ${{ needs.info.outputs.release_notes }}
           append_body: true
