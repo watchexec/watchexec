@@ -16,7 +16,7 @@ jobs:
       release_notes: ${{ fromJSON(steps.notes.outputs.notes_json) }}
       announce: ${{ steps.announce.outputs.announce }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Extract version
         id: version
         shell: bash
@@ -160,7 +160,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-cargo-registry-${{ hashFiles('Cargo.lock') }}
@@ -252,7 +252,7 @@ jobs:
         shell: bash
         run: 7z a "$dst.zip" "$dst"
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: builds
           retention-days: 1
@@ -270,7 +270,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Install rsign2
         uses: taiki-e/install-action@v1
@@ -282,7 +282,7 @@ jobs:
         with:
           tool: b3sum
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: builds
 
