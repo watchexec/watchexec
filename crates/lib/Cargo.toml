@@ -31,7 +31,7 @@ version = "1.0.8"
 features = ["with-tokio"]
 
 [dependencies.ignore-files]
-version = "1.0.0"
+version = "1.0.1"
 path = "../ignore-files"
 
 [dependencies.notify]
