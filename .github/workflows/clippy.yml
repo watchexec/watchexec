@@ -9,6 +9,10 @@ on:
     tags-ignore:
       - "*"
 
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_UNSTABLE_SPARSE_REGISTRY: "true"
+
 jobs:
   check:
     strategy:
@@ -28,6 +32,19 @@ jobs:
         rustup toolchain install --profile minimal --no-self-update nightly
         rustup default nightly
         rustup component add clippy
+    - name: Configure caching
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-${{ matrix.target }}-
+          ${{ runner.os }}-cargo-
+
     - name: Clippy
       run: cargo clippy -- -D clippy::all
 

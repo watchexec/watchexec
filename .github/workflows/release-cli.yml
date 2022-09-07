@@ -7,6 +7,10 @@ on:
     tags:
       - "v*.*.*"
 
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_UNSTABLE_SPARSE_REGISTRY: "true"
+
 jobs:
   info:
     name: Gather info
@@ -160,10 +164,18 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/cache@v3
+      - name: Configure caching
+        uses: actions/cache@v3
         with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('Cargo.lock') }}
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ matrix.target }}-
+            ${{ runner.os }}-cargo-
 
       - name: Add musl tools
         run: sudo apt install -y musl musl-dev musl-tools

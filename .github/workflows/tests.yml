@@ -9,6 +9,10 @@ on:
     tags-ignore:
       - "*"
 
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_UNSTABLE_SPARSE_REGISTRY: "true"
+
 jobs:
   test:
     strategy:
@@ -30,6 +34,19 @@ jobs:
       run: |
         rustup toolchain install --profile minimal --no-self-update ${{ matrix.toolchain }}
         rustup default ${{ matrix.toolchain }}
+    - name: Configure caching
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-${{ matrix.target }}-
+          ${{ runner.os }}-cargo-
+
     - name: Run test suite
       run: cargo test
     - name: Check that CLI runs
