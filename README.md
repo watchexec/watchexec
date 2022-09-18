@@ -1,4 +1,4 @@
-[![CI status on main branch](https://github.com/watchexec/watchexec/actions/workflows/main.yml/badge.svg)](https://github.com/watchexec/watchexec/actions/workflows/main.yml)
+[![CI status on main branch](https://github.com/watchexec/watchexec/actions/workflows/tests.yml/badge.svg)](https://github.com/watchexec/watchexec/actions/workflows/tests.yml)
 
 # Watchexec
 
