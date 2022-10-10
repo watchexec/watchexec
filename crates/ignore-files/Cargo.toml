@@ -17,7 +17,7 @@ edition = "2021"
 [dependencies]
 futures = "0.3.21"
 ignore = "0.4.18"
-git-config = "0.7.1"
+git-config = "0.9.0"
 tokio = { version = "1.19.2", default-features = false, features = ["fs"] }
 tracing = "0.1.35"
 dunce = "1.0.2"
