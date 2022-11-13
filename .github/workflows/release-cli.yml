@@ -331,7 +331,7 @@ jobs:
           rm release.key
           cat {B3,SHA512}SUMS.auto.minisig
 
-      - uses: softprops/action-gh-release@50195ba7f6f93d1ac97ba8332a178e008ad176aa
+      - uses: softprops/action-gh-release@cd28b0f5ee8571b76cfdaa62a30d51d752317477
         with:
           tag_name: v${{ needs.info.outputs.cli_version }}
           name: CLI v${{ needs.info.outputs.cli_version }}
