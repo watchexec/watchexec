@@ -36,6 +36,9 @@ pub struct RuntimeConfig {
 	/// This notably includes the path set to be watched.
 	pub fs: crate::fs::WorkingData,
 
+	/// Working data for keyboard event sources.
+	pub keyboard: crate::keyboard::WorkingData,
+
 	/// Working data for the action processing.
 	///
 	/// This is the task responsible for scheduling the actions in response to events, applying the
@@ -59,6 +62,11 @@ impl RuntimeConfig {
 	pub fn file_watcher(&mut self, watcher: Watcher) -> &mut Self {
 		debug!(?watcher, "RuntimeConfig: watcher");
 		self.fs.watcher = watcher;
+		self
+	}
+
+	pub fn keyboard(&mut self) -> &mut Self {
+		self.keyboard.eof = true;
 		self
 	}
 

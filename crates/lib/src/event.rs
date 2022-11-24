@@ -16,6 +16,7 @@ use std::{
 
 use filekind::FileEventKind;
 
+use crate::keyboard::Keyboard;
 use crate::signal::{process::SubSignal, source::MainSignal};
 
 /// Re-export of the Notify file event types.
@@ -55,6 +56,8 @@ pub enum Tag {
 	/// The general source of the event.
 	Source(Source),
 
+	Keyboard(Keyboard),
+
 	/// The event was caused by a particular process.
 	Process(u32),
 
@@ -72,6 +75,7 @@ impl Tag {
 			Tag::Path { .. } => "Path",
 			Tag::FileEventKind(_) => "FileEventKind",
 			Tag::Source(_) => "Source",
+			Tag::Keyboard(_) => "Keyboard",
 			Tag::Process(_) => "Process",
 			Tag::Signal(_) => "Signal",
 			Tag::ProcessCompletion(_) => "ProcessCompletion",
@@ -346,6 +350,7 @@ impl fmt::Display for Event {
 				}
 				Tag::FileEventKind(kind) => write!(f, " kind={:?}", kind)?,
 				Tag::Source(s) => write!(f, " source={:?}", s)?,
+				Tag::Keyboard(k) => write!(f, " keyboard={:?}", k)?,
 				Tag::Process(p) => write!(f, " process={}", p)?,
 				Tag::Signal(s) => write!(f, " signal={:?}", s)?,
 				Tag::ProcessCompletion(None) => write!(f, " command-completed")?,

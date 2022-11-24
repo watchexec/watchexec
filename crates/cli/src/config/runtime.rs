@@ -12,9 +12,10 @@ use watchexec::{
 	command::{Command, Shell},
 	config::RuntimeConfig,
 	error::RuntimeError,
-	event::ProcessEnd,
+	event::{ProcessEnd, Tag},
 	fs::Watcher,
 	handler::SyncFnHandler,
+	keyboard::Keyboard,
 	paths::summarise_events_to_env,
 	signal::{process::SubSignal, source::MainSignal},
 };
@@ -36,6 +37,10 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 			.parse()
 			.into_diagnostic()?,
 	));
+
+	if args.is_present("stdin-quit") {
+		config.keyboard();
+	}
 
 	if let Some(interval) = args.value_of("poll") {
 		config.file_watcher(Watcher::Poll(Duration::from_millis(
@@ -116,6 +121,13 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 		}
 
 		if signals.contains(&MainSignal::Interrupt) {
+			action.outcome(Outcome::both(Outcome::Stop, Outcome::Exit));
+			return fut;
+		}
+
+		let tags: Vec<_> = action.events.iter().flat_map(|e| e.tags.clone()).collect();
+		let eof = tags.contains(&Tag::Keyboard(Keyboard::Eof));
+		if eof {
 			action.outcome(Outcome::both(Outcome::Stop, Outcome::Exit));
 			return fut;
 		}

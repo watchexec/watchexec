@@ -27,7 +27,7 @@ use crate::{
 	event::{Event, Priority},
 	fs,
 	handler::{rte, Handler},
-	signal,
+	keyboard, signal,
 };
 
 /// The main watchexec runtime.
@@ -105,11 +105,12 @@ impl Watchexec {
 			let fs = SubTask::spawn("fs", fs::worker(fs_r, er_s.clone(), ev_s.clone()));
 			let signal =
 				SubTask::spawn("signal", signal::source::worker(er_s.clone(), ev_s.clone()));
+			let keyboard = SubTask::spawn("keyboard", keyboard::worker(er_s.clone(), ev_s.clone()));
 
 			let error_hook = SubTask::spawn("error_hook", error_hook(er_r, eh));
 
 			// Use Tokio TaskSet when that lands
-			try_join!(action, error_hook, fs, signal)
+			try_join!(action, error_hook, fs, signal, keyboard)
 				.map(drop)
 				.or_else(|e| {
 					// Close event channel to signal worker task to stop
