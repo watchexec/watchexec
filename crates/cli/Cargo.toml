@@ -29,7 +29,7 @@ notify-rust = "4.5.2"
 tracing = "0.1.26"
 
 [dependencies.clap]
-version = "3.1.18"
+version = "4.0.27"
 features = ["cargo", "wrap_help"]
 
 [dependencies.ignore-files]
