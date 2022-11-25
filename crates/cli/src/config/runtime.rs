@@ -123,9 +123,13 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 			return fut;
 		}
 
-		let tags: Vec<_> = action.events.iter().flat_map(|e| e.tags.clone()).collect();
-		let eof = tags.contains(&Tag::Keyboard(Keyboard::Eof));
-		if eof {
+		let is_keyboard_eof = action
+			.events
+			.iter()
+			.find(|e| e.tags.contains(&Tag::Keyboard(Keyboard::Eof)))
+			.is_some();
+
+		if is_keyboard_eof {
 			action.outcome(Outcome::both(Outcome::Stop, Outcome::Exit));
 			return fut;
 		}
