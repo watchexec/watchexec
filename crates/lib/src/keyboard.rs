@@ -1,7 +1,8 @@
 use async_priority_channel as priority;
+use std::pin::Pin;
 use tokio::{
-	io::AsyncBufReadExt,
-	sync::{mpsc, watch},
+	io::{AsyncBufRead, AsyncRead, AsyncReadExt},
+	sync::{mpsc, oneshot, watch},
 };
 use tracing::trace;
 
@@ -26,29 +27,57 @@ pub async fn worker(
 	errors: mpsc::Sender<RuntimeError>,
 	events: priority::Sender<Event, Priority>,
 ) -> Result<(), CriticalError> {
+	let mut send_close = None;
 	while working.changed().await.is_ok() {
 		let watch_for_eof = { working.borrow().eof };
-
 		if watch_for_eof {
-			let stdin = tokio::io::stdin();
-			let mut reader = tokio::io::BufReader::new(stdin);
+			// If we want to watch stdin and we're not already watching it then spawn a task to watch it
+			// otherwise take no action
+			if let None = send_close {
+				let (close_s, close_r) = tokio::sync::oneshot::channel::<()>();
 
-			// Keep reading lines from stdin and handle contents
-			loop {
-				let mut input = String::new();
-				match reader.read_line(&mut input).await {
+				send_close = Some(close_s);
+				tokio::spawn(watch_stdin(errors.clone(), events.clone(), close_r));
+			}
+		} else {
+			// If we don't want to watch stdin but we are already watching it then send a close signal to end the
+			// watching, otherwise take no action
+			if let Some(close_s) = send_close.take() {
+				close_s.send(());
+			}
+		}
+	}
+
+	Ok(())
+}
+
+async fn watch_stdin(
+	errors: mpsc::Sender<RuntimeError>,
+	events: priority::Sender<Event, Priority>,
+	mut close_r: oneshot::Receiver<()>,
+) -> Result<(), CriticalError> {
+	let mut stdin = tokio::io::stdin();
+	let mut buffer = [0; 10];
+	loop {
+		tokio::select! {
+			result = stdin.read(&mut buffer[..]) => {
+				// Read from stdin and if we've read 0 bytes then we assume stdin has received an 'eof' so
+				// we send that event into the system and break out of the loop as 'eof' means that there will
+				// be no more information on stdin.
+				match result {
 					Ok(0) => {
-						// Zero bytes read - represents end of stream so we exit
-						send_event(errors.clone(), events.clone(), Keyboard::Eof).await?;
+						send_event(errors, events, Keyboard::Eof).await?;
 						break;
 					}
-					Err(_) => {
-						break;
-					}
+					Err(_) => break,
 					_ => {
-						// Ignore unexpected input on stdin
 					}
 				}
+			}
+			_ = &mut close_r => {
+				// If we receive a close signal then break out of the loop and end which drops
+				// our handle on stdin
+				break;
 			}
 		}
 	}
