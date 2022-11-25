@@ -1,5 +1,8 @@
 use async_priority_channel as priority;
-use tokio::{io::AsyncBufReadExt, sync::mpsc};
+use tokio::{
+	io::AsyncBufReadExt,
+	sync::{mpsc, watch},
+};
 use tracing::trace;
 
 use crate::{
@@ -19,33 +22,33 @@ pub enum Keyboard {
 }
 
 pub async fn worker(
+	mut working: watch::Receiver<WorkingData>,
 	errors: mpsc::Sender<RuntimeError>,
 	events: priority::Sender<Event, Priority>,
 ) -> Result<(), CriticalError> {
-	imp_worker(errors, events).await
-}
+	while working.changed().await.is_ok() {
+		let watch_for_eof = { working.borrow().eof };
 
-async fn imp_worker(
-	errors: mpsc::Sender<RuntimeError>,
-	events: priority::Sender<Event, Priority>,
-) -> Result<(), CriticalError> {
-	let stdin = tokio::io::stdin();
-	let mut reader = tokio::io::BufReader::new(stdin);
+		if watch_for_eof {
+			let stdin = tokio::io::stdin();
+			let mut reader = tokio::io::BufReader::new(stdin);
 
-	// Keep reading lines from stdin and handle contents
-	loop {
-		let mut input = String::new();
-		match reader.read_line(&mut input).await {
-			Ok(0) => {
-				// Zero bytes read - represents end of stream so we exit
-				send_event(errors.clone(), events.clone(), Keyboard::Eof).await?;
-				break;
-			}
-			Err(_) => {
-				break;
-			}
-			_ => {
-				// Ignore unexpected input on stdin
+			// Keep reading lines from stdin and handle contents
+			loop {
+				let mut input = String::new();
+				match reader.read_line(&mut input).await {
+					Ok(0) => {
+						// Zero bytes read - represents end of stream so we exit
+						send_event(errors.clone(), events.clone(), Keyboard::Eof).await?;
+						break;
+					}
+					Err(_) => {
+						break;
+					}
+					_ => {
+						// Ignore unexpected input on stdin
+					}
+				}
 			}
 		}
 	}
