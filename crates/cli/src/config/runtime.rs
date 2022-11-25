@@ -38,9 +38,7 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 			.into_diagnostic()?,
 	));
 
-	if args.is_present("stdin-quit") {
-		config.keyboard();
-	}
+	config.keyboard_emit_eof(args.is_present("stdin-quit"));
 
 	if let Some(interval) = args.value_of("poll") {
 		config.file_watcher(Watcher::Poll(Duration::from_millis(

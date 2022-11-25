@@ -65,8 +65,8 @@ impl RuntimeConfig {
 		self
 	}
 
-	pub fn keyboard(&mut self) -> &mut Self {
-		self.keyboard.eof = true;
+	pub fn keyboard_emit_eof(&mut self, enable: bool) -> &mut Self {
+		self.keyboard.eof = enable;
 		self
 	}
 
