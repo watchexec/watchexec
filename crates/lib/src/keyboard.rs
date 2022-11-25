@@ -13,6 +13,7 @@ pub struct WorkingData {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Keyboard {
 	Eof,
 }
