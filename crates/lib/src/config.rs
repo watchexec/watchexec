@@ -65,6 +65,7 @@ impl RuntimeConfig {
 		self
 	}
 
+	/// Enable monitoring of 'end of file' from stdin
 	pub fn keyboard_emit_eof(&mut self, enable: bool) -> &mut Self {
 		self.keyboard.eof = enable;
 		self

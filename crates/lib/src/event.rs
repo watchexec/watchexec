@@ -56,6 +56,7 @@ pub enum Tag {
 	/// The general source of the event.
 	Source(Source),
 
+	/// The event was caused by specific keyboard input
 	Keyboard(Keyboard),
 
 	/// The event was caused by a particular process.

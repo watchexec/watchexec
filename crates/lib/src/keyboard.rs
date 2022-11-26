@@ -1,7 +1,7 @@
+//! Event source for keyboard input and related events
 use async_priority_channel as priority;
-use std::pin::Pin;
 use tokio::{
-	io::{AsyncBufRead, AsyncRead, AsyncReadExt},
+	io::AsyncReadExt,
 	sync::{mpsc, oneshot, watch},
 };
 use tracing::trace;
@@ -11,17 +11,29 @@ use crate::{
 	event::{Event, Priority, Source, Tag},
 };
 
+/// The configuration of the [keyboard][self] worker.
+///
+/// This is marked non-exhaustive so new configuration can be added without breaking.
 #[derive(Debug, Clone, Default)]
+#[non_exhaustive]
 pub struct WorkingData {
+	/// Whether or not to watch for 'end of file' on stdin
 	pub eof: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
+/// Enumeration of different keyboard events
 pub enum Keyboard {
+	/// Event representing an 'end of file' on stdin
 	Eof,
 }
 
+/// Launch the filesystem event worker.
+///
+/// While you can run several, you should only have one.
+///
+/// Sends keyboard events via to the provided 'events' channel
 pub async fn worker(
 	mut working: watch::Receiver<WorkingData>,
 	errors: mpsc::Sender<RuntimeError>,
