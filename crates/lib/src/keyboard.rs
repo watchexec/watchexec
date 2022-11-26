@@ -55,7 +55,9 @@ pub async fn worker(
 			// If we don't want to watch stdin but we are already watching it then send a close signal to end the
 			// watching, otherwise take no action
 			if let Some(close_s) = send_close.take() {
-				close_s.send(());
+				if let Err(_) = close_s.send(()) {
+					errors.send(RuntimeError::KeyboardWatcher).await?;
+				}
 			}
 		}
 	}

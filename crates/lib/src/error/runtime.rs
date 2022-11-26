@@ -50,6 +50,11 @@ pub enum RuntimeError {
 		err: super::FsWatcherError,
 	},
 
+	/// Events from the keyboard event source
+	#[error("keyboard watcher error")]
+	#[diagnostic(code(watchexec::runtime::keyboard_watcher))]
+	KeyboardWatcher,
+
 	/// Opaque internal error from a command supervisor.
 	#[error("internal: command supervisor: {0}")]
 	#[diagnostic(code(watchexec::runtime::internal_supervisor))]
