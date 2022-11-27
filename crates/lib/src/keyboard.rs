@@ -42,7 +42,7 @@ pub async fn worker(
 	let mut send_close = None;
 	while working.changed().await.is_ok() {
 		let watch_for_eof = { working.borrow().eof };
-		match (watch_for_eof, send_close.take()) {
+		match (watch_for_eof, &send_close) {
 			// If we want to watch stdin and we're not already watching it then spawn a task to watch it
 			(true, None) => {
 				let (close_s, close_r) = tokio::sync::oneshot::channel::<()>();
@@ -52,9 +52,12 @@ pub async fn worker(
 			}
 			// If we don't want to watch stdin but we are already watching it then send a close signal to end the
 			// watching
-			(false, Some(close_s)) => {
-				if close_s.send(()).is_err() {
-					errors.send(RuntimeError::KeyboardWatcher).await?;
+			(false, Some(_)) => {
+				// Repeat match using 'take'
+				if let Some(close_s) = send_close.take() {
+					if close_s.send(()).is_err() {
+						errors.send(RuntimeError::KeyboardWatcher).await?;
+					}
 				}
 			}
 			// Otherwise no action is required
