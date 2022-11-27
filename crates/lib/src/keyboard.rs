@@ -45,7 +45,7 @@ pub async fn worker(
 		if watch_for_eof {
 			// If we want to watch stdin and we're not already watching it then spawn a task to watch it
 			// otherwise take no action
-			if let None = send_close {
+			if send_close.is_none() {
 				let (close_s, close_r) = tokio::sync::oneshot::channel::<()>();
 
 				send_close = Some(close_s);
@@ -55,7 +55,7 @@ pub async fn worker(
 			// If we don't want to watch stdin but we are already watching it then send a close signal to end the
 			// watching, otherwise take no action
 			if let Some(close_s) = send_close.take() {
-				if let Err(_) = close_s.send(()) {
+				if close_s.send(()).is_err() {
 					errors.send(RuntimeError::KeyboardWatcher).await?;
 				}
 			}

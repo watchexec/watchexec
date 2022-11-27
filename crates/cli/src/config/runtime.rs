@@ -126,8 +126,7 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 		let is_keyboard_eof = action
 			.events
 			.iter()
-			.find(|e| e.tags.contains(&Tag::Keyboard(Keyboard::Eof)))
-			.is_some();
+			.any(|e| e.tags.contains(&Tag::Keyboard(Keyboard::Eof)));
 
 		if is_keyboard_eof {
 			action.outcome(Outcome::both(Outcome::Stop, Outcome::Exit));
