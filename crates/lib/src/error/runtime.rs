@@ -53,7 +53,11 @@ pub enum RuntimeError {
 	/// Events from the keyboard event source
 	#[error("keyboard watcher error")]
 	#[diagnostic(code(watchexec::runtime::keyboard_watcher))]
-	KeyboardWatcher,
+	KeyboardWatcher {
+		/// The underlying error.
+		#[source]
+		err: super::KeyboardWatcherError,
+	},
 
 	/// Opaque internal error from a command supervisor.
 	#[error("internal: command supervisor: {0}")]
