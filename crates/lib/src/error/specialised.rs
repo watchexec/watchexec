@@ -122,3 +122,14 @@ pub enum FsWatcherError {
 		err: notify::Error,
 	},
 }
+
+/// Errors emitted by the keyboard watcher.
+#[derive(Debug, Diagnostic, Error)]
+#[non_exhaustive]
+#[diagnostic(url(docsrs))]
+pub enum KeyboardWatcherError {
+	/// Error received when shutting down stdin watcher fails.
+	#[error("failed to shut down stdin watcher")]
+	#[diagnostic(code(watchexec::keyboard_watcher))]
+	StdinShutdown,
+}

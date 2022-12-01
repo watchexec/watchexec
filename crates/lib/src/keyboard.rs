@@ -7,7 +7,7 @@ use tokio::{
 use tracing::trace;
 
 use crate::{
-	error::{CriticalError, RuntimeError},
+	error::{CriticalError, KeyboardWatcherError, RuntimeError},
 	event::{Event, Priority, Source, Tag},
 };
 
@@ -56,7 +56,11 @@ pub async fn worker(
 				// Repeat match using 'take'
 				if let Some(close_s) = send_close.take() {
 					if close_s.send(()).is_err() {
-						errors.send(RuntimeError::KeyboardWatcher).await?;
+						errors
+							.send(RuntimeError::KeyboardWatcher {
+								err: KeyboardWatcherError::StdinShutdown,
+							})
+							.await?;
 					}
 				}
 			}
