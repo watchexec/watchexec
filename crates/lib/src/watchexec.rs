@@ -27,7 +27,7 @@ use crate::{
 	event::{Event, Priority},
 	fs,
 	handler::{rte, Handler},
-	signal,
+	keyboard, signal,
 };
 
 /// The main watchexec runtime.
@@ -43,6 +43,7 @@ pub struct Watchexec {
 
 	action_watch: watch::Sender<action::WorkingData>,
 	fs_watch: watch::Sender<fs::WorkingData>,
+	keyboard_watch: watch::Sender<keyboard::WorkingData>,
 
 	event_input: priority::Sender<Event, Priority>,
 }
@@ -78,6 +79,7 @@ impl Watchexec {
 		let (ev_s, ev_r) = priority::bounded(init.event_channel_size);
 		let (ac_s, ac_r) = watch::channel(take(&mut runtime.action));
 		let (fs_s, fs_r) = watch::channel(fs::WorkingData::default());
+		let (keyboard_s, keyboard_r) = watch::channel(keyboard::WorkingData::default());
 
 		let event_input = ev_s.clone();
 
@@ -85,6 +87,11 @@ impl Watchexec {
 		trace!("sending initial config to fs worker");
 		fs_s.send(take(&mut runtime.fs))
 			.expect("cannot send to just-created fs watch (bug)");
+
+		trace!("sending initial config to keyboard worker");
+		keyboard_s
+			.send(take(&mut runtime.keyboard))
+			.expect("cannot send to just-created keyboard watch (bug)");
 
 		trace!("creating main task");
 		let notify = Arc::new(Notify::new());
@@ -105,11 +112,15 @@ impl Watchexec {
 			let fs = SubTask::spawn("fs", fs::worker(fs_r, er_s.clone(), ev_s.clone()));
 			let signal =
 				SubTask::spawn("signal", signal::source::worker(er_s.clone(), ev_s.clone()));
+			let keyboard = SubTask::spawn(
+				"keyboard",
+				keyboard::worker(keyboard_r, er_s.clone(), ev_s.clone()),
+			);
 
 			let error_hook = SubTask::spawn("error_hook", error_hook(er_r, eh));
 
 			// Use Tokio TaskSet when that lands
-			try_join!(action, error_hook, fs, signal)
+			try_join!(action, error_hook, fs, signal, keyboard)
 				.map(drop)
 				.or_else(|e| {
 					// Close event channel to signal worker task to stop
@@ -134,6 +145,7 @@ impl Watchexec {
 
 			action_watch: ac_s,
 			fs_watch: fs_s,
+			keyboard_watch: keyboard_s,
 
 			event_input,
 		}))
@@ -144,6 +156,7 @@ impl Watchexec {
 		debug!(?config, "reconfiguring");
 		self.action_watch.send(config.action)?;
 		self.fs_watch.send(config.fs)?;
+		self.keyboard_watch.send(config.keyboard)?;
 		Ok(())
 	}
 

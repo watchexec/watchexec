@@ -104,6 +104,9 @@ Terminates the command if it is still running when subsequent file modifications
 * `-s`, `--signal`:
 Sends the specified signal (e.g. `SIGKILL`) to the command. Defaults to `SIGTERM`.
 
+* `--stdin-quit`:
+Exit when watchexec's stdin is closed. This is useful when watchexec is run as a subprocess and should shut itself down when the parent process stops.
+
 * `-W`, `--watch-when-idle`:
 Ignore events while the process is still running. This is distinct from `--restart` in that with this option, events received while the command is running will not trigger a new run immediately after the current command is done.
 

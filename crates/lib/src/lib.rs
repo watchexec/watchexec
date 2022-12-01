@@ -106,6 +106,7 @@ pub mod error;
 pub mod event;
 pub mod filter;
 pub mod fs;
+pub mod keyboard;
 pub mod paths;
 pub mod signal;
 

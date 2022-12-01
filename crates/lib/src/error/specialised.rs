@@ -4,7 +4,7 @@ use miette::Diagnostic;
 use thiserror::Error;
 use tokio::sync::watch;
 
-use crate::{action, fs};
+use crate::{action, fs, keyboard};
 
 /// Errors occurring from reconfigs.
 #[derive(Debug, Diagnostic, Error)]
@@ -20,6 +20,11 @@ pub enum ReconfigError {
 	#[error("reconfig: fs watch: {0}")]
 	#[diagnostic(code(watchexec::reconfig::fs_watch))]
 	FsWatch(#[from] watch::error::SendError<fs::WorkingData>),
+
+	/// Error received when the keyboard event source cannot be updated.
+	#[error("reconfig: keyboard watch: {0}")]
+	#[diagnostic(code(watchexec::reconfig::keyboard_watch))]
+	KeyboardWatch(#[from] watch::error::SendError<keyboard::WorkingData>),
 }
 
 /// Error when parsing a signal from string.
@@ -116,4 +121,15 @@ pub enum FsWatcherError {
 		#[source]
 		err: notify::Error,
 	},
+}
+
+/// Errors emitted by the keyboard watcher.
+#[derive(Debug, Diagnostic, Error)]
+#[non_exhaustive]
+#[diagnostic(url(docsrs))]
+pub enum KeyboardWatcherError {
+	/// Error received when shutting down stdin watcher fails.
+	#[error("failed to shut down stdin watcher")]
+	#[diagnostic(code(watchexec::keyboard_watcher))]
+	StdinShutdown,
 }
