@@ -41,7 +41,7 @@ More usage examples: [in the CLI README](./crates/cli/#usage-examples)!
 
 <a href="https://repology.org/project/watchexec/versions"><img align="right" src="https://repology.org/badge/vertical-allrepos/watchexec.svg" alt="Packaging status"></a>
 
-- With [your package manager](./doc/packages.md) for Arch, Homebrew, Nix, Scoop, Chocolatey…
+- With [your package manager](./doc/packages.md) for Arch, Debian, Homebrew, Nix, Scoop, Chocolatey…
 - From binary with [Binstall](https://github.com/cargo-bins/cargo-binstall): `cargo binstall watchexec-cli`
 - As [pre-built binary package from Github](https://github.com/watchexec/watchexec/releases/latest)
 - From source with Cargo: `cargo install watchexec-cli`

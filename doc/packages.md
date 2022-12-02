@@ -4,6 +4,7 @@
 |:-|:-|:-:|:-:|-:|
 | Linux | Alpine | [`watchexec`](https://pkgs.alpinelinux.org/packages?name=watchexec) | testing | `apk add watchexec` |
 | Linux | ALT Sisyphus | [`watchexec`](https://packages.altlinux.org/en/sisyphus/srpms/watchexec/) | outdated | `apt-get install watchexec` |
+| Linux | APT repo | [`watchexec`](https://apt.cli.rs) | unofficial | `apt install watchexec` |
 | Linux | Arch | [`watchexec`](https://archlinux.org/packages/community/x86_64/watchexec/) | official | `pacman -S watchexec` |
 | Linux | Gentoo GURU | [`watchexec`](https://gpo.zugaina.org/Overlays/guru/app-misc/watchexec) | unofficial | `emerge -av watchexec` |
 | Linux | GNU Guix | [`watchexec`](https://guix.gnu.org/packages/watchexec-1.16.1/) | outdated | ? |

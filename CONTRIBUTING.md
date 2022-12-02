@@ -6,12 +6,7 @@ This is a fairly free-form project, with low contribution traffic.
 Maintainers:
 
 - Félix Saparelli (@passcod) (active)
-- Matt Green (@mattgreen) (original author, more passive now)
-
-Currently the project is in an active development period, with the recently-overhauled "library 2.0"
-backend enabling a swathe of new features that only remain to be added and then exposed.
-
-Contributions are accepted, but review may be delayed until the above work is finished.
+- Matt Green (@mattgreen) (original author, mostly checked out)
 
 There are a few anti goals:
 
@@ -49,43 +44,82 @@ Apart from that, welcome and thank you for your time!
 
 ## Releasing
 
-A release goes through these steps:
+A release goes like this:
 
-1. Opening a draft release. Before even merging anything, a draft (only visible privately) release
-   is made. These are a github feature and only visible to maintainers. Name the release: which part
-   of the project the release is for (`CLI` or `Lib`), and the version. E.g. `CLI 1.18.0`.
+1. A maintainer launches the ["Open a release PR" workflow](https://github.com/watchexec/watchexec/actions/workflows/release-pr.yml).
 
-2. Adding each change to the draft release. The releases pages on github serves as a changelog, so
-   this is worth getting right. One sentence per change, focusing on what it is, what it adds, what
-   it changes, if any. Add a link or PR/issue number if relevant. For example:
+2. A PR bumping the chosen crate's version is opened. Maintainers may then add stuff to it if
+   needed, like changelog entries for library crates. Release notes for CLI releases go directly on
+   the PR.
 
-   > - #160 :warning: Stop initialising the logger in the library code. Downstream users will need
-   >   to initialise their own logger if they want debug/warn output.
+3. When the PR is merged, the release is tagged. CLI releases also get built and distributed.
 
-3. Merging the PRs. Merge commits are preferred over rebase or squash.
+4. A maintainer then manually publishes the crate (automated publishing is blocked on crates.io
+   implementing [scoped tokens](https://github.com/rust-lang/crates.io/issues/5443)).
 
-4. Cleaning up the code and documentation if needed. For example a PR that adds a flag may not have
-   also added the corresponding completions, manpage entries, readme entries. Or two PRs may
-   conflict slightly or do the same thing twice, in which case harmonising things is required here.
 
-5. Run `cargo fmt`, `cargo test`, `cargo clippy`, `bin/manpage`. Commit the result, if any.
-   CI will also run, wait for that. In the meantime:
+## Overview
 
-6. Run through related issues to the PRs and close them if that wasn't done automatically. Or if the
-   PRs only fixed a problem partially, chime in to mention that, and to restate what remains to fix.
+The architecture of watchexec is roughly:
 
-7. "Real" test the new code. If new options were added, test those.
+- sources gather events
+- events are debounced and filtered
+- event(s) make it through the debounce/filters and trigger an "action"
+- `on_action` handler is called, returning an `Outcome`
+- outcome is processed into managing the command that watchexec is running
+  - outcome can also be to exit
+- when a command is started, the `on_pre_spawn` and `on_post_spawn` handlers are called
+- commands are also a source of events, so e.g. "command has finished" is handled by `on_action`
 
-8. Check for any dependency updates with `cargo outdated -R`.
+And this is the startup sequence:
+- init config sets basic immutable facts about the runtime
+- runtime starts:
+  - source workers start, and are passed their runtime config
+  - action worker starts, and is passed its runtime config
+- (unless `--postpone` is given) a synthetic event is injected to kickstart things
 
-9. Run `bin/cli-version 1.2.3` where `1.2.3` is the new version number. This will tag and push,
-   triggering the GitHub Action for releases. Use `bin/lib-version` to release a library update.
+## Guides
 
-10. Wait for all builds to complete, then attach the draft release to the tag, and publish it.
+These are generic guides for implementing specific bits of functionality.
 
-11. Run the `cargo publish`.
+### Adding an event source
 
-12. Announce the release.
+- add a worker for "sourcing" events. Looking at the [signal source
+  worker](https://github.com/watchexec/watchexec/blob/main/crates/lib/src/signal/source.rs) is
+  probably easiest to get started here.
+
+- because we may not always want to enable this event source, and just to be flexible, add [runtime
+  config](https://github.com/watchexec/watchexec/blob/main/crates/lib/src/config.rs) for the source.
+
+- for convenience, probably add [a method on the runtime
+  config](https://github.com/watchexec/watchexec/blob/main/crates/lib/src/config.rs) which
+  configures the most common usecase.
+
+- because watchexec is reconfigurable, in the worker you'll need to react to config changes. Look at
+  how the [fs worker does it](https://github.com/watchexec/watchexec/blob/main/crates/lib/src/fs.rs)
+  for reference.
+
+- you may need to [add to the event tag
+  enum](https://github.com/watchexec/watchexec/blob/main/crates/lib/src/event.rs).
+
+- if you do, you should [add support to the "tagged
+  filterer"](https://github.com/watchexec/watchexec/blob/main/crates/filterer/tagged/src/parse.rs),
+  but this can be done in follow-up work.
+
+### Process a new event in the CLI
+
+- add an option to the
+  [args](https://github.com/watchexec/watchexec/blob/main/crates/cli/src/args.rs) if necessary
+
+- add to the [runtime
+  config](https://github.com/watchexec/watchexec/blob/main/crates/cli/src/config/runtime.rs) when
+  the option is present
+
+- process relevant events [in the action
+  handler](https://github.com/watchexec/watchexec/blob/main/crates/cli/src/config/runtime.rs)
+
+- document the option in the [manual
+  page](https://github.com/watchexec/watchexec/blob/main/doc/watchexec.1.ronn)
 
 ---
 vim: tw=100
