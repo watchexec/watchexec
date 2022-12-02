@@ -11,11 +11,13 @@
 | Linux | LiGurOS | [`watchexec`](https://gitlab.com/liguros/liguros-repo/-/tree/stable/app-misc/watchexec) | official | `emerge -av watchexec` |
 | Linux | Manjaro | [`watchexec`](https://software.manjaro.org/package/watchexec) | official | `pamac install watchexec` |
 | Linux | Nix | [`watchexec`](https://search.nixos.org/packages?query=watchexec) | official | `nix-shell -p watchexec` |
+| Linux | openSUSE | [`watchexec`](https://software.opensuse.org/package/watchexec) | official | `zypper install watchexec` |
 | Linux | Parabola | [`watchexec`](https://www.parabola.nu/packages/?q=watchexec) | official | `pacman -S watchexec` |
 | Linux | Void | [`watchexec`](https://github.com/void-linux/void-packages/tree/master/srcpkgs/watchexec) | official | `xbps-install watchexec` |
 | MacOS | Homebrew | [`watchexec`](https://formulae.brew.sh/formula/watchexec) | official | `brew install watchexec` |
 | Windows | Baulk | [`watchexec`](https://github.com/baulk/bucket/blob/master/bucket/watchexec.json) | official | `baulk install watchexec` |
 | Windows | Chocolatey | [`watchexec`](https://community.chocolatey.org/packages/watchexec) | community | `choco install watchexec` |
+| Windows | MSYS2 mingw | [`mingw-w64-watchexec`](https://github.com/msys2/MINGW-packages/blob/master/mingw-w64-watchexec) | official | `pacman -S mingw-w64-x86_64-watchexec` |
 | Windows | Scoop | [`watchexec`](https://github.com/ScoopInstaller/Main/blob/master/bucket/watchexec.json) | official | `scoop install watchexec` |
 | _Any_ | Crates.io | [`watchexec-cli`](https://crates.io/crates/watchexec-cli) | first-party | `cargo install watchexec-cli` |
 | _Any_ | Binstall | [`watchexec-cli`](https://crates.io/crates/watchexec-cli) | first-party | `cargo binstall watchexec-cli` |
