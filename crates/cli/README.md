@@ -107,6 +107,7 @@ Common package managers:
 - Alpine: `$ apk add watchexec`
 - ArchLinux: `$ pacman -S watchexec`
 - Nix: `$ nix-shell -p watchexec`
+- Debian/Ubuntu via [apt.cli.rs](https://apt.cli.rs): `$ apt install watchexec`
 - Homebrew on Mac:  `$ brew install watchexec`
 - Chocolatey on Windows: `#> choco install watchexec`
 
