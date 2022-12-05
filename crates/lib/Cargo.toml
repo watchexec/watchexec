@@ -27,7 +27,7 @@ once_cell = "1.8.0"
 thiserror = "1.0.26"
 
 [dependencies.command-group]
-version = "1.0.8"
+version = "2.0.0"
 features = ["with-tokio"]
 
 [dependencies.ignore-files]
