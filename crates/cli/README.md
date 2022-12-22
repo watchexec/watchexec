@@ -108,14 +108,14 @@ Turn a plain converter tool like PlantUML or Pandoc into a powerful live-editing
     VIEW="feh $TARGET"            # Define how to open target file
     if [ ! -f $TARGET ]; then $CONVERT; fi # Ensure target file exists for opening
     $VIEW &                                # Open target file in viewer in the background
-    watchexec --filter $SOURCE $CONVERT    # Update target file on any source file change
+    watchexec --filter $SOURCE -- $CONVERT    # Update target file on any source file change
 
 or condensed as a single line
    
     # Bash
-    $ SOURCE="test.puml"; TARGET="test.png"; CONVERT="plantuml $SOURCE"; VIEW="feh $TARGET"; if [ ! -f $TARGET ]; then $CONVERT; fi; ($VIEW &); watchexec -f    $SOURCE $CONVERT
+    $ SOURCE="test.puml"; TARGET="test.png"; CONVERT="plantuml $SOURCE"; VIEW="feh $TARGET"; if [ ! -f $TARGET ]; then $CONVERT; fi; ($VIEW &); watchexec -f $SOURCE -- $CONVERT
     # Zsh
-    $ SOURCE="test.puml"; TARGET="test.png"; CONVERT="plantuml $SOURCE"; VIEW="feh $TARGET"; if [ ! -f $TARGET ]; then $CONVERT; fi; ($=VIEW &); watchexec -f $SOURCE $CONVERT
+    $ SOURCE="test.puml"; TARGET="test.png"; CONVERT="plantuml $SOURCE"; VIEW="feh $TARGET"; if [ ! -f $TARGET ]; then $CONVERT; fi; ($=VIEW &); watchexec -f $SOURCE -- $CONVERT
 
 Replace [PlantUML](https://plantuml.com/) with another converter like [Pandoc](https://pandoc.org/): 
 `plantuml $SOURCE` turns into `pandoc $SOURCE --output $TARGET`, 
