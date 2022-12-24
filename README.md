@@ -10,6 +10,7 @@ Example use cases:
 
 * Automatically run unit tests
 * Run linters/syntax checkers
+* Rebuild artifacts
 
 
 ## Features
