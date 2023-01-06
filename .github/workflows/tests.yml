@@ -43,20 +43,62 @@ jobs:
         echo "Adding GNU tar to PATH"
         echo C:\Program Files\Git\usr\bin>>"%GITHUB_PATH%"
 
-    - name: Configure caching
+    - name: Cargo caching
       uses: actions/cache@v3
       with:
         path: |
           ~/.cargo/registry/index/
           ~/.cargo/registry/cache/
           ~/.cargo/git/db/
-          target/
         key: ${{ runner.os }}-cargo-${{ matrix.toolchain }}-${{ hashFiles('**/Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-cargo-${{ matrix.toolchain }}-
           ${{ runner.os }}-cargo-
 
+    - name: Compilation caching
+      uses: actions/cache@v3
+      with:
+        path: target/
+        key: ${{ runner.os }}-target-${{ matrix.toolchain }}-${{ hashFiles('**/Cargo.lock') }}
+
     - name: Run test suite
       run: cargo test
     - name: Check that CLI runs
       run: cargo run -p watchexec-cli -- -1 echo
+
+  cross-checks:
+    name: Checks only against select targets
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Configure toolchain
+      run: |
+        rustup toolchain install --profile minimal --no-self-update stable
+        rustup default stable
+
+        rustup add target x86_64-unknown-linux-musl
+        rustup add target x86_64-fuchsia
+        rustup add target x86_64-unknown-freebsd
+        rustup add target x86_64-unknown-netbsd
+
+    - name: Cargo caching
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+        key: ${{ runner.os }}-cargo-stable-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-stable-
+          ${{ runner.os }}-cargo-
+
+    - name: Check musl
+      run: cargo check --target x86_64-unknown-linux-musl
+    - name: Check fuchsia
+      run: cargo check --target x86_64-fuchsia
+    - name: Check freebsd
+      run: cargo check --target x86_64-unknown-freebsd
+    - name: Check netbsd
+      run: cargo check --target x86_64-unknown-netbsd
