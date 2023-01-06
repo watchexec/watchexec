@@ -130,6 +130,7 @@ impl SubSignal {
 
 	/// Converts from a [`nix::Signal`][command_group::Signal].
 	#[cfg(unix)]
+	#[allow(clippy::missing_const_for_fn)]
 	#[must_use]
 	pub fn from_nix(sig: NixSignal) -> Self {
 		match sig {

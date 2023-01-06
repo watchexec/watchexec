@@ -173,15 +173,11 @@ impl From<ExitStatus> for ProcessEnd {
 			(Some(_), Some(_), _) => {
 				unreachable!("exitstatus cannot both be code and signal?!")
 			}
-			(Some(code), None, _) => match NonZeroI64::try_from(i64::from(code)) {
-				Ok(code) => Self::ExitError(code),
-				Err(_) => Self::Success,
-			},
+			(Some(code), None, _) => {
+				NonZeroI64::try_from(i64::from(code)).map_or(Self::Success, Self::ExitError)
+			}
 			(None, Some(_), Some(stopsig)) => {
-				match NonZeroI32::try_from(stopsig) {
-					Ok(signal) => Self::ExitStop(signal),
-					Err(_) => Self::Success,
-				}
+				NonZeroI32::try_from(stopsig).map_or(Self::Success, Self::ExitStop)
 			}
 			#[cfg(not(target_os = "vxworks"))]
 			(None, Some(_), _) if es.continued() => Self::Continued,

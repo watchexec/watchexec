@@ -210,7 +210,7 @@ pub async fn worker(
 			let n_events = events.clone();
 			match kind.create(move |nev: Result<notify::Event, notify::Error>| {
 				trace!(event = ?nev, "receiving possible event from watcher");
-				if let Err(e) = process_event(nev, kind, n_events.clone()) {
+				if let Err(e) = process_event(nev, kind, &n_events) {
 					n_errors.try_send(e).ok();
 				}
 			}) {
@@ -296,7 +296,7 @@ fn notify_multi_path_errors(
 fn process_event(
 	nev: Result<notify::Event, notify::Error>,
 	kind: Watcher,
-	n_events: priority::Sender<Event, Priority>,
+	n_events: &priority::Sender<Event, Priority>,
 ) -> Result<(), RuntimeError> {
 	let nev = nev.map_err(|err| RuntimeError::FsWatcher {
 		kind,
