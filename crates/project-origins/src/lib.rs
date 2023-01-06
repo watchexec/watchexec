@@ -252,6 +252,8 @@ pub async fn origins(path: impl AsRef<Path> + Send) -> HashSet<PathBuf> {
 		.any(|f| f)
 	}
 
+	let mut origins = HashSet::new();
+
 	let mut current = path.as_ref();
 	if check_list(DirList::obtain(current).await) {
 		origins.insert(current.to_owned());
