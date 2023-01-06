@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+- Add `Send` bound to async functions.
+
 ## v1.0.1 (2022-09-07)
 
 - Deps: update git-config to 0.7.1
