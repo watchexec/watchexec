@@ -9,7 +9,7 @@ async fn main() -> Result<()> {
 	tracing_subscriber::fmt::init();
 
 	let first_arg = args().nth(1).unwrap_or_else(|| ".".to_string());
-	let path = dunce::canonicalize(first_arg).into_diagnostic()?;
+	let path = tokio::fs::canonicalize(first_arg).await.into_diagnostic()?;
 
 	for origin in origins(&path).await {
 		println!("{}", origin.display());
