@@ -58,6 +58,6 @@ jobs:
           ${{ runner.os }}-cargo-
 
     - name: Clippy
-      run: cargo clippy -- $(<.clippy-lints)
+      run: cargo clippy -- $(xargs < .clippy-lints)
       shell: bash
 
