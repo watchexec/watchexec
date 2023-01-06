@@ -45,7 +45,12 @@ const PATH_SEPARATOR: &str = ";";
 /// return an `IgnoreFile { path: path/to/that/file, applies_in: None, applies_to: Some(ProjectType::Git) }`.
 /// This is the only case in which the `applies_in` field is None from this function. When such is
 /// received the global Git ignore files found by [`from_environment()`] **should be ignored**.
-pub async fn from_origin(path: impl AsRef<Path>) -> (Vec<IgnoreFile>, Vec<Error>) {
+///
+/// ## Async
+///
+/// This future is not `Send` due to [`git_config`] internals.
+#[allow(clippy::future_not_send)]
+pub async fn from_origin(path: impl AsRef<Path> + Send) -> (Vec<IgnoreFile>, Vec<Error>) {
 	let base = path.as_ref().to_owned();
 	let mut files = Vec::new();
 	let mut errors = Vec::new();
@@ -60,7 +65,8 @@ pub async fn from_origin(path: impl AsRef<Path>) -> (Vec<IgnoreFile>, Vec<Error>
 			)),
 			Some(Err(err)) => errors.push(Error::new(ErrorKind::Other, err)),
 			Some(Ok(config)) => {
-				if let Ok(excludes) = config.value::<GitPath<'_>>("core", None, "excludesFile") {
+				let config_excludes = config.value::<GitPath<'_>>("core", None, "excludesFile");
+				if let Ok(excludes) = config_excludes {
 					match excludes.interpolate(InterpolateContext {
 						home_dir: env::var("HOME").ok().map(PathBuf::from).as_deref(),
 						..Default::default()
@@ -190,6 +196,11 @@ pub async fn from_origin(path: impl AsRef<Path>) -> (Vec<IgnoreFile>, Vec<Error>
 /// All errors (permissions, etc) are collected and returned alongside the ignore files: you may
 /// want to show them to the user while still using whatever ignores were successfully found. Errors
 /// from files not being found are silently ignored (the files are just not returned).
+///
+/// ## Async
+///
+/// This future is not `Send` due to [`git_config`] internals.
+#[allow(clippy::future_not_send)]
 pub async fn from_environment(appname: Option<&str>) -> (Vec<IgnoreFile>, Vec<Error>) {
 	let mut files = Vec::new();
 	let mut errors = Vec::new();
@@ -213,7 +224,8 @@ pub async fn from_environment(appname: Option<&str>) -> (Vec<IgnoreFile>, Vec<Er
 		Err(err) => errors.push(Error::new(ErrorKind::Other, err)),
 		Ok(Err(err)) => errors.push(Error::new(ErrorKind::Other, err)),
 		Ok(Ok(config)) => {
-			if let Ok(excludes) = config.value::<GitPath<'_>>("core", None, "excludesFile") {
+			let config_excludes = config.value::<GitPath<'_>>("core", None, "excludesFile");
+			if let Ok(excludes) = config_excludes {
 				match excludes.interpolate(InterpolateContext {
 					home_dir: env::var("HOME").ok().map(PathBuf::from).as_deref(),
 					..Default::default()
