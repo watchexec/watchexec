@@ -58,5 +58,5 @@ jobs:
           ${{ runner.os }}-cargo-
 
     - name: Clippy
-      run: cargo clippy -- -D clippy::all -W clippy::nursery -W clippy::pedantic -A clippy::module-name-repetitions
+      run: cargo clippy -- -D clippy::all -W clippy::nursery -W clippy::pedantic -A clippy::module-name-repetitions -A clippy::too-many-lines
 
