@@ -2661,7 +2661,6 @@ dependencies = [
  "dunce",
  "futures",
  "ignore-files",
- "libc",
  "miette",
  "notify",
  "once_cell",

@@ -57,8 +57,5 @@ features = [
 version = "0.1.26"
 features = ["log"]
 
-[target.'cfg(unix)'.dependencies]
-libc = "0.2.104"
-
 [dev-dependencies]
 tracing-subscriber = "0.3.6"

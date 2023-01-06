@@ -177,26 +177,25 @@ impl From<ExitStatus> for ProcessEnd {
 	#[cfg(all(unix, not(target_os = "fuchsia")))]
 	fn from(es: ExitStatus) -> Self {
 		use std::os::unix::process::ExitStatusExt;
-		match (es.code(), es.signal()) {
-			(Some(_), Some(_)) => {
+
+		match (es.code(), es.signal(), es.stopped_signal()) {
+			(Some(_), Some(_), _) => {
 				unreachable!("exitstatus cannot both be code and signal?!")
 			}
-			(Some(code), None) => match NonZeroI64::try_from(i64::from(code)) {
+			(Some(code), None, _) => match NonZeroI64::try_from(i64::from(code)) {
 				Ok(code) => Self::ExitError(code),
 				Err(_) => Self::Success,
 			},
-			// TODO: once unix_process_wait_more lands, use stopped_signal() instead and clear the libc dep
-			(None, Some(signal)) if libc::WIFSTOPPED(-signal) => {
-				match NonZeroI32::try_from(libc::WSTOPSIG(-signal)) {
+			(None, Some(_), Some(stopsig)) => {
+				match NonZeroI32::try_from(stopsig) {
 					Ok(signal) => Self::ExitStop(signal),
 					Err(_) => Self::Success,
 				}
 			}
-			// TODO: once unix_process_wait_more lands, use continued() instead and clear the libc dep
 			#[cfg(not(target_os = "vxworks"))]
-			(None, Some(signal)) if libc::WIFCONTINUED(-signal) => Self::Continued,
-			(None, Some(signal)) => Self::ExitSignal(signal.into()),
-			(None, None) => Self::Success,
+			(None, Some(_), _) if es.continued() => Self::Continued,
+			(None, Some(signal), _) => Self::ExitSignal(signal.into()),
+			(None, None, _) => Self::Success,
 		}
 	}
 
