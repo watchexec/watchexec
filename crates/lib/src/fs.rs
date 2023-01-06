@@ -188,13 +188,13 @@ pub async fn worker(
 			} else {
 				let mut to_watch = Vec::with_capacity(data.pathset.len());
 				let mut to_drop = Vec::with_capacity(pathset.len());
-				for path in data.pathset.iter() {
+				for path in &data.pathset {
 					if !pathset.contains(path) {
 						to_watch.push(path.clone());
 					}
 				}
 
-				for path in pathset.iter() {
+				for path in &pathset {
 					if !data.pathset.contains(path) {
 						to_drop.push(path.clone());
 					}

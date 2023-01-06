@@ -13,8 +13,7 @@ impl ProcessHolder {
 			.read()
 			.await
 			.as_ref()
-			.map(|p| p.is_running())
-			.unwrap_or(false)
+			.map_or(false, Supervisor::is_running)
 	}
 
 	pub async fn is_some(&self) -> bool {

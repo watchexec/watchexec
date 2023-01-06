@@ -113,9 +113,7 @@ impl OutcomeWorker {
 				notry!(self.process.wait())?;
 				notry!(self.process.drop_inner());
 			}
-			(false, o @ Outcome::Stop)
-			| (false, o @ Outcome::Wait)
-			| (false, o @ Outcome::Signal(_)) => {
+			(false, o @ (Outcome::Stop | Outcome::Wait | Outcome::Signal(_))) => {
 				debug!(outcome=?o, "meaningless without a process, not doing anything");
 			}
 			(_, Outcome::Start) => {

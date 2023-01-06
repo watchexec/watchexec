@@ -102,6 +102,7 @@ pub trait Handler<T> {
 pub struct HandlerLock<T>(Arc<Mutex<Box<dyn Handler<T> + Send>>>);
 impl<T> HandlerLock<T> {
 	/// Wrap a [`Handler`] into a lock.
+	#[must_use]
 	pub fn new(handler: Box<dyn Handler<T> + Send>) -> Self {
 		Self(Arc::new(Mutex::new(handler)))
 	}

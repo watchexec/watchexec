@@ -71,6 +71,7 @@ pub enum Tag {
 
 impl Tag {
 	/// The name of the variant.
+	#[must_use]
 	pub const fn discriminant_name(&self) -> &'static str {
 		match self {
 			Self::Path { .. } => "Path",
@@ -291,6 +292,7 @@ impl Default for Priority {
 
 impl Event {
 	/// Returns true if the event has an Internal source tag.
+	#[must_use]
 	pub fn is_internal(&self) -> bool {
 		self.tags
 			.iter()
@@ -298,6 +300,7 @@ impl Event {
 	}
 
 	/// Returns true if the event has no tags.
+	#[must_use]
 	pub fn is_empty(&self) -> bool {
 		self.tags.is_empty()
 	}

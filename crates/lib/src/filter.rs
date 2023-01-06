@@ -30,6 +30,6 @@ impl Filterer for () {
 
 impl<T: Filterer> Filterer for Arc<T> {
 	fn check_event(&self, event: &Event, priority: Priority) -> Result<bool, RuntimeError> {
-		Arc::as_ref(self).check_event(event, priority)
+		Self::as_ref(self).check_event(event, priority)
 	}
 }

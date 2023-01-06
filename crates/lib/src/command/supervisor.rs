@@ -160,7 +160,7 @@ impl Supervisor {
 							let event = Event {
 								tags: vec![
 									Tag::Source(Source::Internal),
-									Tag::ProcessCompletion(status.map(|s| s.into())),
+									Tag::ProcessCompletion(status.map(Into::into)),
 								],
 								metadata: Default::default(),
 							};
@@ -214,7 +214,7 @@ impl Supervisor {
 	/// when the signal has been delivered.
 	pub async fn signal(&self, signal: SubSignal) {
 		if cfg!(windows) {
-			if let SubSignal::ForceStop = signal {
+			if signal == SubSignal::ForceStop {
 				self.intervene.send(Intervention::Kill).await.ok();
 			}
 		// else: https://github.com/watchexec/watchexec/issues/219
