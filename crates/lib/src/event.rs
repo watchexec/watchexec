@@ -73,13 +73,13 @@ impl Tag {
 	/// The name of the variant.
 	pub const fn discriminant_name(&self) -> &'static str {
 		match self {
-			Tag::Path { .. } => "Path",
-			Tag::FileEventKind(_) => "FileEventKind",
-			Tag::Source(_) => "Source",
-			Tag::Keyboard(_) => "Keyboard",
-			Tag::Process(_) => "Process",
-			Tag::Signal(_) => "Signal",
-			Tag::ProcessCompletion(_) => "ProcessCompletion",
+			Self::Path { .. } => "Path",
+			Self::FileEventKind(_) => "FileEventKind",
+			Self::Source(_) => "Source",
+			Self::Keyboard(_) => "Keyboard",
+			Self::Process(_) => "Process",
+			Self::Signal(_) => "Signal",
+			Self::ProcessCompletion(_) => "ProcessCompletion",
 		}
 	}
 }
