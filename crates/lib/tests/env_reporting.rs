@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ffi::OsString};
+use std::{collections::HashMap, ffi::OsString, path::MAIN_SEPARATOR};
 
 use notify::event::CreateKind;
 use watchexec::{
@@ -171,11 +171,13 @@ fn single_type_multipath() {
 			(
 				"CREATED",
 				OsString::from(
-					String::new()
-						+ "deeper/sub/folder.txt"
-						+ ENV_SEP + "dom/folder.txt"
-						+ ENV_SEP + "root.txt" + ENV_SEP
-						+ "sub/folder.txt"
+					[
+						format!("deeper{MAIN_SEPARATOR}sub{MAIN_SEPARATOR}folder.txt"),
+						format!("dom{MAIN_SEPARATOR}folder.txt"),
+						"root.txt".to_string(),
+						format!("sub{MAIN_SEPARATOR}folder.txt"),
+					]
+					.join(ENV_SEP)
 				)
 			),
 			("COMMON", ospath("")),
@@ -194,7 +196,13 @@ fn single_type_divergent_paths() {
 		HashMap::from([
 			(
 				"CREATED",
-				OsString::from(String::new() + "dom/folder.txt" + ENV_SEP + "sub/folder.txt")
+				OsString::from(
+					[
+						format!("dom{MAIN_SEPARATOR}folder.txt"),
+						format!("sub{MAIN_SEPARATOR}folder.txt"),
+					]
+					.join(ENV_SEP)
+				)
 			),
 			("COMMON", ospath("")),
 		])
@@ -218,11 +226,22 @@ fn multitype_multipath() {
 		HashMap::from([
 			(
 				"CREATED",
-				OsString::from(String::new() + "root.txt" + ENV_SEP + "sibling.txt"),
+				OsString::from(["root.txt", "sibling.txt"].join(ENV_SEP)),
 			),
-			("META_CHANGED", OsString::from("sub/folder.txt"),),
-			("REMOVED", OsString::from("dom/folder.txt"),),
-			("OTHERWISE_CHANGED", OsString::from("deeper/sub/folder.txt"),),
+			(
+				"META_CHANGED",
+				OsString::from(format!("sub{MAIN_SEPARATOR}folder.txt"))
+			),
+			(
+				"REMOVED",
+				OsString::from(format!("dom{MAIN_SEPARATOR}folder.txt"))
+			),
+			(
+				"OTHERWISE_CHANGED",
+				OsString::from(format!(
+					"deeper{MAIN_SEPARATOR}sub{MAIN_SEPARATOR}folder.txt"
+				))
+			),
 			("COMMON", ospath("")),
 		])
 	);
