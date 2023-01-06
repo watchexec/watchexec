@@ -130,7 +130,7 @@ pub async fn worker(
 		let err = action_handler
 			.call(action)
 			.await
-			.map_err(|e| rte("action worker", e));
+			.map_err(|e| rte("action worker", e.as_ref()));
 		if let Err(err) = err {
 			errors.send(err).await?;
 			debug!("action handler errored, skipping");

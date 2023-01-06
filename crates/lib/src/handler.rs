@@ -132,7 +132,7 @@ impl<T> Default for HandlerLock<T> {
 	}
 }
 
-pub(crate) fn rte(ctx: &'static str, err: Box<dyn Error>) -> RuntimeError {
+pub(crate) fn rte(ctx: &'static str, err: &dyn Error) -> RuntimeError {
 	RuntimeError::Handler {
 		ctx,
 		err: err.to_string(),

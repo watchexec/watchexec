@@ -204,7 +204,7 @@ async fn error_hook(
 		let crit = hook.critical.clone();
 		if let Err(err) = handler.handle(hook) {
 			error!(%err, "error while handling error");
-			let rehook = ErrorHook::new(rte("error hook", err));
+			let rehook = ErrorHook::new(rte("error hook", err.as_ref()));
 			let recrit = rehook.critical.clone();
 			handler.handle(rehook).unwrap_or_else(|err| {
 				error!(%err, "error while handling error of handling error");
@@ -248,16 +248,14 @@ impl ErrorHook {
 	) -> Result<(), CriticalError> {
 		match Arc::try_unwrap(crit) {
 			Err(err) => {
-				error!(?err, "{} hook has an outstanding ref", name);
+				error!(?err, "{name} hook has an outstanding ref");
 				Ok(())
 			}
 			Ok(crit) => {
-				if let Some(crit) = crit.into_inner() {
-					debug!(%crit, "{} output a critical error", name);
+				crit.into_inner().map_or_else(|| Ok(()), |crit| {
+					debug!(%crit, "{name} output a critical error");
 					Err(crit)
-				} else {
-					Ok(())
-				}
+				})
 			}
 		}
 	}
