@@ -12,7 +12,7 @@ const ENV_SEP: &str = ":";
 const ENV_SEP: &str = ";";
 
 fn ospath(path: &str) -> OsString {
-	let root = dunce::canonicalize(".").unwrap();
+	let root = std::fs::canonicalize(".").unwrap();
 	if path.is_empty() {
 		root
 	} else {

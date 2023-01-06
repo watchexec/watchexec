@@ -9,9 +9,10 @@ use std::{
 };
 
 use async_priority_channel as priority;
+use normalize_path::NormalizePath;
 use notify::{Config, Watcher as _};
 use tokio::sync::{mpsc, watch};
-use tracing::{debug, error, trace, warn};
+use tracing::{debug, error, trace};
 
 use crate::{
 	error::{CriticalError, FsWatcherError, RuntimeError},
@@ -131,8 +132,8 @@ impl AsRef<Path> for WatchedPath {
 /// _not_ to drop the watch sender: this will cause the worker to stop gracefully, which may not be
 /// what was expected.
 ///
-/// Note that the paths emitted by the watcher are canonicalised. No guarantee is made about the
-/// implementation or output of that canonicalisation (i.e. it might not be `std`'s).
+/// Note that the paths emitted by the watcher are normalised. No guarantee is made about the
+/// implementation or output of that normalisation (it may change without notice).
 ///
 /// # Examples
 ///
@@ -311,10 +312,7 @@ fn process_event(
 		// possibly pull file_type from whatever notify (or the native driver) returns?
 		tags.push(Tag::Path {
 			file_type: metadata(&path).ok().map(|m| m.file_type().into()),
-			path: dunce::canonicalize(&path).unwrap_or_else(|err| {
-				warn!(?err, ?path, "failed to canonicalise event path");
-				path
-			}),
+			path: path.normalize(),
 		});
 	}
 

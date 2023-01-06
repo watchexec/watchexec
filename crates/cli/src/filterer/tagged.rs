@@ -25,7 +25,7 @@ pub async fn tagged(args: &ArgMatches) -> Result<Arc<TaggedFilterer>> {
 		let file = FilterFile(IgnoreFile {
 			applies_in: None,
 			applies_to: None,
-			path: dunce::canonicalize(path).into_diagnostic()?,
+			path: tokio::fs::canonicalize(path).await.into_diagnostic()?,
 		});
 		filter_files.push(file);
 	}
