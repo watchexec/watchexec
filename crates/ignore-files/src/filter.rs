@@ -187,7 +187,7 @@ impl IgnoreFilter {
 	pub fn add_globs(
 		&mut self,
 		globs: &[&str],
-		applies_in: Option<PathBuf>,
+		applies_in: Option<&PathBuf>,
 	) -> Result<(), Error> {
 		if let Some(ref mut builder) = self.builder {
 			let _span = trace_span!("loading ignore globs", ?globs).entered();
@@ -198,7 +198,7 @@ impl IgnoreFilter {
 
 				trace!(?line, "adding ignore line");
 				builder
-					.add_line(applies_in.clone(), line)
+					.add_line(applies_in.cloned(), line)
 					.map_err(|err| Error::Glob { file: None, err })?;
 			}
 

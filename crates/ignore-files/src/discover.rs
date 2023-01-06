@@ -389,7 +389,7 @@ impl DirTourist {
 					"/.svn",
 					"/.pijul",
 				],
-				Some(base.clone()),
+				Some(&base),
 			)
 			.map_err(|err| Error::new(ErrorKind::Other, err))?;
 
