@@ -100,7 +100,7 @@ pub trait Handler<T> {
 ///
 /// Internally this is a Tokio [`Mutex`].
 pub struct HandlerLock<T>(Arc<Mutex<Box<dyn Handler<T> + Send>>>);
-impl<T> HandlerLock<T> {
+impl<T> HandlerLock<T> where T: Send {
 	/// Wrap a [`Handler`] into a lock.
 	#[must_use]
 	pub fn new(handler: Box<dyn Handler<T> + Send>) -> Self {
@@ -126,7 +126,7 @@ impl<T> Clone for HandlerLock<T> {
 	}
 }
 
-impl<T> Default for HandlerLock<T> {
+impl<T> Default for HandlerLock<T> where T: Send {
 	fn default() -> Self {
 		Self::new(Box::new(()))
 	}
