@@ -239,7 +239,7 @@ where
 	W: Write,
 {
 	fn handle(&mut self, data: T) -> Result<(), Box<dyn Error>> {
-		writeln!(self.0, "{:?}", data).map_err(|e| Box::new(e) as _)
+		writeln!(self.0, "{data:?}").map_err(|e| Box::new(e) as _)
 	}
 }
 
@@ -252,6 +252,6 @@ where
 	W: Write,
 {
 	fn handle(&mut self, data: T) -> Result<(), Box<dyn Error>> {
-		writeln!(self.0, "{}", data).map_err(|e| Box::new(e) as _)
+		writeln!(self.0, "{data}").map_err(|e| Box::new(e) as _)
 	}
 }

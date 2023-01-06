@@ -335,16 +335,16 @@ impl fmt::Display for Event {
 				Tag::Path { path, file_type } => {
 					write!(f, " path={}", path.display())?;
 					if let Some(ft) = file_type {
-						write!(f, " filetype={}", ft)?;
+						write!(f, " filetype={ft}")?;
 					}
 				}
-				Tag::FileEventKind(kind) => write!(f, " kind={:?}", kind)?,
-				Tag::Source(s) => write!(f, " source={:?}", s)?,
-				Tag::Keyboard(k) => write!(f, " keyboard={:?}", k)?,
-				Tag::Process(p) => write!(f, " process={}", p)?,
-				Tag::Signal(s) => write!(f, " signal={:?}", s)?,
+				Tag::FileEventKind(kind) => write!(f, " kind={kind:?}")?,
+				Tag::Source(s) => write!(f, " source={s:?}")?,
+				Tag::Keyboard(k) => write!(f, " keyboard={k:?}")?,
+				Tag::Process(p) => write!(f, " process={p}")?,
+				Tag::Signal(s) => write!(f, " signal={s:?}")?,
 				Tag::ProcessCompletion(None) => write!(f, " command-completed")?,
-				Tag::ProcessCompletion(Some(c)) => write!(f, " command-completed({:?})", c)?,
+				Tag::ProcessCompletion(Some(c)) => write!(f, " command-completed({c:?})")?,
 			}
 		}
 
