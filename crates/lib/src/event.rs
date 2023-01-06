@@ -164,17 +164,7 @@ pub enum ProcessEnd {
 }
 
 impl From<ExitStatus> for ProcessEnd {
-	#[cfg(target_os = "fuchsia")]
-	fn from(es: ExitStatus) -> Self {
-		// Once https://github.com/rust-lang/rust/pull/88300 (unix_process_wait_more) lands, use
-		// that API instead of doing the transmute, and clean up the forbid condition at crate root.
-		let raw: i64 = unsafe { std::mem::transmute(es) };
-		NonZeroI64::try_from(raw)
-			.map(Self::ExitError)
-			.unwrap_or(Self::Success)
-	}
-
-	#[cfg(all(unix, not(target_os = "fuchsia")))]
+	#[cfg(unix)]
 	fn from(es: ExitStatus) -> Self {
 		use std::os::unix::process::ExitStatusExt;
 
