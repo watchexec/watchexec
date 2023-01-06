@@ -1,8 +1,8 @@
-use std::{collections::HashMap, convert::Into};
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::{collections::HashMap, convert::Into};
 
-use futures::{TryStreamExt, stream::FuturesOrdered};
+use futures::{stream::FuturesOrdered, TryStreamExt};
 use ignore::{
 	gitignore::{Gitignore, GitignoreBuilder},
 	Match,
@@ -78,9 +78,9 @@ impl TaggedFilterer {
 							trace!(prev=%pri_match, now=%true, "negate filter passes, passing this priority");
 							pri_match = true;
 							break;
-						} else {
-							trace!(prev=%pri_match, now=%pri_match, "negate filter fails, ignoring");
 						}
+
+						trace!(prev=%pri_match, now=%pri_match, "negate filter fails, ignoring");
 					} else {
 						trace!(prev=%pri_match, this=%applies, now=%(pri_match&applies), "filter applies to priority");
 						pri_match &= applies;
@@ -247,9 +247,9 @@ impl TaggedFilterer {
 									trace!(prev=%tag_match, now=%true, "negate filter passes, passing this matcher");
 									tag_match = true;
 									break;
-								} else {
-									trace!(prev=%tag_match, now=%tag_match, "negate filter fails, ignoring");
 								}
+
+								trace!(prev=%tag_match, now=%tag_match, "negate filter fails, ignoring");
 							} else {
 								trace!(prev=%tag_match, this=%app, now=%(tag_match&app), "filter applies to this tag");
 								tag_match &= app;
@@ -295,19 +295,23 @@ impl TaggedFilterer {
 		let origin = origin.into();
 		let workdir = workdir.into();
 
-		let origin = canonicalize(origin).await.map_err(|err| TaggedFiltererError::IoError {
-			about: "canonicalise origin on new tagged filterer",
-			err,
-		})?;
+		let origin = canonicalize(origin)
+			.await
+			.map_err(|err| TaggedFiltererError::IoError {
+				about: "canonicalise origin on new tagged filterer",
+				err,
+			})?;
 		Ok(Arc::new(Self {
 			filters: SwapLock::new(HashMap::new()),
 			ignore_filterer: SwapLock::new(IgnoreFilterer(IgnoreFilter::empty(&origin))),
 			glob_compiled: SwapLock::new(None),
 			not_glob_compiled: SwapLock::new(None),
-			workdir: canonicalize(workdir).await.map_err(|err| TaggedFiltererError::IoError {
-				about: "canonicalise workdir on new tagged filterer",
-				err,
-			})?,
+			workdir: canonicalize(workdir)
+				.await
+				.map_err(|err| TaggedFiltererError::IoError {
+					about: "canonicalise workdir on new tagged filterer",
+					err,
+				})?,
 			origin,
 		}))
 	}
@@ -345,9 +349,9 @@ impl TaggedFilterer {
 				if matches!(filter.op, Op::Glob | Op::NotGlob) {
 					trace!("path glob match with match_tag is already handled");
 					return Ok(None);
-				} else {
-					filter.matches(resolved.to_string_lossy())
 				}
+
+				filter.matches(resolved.to_string_lossy())
 			}
 			(
 				Tag::Path {
@@ -422,22 +426,24 @@ impl TaggedFilterer {
 		let mut recompile_globs = false;
 		let mut recompile_not_globs = false;
 
+		#[allow(clippy::from_iter_instead_of_collect)]
 		let filters = FuturesOrdered::from_iter(
 			filters
-			.iter()
-			.cloned()
-			.inspect(|f| match f.op {
-				Op::Glob => {
-					recompile_globs = true;
-				}
-				Op::NotGlob => {
-					recompile_not_globs = true;
-				}
-				_ => {}
-			})
-			.map(Filter::canonicalised))
-			.try_collect::<Vec<_>>()
-			.await?;
+				.iter()
+				.cloned()
+				.inspect(|f| match f.op {
+					Op::Glob => {
+						recompile_globs = true;
+					}
+					Op::NotGlob => {
+						recompile_not_globs = true;
+					}
+					_ => {}
+				})
+				.map(Filter::canonicalised),
+		)
+		.try_collect::<Vec<_>>()
+		.await?;
 		trace!(?filters, "canonicalised filters");
 		// TODO: use miette's related and issue canonicalisation errors for all of them
 
@@ -447,22 +453,21 @@ impl TaggedFilterer {
 					fs.entry(filter.on).or_default().push(filter);
 				}
 			})
-			.await
 			.map_err(|err| TaggedFiltererError::FilterChange { action: "add", err })?;
 		trace!("inserted filters into swaplock");
 
 		if recompile_globs {
-			self.recompile_globs(Op::Glob).await?;
+			self.recompile_globs(Op::Glob)?;
 		}
 
 		if recompile_not_globs {
-			self.recompile_globs(Op::NotGlob).await?;
+			self.recompile_globs(Op::NotGlob)?;
 		}
 
 		Ok(())
 	}
 
-	async fn recompile_globs(&self, op_filter: Op) -> Result<(), TaggedFiltererError> {
+	fn recompile_globs(&self, op_filter: Op) -> Result<(), TaggedFiltererError> {
 		trace!(?op_filter, "recompiling globs");
 		let target = match op_filter {
 			Op::Glob => &self.glob_compiled,
@@ -483,7 +488,6 @@ impl TaggedFilterer {
 				trace!(?op_filter, "no filters, erasing compiled glob");
 				return target
 					.replace(None)
-					.await
 					.map_err(TaggedFiltererError::GlobsetChange);
 			}
 		};
@@ -508,7 +512,6 @@ impl TaggedFilterer {
 		trace!(?op_filter, "swapping in new compiled glob");
 		target
 			.replace(Some(compiled))
-			.await
 			.map_err(TaggedFiltererError::GlobsetChange)
 	}
 
@@ -522,7 +525,6 @@ impl TaggedFilterer {
 			.map_err(TaggedFiltererError::Ignore)?;
 		self.ignore_filterer
 			.replace(new)
-			.await
 			.map_err(TaggedFiltererError::IgnoreSwap)?;
 		Ok(())
 	}
@@ -530,18 +532,17 @@ impl TaggedFilterer {
 	/// Clears all filters from the filterer.
 	///
 	/// This also recompiles the glob matchers, so essentially it resets the entire filterer state.
-	pub async fn clear_filters(&self) -> Result<(), TaggedFiltererError> {
+	pub fn clear_filters(&self) -> Result<(), TaggedFiltererError> {
 		debug!("removing all filters from filterer");
-		self.filters
-			.replace(Default::default())
-			.await
-			.map_err(|err| TaggedFiltererError::FilterChange {
+		self.filters.replace(Default::default()).map_err(|err| {
+			TaggedFiltererError::FilterChange {
 				action: "clear all",
 				err,
-			})?;
+			}
+		})?;
 
-		self.recompile_globs(Op::Glob).await?;
-		self.recompile_globs(Op::NotGlob).await?;
+		self.recompile_globs(Op::Glob)?;
+		self.recompile_globs(Op::NotGlob)?;
 
 		Ok(())
 	}
