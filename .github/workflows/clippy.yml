@@ -18,8 +18,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check:
+  clippy:
     strategy:
+      fail-fast: false
       matrix:
         platform:
           - ubuntu
