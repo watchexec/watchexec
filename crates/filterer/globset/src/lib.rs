@@ -134,8 +134,7 @@ impl Filterer for GlobsetFilterer {
 		} else {
 			Ok(paths.any(|(path, file_type)| {
 				let _span = trace_span!("path", ?path).entered();
-				let is_dir = file_type
-					.map_or(false, |t| matches!(t, FileType::Dir));
+				let is_dir = file_type.map_or(false, |t| matches!(t, FileType::Dir));
 
 				if self.ignores.matched(path, is_dir).is_ignore() {
 					trace!("ignored by globset ignore");

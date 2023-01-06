@@ -58,16 +58,16 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 		"do-nothing"
 	} else {
 		args.value_of("on-busy-update").unwrap_or("queue")
-	}.to_owned();
+	}
+	.to_owned();
 
 	let signal = if args.is_present("kill") {
 		Some(SubSignal::ForceStop)
 	} else {
-		args
-		.value_of("signal")
-		.map(SubSignal::from_str)
-		.transpose()
-		.into_diagnostic()?
+		args.value_of("signal")
+			.map(SubSignal::from_str)
+			.transpose()
+			.into_diagnostic()?
 	};
 
 	let print_events = args.is_present("print-events");
@@ -163,9 +163,12 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 						.summary("Watchexec: command ended")
 						.body(&msg)
 						.show()
-						.map_or_else(|err| {
-							eprintln!("[[Failed to send desktop notification: {err}]]");
-						}, drop);
+						.map_or_else(
+							|err| {
+								eprintln!("[[Failed to send desktop notification: {err}]]");
+							},
+							drop,
+						);
 				}
 
 				action.outcome(Outcome::DoNothing);
@@ -265,9 +268,12 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 				.summary("Watchexec: change detected")
 				.body(&format!("Running {}", postspawn.command))
 				.show()
-				.map_or_else(|err| {
-					eprintln!("[[Failed to send desktop notification: {err}]]");
-				}, drop);
+				.map_or_else(
+					|err| {
+						eprintln!("[[Failed to send desktop notification: {err}]]");
+					},
+					drop,
+				);
 		}
 
 		Ok::<(), Infallible>(())

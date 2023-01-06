@@ -251,12 +251,13 @@ impl ErrorHook {
 				error!(?err, "{name} hook has an outstanding ref");
 				Ok(())
 			}
-			Ok(crit) => {
-				crit.into_inner().map_or_else(|| Ok(()), |crit| {
+			Ok(crit) => crit.into_inner().map_or_else(
+				|| Ok(()),
+				|crit| {
 					debug!(%crit, "{name} output a critical error");
 					Err(crit)
-				})
-			}
+				},
+			),
 		}
 	}
 

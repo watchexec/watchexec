@@ -104,10 +104,12 @@ impl Filter {
 		if let Some(ctx) = self.in_path {
 			self.in_path =
 				Some(
-					canonicalize(&ctx).await.map_err(|err| TaggedFiltererError::IoError {
-						about: "canonicalise Filter in_path",
-						err,
-					})?,
+					canonicalize(&ctx)
+						.await
+						.map_err(|err| TaggedFiltererError::IoError {
+							about: "canonicalise Filter in_path",
+							err,
+						})?,
 				);
 			trace!(canon=?ctx, "canonicalised in_path");
 		}

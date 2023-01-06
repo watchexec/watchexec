@@ -184,11 +184,7 @@ impl IgnoreFilter {
 	/// Adds some globs manually, if the builder is available.
 	///
 	/// Does nothing silently otherwise.
-	pub fn add_globs(
-		&mut self,
-		globs: &[&str],
-		applies_in: Option<&PathBuf>,
-	) -> Result<(), Error> {
+	pub fn add_globs(&mut self, globs: &[&str], applies_in: Option<&PathBuf>) -> Result<(), Error> {
 		if let Some(ref mut builder) = self.builder {
 			let _span = trace_span!("loading ignore globs", ?globs).entered();
 			for line in globs {

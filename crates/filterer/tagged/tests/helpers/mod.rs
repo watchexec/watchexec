@@ -8,7 +8,7 @@ use std::{
 
 use ignore_files::{IgnoreFile, IgnoreFilter};
 use project_origins::ProjectType;
-use tokio::{fs::canonicalize, runtime::Handle};
+use tokio::fs::canonicalize;
 use watchexec::{
 	error::RuntimeError,
 	event::{filekind::FileEventKind, Event, FileType, Priority, ProcessEnd, Source, Tag},
@@ -217,7 +217,9 @@ pub async fn ignore_filt(origin: &str, ignore_files: &[IgnoreFile]) -> IgnoreFil
 pub async fn tagged_filt(filters: &[Filter]) -> Arc<TaggedFilterer> {
 	let origin = canonicalize(".").await.unwrap();
 	tracing_init();
-	let filterer = TaggedFilterer::new(origin.clone(), origin).await.expect("creating filterer");
+	let filterer = TaggedFilterer::new(origin.clone(), origin)
+		.await
+		.expect("creating filterer");
 	filterer.add_filters(filters).await.expect("adding filters");
 	filterer
 }
@@ -225,7 +227,9 @@ pub async fn tagged_filt(filters: &[Filter]) -> Arc<TaggedFilterer> {
 pub async fn tagged_igfilt(origin: &str, ignore_files: &[IgnoreFile]) -> Arc<TaggedFilterer> {
 	let origin = canonicalize(".").await.unwrap().join(origin);
 	tracing_init();
-	let filterer = TaggedFilterer::new(origin.clone(), origin).await.expect("creating filterer");
+	let filterer = TaggedFilterer::new(origin.clone(), origin)
+		.await
+		.expect("creating filterer");
 	for file in ignore_files {
 		tracing::info!(?file, "loading ignore file");
 		filterer

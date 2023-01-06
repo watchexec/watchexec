@@ -6,9 +6,10 @@ use watchexec::{
 	command::Command,
 	config::{InitConfig, RuntimeConfig},
 	error::ReconfigError,
+	event::Event,
 	fs::Watcher,
 	signal::source::MainSignal,
-	ErrorHook, Watchexec, event::Event,
+	ErrorHook, Watchexec,
 };
 
 // Run with: `env RUST_LOG=debug cargo run --example print_out`
