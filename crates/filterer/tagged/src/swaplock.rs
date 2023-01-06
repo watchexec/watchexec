@@ -33,7 +33,7 @@ where
 	///
 	/// This obtains a clone of the value, and then calls the closure with a mutable reference to
 	/// it. Once the closure returns, the value is swapped in.
-	pub async fn change(&self, f: impl FnOnce(&mut T)) -> Result<(), SendError<T>> {
+	pub fn change(&self, f: impl FnOnce(&mut T)) -> Result<(), SendError<T>> {
 		let mut new = { self.r.borrow().clone() };
 
 		f(&mut new);
@@ -41,7 +41,7 @@ where
 	}
 
 	/// Replace the value with a new one.
-	pub async fn replace(&self, new: T) -> Result<(), SendError<T>> {
+	pub fn replace(&self, new: T) -> Result<(), SendError<T>> {
 		self.s.send(new)
 	}
 }

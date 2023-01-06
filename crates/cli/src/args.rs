@@ -275,7 +275,7 @@ pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches> {
 			let arg_file = BufReader::new(
 				File::open(arg_path)
 					.into_diagnostic()
-					.wrap_err_with(|| format!("Failed to open argument file {:?}", arg_path))?,
+					.wrap_err_with(|| format!("Failed to open argument file {arg_path:?}"))?,
 			);
 
 			let mut more_args: Vec<OsString> = arg_file

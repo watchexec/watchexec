@@ -100,8 +100,12 @@ pub trait Handler<T> {
 ///
 /// Internally this is a Tokio [`Mutex`].
 pub struct HandlerLock<T>(Arc<Mutex<Box<dyn Handler<T> + Send>>>);
-impl<T> HandlerLock<T> {
+impl<T> HandlerLock<T>
+where
+	T: Send,
+{
 	/// Wrap a [`Handler`] into a lock.
+	#[must_use]
 	pub fn new(handler: Box<dyn Handler<T> + Send>) -> Self {
 		Self(Arc::new(Mutex::new(handler)))
 	}
@@ -125,13 +129,16 @@ impl<T> Clone for HandlerLock<T> {
 	}
 }
 
-impl<T> Default for HandlerLock<T> {
+impl<T> Default for HandlerLock<T>
+where
+	T: Send,
+{
 	fn default() -> Self {
 		Self::new(Box::new(()))
 	}
 }
 
-pub(crate) fn rte(ctx: &'static str, err: Box<dyn Error>) -> RuntimeError {
+pub(crate) fn rte(ctx: &'static str, err: &dyn Error) -> RuntimeError {
 	RuntimeError::Handler {
 		ctx,
 		err: err.to_string(),
@@ -239,7 +246,7 @@ where
 	W: Write,
 {
 	fn handle(&mut self, data: T) -> Result<(), Box<dyn Error>> {
-		writeln!(self.0, "{:?}", data).map_err(|e| Box::new(e) as _)
+		writeln!(self.0, "{data:?}").map_err(|e| Box::new(e) as _)
 	}
 }
 
@@ -252,6 +259,6 @@ where
 	W: Write,
 {
 	fn handle(&mut self, data: T) -> Result<(), Box<dyn Error>> {
-		writeln!(self.0, "{}", data).map_err(|e| Box::new(e) as _)
+		writeln!(self.0, "{data}").map_err(|e| Box::new(e) as _)
 	}
 }

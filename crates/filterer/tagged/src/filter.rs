@@ -1,9 +1,9 @@
 use std::collections::HashSet;
 use std::path::PathBuf;
 
-use dunce::canonicalize;
 use globset::Glob;
 use regex::Regex;
+use tokio::fs::canonicalize;
 use tracing::{trace, warn};
 use unicase::UniCase;
 use watchexec::event::Tag;
@@ -49,7 +49,7 @@ impl Filter {
 			(Op::InSet, Pattern::Exact(pat)) => subject == pat,
 			(Op::NotInSet, Pattern::Set(set)) => !set.contains(subject),
 			(Op::NotInSet, Pattern::Exact(pat)) => subject != pat,
-			(op @ Op::Glob | op @ Op::NotGlob, Pattern::Glob(glob)) => {
+			(op @ (Op::Glob | Op::NotGlob), Pattern::Glob(glob)) => {
 				// FIXME: someway that isn't this horrible
 				match Glob::new(glob) {
 					Ok(glob) => {
@@ -86,6 +86,7 @@ impl Filter {
 	///
 	/// The resulting filter matches on [`Path`][Matcher::Path], with the [`NotGlob`][Op::NotGlob]
 	/// op, and a [`Glob`][Pattern::Glob] pattern. If it starts with a `!`, it is negated.
+	#[must_use]
 	pub fn from_glob_ignore(in_path: Option<PathBuf>, glob: &str) -> Self {
 		let (glob, negate) = glob.strip_prefix('!').map_or((glob, false), |g| (g, true));
 
@@ -99,14 +100,16 @@ impl Filter {
 	}
 
 	/// Returns the filter with its `in_path` canonicalised.
-	pub fn canonicalised(mut self) -> Result<Self, TaggedFiltererError> {
+	pub async fn canonicalised(mut self) -> Result<Self, TaggedFiltererError> {
 		if let Some(ctx) = self.in_path {
 			self.in_path =
 				Some(
-					canonicalize(&ctx).map_err(|err| TaggedFiltererError::IoError {
-						about: "canonicalise Filter in_path",
-						err,
-					})?,
+					canonicalize(&ctx)
+						.await
+						.map_err(|err| TaggedFiltererError::IoError {
+							about: "canonicalise Filter in_path",
+							err,
+						})?,
 				);
 			trace!(canon=?ctx, "canonicalised in_path");
 		}
@@ -186,13 +189,13 @@ impl Matcher {
 		match tag {
 			Tag::Path {
 				file_type: None, ..
-			} => &[Matcher::Path],
-			Tag::Path { .. } => &[Matcher::Path, Matcher::FileType],
-			Tag::FileEventKind(_) => &[Matcher::FileEventKind],
-			Tag::Source(_) => &[Matcher::Source],
-			Tag::Process(_) => &[Matcher::Process],
-			Tag::Signal(_) => &[Matcher::Signal],
-			Tag::ProcessCompletion(_) => &[Matcher::ProcessCompletion],
+			} => &[Self::Path],
+			Tag::Path { .. } => &[Self::Path, Self::FileType],
+			Tag::FileEventKind(_) => &[Self::FileEventKind],
+			Tag::Source(_) => &[Self::Source],
+			Tag::Process(_) => &[Self::Process],
+			Tag::Signal(_) => &[Self::Signal],
+			Tag::ProcessCompletion(_) => &[Self::ProcessCompletion],
 			_ => {
 				warn!("unhandled tag: {:?}", tag);
 				&[]

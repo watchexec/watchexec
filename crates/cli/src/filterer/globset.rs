@@ -26,23 +26,23 @@ pub async fn globset(args: &ArgMatches) -> Result<Arc<WatchexecFilterer>> {
 
 	if !args.is_present("no-default-ignore") {
 		ignores.extend([
-			(format!("**{s}.DS_Store", s = MAIN_SEPARATOR), None),
+			(format!("**{MAIN_SEPARATOR}.DS_Store"), None),
 			(String::from("*.py[co]"), None),
 			(String::from("#*#"), None),
 			(String::from(".#*"), None),
 			(String::from(".*.kate-swp"), None),
 			(String::from(".*.sw?"), None),
 			(String::from(".*.sw?x"), None),
-			(format!("**{s}.bzr{s}**", s = MAIN_SEPARATOR), None),
-			(format!("**{s}_darcs{s}**", s = MAIN_SEPARATOR), None),
+			(format!("**{MAIN_SEPARATOR}.bzr{MAIN_SEPARATOR}**"), None),
+			(format!("**{MAIN_SEPARATOR}_darcs{MAIN_SEPARATOR}**"), None),
 			(
-				format!("**{s}.fossil-settings{s}**", s = MAIN_SEPARATOR),
+				format!("**{MAIN_SEPARATOR}.fossil-settings{MAIN_SEPARATOR}**"),
 				None,
 			),
-			(format!("**{s}.git{s}**", s = MAIN_SEPARATOR), None),
-			(format!("**{s}.hg{s}**", s = MAIN_SEPARATOR), None),
-			(format!("**{s}.pijul{s}**", s = MAIN_SEPARATOR), None),
-			(format!("**{s}.svn{s}**", s = MAIN_SEPARATOR), None),
+			(format!("**{MAIN_SEPARATOR}.git{MAIN_SEPARATOR}**"), None),
+			(format!("**{MAIN_SEPARATOR}.hg{MAIN_SEPARATOR}**"), None),
+			(format!("**{MAIN_SEPARATOR}.pijul{MAIN_SEPARATOR}**"), None),
+			(format!("**{MAIN_SEPARATOR}.svn{MAIN_SEPARATOR}**"), None),
 		]);
 	}
 

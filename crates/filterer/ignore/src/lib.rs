@@ -36,9 +36,7 @@ impl Filterer for IgnoreFilterer {
 
 		for (path, file_type) in event.paths() {
 			let _span = trace_span!("checking_against_compiled", ?path, ?file_type).entered();
-			let is_dir = file_type
-				.map(|t| matches!(t, FileType::Dir))
-				.unwrap_or(false);
+			let is_dir = file_type.map_or(false, |t| matches!(t, FileType::Dir));
 
 			match self.0.match_path(path, is_dir) {
 				Match::None => {

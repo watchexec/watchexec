@@ -39,7 +39,7 @@ impl IgnoreFilter {
 	///
 	/// Use [`empty()`](IgnoreFilterer::empty()) if you want an empty filterer,
 	/// or to construct one outside an async environment.
-	pub async fn new(origin: impl AsRef<Path>, files: &[IgnoreFile]) -> Result<Self, Error> {
+	pub async fn new(origin: impl AsRef<Path> + Send, files: &[IgnoreFile]) -> Result<Self, Error> {
 		let origin = origin.as_ref();
 		let _span = trace_span!("build_filterer", ?origin);
 
@@ -113,6 +113,7 @@ impl IgnoreFilter {
 	}
 
 	/// Returns the number of ignores and allowlists loaded.
+	#[must_use]
 	pub fn num_ignores(&self) -> (u64, u64) {
 		(self.compiled.num_ignores(), self.compiled.num_whitelists())
 	}
@@ -183,11 +184,7 @@ impl IgnoreFilter {
 	/// Adds some globs manually, if the builder is available.
 	///
 	/// Does nothing silently otherwise.
-	pub async fn add_globs(
-		&mut self,
-		globs: &[&str],
-		applies_in: Option<PathBuf>,
-	) -> Result<(), Error> {
+	pub fn add_globs(&mut self, globs: &[&str], applies_in: Option<&PathBuf>) -> Result<(), Error> {
 		if let Some(ref mut builder) = self.builder {
 			let _span = trace_span!("loading ignore globs", ?globs).entered();
 			for line in globs {
@@ -197,7 +194,7 @@ impl IgnoreFilter {
 
 				trace!(?line, "adding ignore line");
 				builder
-					.add_line(applies_in.clone(), line)
+					.add_line(applies_in.cloned(), line)
 					.map_err(|err| Error::Glob { file: None, err })?;
 			}
 

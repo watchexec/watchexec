@@ -7,7 +7,7 @@ use std::{
 
 use git_config::{path::interpolate::Context as InterpolateContext, File, Path as GitPath};
 use project_origins::ProjectType;
-use tokio::fs::{metadata, read_dir};
+use tokio::fs::{canonicalize, metadata, read_dir};
 use tracing::{trace, trace_span};
 
 use crate::{IgnoreFile, IgnoreFilter};
@@ -45,7 +45,12 @@ const PATH_SEPARATOR: &str = ";";
 /// return an `IgnoreFile { path: path/to/that/file, applies_in: None, applies_to: Some(ProjectType::Git) }`.
 /// This is the only case in which the `applies_in` field is None from this function. When such is
 /// received the global Git ignore files found by [`from_environment()`] **should be ignored**.
-pub async fn from_origin(path: impl AsRef<Path>) -> (Vec<IgnoreFile>, Vec<Error>) {
+///
+/// ## Async
+///
+/// This future is not `Send` due to [`git_config`] internals.
+#[allow(clippy::future_not_send)]
+pub async fn from_origin(path: impl AsRef<Path> + Send) -> (Vec<IgnoreFile>, Vec<Error>) {
 	let base = path.as_ref().to_owned();
 	let mut files = Vec::new();
 	let mut errors = Vec::new();
@@ -60,7 +65,8 @@ pub async fn from_origin(path: impl AsRef<Path>) -> (Vec<IgnoreFile>, Vec<Error>
 			)),
 			Some(Err(err)) => errors.push(Error::new(ErrorKind::Other, err)),
 			Some(Ok(config)) => {
-				if let Ok(excludes) = config.value::<GitPath<'_>>("core", None, "excludesFile") {
+				let config_excludes = config.value::<GitPath<'_>>("core", None, "excludesFile");
+				if let Ok(excludes) = config_excludes {
 					match excludes.interpolate(InterpolateContext {
 						home_dir: env::var("HOME").ok().map(PathBuf::from).as_deref(),
 						..Default::default()
@@ -190,6 +196,11 @@ pub async fn from_origin(path: impl AsRef<Path>) -> (Vec<IgnoreFile>, Vec<Error>
 /// All errors (permissions, etc) are collected and returned alongside the ignore files: you may
 /// want to show them to the user while still using whatever ignores were successfully found. Errors
 /// from files not being found are silently ignored (the files are just not returned).
+///
+/// ## Async
+///
+/// This future is not `Send` due to [`git_config`] internals.
+#[allow(clippy::future_not_send)]
 pub async fn from_environment(appname: Option<&str>) -> (Vec<IgnoreFile>, Vec<Error>) {
 	let mut files = Vec::new();
 	let mut errors = Vec::new();
@@ -213,7 +224,8 @@ pub async fn from_environment(appname: Option<&str>) -> (Vec<IgnoreFile>, Vec<Er
 		Err(err) => errors.push(Error::new(ErrorKind::Other, err)),
 		Ok(Err(err)) => errors.push(Error::new(ErrorKind::Other, err)),
 		Ok(Ok(config)) => {
-			if let Ok(excludes) = config.value::<GitPath<'_>>("core", None, "excludesFile") {
+			let config_excludes = config.value::<GitPath<'_>>("core", None, "excludesFile");
+			if let Ok(excludes) = config_excludes {
 				match excludes.interpolate(InterpolateContext {
 					home_dir: env::var("HOME").ok().map(PathBuf::from).as_deref(),
 					..Default::default()
@@ -314,6 +326,8 @@ pub async fn from_environment(appname: Option<&str>) -> (Vec<IgnoreFile>, Vec<Er
 /// Utility function to handle looking for an ignore file and adding it to a list if found.
 ///
 /// This is mostly an internal function, but it is exposed for other filterers to use.
+#[allow(clippy::future_not_send)]
+#[tracing::instrument(skip(files, errors), level = "trace")]
 #[inline]
 pub async fn discover_file(
 	files: &mut Vec<IgnoreFile>,
@@ -322,7 +336,6 @@ pub async fn discover_file(
 	applies_to: Option<ProjectType>,
 	path: PathBuf,
 ) -> bool {
-	let _span = trace_span!("discover_file", ?path, ?applies_in, ?applies_to).entered();
 	match find_file(path).await {
 		Err(err) => {
 			trace!(?err, "found an error");
@@ -372,7 +385,7 @@ enum Visit {
 
 impl DirTourist {
 	pub async fn new(base: &Path, files: &[IgnoreFile]) -> Result<Self, Error> {
-		let base = dunce::canonicalize(base)?;
+		let base = canonicalize(base).await?;
 		trace!("create IgnoreFilterer for visiting directories");
 		let mut filter = IgnoreFilter::new(&base, files)
 			.await
@@ -389,9 +402,8 @@ impl DirTourist {
 					"/.svn",
 					"/.pijul",
 				],
-				Some(base.clone()),
+				Some(&base),
 			)
-			.await
 			.map_err(|err| Error::new(ErrorKind::Other, err))?;
 
 		Ok(Self {
@@ -403,72 +415,78 @@ impl DirTourist {
 		})
 	}
 
+	#[allow(clippy::future_not_send)]
 	pub async fn next(&mut self) -> Visit {
 		if let Some(path) = self.to_visit.pop() {
-			let _span = trace_span!("visit_path", ?path).entered();
-			if self.must_skip(&path) {
-				trace!("in skip list");
-				return Visit::Skip;
-			}
-
-			if !self.filter.check_dir(&path) {
-				trace!("path is ignored, adding to skip list");
-				self.skip(path);
-				return Visit::Skip;
-			}
-
-			let mut dir = match read_dir(&path).await {
-				Ok(dir) => dir,
-				Err(err) => {
-					trace!("failed to read dir: {}", err);
-					self.errors.push(err);
-					return Visit::Skip;
-				}
-			};
-
-			while let Some(entry) = match dir.next_entry().await {
-				Ok(entry) => entry,
-				Err(err) => {
-					trace!("failed to read dir entries: {}", err);
-					self.errors.push(err);
-					return Visit::Skip;
-				}
-			} {
-				let path = entry.path();
-				let _span = trace_span!("dir_entry", ?path).entered();
-
-				if self.must_skip(&path) {
-					trace!("in skip list");
-					continue;
-				}
-
-				match entry.file_type().await {
-					Ok(ft) => {
-						if ft.is_dir() {
-							if !self.filter.check_dir(&path) {
-								trace!("path is ignored, adding to skip list");
-								self.skip(path);
-								continue;
-							}
-
-							trace!("found a dir, adding to list");
-							self.to_visit.push(path);
-						} else {
-							trace!("not a dir");
-						}
-					}
-					Err(err) => {
-						trace!("failed to read filetype, adding to skip list: {}", err);
-						self.errors.push(err);
-						self.skip(path);
-					}
-				}
-			}
-
-			Visit::Find(path)
+			self.visit_path(path).await
 		} else {
 			Visit::Done
 		}
+	}
+
+	#[allow(clippy::future_not_send)]
+	#[tracing::instrument(skip(self), level = "trace")]
+	async fn visit_path(&mut self, path: PathBuf) -> Visit {
+		if self.must_skip(&path) {
+			trace!("in skip list");
+			return Visit::Skip;
+		}
+
+		if !self.filter.check_dir(&path) {
+			trace!("path is ignored, adding to skip list");
+			self.skip(path);
+			return Visit::Skip;
+		}
+
+		let mut dir = match read_dir(&path).await {
+			Ok(dir) => dir,
+			Err(err) => {
+				trace!("failed to read dir: {}", err);
+				self.errors.push(err);
+				return Visit::Skip;
+			}
+		};
+
+		while let Some(entry) = match dir.next_entry().await {
+			Ok(entry) => entry,
+			Err(err) => {
+				trace!("failed to read dir entries: {}", err);
+				self.errors.push(err);
+				return Visit::Skip;
+			}
+		} {
+			let path = entry.path();
+			let _span = trace_span!("dir_entry", ?path).entered();
+
+			if self.must_skip(&path) {
+				trace!("in skip list");
+				continue;
+			}
+
+			match entry.file_type().await {
+				Ok(ft) => {
+					if ft.is_dir() {
+						if !self.filter.check_dir(&path) {
+							trace!("path is ignored, adding to skip list");
+							self.skip(path);
+							continue;
+						}
+
+						trace!("found a dir, adding to list");
+						self.to_visit.push(path);
+					} else {
+						trace!("not a dir");
+					}
+				}
+				Err(err) => {
+					trace!("failed to read filetype, adding to skip list: {}", err);
+					self.errors.push(err);
+					self.skip(path);
+				}
+			}
+		}
+
+		Visit::Find(path)
 	}
 
 	pub fn skip(&mut self, path: PathBuf) {

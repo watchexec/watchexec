@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ffi::OsString};
+use std::{collections::HashMap, ffi::OsString, path::MAIN_SEPARATOR};
 
 use notify::event::CreateKind;
 use watchexec::{
@@ -12,7 +12,7 @@ const ENV_SEP: &str = ":";
 const ENV_SEP: &str = ";";
 
 fn ospath(path: &str) -> OsString {
-	let root = dunce::canonicalize(".").unwrap();
+	let root = std::fs::canonicalize(".").unwrap();
 	if path.is_empty() {
 		root
 	} else {
@@ -171,11 +171,13 @@ fn single_type_multipath() {
 			(
 				"CREATED",
 				OsString::from(
-					"".to_string()
-						+ "deeper/sub/folder.txt"
-						+ ENV_SEP + "dom/folder.txt"
-						+ ENV_SEP + "root.txt" + ENV_SEP
-						+ "sub/folder.txt"
+					[
+						format!("deeper{MAIN_SEPARATOR}sub{MAIN_SEPARATOR}folder.txt"),
+						format!("dom{MAIN_SEPARATOR}folder.txt"),
+						"root.txt".to_string(),
+						format!("sub{MAIN_SEPARATOR}folder.txt"),
+					]
+					.join(ENV_SEP)
 				)
 			),
 			("COMMON", ospath("")),
@@ -194,7 +196,13 @@ fn single_type_divergent_paths() {
 		HashMap::from([
 			(
 				"CREATED",
-				OsString::from("".to_string() + "dom/folder.txt" + ENV_SEP + "sub/folder.txt")
+				OsString::from(
+					[
+						format!("dom{MAIN_SEPARATOR}folder.txt"),
+						format!("sub{MAIN_SEPARATOR}folder.txt"),
+					]
+					.join(ENV_SEP)
+				)
 			),
 			("COMMON", ospath("")),
 		])
@@ -218,11 +226,22 @@ fn multitype_multipath() {
 		HashMap::from([
 			(
 				"CREATED",
-				OsString::from("".to_string() + "root.txt" + ENV_SEP + "sibling.txt"),
+				OsString::from(["root.txt", "sibling.txt"].join(ENV_SEP)),
 			),
-			("META_CHANGED", OsString::from("sub/folder.txt"),),
-			("REMOVED", OsString::from("dom/folder.txt"),),
-			("OTHERWISE_CHANGED", OsString::from("deeper/sub/folder.txt"),),
+			(
+				"META_CHANGED",
+				OsString::from(format!("sub{MAIN_SEPARATOR}folder.txt"))
+			),
+			(
+				"REMOVED",
+				OsString::from(format!("dom{MAIN_SEPARATOR}folder.txt"))
+			),
+			(
+				"OTHERWISE_CHANGED",
+				OsString::from(format!(
+					"deeper{MAIN_SEPARATOR}sub{MAIN_SEPARATOR}folder.txt"
+				))
+			),
 			("COMMON", ospath("")),
 		])
 	);
@@ -249,7 +268,7 @@ fn multiple_paths_in_one_event() {
 		HashMap::from([
 			(
 				"OTHERWISE_CHANGED",
-				OsString::from("".to_string() + "one.txt" + ENV_SEP + "two.txt")
+				OsString::from(String::new() + "one.txt" + ENV_SEP + "two.txt")
 			),
 			("COMMON", ospath("")),
 		])
@@ -275,7 +294,7 @@ fn mixed_non_paths_events() {
 		HashMap::from([
 			(
 				"OTHERWISE_CHANGED",
-				OsString::from("".to_string() + "one.txt" + ENV_SEP + "two.txt")
+				OsString::from(String::new() + "one.txt" + ENV_SEP + "two.txt")
 			),
 			("COMMON", ospath("")),
 		])
@@ -312,7 +331,7 @@ fn multipath_is_sorted() {
 			(
 				"OTHERWISE_CHANGED",
 				OsString::from(
-					"".to_string()
+					String::new()
 						+ "0123.txt" + ENV_SEP + "a.txt"
 						+ ENV_SEP + "b.txt" + ENV_SEP
 						+ "c.txt" + ENV_SEP + "ᄁ.txt"
@@ -342,7 +361,7 @@ fn multipath_is_deduped() {
 			(
 				"OTHERWISE_CHANGED",
 				OsString::from(
-					"".to_string()
+					String::new()
 						+ "0123.txt" + ENV_SEP + "a.txt"
 						+ ENV_SEP + "b.txt" + ENV_SEP
 						+ "c.txt" + ENV_SEP + "ᄁ.txt"

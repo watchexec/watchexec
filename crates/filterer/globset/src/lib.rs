@@ -48,6 +48,7 @@ impl GlobsetFilterer {
 	/// The extensions list is used to filter files by extension.
 	///
 	/// Non-path events are always passed.
+	#[allow(clippy::future_not_send)]
 	pub async fn new(
 		origin: impl AsRef<Path>,
 		filters: impl IntoIterator<Item = (String, Option<PathBuf>)>,
@@ -133,9 +134,7 @@ impl Filterer for GlobsetFilterer {
 		} else {
 			Ok(paths.any(|(path, file_type)| {
 				let _span = trace_span!("path", ?path).entered();
-				let is_dir = file_type
-					.map(|t| matches!(t, FileType::Dir))
-					.unwrap_or(false);
+				let is_dir = file_type.map_or(false, |t| matches!(t, FileType::Dir));
 
 				if self.ignores.matched(path, is_dir).is_ignore() {
 					trace!("ignored by globset ignore");

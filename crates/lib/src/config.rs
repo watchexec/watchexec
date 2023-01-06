@@ -25,8 +25,8 @@ use crate::{
 /// Another advantage of using the convenience methods is that each one contains a call to the
 /// [`debug!`] macro, providing insight into what config your application sets for "free".
 ///
-/// You should see the detailed documentation on [fs::WorkingData][crate::fs::WorkingData] and
-/// [action::WorkingData][crate::action::WorkingData] for important information and particulars
+/// You should see the detailed documentation on [`fs::WorkingData`][crate::fs::WorkingData] and
+/// [`action::WorkingData`][crate::action::WorkingData] for important information and particulars
 /// about each field, especially the handlers.
 #[derive(Clone, Debug, Default)]
 #[non_exhaustive]
