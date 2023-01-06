@@ -97,9 +97,6 @@ jobs:
           ${{ runner.os }}-cargo-stable-
           ${{ runner.os }}-cargo-
 
-    - name: Check musl
-      run: cargo check --target x86_64-unknown-linux-musl
-    - name: Check freebsd
-      run: cargo check --target x86_64-unknown-freebsd
-    - name: Check netbsd
-      run: cargo check --target x86_64-unknown-netbsd
+    - run: cargo check --target x86_64-unknown-linux-musl
+    - run: cargo check --target x86_64-unknown-freebsd
+    - run: cargo check --target x86_64-unknown-netbsd
