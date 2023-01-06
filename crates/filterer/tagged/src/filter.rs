@@ -1,9 +1,9 @@
 use std::collections::HashSet;
 use std::path::PathBuf;
 
-use dunce::canonicalize;
 use globset::Glob;
 use regex::Regex;
+use tokio::fs::canonicalize;
 use tracing::{trace, warn};
 use unicase::UniCase;
 use watchexec::event::Tag;
@@ -100,11 +100,11 @@ impl Filter {
 	}
 
 	/// Returns the filter with its `in_path` canonicalised.
-	pub fn canonicalised(mut self) -> Result<Self, TaggedFiltererError> {
+	pub async fn canonicalised(mut self) -> Result<Self, TaggedFiltererError> {
 		if let Some(ctx) = self.in_path {
 			self.in_path =
 				Some(
-					canonicalize(&ctx).map_err(|err| TaggedFiltererError::IoError {
+					canonicalize(&ctx).await.map_err(|err| TaggedFiltererError::IoError {
 						about: "canonicalise Filter in_path",
 						err,
 					})?,

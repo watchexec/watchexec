@@ -2,6 +2,7 @@ use std::{collections::HashMap, convert::Into};
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use futures::{TryStreamExt, stream::FuturesOrdered};
 use ignore::{
 	gitignore::{Gitignore, GitignoreBuilder},
 	Match,
@@ -421,7 +422,8 @@ impl TaggedFilterer {
 		let mut recompile_globs = false;
 		let mut recompile_not_globs = false;
 
-		let filters = filters
+		let filters = FuturesOrdered::from_iter(
+			filters
 			.iter()
 			.cloned()
 			.inspect(|f| match f.op {
@@ -433,8 +435,9 @@ impl TaggedFilterer {
 				}
 				_ => {}
 			})
-			.map(Filter::canonicalised)
-			.collect::<Result<Vec<_>, _>>()?;
+			.map(Filter::canonicalised))
+			.try_collect::<Vec<_>>()
+			.await?;
 		trace!(?filters, "canonicalised filters");
 		// TODO: use miette's related and issue canonicalisation errors for all of them
 

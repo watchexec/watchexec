@@ -16,13 +16,14 @@ rust-version = "1.60.0"
 edition = "2021"
 
 [dependencies]
-miette = "5.3.0"
-thiserror = "1.0.26"
-tracing = "0.1.26"
+futures = "0.3.25"
 globset = "0.4.8"
 ignore = "0.4.18"
+miette = "5.3.0"
 nom = "7.0.0"
 regex = "1.5.4"
+thiserror = "1.0.26"
+tracing = "0.1.26"
 unicase = "2.6.0"
 
 [dependencies.ignore-files]

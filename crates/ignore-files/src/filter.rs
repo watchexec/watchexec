@@ -39,7 +39,7 @@ impl IgnoreFilter {
 	///
 	/// Use [`empty()`](IgnoreFilterer::empty()) if you want an empty filterer,
 	/// or to construct one outside an async environment.
-	pub async fn new(origin: impl AsRef<Path>, files: &[IgnoreFile]) -> Result<Self, Error> {
+	pub async fn new(origin: impl AsRef<Path> + Send, files: &[IgnoreFile]) -> Result<Self, Error> {
 		let origin = origin.as_ref();
 		let _span = trace_span!("build_filterer", ?origin);
 
