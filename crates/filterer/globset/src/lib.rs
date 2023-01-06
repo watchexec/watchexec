@@ -48,6 +48,7 @@ impl GlobsetFilterer {
 	/// The extensions list is used to filter files by extension.
 	///
 	/// Non-path events are always passed.
+	#[allow(clippy::future_not_send)]
 	pub async fn new(
 		origin: impl AsRef<Path>,
 		filters: impl IntoIterator<Item = (String, Option<PathBuf>)>,
