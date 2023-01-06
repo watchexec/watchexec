@@ -9,7 +9,7 @@ _(Sub)filterer implementation for ignore files._
 
 - **[API documentation][docs]**.
 - Licensed under [Apache 2.0][license].
-- Minimum Supported Rust Version: 1.60.0 (incurs a minor semver bump).
+- Minimum Supported Rust Version: 1.61.0 (incurs a minor semver bump).
 - Status: maintained.
 
 This is mostly a thin layer above the [ignore-files](../../ignore-files) crate, and is meant to be

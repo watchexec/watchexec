@@ -12,7 +12,7 @@ homepage = "https://watchexec.github.io"
 repository = "https://github.com/watchexec/watchexec"
 readme = "README.md"
 
-rust-version = "1.60.0"
+rust-version = "1.61.0"
 edition = "2021"
 
 [dependencies]

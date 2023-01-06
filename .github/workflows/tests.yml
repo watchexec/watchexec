@@ -27,7 +27,7 @@ jobs:
           - windows
         toolchain:
           - stable
-          - 1.60.0
+          - 1.61.0
 
     name: Test ${{ matrix.platform }} with Rust ${{ matrix.toolchain }}
     runs-on: "${{ matrix.platform }}-latest"
