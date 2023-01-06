@@ -66,21 +66,25 @@ impl Default for Outcome {
 
 impl Outcome {
 	/// Convenience function to create an outcome conditional on the state of the subprocess.
-	pub fn if_running(then: Outcome, otherwise: Outcome) -> Self {
+	#[must_use]
+	pub fn if_running(then: Self, otherwise: Self) -> Self {
 		Self::IfRunning(Box::new(then), Box::new(otherwise))
 	}
 
 	/// Convenience function to create a sequence of outcomes.
-	pub fn both(one: Outcome, two: Outcome) -> Self {
+	#[must_use]
+	pub fn both(one: Self, two: Self) -> Self {
 		Self::Both(Box::new(one), Box::new(two))
 	}
 
 	/// Convenience function to wait for the subprocess to complete before executing the outcome.
-	pub fn wait(and_then: Outcome) -> Self {
-		Self::Both(Box::new(Outcome::Wait), Box::new(and_then))
+	#[must_use]
+	pub fn wait(and_then: Self) -> Self {
+		Self::Both(Box::new(Self::Wait), Box::new(and_then))
 	}
 
 	/// Resolves the outcome given the current state of the subprocess.
+	#[must_use]
 	pub fn resolve(self, is_running: bool) -> Self {
 		match (is_running, self) {
 			(true, Self::IfRunning(then, _)) => then.resolve(true),

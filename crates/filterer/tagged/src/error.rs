@@ -9,7 +9,7 @@ use watchexec_filterer_ignore::IgnoreFilterer;
 
 use crate::{Filter, Matcher};
 
-/// Errors emitted by the TaggedFilterer.
+/// Errors emitted by the `TaggedFilterer`.
 #[derive(Debug, Diagnostic, Error)]
 #[non_exhaustive]
 #[diagnostic(url(docsrs))]

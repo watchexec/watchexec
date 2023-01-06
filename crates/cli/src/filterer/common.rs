@@ -5,32 +5,31 @@ use std::{
 };
 
 use clap::ArgMatches;
-use dunce::canonicalize;
 use ignore_files::IgnoreFile;
 use miette::{miette, IntoDiagnostic, Result};
 use project_origins::ProjectType;
+use tokio::fs::canonicalize;
 use tracing::{debug, info, warn};
 use watchexec::paths::common_prefix;
 
 pub async fn dirs(args: &ArgMatches) -> Result<(PathBuf, PathBuf)> {
-	let curdir = env::current_dir()
-		.and_then(canonicalize)
-		.into_diagnostic()?;
+	let curdir = env::current_dir().into_diagnostic()?;
+	let curdir = canonicalize(curdir).await.into_diagnostic()?;
 	debug!(?curdir, "current directory");
 
 	let project_origin = if let Some(origin) = args.value_of_os("project-origin") {
 		debug!(?origin, "project origin override");
-		canonicalize(origin).into_diagnostic()?
+		canonicalize(origin).await.into_diagnostic()?
 	} else {
-		let homedir = dirs::home_dir()
-			.map(canonicalize)
-			.transpose()
-			.into_diagnostic()?;
+		let homedir = match dirs::home_dir() {
+			None => None,
+			Some(dir) => Some(canonicalize(dir).await.into_diagnostic()?),
+		};
 		debug!(?homedir, "home directory");
 
 		let mut paths = HashSet::new();
 		for path in args.values_of_os("paths").unwrap_or_default() {
-			paths.insert(canonicalize(path).into_diagnostic()?);
+			paths.insert(canonicalize(path).await.into_diagnostic()?);
 		}
 
 		let homedir_requested = homedir.as_ref().map_or(false, |home| paths.contains(home));
@@ -71,6 +70,7 @@ pub async fn dirs(args: &ArgMatches) -> Result<(PathBuf, PathBuf)> {
 			common_prefix(&origins)
 				.ok_or_else(|| miette!("no common prefix, but this should never fail"))?,
 		)
+		.await
 		.into_diagnostic()?
 	};
 	info!(?project_origin, "resolved common/project origin");

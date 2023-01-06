@@ -71,15 +71,16 @@ pub enum Tag {
 
 impl Tag {
 	/// The name of the variant.
+	#[must_use]
 	pub const fn discriminant_name(&self) -> &'static str {
 		match self {
-			Tag::Path { .. } => "Path",
-			Tag::FileEventKind(_) => "FileEventKind",
-			Tag::Source(_) => "Source",
-			Tag::Keyboard(_) => "Keyboard",
-			Tag::Process(_) => "Process",
-			Tag::Signal(_) => "Signal",
-			Tag::ProcessCompletion(_) => "ProcessCompletion",
+			Self::Path { .. } => "Path",
+			Self::FileEventKind(_) => "FileEventKind",
+			Self::Source(_) => "Source",
+			Self::Keyboard(_) => "Keyboard",
+			Self::Process(_) => "Process",
+			Self::Signal(_) => "Signal",
+			Self::ProcessCompletion(_) => "ProcessCompletion",
 		}
 	}
 }
@@ -164,39 +165,24 @@ pub enum ProcessEnd {
 }
 
 impl From<ExitStatus> for ProcessEnd {
-	#[cfg(target_os = "fuchsia")]
-	fn from(es: ExitStatus) -> Self {
-		// Once https://github.com/rust-lang/rust/pull/88300 (unix_process_wait_more) lands, use
-		// that API instead of doing the transmute, and clean up the forbid condition at crate root.
-		let raw: i64 = unsafe { std::mem::transmute(es) };
-		NonZeroI64::try_from(raw)
-			.map(Self::ExitError)
-			.unwrap_or(Self::Success)
-	}
-
-	#[cfg(all(unix, not(target_os = "fuchsia")))]
+	#[cfg(unix)]
 	fn from(es: ExitStatus) -> Self {
 		use std::os::unix::process::ExitStatusExt;
-		match (es.code(), es.signal()) {
-			(Some(_), Some(_)) => {
+
+		match (es.code(), es.signal(), es.stopped_signal()) {
+			(Some(_), Some(_), _) => {
 				unreachable!("exitstatus cannot both be code and signal?!")
 			}
-			(Some(code), None) => match NonZeroI64::try_from(i64::from(code)) {
-				Ok(code) => Self::ExitError(code),
-				Err(_) => Self::Success,
-			},
-			// TODO: once unix_process_wait_more lands, use stopped_signal() instead and clear the libc dep
-			(None, Some(signal)) if libc::WIFSTOPPED(-signal) => {
-				match NonZeroI32::try_from(libc::WSTOPSIG(-signal)) {
-					Ok(signal) => Self::ExitStop(signal),
-					Err(_) => Self::Success,
-				}
+			(Some(code), None, _) => {
+				NonZeroI64::try_from(i64::from(code)).map_or(Self::Success, Self::ExitError)
 			}
-			// TODO: once unix_process_wait_more lands, use continued() instead and clear the libc dep
+			(None, Some(_), Some(stopsig)) => {
+				NonZeroI32::try_from(stopsig).map_or(Self::Success, Self::ExitStop)
+			}
 			#[cfg(not(target_os = "vxworks"))]
-			(None, Some(signal)) if libc::WIFCONTINUED(-signal) => Self::Continued,
-			(None, Some(signal)) => Self::ExitSignal(signal.into()),
-			(None, None) => Self::Success,
+			(None, Some(_), _) if es.continued() => Self::Continued,
+			(None, Some(signal), _) => Self::ExitSignal(signal.into()),
+			(None, None, _) => Self::Success,
 		}
 	}
 
@@ -302,6 +288,7 @@ impl Default for Priority {
 
 impl Event {
 	/// Returns true if the event has an Internal source tag.
+	#[must_use]
 	pub fn is_internal(&self) -> bool {
 		self.tags
 			.iter()
@@ -309,6 +296,7 @@ impl Event {
 	}
 
 	/// Returns true if the event has no tags.
+	#[must_use]
 	pub fn is_empty(&self) -> bool {
 		self.tags.is_empty()
 	}
@@ -346,16 +334,16 @@ impl fmt::Display for Event {
 				Tag::Path { path, file_type } => {
 					write!(f, " path={}", path.display())?;
 					if let Some(ft) = file_type {
-						write!(f, " filetype={}", ft)?;
+						write!(f, " filetype={ft}")?;
 					}
 				}
-				Tag::FileEventKind(kind) => write!(f, " kind={:?}", kind)?,
-				Tag::Source(s) => write!(f, " source={:?}", s)?,
-				Tag::Keyboard(k) => write!(f, " keyboard={:?}", k)?,
-				Tag::Process(p) => write!(f, " process={}", p)?,
-				Tag::Signal(s) => write!(f, " signal={:?}", s)?,
+				Tag::FileEventKind(kind) => write!(f, " kind={kind:?}")?,
+				Tag::Source(s) => write!(f, " source={s:?}")?,
+				Tag::Keyboard(k) => write!(f, " keyboard={k:?}")?,
+				Tag::Process(p) => write!(f, " process={p}")?,
+				Tag::Signal(s) => write!(f, " signal={s:?}")?,
 				Tag::ProcessCompletion(None) => write!(f, " command-completed")?,
-				Tag::ProcessCompletion(Some(c)) => write!(f, " command-completed({:?})", c)?,
+				Tag::ProcessCompletion(Some(c)) => write!(f, " command-completed({c:?})")?,
 			}
 		}
 

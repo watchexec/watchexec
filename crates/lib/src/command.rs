@@ -88,13 +88,13 @@ impl Command {
 		trace!(cmd=?self, "constructing command");
 
 		match self {
-			Command::Exec { prog, args } => {
+			Self::Exec { prog, args } => {
 				let mut c = TokioCommand::new(prog);
 				c.args(args);
 				Ok(c)
 			}
 
-			Command::Shell {
+			Self::Shell {
 				shell,
 				args,
 				command,
@@ -133,16 +133,16 @@ impl Command {
 impl fmt::Display for Command {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
-			Command::Exec { prog, args } => {
-				write!(f, "{}", prog)?;
+			Self::Exec { prog, args } => {
+				write!(f, "{prog}")?;
 				for arg in args {
-					write!(f, " {}", arg)?;
+					write!(f, " {arg}")?;
 				}
 
 				Ok(())
 			}
-			Command::Shell { command, .. } => {
-				write!(f, "{}", command)
+			Self::Shell { command, .. } => {
+				write!(f, "{command}")
 			}
 		}
 	}

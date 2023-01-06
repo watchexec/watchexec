@@ -8,7 +8,7 @@ use helpers::tagged_ff::*;
 
 #[tokio::test]
 async fn empty_filter_passes_everything() {
-	let filterer = filt("", &[], &[file("empty.wef")]).await;
+	let filterer = filt("", &[], &[file("empty.wef").await]).await;
 
 	filterer.file_does_pass("Cargo.toml");
 	filterer.file_does_pass("Cargo.json");
@@ -35,7 +35,7 @@ async fn empty_filter_passes_everything() {
 
 #[tokio::test]
 async fn folder() {
-	let filterer = filt("", &[], &[file("folder.wef")]).await;
+	let filterer = filt("", &[], &[file("folder.wef").await]).await;
 
 	filterer.file_doesnt_pass("apples");
 	filterer.file_doesnt_pass("apples/oranges/bananas");
@@ -54,7 +54,7 @@ async fn folder() {
 
 #[tokio::test]
 async fn patterns() {
-	let filterer = filt("", &[], &[file("path-patterns.wef")]).await;
+	let filterer = filt("", &[], &[file("path-patterns.wef").await]).await;
 
 	// Unmatched
 	filterer.file_does_pass("FINAL-FINAL.docx");
@@ -94,7 +94,7 @@ async fn patterns() {
 
 #[tokio::test]
 async fn negate() {
-	let filterer = filt("", &[], &[file("negate.wef")]).await;
+	let filterer = filt("", &[], &[file("negate.wef").await]).await;
 
 	filterer.file_doesnt_pass("yeah");
 	filterer.file_does_pass("nah");
@@ -103,7 +103,7 @@ async fn negate() {
 
 #[tokio::test]
 async fn ignores_and_filters() {
-	let filterer = filt("", &[file("globs").0], &[file("folder.wef")]).await;
+	let filterer = filt("", &[file("globs").await.0], &[file("folder.wef").await]).await;
 
 	// ignored
 	filterer.dir_doesnt_pass("test-helper");

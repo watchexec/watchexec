@@ -8,6 +8,7 @@ use std::{
 
 use ignore_files::{IgnoreFile, IgnoreFilter};
 use project_origins::ProjectType;
+use tokio::fs::canonicalize;
 use watchexec::{
 	error::RuntimeError,
 	event::{filekind::FileEventKind, Event, FileType, Priority, ProcessEnd, Source, Tag},
@@ -49,7 +50,7 @@ pub trait PathHarness: Filterer {
 	}
 
 	fn path_pass(&self, path: &str, file_type: Option<FileType>, pass: bool) {
-		let origin = dunce::canonicalize(".").unwrap();
+		let origin = std::fs::canonicalize(".").unwrap();
 		let full_path = if let Some(suf) = path.strip_prefix("/test/") {
 			origin.join(suf)
 		} else if Path::new(path).has_root() {
@@ -207,24 +208,28 @@ fn tracing_init() {
 
 pub async fn ignore_filt(origin: &str, ignore_files: &[IgnoreFile]) -> IgnoreFilter {
 	tracing_init();
-	let origin = dunce::canonicalize(".").unwrap().join(origin);
+	let origin = canonicalize(".").await.unwrap().join(origin);
 	IgnoreFilter::new(origin, ignore_files)
 		.await
 		.expect("making filterer")
 }
 
 pub async fn tagged_filt(filters: &[Filter]) -> Arc<TaggedFilterer> {
-	let origin = dunce::canonicalize(".").unwrap();
+	let origin = canonicalize(".").await.unwrap();
 	tracing_init();
-	let filterer = TaggedFilterer::new(origin.clone(), origin).expect("creating filterer");
+	let filterer = TaggedFilterer::new(origin.clone(), origin)
+		.await
+		.expect("creating filterer");
 	filterer.add_filters(filters).await.expect("adding filters");
 	filterer
 }
 
 pub async fn tagged_igfilt(origin: &str, ignore_files: &[IgnoreFile]) -> Arc<TaggedFilterer> {
-	let origin = dunce::canonicalize(".").unwrap().join(origin);
+	let origin = canonicalize(".").await.unwrap().join(origin);
 	tracing_init();
-	let filterer = TaggedFilterer::new(origin.clone(), origin).expect("creating filterer");
+	let filterer = TaggedFilterer::new(origin.clone(), origin)
+		.await
+		.expect("creating filterer");
 	for file in ignore_files {
 		tracing::info!(?file, "loading ignore file");
 		filterer
@@ -255,8 +260,9 @@ pub async fn tagged_fffilt(
 	filterer
 }
 
-pub fn ig_file(name: &str) -> IgnoreFile {
-	let path = dunce::canonicalize(".")
+pub async fn ig_file(name: &str) -> IgnoreFile {
+	let path = canonicalize(".")
+		.await
 		.unwrap()
 		.join("tests")
 		.join("ignores")
@@ -268,8 +274,8 @@ pub fn ig_file(name: &str) -> IgnoreFile {
 	}
 }
 
-pub fn ff_file(name: &str) -> FilterFile {
-	FilterFile(ig_file(name))
+pub async fn ff_file(name: &str) -> FilterFile {
+	FilterFile(ig_file(name).await)
 }
 
 pub trait Applies {
@@ -279,7 +285,7 @@ pub trait Applies {
 
 impl Applies for IgnoreFile {
 	fn applies_in(mut self, origin: &str) -> Self {
-		let origin = dunce::canonicalize(".").unwrap().join(origin);
+		let origin = std::fs::canonicalize(".").unwrap().join(origin);
 		self.applies_in = Some(origin);
 		self
 	}
@@ -337,7 +343,7 @@ pub trait FilterExt {
 
 impl FilterExt for Filter {
 	fn in_subpath(mut self, sub: impl AsRef<Path>) -> Self {
-		let origin = dunce::canonicalize(".").unwrap();
+		let origin = std::fs::canonicalize(".").unwrap();
 		self.in_path = Some(origin.join(sub));
 		self
 	}

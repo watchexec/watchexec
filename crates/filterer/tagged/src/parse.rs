@@ -45,7 +45,7 @@ impl FromStr for Filter {
 					"process" | "pid" => Ok(Matcher::Process),
 					"signal" | "sig" => Ok(Matcher::Signal),
 					"complete" | "exit" => Ok(Matcher::ProcessCompletion),
-					m => Err(format!("unknown matcher: {}", m)),
+					m => Err(format!("unknown matcher: {m}")),
 				},
 			)(i)
 		}
@@ -73,7 +73,7 @@ impl FromStr for Filter {
 					":=" => Ok(Op::InSet),
 					":!" => Ok(Op::NotInSet),
 					"=" => Ok(Op::Auto),
-					o => Err(format!("unknown op: `{}`", o)),
+					o => Err(format!("unknown op: `{o}`")),
 				},
 			)(i)
 		}

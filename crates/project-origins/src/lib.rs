@@ -152,7 +152,8 @@ pub enum ProjectType {
 
 impl ProjectType {
 	/// Returns true if the project type is a VCS.
-	pub fn is_vcs(self) -> bool {
+	#[must_use]
+	pub const fn is_vcs(self) -> bool {
 		matches!(
 			self,
 			Self::Bazaar
@@ -163,7 +164,8 @@ impl ProjectType {
 	}
 
 	/// Returns true if the project type is a software suite.
-	pub fn is_soft(self) -> bool {
+	#[must_use]
+	pub const fn is_soft(self) -> bool {
 		matches!(
 			self,
 			Self::Bundler
@@ -187,10 +189,8 @@ impl ProjectType {
 ///
 /// This looks at a wider variety of files than the [`types`] function does: something can be
 /// detected as an origin but not be able to match to any particular [`ProjectType`].
-pub async fn origins(path: impl AsRef<Path>) -> HashSet<PathBuf> {
-	let mut origins = HashSet::new();
-
-	fn check_list(list: DirList) -> bool {
+pub async fn origins(path: impl AsRef<Path> + Send) -> HashSet<PathBuf> {
+	fn check_list(list: &DirList) -> bool {
 		if list.is_empty() {
 			return false;
 		}
@@ -252,14 +252,17 @@ pub async fn origins(path: impl AsRef<Path>) -> HashSet<PathBuf> {
 		.any(|f| f)
 	}
 
-	let mut current = path.as_ref();
-	if check_list(DirList::obtain(current).await) {
+	let mut origins = HashSet::new();
+
+	let path = path.as_ref();
+	let mut current = path;
+	if check_list(&DirList::obtain(current).await) {
 		origins.insert(current.to_owned());
 	}
 
 	while let Some(parent) = current.parent() {
 		current = parent;
-		if check_list(DirList::obtain(current).await) {
+		if check_list(&DirList::obtain(current).await) {
 			origins.insert(current.to_owned());
 			continue;
 		}
@@ -277,8 +280,9 @@ pub async fn origins(path: impl AsRef<Path>) -> HashSet<PathBuf> {
 ///
 /// Note that this only detects project types listed in the [`ProjectType`] enum, and may not detect
 /// anything for some paths returned by [`origins()`].
-pub async fn types(path: impl AsRef<Path>) -> HashSet<ProjectType> {
-	let list = DirList::obtain(path.as_ref()).await;
+pub async fn types(path: impl AsRef<Path> + Send) -> HashSet<ProjectType> {
+	let path = path.as_ref();
+	let list = DirList::obtain(path).await;
 	[
 		list.if_has_dir("_darcs", ProjectType::Darcs),
 		list.if_has_dir(".bzr", ProjectType::Bazaar),
@@ -353,13 +357,13 @@ impl DirList {
 	#[inline]
 	fn has_file(&self, name: impl AsRef<Path>) -> bool {
 		let name = name.as_ref();
-		self.0.get(name).map(|x| x.is_file()).unwrap_or(false)
+		self.0.get(name).map_or(false, std::fs::FileType::is_file)
 	}
 
 	#[inline]
 	fn has_dir(&self, name: impl AsRef<Path>) -> bool {
 		let name = name.as_ref();
-		self.0.get(name).map(|x| x.is_dir()).unwrap_or(false)
+		self.0.get(name).map_or(false, std::fs::FileType::is_dir)
 	}
 
 	#[inline]
