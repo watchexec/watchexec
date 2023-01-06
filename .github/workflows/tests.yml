@@ -77,9 +77,9 @@ jobs:
         rustup toolchain install --profile minimal --no-self-update stable
         rustup default stable
 
-        rustup add target x86_64-unknown-linux-musl
-        rustup add target x86_64-unknown-freebsd
-        rustup add target x86_64-unknown-netbsd
+        rustup target add x86_64-unknown-linux-musl
+        rustup target add x86_64-unknown-freebsd
+        rustup target add x86_64-unknown-netbsd
 
     - name: Cargo caching
       uses: actions/cache@v3
