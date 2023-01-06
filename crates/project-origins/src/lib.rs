@@ -153,7 +153,7 @@ pub enum ProjectType {
 impl ProjectType {
 	/// Returns true if the project type is a VCS.
 	#[must_use]
-	pub fn is_vcs(self) -> bool {
+	pub const fn is_vcs(self) -> bool {
 		matches!(
 			self,
 			Self::Bazaar
@@ -165,7 +165,7 @@ impl ProjectType {
 
 	/// Returns true if the project type is a software suite.
 	#[must_use]
-	pub fn is_soft(self) -> bool {
+	pub const fn is_soft(self) -> bool {
 		matches!(
 			self,
 			Self::Bundler
