@@ -79,7 +79,7 @@ impl OutcomeWorker {
 		});
 	}
 
-	async fn check_gen<O>(&self, f: impl Future<Output = O>) -> Option<O> {
+	async fn check_gen<O>(&self, f: impl Future<Output = O> + Send) -> Option<O> {
 		// TODO: use a select and a notifier of some kind so it cancels tasks
 		if self.gencheck.load(Ordering::SeqCst) != self.gen {
 			warn!(when=%"pre", gen=%self.gen, "outcome worker was cycled, aborting");
