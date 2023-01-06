@@ -1,6 +1,6 @@
 use std::{
 	collections::HashMap, convert::Infallible, env::current_dir, ffi::OsString, path::Path,
-	str::FromStr, time::Duration, string::ToString,
+	str::FromStr, string::ToString, time::Duration,
 };
 
 use clap::ArgMatches;
@@ -12,7 +12,7 @@ use watchexec::{
 	command::{Command, Shell},
 	config::RuntimeConfig,
 	error::RuntimeError,
-	event::{ProcessEnd, Tag, Event},
+	event::{Event, ProcessEnd, Tag},
 	fs::Watcher,
 	handler::SyncFnHandler,
 	keyboard::Keyboard,
@@ -52,28 +52,23 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 
 	let clear = args.is_present("clear");
 	let notif = args.is_present("notif");
-	let mut on_busy = args
-		.value_of("on-busy-update")
-		.unwrap_or("queue")
-		.to_owned();
+	let on_busy = if args.is_present("restart") {
+		"restart"
+	} else if args.is_present("watch-when-idle") {
+		"do-nothing"
+	} else {
+		args.value_of("on-busy-update").unwrap_or("queue")
+	}.to_owned();
 
-	if args.is_present("restart") {
-		on_busy = "restart".into();
-	}
-
-	if args.is_present("watch-when-idle") {
-		on_busy = "do-nothing".into();
-	}
-
-	let mut signal = args
+	let signal = if args.is_present("kill") {
+		Some(SubSignal::ForceStop)
+	} else {
+		args
 		.value_of("signal")
 		.map(SubSignal::from_str)
 		.transpose()
-		.into_diagnostic()?;
-
-	if args.is_present("kill") {
-		signal = Some(SubSignal::ForceStop);
-	}
+		.into_diagnostic()?
+	};
 
 	let print_events = args.is_present("print-events");
 	let once = args.is_present("once");
@@ -106,12 +101,7 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 		}
 
 		let signals: Vec<MainSignal> = action.events.iter().flat_map(Event::signals).collect();
-		let has_paths = action
-			.events
-			.iter()
-			.flat_map(Event::paths)
-			.next()
-			.is_some();
+		let has_paths = action.events.iter().flat_map(Event::paths).next().is_some();
 
 		if signals.contains(&MainSignal::Terminate) {
 			action.outcome(Outcome::both(Outcome::Stop, Outcome::Exit));
@@ -173,10 +163,9 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 						.summary("Watchexec: command ended")
 						.body(&msg)
 						.show()
-						.map(drop)
-						.unwrap_or_else(|err| {
+						.map_or_else(|err| {
 							eprintln!("[[Failed to send desktop notification: {err}]]");
-						});
+						}, drop);
 				}
 
 				action.outcome(Outcome::DoNothing);
@@ -198,7 +187,6 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 
 		let when_idle = start.clone();
 		let when_running = match on_busy.as_str() {
-			"do-nothing" => Outcome::DoNothing,
 			"restart" => Outcome::both(
 				if let Some(sig) = signal {
 					Outcome::both(
@@ -212,6 +200,7 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 			),
 			"signal" => Outcome::Signal(signal.unwrap_or(SubSignal::Terminate)),
 			"queue" => Outcome::wait(start),
+			// "do-nothing" => Outcome::DoNothing,
 			_ => Outcome::DoNothing,
 		};
 
@@ -276,10 +265,9 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 				.summary("Watchexec: change detected")
 				.body(&format!("Running {}", postspawn.command))
 				.show()
-				.map(drop)
-				.unwrap_or_else(|err| {
+				.map_or_else(|err| {
 					eprintln!("[[Failed to send desktop notification: {err}]]");
-				});
+				}, drop);
 		}
 
 		Ok::<(), Infallible>(())
