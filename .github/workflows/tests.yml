@@ -99,7 +99,7 @@ jobs:
 
     - name: Check musl
       run: cargo check --target x86_64-unknown-linux-musl
-    - name: Check fuchsia
+    - name: Check freebsd
       run: cargo check --target x86_64-unknown-freebsd
     - name: Check netbsd
       run: cargo check --target x86_64-unknown-netbsd
