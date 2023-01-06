@@ -2696,7 +2696,6 @@ dependencies = [
 name = "watchexec-filterer-globset"
 version = "1.0.1"
 dependencies = [
- "dunce",
  "ignore",
  "ignore-files",
  "project-origins",
