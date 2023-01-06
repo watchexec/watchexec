@@ -113,6 +113,7 @@ impl IgnoreFilter {
 	}
 
 	/// Returns the number of ignores and allowlists loaded.
+	#[must_use]
 	pub fn num_ignores(&self) -> (u64, u64) {
 		(self.compiled.num_ignores(), self.compiled.num_whitelists())
 	}

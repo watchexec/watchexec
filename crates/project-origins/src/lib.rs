@@ -152,6 +152,7 @@ pub enum ProjectType {
 
 impl ProjectType {
 	/// Returns true if the project type is a VCS.
+	#[must_use]
 	pub fn is_vcs(self) -> bool {
 		matches!(
 			self,
@@ -163,6 +164,7 @@ impl ProjectType {
 	}
 
 	/// Returns true if the project type is a software suite.
+	#[must_use]
 	pub fn is_soft(self) -> bool {
 		matches!(
 			self,
@@ -353,13 +355,13 @@ impl DirList {
 	#[inline]
 	fn has_file(&self, name: impl AsRef<Path>) -> bool {
 		let name = name.as_ref();
-		self.0.get(name).map(|x| x.is_file()).unwrap_or(false)
+		self.0.get(name).map_or(false, std::fs::FileType::is_file)
 	}
 
 	#[inline]
 	fn has_dir(&self, name: impl AsRef<Path>) -> bool {
 		let name = name.as_ref();
-		self.0.get(name).map(|x| x.is_dir()).unwrap_or(false)
+		self.0.get(name).map_or(false, std::fs::FileType::is_dir)
 	}
 
 	#[inline]

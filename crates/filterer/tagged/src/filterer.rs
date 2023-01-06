@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, convert::Into};
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -49,7 +49,7 @@ pub struct TaggedFilterer {
 
 impl Filterer for TaggedFilterer {
 	fn check_event(&self, event: &Event, priority: Priority) -> Result<bool, RuntimeError> {
-		self.check(event, priority).map_err(|e| e.into())
+		self.check(event, priority).map_err(Into::into)
 	}
 }
 
@@ -353,7 +353,7 @@ impl TaggedFilterer {
 				Matcher::FileType,
 			) => filter.matches(ft.to_string()),
 			(Tag::FileEventKind(kind), Matcher::FileEventKind) => {
-				filter.matches(format!("{:?}", kind))
+				filter.matches(format!("{kind:?}"))
 			}
 			(Tag::Source(src), Matcher::Source) => filter.matches(src.to_string()),
 			(Tag::Process(pid), Matcher::Process) => filter.matches(pid.to_string()),
@@ -368,13 +368,13 @@ impl TaggedFilterer {
 				};
 
 				Ok(filter.matches(text)?
-					|| filter.matches(format!("SIG{}", text))?
+					|| filter.matches(format!("SIG{text}"))?
 					|| filter.matches(int.to_string())?)
 			}
 			(Tag::ProcessCompletion(ope), Matcher::ProcessCompletion) => match ope {
 				None => filter.matches("_"),
 				Some(ProcessEnd::Success) => filter.matches("success"),
-				Some(ProcessEnd::ExitError(int)) => filter.matches(format!("error({})", int)),
+				Some(ProcessEnd::ExitError(int)) => filter.matches(format!("error({int})")),
 				Some(ProcessEnd::ExitSignal(sig)) => {
 					let (text, int) = match sig {
 						SubSignal::Hangup | SubSignal::Custom(1) => ("HUP", 1),
@@ -387,12 +387,12 @@ impl TaggedFilterer {
 						SubSignal::Custom(n) => ("UNK", *n),
 					};
 
-					Ok(filter.matches(format!("signal({})", text))?
-						|| filter.matches(format!("signal(SIG{})", text))?
-						|| filter.matches(format!("signal({})", int))?)
+					Ok(filter.matches(format!("signal({text})"))?
+						|| filter.matches(format!("signal(SIG{text})"))?
+						|| filter.matches(format!("signal({int})"))?)
 				}
-				Some(ProcessEnd::ExitStop(int)) => filter.matches(format!("stop({})", int)),
-				Some(ProcessEnd::Exception(int)) => filter.matches(format!("exception({:X})", int)),
+				Some(ProcessEnd::ExitStop(int)) => filter.matches(format!("stop({int})")),
+				Some(ProcessEnd::Exception(int)) => filter.matches(format!("exception({int:X})")),
 				Some(ProcessEnd::Continued) => filter.matches("continued"),
 			},
 			(_, _) => {

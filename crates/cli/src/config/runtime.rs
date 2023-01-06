@@ -1,6 +1,6 @@
 use std::{
 	collections::HashMap, convert::Infallible, env::current_dir, ffi::OsString, path::Path,
-	str::FromStr, time::Duration,
+	str::FromStr, time::Duration, string::ToString,
 };
 
 use clap::ArgMatches;
@@ -12,7 +12,7 @@ use watchexec::{
 	command::{Command, Shell},
 	config::RuntimeConfig,
 	error::RuntimeError,
-	event::{ProcessEnd, Tag},
+	event::{ProcessEnd, Tag, Event},
 	fs::Watcher,
 	handler::SyncFnHandler,
 	keyboard::Keyboard,
@@ -89,7 +89,7 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 
 		if print_events {
 			for (n, event) in action.events.iter().enumerate() {
-				eprintln!("[EVENT {}] {}", n, event);
+				eprintln!("[EVENT {n}] {event}");
 			}
 		}
 
@@ -105,11 +105,11 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 			return fut;
 		}
 
-		let signals: Vec<MainSignal> = action.events.iter().flat_map(|e| e.signals()).collect();
+		let signals: Vec<MainSignal> = action.events.iter().flat_map(Event::signals).collect();
 		let has_paths = action
 			.events
 			.iter()
-			.flat_map(|e| e.paths())
+			.flat_map(Event::paths)
 			.next()
 			.is_some();
 
@@ -144,28 +144,28 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 				return fut;
 			}
 
-			let completion = action.events.iter().flat_map(|e| e.completions()).next();
+			let completion = action.events.iter().flat_map(Event::completions).next();
 			if let Some(status) = completion {
 				let (msg, printit) = match status {
 					Some(ProcessEnd::ExitError(code)) => {
-						(format!("Command exited with {}", code), true)
+						(format!("Command exited with {code}"), true)
 					}
 					Some(ProcessEnd::ExitSignal(sig)) => {
-						(format!("Command killed by {:?}", sig), true)
+						(format!("Command killed by {sig:?}"), true)
 					}
 					Some(ProcessEnd::ExitStop(sig)) => {
-						(format!("Command stopped by {:?}", sig), true)
+						(format!("Command stopped by {sig:?}"), true)
 					}
 					Some(ProcessEnd::Continued) => ("Command continued".to_string(), true),
 					Some(ProcessEnd::Exception(ex)) => {
-						(format!("Command ended by exception {:#x}", ex), true)
+						(format!("Command ended by exception {ex:#x}"), true)
 					}
 					Some(ProcessEnd::Success) => ("Command was successful".to_string(), false),
 					None => ("Command completed".to_string(), false),
 				};
 
 				if printit {
-					eprintln!("[[{}]]", msg);
+					eprintln!("[[{msg}]]");
 				}
 
 				if notif {
@@ -175,7 +175,7 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 						.show()
 						.map(drop)
 						.unwrap_or_else(|err| {
-							eprintln!("[[Failed to send desktop notification: {}]]", err);
+							eprintln!("[[Failed to send desktop notification: {err}]]");
 						});
 				}
 
@@ -250,7 +250,7 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 						envs.extend(
 							summarise_events_to_env(prespawn.events.iter())
 								.into_iter()
-								.map(|(k, v)| (format!("WATCHEXEC_{}_PATH", k), v)),
+								.map(|(k, v)| (format!("WATCHEXEC_{k}_PATH"), v)),
 						);
 					}
 
@@ -278,7 +278,7 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 				.show()
 				.map(drop)
 				.unwrap_or_else(|err| {
-					eprintln!("[[Failed to send desktop notification: {}]]", err);
+					eprintln!("[[Failed to send desktop notification: {err}]]");
 				});
 		}
 
@@ -292,7 +292,7 @@ fn interpret_command_args(args: &ArgMatches) -> Result<Command> {
 	let mut cmd = args
 		.values_of("command")
 		.expect("(clap) Bug: command is not present")
-		.map(|s| s.to_string())
+		.map(ToString::to_string)
 		.collect::<Vec<_>>();
 
 	Ok(if args.is_present("no-shell") {
@@ -321,8 +321,8 @@ fn interpret_command_args(args: &ArgMatches) -> Result<Command> {
 				let (shprog, shopts) = sh.split_first().unwrap();
 
 				(
-					Shell::Unix(shprog.to_string()),
-					shopts.iter().map(|s| s.to_string()).collect(),
+					Shell::Unix((*shprog).to_string()),
+					shopts.iter().map(|s| (*s).to_string()).collect(),
 				)
 			}
 		} else {

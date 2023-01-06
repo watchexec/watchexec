@@ -114,8 +114,8 @@ pub async fn globset_filt(
 	tracing_init();
 	GlobsetFilterer::new(
 		origin,
-		filters.iter().map(|s| (s.to_string(), None)),
-		ignores.iter().map(|s| (s.to_string(), None)),
+		filters.iter().map(|s| ((*s).to_string(), None)),
+		ignores.iter().map(|s| ((*s).to_string(), None)),
 		vec![],
 		extensions.iter().map(OsString::from),
 	)

@@ -171,7 +171,7 @@ fn single_type_multipath() {
 			(
 				"CREATED",
 				OsString::from(
-					"".to_string()
+					String::new()
 						+ "deeper/sub/folder.txt"
 						+ ENV_SEP + "dom/folder.txt"
 						+ ENV_SEP + "root.txt" + ENV_SEP
@@ -194,7 +194,7 @@ fn single_type_divergent_paths() {
 		HashMap::from([
 			(
 				"CREATED",
-				OsString::from("".to_string() + "dom/folder.txt" + ENV_SEP + "sub/folder.txt")
+				OsString::from(String::new() + "dom/folder.txt" + ENV_SEP + "sub/folder.txt")
 			),
 			("COMMON", ospath("")),
 		])
@@ -218,7 +218,7 @@ fn multitype_multipath() {
 		HashMap::from([
 			(
 				"CREATED",
-				OsString::from("".to_string() + "root.txt" + ENV_SEP + "sibling.txt"),
+				OsString::from(String::new() + "root.txt" + ENV_SEP + "sibling.txt"),
 			),
 			("META_CHANGED", OsString::from("sub/folder.txt"),),
 			("REMOVED", OsString::from("dom/folder.txt"),),
@@ -249,7 +249,7 @@ fn multiple_paths_in_one_event() {
 		HashMap::from([
 			(
 				"OTHERWISE_CHANGED",
-				OsString::from("".to_string() + "one.txt" + ENV_SEP + "two.txt")
+				OsString::from(String::new() + "one.txt" + ENV_SEP + "two.txt")
 			),
 			("COMMON", ospath("")),
 		])
@@ -275,7 +275,7 @@ fn mixed_non_paths_events() {
 		HashMap::from([
 			(
 				"OTHERWISE_CHANGED",
-				OsString::from("".to_string() + "one.txt" + ENV_SEP + "two.txt")
+				OsString::from(String::new() + "one.txt" + ENV_SEP + "two.txt")
 			),
 			("COMMON", ospath("")),
 		])
@@ -312,7 +312,7 @@ fn multipath_is_sorted() {
 			(
 				"OTHERWISE_CHANGED",
 				OsString::from(
-					"".to_string()
+					String::new()
 						+ "0123.txt" + ENV_SEP + "a.txt"
 						+ ENV_SEP + "b.txt" + ENV_SEP
 						+ "c.txt" + ENV_SEP + "ᄁ.txt"
@@ -342,7 +342,7 @@ fn multipath_is_deduped() {
 			(
 				"OTHERWISE_CHANGED",
 				OsString::from(
-					"".to_string()
+					String::new()
 						+ "0123.txt" + ENV_SEP + "a.txt"
 						+ ENV_SEP + "b.txt" + ENV_SEP
 						+ "c.txt" + ENV_SEP + "ᄁ.txt"
