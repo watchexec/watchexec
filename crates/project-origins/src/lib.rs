@@ -189,7 +189,7 @@ impl ProjectType {
 ///
 /// This looks at a wider variety of files than the [`types`] function does: something can be
 /// detected as an origin but not be able to match to any particular [`ProjectType`].
-pub async fn origins(path: impl AsRef<Path> + Send) -> HashSet<PathBuf> {
+pub async fn origins(path: impl AsRef<Path>) -> HashSet<PathBuf> {
 	fn check_list(list: DirList) -> bool {
 		if list.is_empty() {
 			return false;
@@ -254,7 +254,8 @@ pub async fn origins(path: impl AsRef<Path> + Send) -> HashSet<PathBuf> {
 
 	let mut origins = HashSet::new();
 
-	let mut current = path.as_ref();
+	let path = path.as_ref();
+	let mut current = path;
 	if check_list(DirList::obtain(current).await) {
 		origins.insert(current.to_owned());
 	}
@@ -279,8 +280,9 @@ pub async fn origins(path: impl AsRef<Path> + Send) -> HashSet<PathBuf> {
 ///
 /// Note that this only detects project types listed in the [`ProjectType`] enum, and may not detect
 /// anything for some paths returned by [`origins()`].
-pub async fn types(path: impl AsRef<Path> + Send) -> HashSet<ProjectType> {
-	let list = DirList::obtain(path.as_ref()).await;
+pub async fn types(path: impl AsRef<Path>) -> HashSet<ProjectType> {
+	let path = path.as_ref();
+	let list = DirList::obtain(path).await;
 	[
 		list.if_has_dir("_darcs", ProjectType::Darcs),
 		list.if_has_dir(".bzr", ProjectType::Bazaar),
