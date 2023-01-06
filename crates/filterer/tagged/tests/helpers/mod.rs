@@ -50,8 +50,7 @@ pub trait PathHarness: Filterer {
 	}
 
 	fn path_pass(&self, path: &str, file_type: Option<FileType>, pass: bool) {
-		let handle = Handle::current();
-		let origin = handle.block_on(canonicalize(".")).unwrap();
+		let origin = std::fs::canonicalize(".").unwrap();
 		let full_path = if let Some(suf) = path.strip_prefix("/test/") {
 			origin.join(suf)
 		} else if Path::new(path).has_root() {
@@ -282,8 +281,7 @@ pub trait Applies {
 
 impl Applies for IgnoreFile {
 	fn applies_in(mut self, origin: &str) -> Self {
-		let handle = Handle::current();
-		let origin = handle.block_on(canonicalize(".")).unwrap().join(origin);
+		let origin = std::fs::canonicalize(".").unwrap().join(origin);
 		self.applies_in = Some(origin);
 		self
 	}
@@ -341,8 +339,7 @@ pub trait FilterExt {
 
 impl FilterExt for Filter {
 	fn in_subpath(mut self, sub: impl AsRef<Path>) -> Self {
-		let handle = Handle::current();
-		let origin = handle.block_on(canonicalize(".")).unwrap();
+		let origin = std::fs::canonicalize(".").unwrap();
 		self.in_path = Some(origin.join(sub));
 		self
 	}
