@@ -204,13 +204,13 @@ jobs:
 
       - name: Install cargo-deb
         if: startsWith(matrix.name, 'linux-')
-        uses: taiki-e/install-action@v1
+        uses: taiki-e/install-action@v2
         with:
           tool: cargo-deb
 
       - name: Install cargo-generate-rpm
         if: startsWith(matrix.name, 'linux-')
-        uses: taiki-e/install-action@v1
+        uses: taiki-e/install-action@v2
         with:
           tool: cargo-generate-rpm
 
@@ -222,7 +222,7 @@ jobs:
 
       - name: Install cross
         if: matrix.cross
-        uses: taiki-e/install-action@v1
+        uses: taiki-e/install-action@v2
         with:
           tool: cross
 
@@ -291,12 +291,12 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Install rsign2
-        uses: taiki-e/install-action@v1
+        uses: taiki-e/install-action@v2
         with:
           tool: rsign2
 
       - name: Install b3sum
-        uses: taiki-e/install-action@v1
+        uses: taiki-e/install-action@v2
         with:
           tool: b3sum
 
