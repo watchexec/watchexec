@@ -1139,7 +1139,6 @@ dependencies = [
 name = "ignore-files"
 version = "1.0.1"
 dependencies = [
- "dunce",
  "futures",
  "git-config",
  "ignore",

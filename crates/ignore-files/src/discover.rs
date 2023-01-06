@@ -7,7 +7,7 @@ use std::{
 
 use git_config::{path::interpolate::Context as InterpolateContext, File, Path as GitPath};
 use project_origins::ProjectType;
-use tokio::fs::{metadata, read_dir};
+use tokio::fs::{metadata, read_dir, canonicalize};
 use tracing::{trace, trace_span};
 
 use crate::{IgnoreFile, IgnoreFilter};
@@ -372,7 +372,7 @@ enum Visit {
 
 impl DirTourist {
 	pub async fn new(base: &Path, files: &[IgnoreFile]) -> Result<Self, Error> {
-		let base = dunce::canonicalize(base)?;
+		let base = canonicalize(base).await?;
 		trace!("create IgnoreFilterer for visiting directories");
 		let mut filter = IgnoreFilter::new(&base, files)
 			.await
