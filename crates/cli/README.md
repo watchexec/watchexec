@@ -45,7 +45,7 @@ Example use cases:
 * Not tied to Git or the presence of a repository/project
 * Does not require a cryptic command line involving `xargs`
 
-## Usage Examples
+## Simple Usage Examples
 
 Watch all JavaScript, CSS and HTML files in the current directory and all subdirectories for changes, running `make` when a change is detected:
 
@@ -94,6 +94,32 @@ If you come from `entr`, note that the watchexec command is run in a shell by de
 On Windows, you may prefer to use Powershell:
 
     $ watchexec --shell=powershell -- test-connection localhost
+
+## Complex Usage Examples 
+
+Turn a plain converter tool like PlantUML or Pandoc into a powerful live-editing tool, either as a script
+
+    #!/usr/bin/env bash
+    set -Eeuo pipefail
+    
+    SOURCE="test.puml"            # Define source file
+    TARGET="test.png"             # Define conversion target file
+    CONVERT="plantuml $SOURCE"    # Define how to convert source to target
+    VIEW="feh $TARGET"            # Define how to open target file
+    if [ ! -f $TARGET ]; then $CONVERT; fi # Ensure target file exists for opening
+    $VIEW &                                # Open target file in viewer in the background
+    watchexec --filter $SOURCE -- $CONVERT    # Update target file on any source file change
+
+or condensed as a single line
+   
+    # Bash
+    $ SOURCE="test.puml"; TARGET="test.png"; CONVERT="plantuml $SOURCE"; VIEW="feh $TARGET"; if [ ! -f $TARGET ]; then $CONVERT; fi; ($VIEW &); watchexec -f $SOURCE -- $CONVERT
+    # Zsh
+    $ SOURCE="test.puml"; TARGET="test.png"; CONVERT="plantuml $SOURCE"; VIEW="feh $TARGET"; if [ ! -f $TARGET ]; then $CONVERT; fi; ($=VIEW &); watchexec -f $SOURCE -- $CONVERT
+
+Replace [PlantUML](https://plantuml.com/) with another converter like [Pandoc](https://pandoc.org/): 
+`plantuml $SOURCE` turns into `pandoc $SOURCE --output $TARGET`, 
+Similarly, replace the [Feh](https://feh.finalrewind.org/) image viewer with another viewer for your target file like the PDF viewer [Evince](https://wiki.gnome.org/Apps/Evince): `feh $TARGET` turns into `evince $TARGET`.
 
 ## Installation
 
