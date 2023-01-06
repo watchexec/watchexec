@@ -34,7 +34,7 @@ pub trait PathHarness: Filterer {
 	}
 
 	fn path_pass(&self, path: &str, file_type: Option<FileType>, pass: bool) {
-		let origin = dunce::canonicalize(".").unwrap();
+		let origin = std::fs::canonicalize(".").unwrap();
 		let full_path = if let Some(suf) = path.strip_prefix("/test/") {
 			origin.join(suf)
 		} else if Path::new(path).has_root() {
@@ -180,7 +180,7 @@ fn tracing_init() {
 
 pub async fn ignore_filt(origin: &str, ignore_files: &[IgnoreFile]) -> IgnoreFilterer {
 	tracing_init();
-	let origin = dunce::canonicalize(".").unwrap().join(origin);
+	let origin = tokio::fs::canonicalize(".").await.unwrap().join(origin);
 	IgnoreFilterer(
 		IgnoreFilter::new(origin, ignore_files)
 			.await
@@ -189,7 +189,7 @@ pub async fn ignore_filt(origin: &str, ignore_files: &[IgnoreFile]) -> IgnoreFil
 }
 
 pub fn ig_file(name: &str) -> IgnoreFile {
-	let path = dunce::canonicalize(".")
+	let path = std::fs::canonicalize(".")
 		.unwrap()
 		.join("tests")
 		.join("ignores")
@@ -208,7 +208,7 @@ pub trait Applies {
 
 impl Applies for IgnoreFile {
 	fn applies_in(mut self, origin: &str) -> Self {
-		let origin = dunce::canonicalize(".").unwrap().join(origin);
+		let origin = std::fs::canonicalize(".").unwrap().join(origin);
 		self.applies_in = Some(origin);
 		self
 	}

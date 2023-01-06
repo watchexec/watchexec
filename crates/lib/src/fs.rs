@@ -9,9 +9,10 @@ use std::{
 };
 
 use async_priority_channel as priority;
+use normalize_path::NormalizePath;
 use notify::{Config, Watcher as _};
 use tokio::sync::{mpsc, watch};
-use tracing::{debug, error, trace, warn};
+use tracing::{debug, error, trace};
 
 use crate::{
 	error::{CriticalError, FsWatcherError, RuntimeError},
@@ -131,8 +132,8 @@ impl AsRef<Path> for WatchedPath {
 /// _not_ to drop the watch sender: this will cause the worker to stop gracefully, which may not be
 /// what was expected.
 ///
-/// Note that the paths emitted by the watcher are canonicalised. No guarantee is made about the
-/// implementation or output of that canonicalisation (i.e. it might not be `std`'s).
+/// Note that the paths emitted by the watcher are normalised. No guarantee is made about the
+/// implementation or output of that normalisation (it may change without notice).
 ///
 /// # Examples
 ///
@@ -188,13 +189,13 @@ pub async fn worker(
 			} else {
 				let mut to_watch = Vec::with_capacity(data.pathset.len());
 				let mut to_drop = Vec::with_capacity(pathset.len());
-				for path in data.pathset.iter() {
+				for path in &data.pathset {
 					if !pathset.contains(path) {
 						to_watch.push(path.clone());
 					}
 				}
 
-				for path in pathset.iter() {
+				for path in &pathset {
 					if !data.pathset.contains(path) {
 						to_drop.push(path.clone());
 					}
@@ -210,7 +211,7 @@ pub async fn worker(
 			let n_events = events.clone();
 			match kind.create(move |nev: Result<notify::Event, notify::Error>| {
 				trace!(event = ?nev, "receiving possible event from watcher");
-				if let Err(e) = process_event(nev, kind, n_events.clone()) {
+				if let Err(e) = process_event(nev, kind, &n_events) {
 					n_errors.try_send(e).ok();
 				}
 			}) {
@@ -296,7 +297,7 @@ fn notify_multi_path_errors(
 fn process_event(
 	nev: Result<notify::Event, notify::Error>,
 	kind: Watcher,
-	n_events: priority::Sender<Event, Priority>,
+	n_events: &priority::Sender<Event, Priority>,
 ) -> Result<(), RuntimeError> {
 	let nev = nev.map_err(|err| RuntimeError::FsWatcher {
 		kind,
@@ -311,10 +312,7 @@ fn process_event(
 		// possibly pull file_type from whatever notify (or the native driver) returns?
 		tags.push(Tag::Path {
 			file_type: metadata(&path).ok().map(|m| m.file_type().into()),
-			path: dunce::canonicalize(&path).unwrap_or_else(|err| {
-				warn!(?err, ?path, "failed to canonicalise event path");
-				path
-			}),
+			path: path.normalize(),
 		});
 	}
 

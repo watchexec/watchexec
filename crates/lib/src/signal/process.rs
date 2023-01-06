@@ -114,6 +114,7 @@ impl SubSignal {
 	/// This will return `None` if the signal is not supported on the current platform (only for
 	/// [`Custom`][SubSignal::Custom], as the first-class ones are always supported).
 	#[cfg(unix)]
+	#[must_use]
 	pub fn to_nix(self) -> Option<NixSignal> {
 		match self {
 			Self::Hangup => Some(NixSignal::SIGHUP),
@@ -129,6 +130,8 @@ impl SubSignal {
 
 	/// Converts from a [`nix::Signal`][command_group::Signal].
 	#[cfg(unix)]
+	#[allow(clippy::missing_const_for_fn)]
+	#[must_use]
 	pub fn from_nix(sig: NixSignal) -> Self {
 		match sig {
 			NixSignal::SIGHUP => Self::Hangup,

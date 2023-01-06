@@ -160,7 +160,7 @@ impl Supervisor {
 							let event = Event {
 								tags: vec![
 									Tag::Source(Source::Internal),
-									Tag::ProcessCompletion(status.map(|s| s.into())),
+									Tag::ProcessCompletion(status.map(Into::into)),
 								],
 								metadata: Default::default(),
 							};
@@ -214,7 +214,7 @@ impl Supervisor {
 	/// when the signal has been delivered.
 	pub async fn signal(&self, signal: SubSignal) {
 		if cfg!(windows) {
-			if let SubSignal::ForceStop = signal {
+			if signal == SubSignal::ForceStop {
 				self.intervene.send(Intervention::Kill).await.ok();
 			}
 		// else: https://github.com/watchexec/watchexec/issues/219
@@ -293,7 +293,7 @@ async fn spawn_process(
 	pre_spawn_handler
 		.call(pre_spawn)
 		.await
-		.map_err(|e| rte("action pre-spawn", e))?;
+		.map_err(|e| rte("action pre-spawn", e.as_ref()))?;
 
 	let (proc, id, post_spawn) = span.in_scope::<_, Result<_, RuntimeError>>(|| {
 		let mut spawnable = Arc::try_unwrap(spawnable)
@@ -337,7 +337,7 @@ async fn spawn_process(
 	post_spawn_handler
 		.call(post_spawn)
 		.await
-		.map_err(|e| rte("action post-spawn", e))?;
+		.map_err(|e| rte("action post-spawn", e.as_ref()))?;
 
 	Ok((proc, id))
 }

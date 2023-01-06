@@ -37,11 +37,11 @@ fn folders_suite(filterer: &IgnoreFilterer, name: &str) {
 	filterer.dir_does_pass("apples/carrots/cauliflowers/oranges");
 	filterer.dir_does_pass("apples/carrots/cauliflowers/artichokes/oranges");
 
-	filterer.file_does_pass(&format!("raw-{}", name));
-	filterer.dir_does_pass(&format!("raw-{}", name));
-	filterer.file_does_pass(&format!("raw-{}/carrots/cauliflowers/oranges", name));
-	filterer.file_does_pass(&format!("raw-{}/oranges/bananas", name));
-	filterer.dir_does_pass(&format!("raw-{}/carrots/cauliflowers/oranges", name));
+	filterer.file_does_pass(&format!("raw-{name}"));
+	filterer.dir_does_pass(&format!("raw-{name}"));
+	filterer.file_does_pass(&format!("raw-{name}/carrots/cauliflowers/oranges"));
+	filterer.file_does_pass(&format!("raw-{name}/oranges/bananas"));
+	filterer.dir_does_pass(&format!("raw-{name}/carrots/cauliflowers/oranges"));
 	filterer.file_does_pass(&format!(
 		"raw-{}/carrots/cauliflowers/artichokes/oranges",
 		name
@@ -51,11 +51,11 @@ fn folders_suite(filterer: &IgnoreFilterer, name: &str) {
 		name
 	));
 
-	filterer.dir_doesnt_pass(&format!("{}/carrots/cauliflowers/oranges", name));
-	filterer.dir_doesnt_pass(&format!("{}/carrots/cauliflowers/artichokes/oranges", name));
-	filterer.file_doesnt_pass(&format!("{}/carrots/cauliflowers/oranges", name));
-	filterer.file_doesnt_pass(&format!("{}/carrots/cauliflowers/artichokes/oranges", name));
-	filterer.file_doesnt_pass(&format!("{}/oranges/bananas", name));
+	filterer.dir_doesnt_pass(&format!("{name}/carrots/cauliflowers/oranges"));
+	filterer.dir_doesnt_pass(&format!("{name}/carrots/cauliflowers/artichokes/oranges"));
+	filterer.file_doesnt_pass(&format!("{name}/carrots/cauliflowers/oranges"));
+	filterer.file_doesnt_pass(&format!("{name}/carrots/cauliflowers/artichokes/oranges"));
+	filterer.file_doesnt_pass(&format!("{name}/oranges/bananas"));
 }
 
 #[tokio::test]

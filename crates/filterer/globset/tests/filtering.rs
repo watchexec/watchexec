@@ -380,7 +380,7 @@ async fn multipath_allow_on_any_one_pass() {
 	};
 
 	let filterer = filt(&[], &[], &["py"]).await;
-	let origin = dunce::canonicalize(".").unwrap();
+	let origin = tokio::fs::canonicalize(".").await.unwrap();
 
 	let event = Event {
 		tags: vec![

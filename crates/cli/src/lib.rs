@@ -1,4 +1,5 @@
 #![deny(rust_2018_idioms)]
+#![allow(clippy::missing_const_for_fn, clippy::future_not_send)]
 
 use std::{env::var, fs::File, sync::Mutex};
 
@@ -82,7 +83,7 @@ pub async fn run() -> Result<()> {
 	info!(version=%env!("CARGO_PKG_VERSION"), "constructing Watchexec from CLI");
 	debug!(?args, "arguments");
 
-	let init = config::init(&args)?;
+	let init = config::init(&args);
 	let mut runtime = config::runtime(&args)?;
 	runtime.filterer(if tagged_filterer {
 		eprintln!("!!! EXPERIMENTAL: using tagged filterer !!!");

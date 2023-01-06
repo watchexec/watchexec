@@ -25,7 +25,7 @@ pub enum Process {
 impl Default for Process {
 	/// Returns [`Process::None`].
 	fn default() -> Self {
-		Process::None
+		Self::None
 	}
 }
 

@@ -129,15 +129,14 @@ pub fn summarise_events_to_env<'events>(
 				_ => "OTHERWISE_CHANGED",
 			})
 			.or_insert_with(HashSet::new)
-			.extend(paths.into_iter().map(|p| {
-				if let Some(suffix) = common_path
+			.extend(paths.into_iter().map(|ref p| {
+				common_path
 					.as_ref()
 					.and_then(|prefix| p.strip_prefix(prefix).ok())
-				{
-					suffix.as_os_str().to_owned()
-				} else {
-					p.into_os_string()
-				}
+					.map_or_else(
+						|| p.clone().into_os_string(),
+						|suffix| suffix.as_os_str().to_owned(),
+					)
 			}));
 	}
 

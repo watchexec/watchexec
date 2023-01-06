@@ -6,6 +6,7 @@ use watchexec::{
 	command::Command,
 	config::{InitConfig, RuntimeConfig},
 	error::ReconfigError,
+	event::Event,
 	fs::Watcher,
 	signal::source::MainSignal,
 	ErrorHook, Watchexec,
@@ -37,12 +38,12 @@ async fn main() -> Result<()> {
 		let mut config = config.clone();
 		let w = w.clone();
 		async move {
-			eprintln!("Watchexec Action: {:?}", action);
+			eprintln!("Watchexec Action: {action:?}");
 
 			let sigs = action
 				.events
 				.iter()
-				.flat_map(|event| event.signals())
+				.flat_map(Event::signals)
 				.collect::<Vec<_>>();
 
 			if sigs.iter().any(|sig| sig == &MainSignal::Interrupt) {

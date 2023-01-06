@@ -55,9 +55,9 @@ pub async fn worker(
 				trace!("out of throttle but nothing to do, resetting");
 				last = Instant::now();
 				continue;
-			} else {
-				trace!("out of throttle on recycle");
 			}
+
+			trace!("out of throttle on recycle");
 		} else {
 			trace!(?maxtime, "waiting for event");
 			let maybe_event = timeout(maxtime, events.recv()).await;
@@ -116,6 +116,7 @@ pub async fn worker(
 		trace!("out of throttle, starting action process");
 		last = Instant::now();
 
+		#[allow(clippy::iter_with_drain)]
 		let events = Arc::from(set.drain(..).collect::<Vec<_>>().into_boxed_slice());
 		let action = Action::new(Arc::clone(&events));
 		debug!(?action, "action constructed");
@@ -130,7 +131,7 @@ pub async fn worker(
 		let err = action_handler
 			.call(action)
 			.await
-			.map_err(|e| rte("action worker", e));
+			.map_err(|e| rte("action worker", e.as_ref()));
 		if let Err(err) = err {
 			errors.send(err).await?;
 			debug!("action handler errored, skipping");
