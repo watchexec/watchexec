@@ -1,4 +1,5 @@
 #![deny(rust_2018_idioms)]
+#![allow(clippy::missing_const_for_fn)]
 
 use std::{env::var, fs::File, sync::Mutex};
 
