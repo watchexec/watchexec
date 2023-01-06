@@ -184,7 +184,7 @@ impl IgnoreFilter {
 	/// Adds some globs manually, if the builder is available.
 	///
 	/// Does nothing silently otherwise.
-	pub async fn add_globs(
+	pub fn add_globs(
 		&mut self,
 		globs: &[&str],
 		applies_in: Option<PathBuf>,

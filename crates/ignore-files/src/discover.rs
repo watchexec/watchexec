@@ -391,7 +391,6 @@ impl DirTourist {
 				],
 				Some(base.clone()),
 			)
-			.await
 			.map_err(|err| Error::new(ErrorKind::Other, err))?;
 
 		Ok(Self {
