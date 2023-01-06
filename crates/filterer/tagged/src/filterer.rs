@@ -288,13 +288,7 @@ impl TaggedFilterer {
 	/// So, if origin is `/path/to/project` and workdir is `/path/to/project/subtree`:
 	/// - `path=foo.bar` is resolved to `/path/to/project/subtree/foo.bar`
 	/// - `path=/foo.bar` is resolved to `/path/to/project/foo.bar`
-	pub async fn new(
-		origin: impl Into<PathBuf>,
-		workdir: impl Into<PathBuf>,
-	) -> Result<Arc<Self>, TaggedFiltererError> {
-		let origin = origin.into();
-		let workdir = workdir.into();
-
+	pub async fn new(origin: PathBuf, workdir: PathBuf) -> Result<Arc<Self>, TaggedFiltererError> {
 		let origin = canonicalize(origin)
 			.await
 			.map_err(|err| TaggedFiltererError::IoError {
