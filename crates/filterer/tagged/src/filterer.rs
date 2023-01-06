@@ -2,12 +2,12 @@ use std::{collections::HashMap, convert::Into};
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use dunce::canonicalize;
 use ignore::{
 	gitignore::{Gitignore, GitignoreBuilder},
 	Match,
 };
 use ignore_files::{IgnoreFile, IgnoreFilter};
+use tokio::fs::canonicalize;
 use tracing::{debug, trace, trace_span};
 use watchexec::{
 	error::RuntimeError,
@@ -287,11 +287,14 @@ impl TaggedFilterer {
 	/// So, if origin is `/path/to/project` and workdir is `/path/to/project/subtree`:
 	/// - `path=foo.bar` is resolved to `/path/to/project/subtree/foo.bar`
 	/// - `path=/foo.bar` is resolved to `/path/to/project/foo.bar`
-	pub fn new(
+	pub async fn new(
 		origin: impl Into<PathBuf>,
 		workdir: impl Into<PathBuf>,
 	) -> Result<Arc<Self>, TaggedFiltererError> {
-		let origin = canonicalize(origin.into()).map_err(|err| TaggedFiltererError::IoError {
+		let origin = origin.into();
+		let workdir = workdir.into();
+
+		let origin = canonicalize(origin).await.map_err(|err| TaggedFiltererError::IoError {
 			about: "canonicalise origin on new tagged filterer",
 			err,
 		})?;
@@ -300,7 +303,7 @@ impl TaggedFilterer {
 			ignore_filterer: SwapLock::new(IgnoreFilterer(IgnoreFilter::empty(&origin))),
 			glob_compiled: SwapLock::new(None),
 			not_glob_compiled: SwapLock::new(None),
-			workdir: canonicalize(workdir.into()).map_err(|err| TaggedFiltererError::IoError {
+			workdir: canonicalize(workdir).await.map_err(|err| TaggedFiltererError::IoError {
 				about: "canonicalise workdir on new tagged filterer",
 				err,
 			})?,

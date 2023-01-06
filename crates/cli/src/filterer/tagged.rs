@@ -14,7 +14,7 @@ pub async fn tagged(args: &ArgMatches) -> Result<Arc<TaggedFilterer>> {
 	let vcs_types = super::common::vcs_types(&project_origin).await;
 	let ignores = super::common::ignores(args, &vcs_types, &project_origin).await;
 
-	let filterer = TaggedFilterer::new(project_origin, workdir.clone())?;
+	let filterer = TaggedFilterer::new(project_origin, workdir.clone()).await?;
 
 	for ignore in &ignores {
 		filterer.add_ignore_file(ignore).await?;
