@@ -52,7 +52,7 @@ version = "0.1.1"
 path = "../filterer/tagged"
 
 [dependencies.tokio]
-version = "1.19.2"
+version = "1.23.1"
 features = [
 	"fs",
 	"io-std",
