@@ -1131,7 +1131,7 @@ dependencies = [
 
 [[package]]
 name = "ignore-files"
-version = "1.0.1"
+version = "1.1.0"
 dependencies = [
  "futures",
  "git-config",
