@@ -6,7 +6,7 @@
 
 - Add `const` qualifier to `ProjectType::is_vcs` and `::is_soft`.
 - Use Tokio's canonicalize instead of dunce.
-- Add `Send` bound to `origins()` and `types()`.
+- Add missing `Send` bound to `origins()` and `types()`.
 
 ## v1.1.1 (2022-09-07)
 
