@@ -1,4 +1,0 @@
-allow-branch = ["main"]
-consolidate-pushes = true
-push-options = ["--follow-tags"]
-push-remote = "git@github.com:watchexec/watchexec.git"

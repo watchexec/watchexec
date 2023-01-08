@@ -2,11 +2,6 @@ pre-release-commit-message = "release: cli v{{version}}"
 tag-prefix = "cli-"
 tag-message = "watchexec {{version}}"
 
-# We wait until the release CI is done before publishing,
-# because publishing is irreversible, but a release can be
-# reverted a lot more easily.
-publish = false
-
 [[pre-release-replacements]]
 file = "watchexec.exe.manifest"
 search = "^		version=\"[\\d.]+[.]0\""
