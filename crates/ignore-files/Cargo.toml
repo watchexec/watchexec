@@ -1,6 +1,6 @@
 [package]
 name = "ignore-files"
-version = "1.0.1"
+version = "1.1.0"
 
 authors = ["Félix Saparelli <felix@passcod.name>"]
 license = "Apache-2.0"

@@ -2,7 +2,9 @@
 
 ## Next (YYYY-MM-DD)
 
-- Add `Send` bound to async functions.
+## v1.1.0 (2023-01-08)
+
+- Add missing `Send` bound to async functions.
 
 ## v1.0.1 (2022-09-07)
 
