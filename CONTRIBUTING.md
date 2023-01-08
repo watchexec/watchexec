@@ -57,6 +57,16 @@ A release goes like this:
 4. A maintainer then manually publishes the crate (automated publishing is blocked on crates.io
    implementing [scoped tokens](https://github.com/rust-lang/crates.io/issues/5443)).
 
+### Release order
+
+When all crates need releasing, the order is:
+
+- project-origins (depends on nothing)
+- ignore-files (depends on project-origins)
+- watchexec lib
+- ignore filterer (depends on watchexec lib)
+- other filterers (depends on ignore filterer)
+- watchexec cli
 
 ## Overview
 
