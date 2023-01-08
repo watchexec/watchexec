@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v1.2.0 (2023-01-08)
+
 - Add `const` qualifier to `ProjectType::is_vcs` and `::is_soft`.
 - Use Tokio's canonicalize instead of dunce.
 - Add `Send` bound to `origins()` and `types()`.

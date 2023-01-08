@@ -24,5 +24,5 @@ tokio = { version = "1.23.1", default-features = false, features = ["fs"] }
 tracing = "0.1.35"
 
 [dependencies.project-origins]
-version = "1.1.1"
+version = "1.2.0"
 path = "../project-origins"
