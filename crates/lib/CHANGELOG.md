@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v2.1.0 (2023-01-08)
+
 - MSRV: bump to 1.61.0
 - Deps: drop explicit dependency on `libc` on Unix.
 - Internal: remove all usage of `dunce`, replaced with either Tokio's `canonicalize` (properly async) or [normalize-path](https://docs.rs/normalize-path) (performs no I/O).

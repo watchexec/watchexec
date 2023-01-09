@@ -40,7 +40,7 @@ version = "1.2.0"
 path = "../project-origins"
 
 [dependencies.watchexec]
-version = "2.0.2"
+version = "2.1.0"
 path = "../lib"
 
 [dependencies.watchexec-filterer-globset]
