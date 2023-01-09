@@ -48,7 +48,7 @@ version = "1.1.0"
 path = "../filterer/globset"
 
 [dependencies.watchexec-filterer-tagged]
-version = "0.1.1"
+version = "0.2.0"
 path = "../filterer/tagged"
 
 [dependencies.tokio]
