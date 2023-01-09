@@ -44,7 +44,7 @@ version = "2.1.0"
 path = "../lib"
 
 [dependencies.watchexec-filterer-globset]
-version = "1.0.1"
+version = "1.1.0"
 path = "../filterer/globset"
 
 [dependencies.watchexec-filterer-tagged]
