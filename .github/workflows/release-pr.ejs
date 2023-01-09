@@ -1,3 +1,5 @@
+<!-- <%- JSON.stringify({ "release-pr": { v2: { crates, version } } }) %> -->
+
 This is a release PR for **<%= crate.name %>** version **<%= version.actual %>**<%
     if (version.actual != version.desired) {
 %> (performing a <%= version.desired %> bump).<%
@@ -6,17 +8,7 @@ This is a release PR for **<%= crate.name %>** version **<%= version.actual %>**
     }
 %>
 
-<% if (pr.mergeStrategy == "merge") { %>
-**Use a merge commit.**
-<% } else if (pr.mergeStrategy == "rebase") { %>
-**Use rebase merge.**
-<% } else if (pr.mergeStrategy == "squash") { %>
 **Use squash merge.**
-<% } else if (pr.mergeStrategy == "bors") { %>
-**Merge by commenting:**
-| bors r+ |
-|:-:|
-<% } %>
 
 <% if (crate.name == "watchexec-cli") { %>
 Upon merging, this will automatically create the tag `v<%= version.actual %>`, build the CLI, and create a GitHub release.
@@ -42,7 +34,7 @@ $ cargo publish -p <%= crate.name %>
 ```
 <% } %>
 
-**To trigger builds initially, close and then immediately re-open this PR once.**
+To trigger builds initially: either close and then immediately re-open this PR once, or **enable auto-merge**.
 
 <% if (pr.releaseNotes) { %>
 ---
