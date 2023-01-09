@@ -1,12 +1,10 @@
-# YAML 1.2
----
-cff-version: "1.1.0"
+cff-version: 1.2.0
 message: |
   If you use this software, please cite it using these metadata.
+title: "Watchexec: a tool to react to filesystem changes, and a crate ecosystem to power it"
 
-title: Watchexec
-version: "1.20.6"
-date-released: 2022-09-07
+version: "1.21.0"
+date-released: 2023-01-09
 
 repository-code: https://github.com/watchexec/watchexec
 license: Apache-2.0
@@ -16,4 +14,4 @@ authors:
     given-names: Matt
   - family-names: Saparelli
     given-names: Félix
-...
+    orcid: https://orcid.org/0000-0002-2010-630X

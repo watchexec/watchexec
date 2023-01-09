@@ -2658,7 +2658,7 @@ dependencies = [
 
 [[package]]
 name = "watchexec-cli"
-version = "1.20.6"
+version = "1.21.0"
 dependencies = [
  "clap",
  "console-subscriber",
