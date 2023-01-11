@@ -70,7 +70,7 @@ jobs:
         path: target/
         key: ${{ runner.os }}-target-${{ matrix.toolchain }}-${{ hashFiles('**/Cargo.lock') }}
 
-    - if: ${{ matrix.toolchain != 'stable' }}
+    - if: matrix.toolchain != 'stable'
       run: echo "flags=--locked" >> $GITHUB_ENV
 
     - name: Run test suite
