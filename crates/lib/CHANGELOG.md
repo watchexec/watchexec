@@ -10,6 +10,7 @@
 - Internal: drop support code for Fuchsia. MIO already didn't support it, so it never compiled there.
 - Add `#[must_use]` annotations to a bunch of functions.
 - Add missing `Send` bound to `HandlerLock`.
+- Add new keyboard event source; initially supports just detecting EOF on STDIN. ([#449](https://github.com/watchexec/watchexec/pull/449))
 - Fix `summarise_events_to_env` on Windows to output paths with backslashes.
 
 ## v2.0.2 (2022-09-07)
