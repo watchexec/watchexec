@@ -70,10 +70,13 @@ jobs:
         path: target/
         key: ${{ runner.os }}-target-${{ matrix.toolchain }}-${{ hashFiles('**/Cargo.lock') }}
 
+    - if: matrix.toolchain != 'stable'
+      run: echo "flags=--locked" >> $GITHUB_ENV
+
     - name: Run test suite
-      run: cargo test
+      run: cargo test ${{ env.flags }}
     - name: Check that CLI runs
-      run: cargo run -p watchexec-cli -- -1 echo
+      run: cargo run ${{ env.flags }} -p watchexec-cli -- -1 echo
 
   cross-checks:
     name: Checks only against select targets
@@ -109,3 +112,13 @@ jobs:
     - run: cargo check --target x86_64-unknown-linux-musl
     - run: cross check --target x86_64-unknown-freebsd
     - run: cross check --target x86_64-unknown-netbsd
+
+  # Dummy job to have a stable name for the "all tests pass" requirement
+  tests-pass:
+    name: Tests pass
+    needs:
+    - test
+    - cross-checks
+    runs-on: ubuntu-latest
+    steps:
+    - run: echo "Tests pass"
