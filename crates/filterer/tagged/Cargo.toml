@@ -31,7 +31,7 @@ version = "1.1.0"
 path = "../../ignore-files"
 
 [dependencies.tokio]
-version = "1.23.1"
+version = "1.24.2"
 features = [
 	"fs",
 ]
@@ -52,7 +52,7 @@ version = "1.2.0"
 path = "../../project-origins"
 
 [dev-dependencies.tokio]
-version = "1.23.1"
+version = "1.24.2"
 features = [
 	"fs",
 	"io-std",
