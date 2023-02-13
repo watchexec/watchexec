@@ -2,8 +2,7 @@
 
 use std::str::FromStr;
 
-#[cfg(unix)]
-use command_group::Signal as NixSignal;
+use nix::sys::signal::Signal as NixSignal;
 
 use crate::error::SignalParseError;
 
@@ -82,14 +81,12 @@ pub enum SubSignal {
 	/// # Examples
 	///
 	/// ```
-	/// # // we don't have a direct nix dependency, so we fake it... rather horribly
-	/// # mod nix { pub mod sys { pub mod signal {
-	/// # #[cfg(unix)] pub use command_group::Signal;
-	/// # #[cfg(not(unix))] #[repr(i32)] pub enum Signal { SIGABRT = 6 }
-	/// # } } }
+	/// # #[cfg(unix)]
+	/// # {
 	/// use watchexec::signal::process::SubSignal;
 	/// use nix::sys::signal::Signal;
 	/// assert_eq!(SubSignal::Custom(6), SubSignal::from(Signal::SIGABRT as i32));
+	/// # }
 	/// ```
 	///
 	/// On Unix the [`from_nix`][SubSignal::from_nix] method should be preferred if converting from
@@ -98,8 +95,6 @@ pub enum SubSignal {
 	/// ```
 	/// # #[cfg(unix)]
 	/// # {
-	/// # // we don't have a direct nix dependency, so we fake it... rather horribly
-	/// # mod nix { pub mod sys { pub mod signal { pub use command_group::Signal; } } }
 	/// use watchexec::signal::process::SubSignal;
 	/// use nix::sys::signal::Signal;
 	/// assert_eq!(SubSignal::Custom(6), SubSignal::from_nix(Signal::SIGABRT));
