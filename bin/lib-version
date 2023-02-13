@@ -3,7 +3,7 @@
 set -euo pipefail
 
 app="watchexec"
-mainbranch="main"
+mainbranch="v1.17.x"
 upstream_rx="watchexec/"
 
 curbranch=$(git rev-parse --abbrev-ref HEAD)
