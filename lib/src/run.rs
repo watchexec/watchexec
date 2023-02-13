@@ -269,11 +269,34 @@ impl ExecHandler {
             }
         }
 
+        // Required from Rust 1.64:
+        // https://github.com/rust-lang/rust/pull/101077
+        #[cfg(unix)]
+        {
+            use nix::sys::signal::{sigprocmask, SigSet, SigmaskHow};
+            use std::os::unix::process::CommandExt;
+            unsafe {
+                command.pre_exec(|| {
+                    let mut oldset = SigSet::empty();
+                    let mut newset = SigSet::all();
+                    newset.remove(Signal::SIGHUP); // leave SIGHUP alone so nohup works
+                    debug!("Resetting process sigmask, unblocking {:?}", newset);
+                    sigprocmask(SigmaskHow::SIG_UNBLOCK, Some(&newset), Some(&mut oldset))?;
+                    debug!("Old sigmask: {:?}", oldset);
+                    Ok(())
+                });
+            }
+        }
+
         debug!("Launching command");
         *child = if self.args.use_process_group {
-            ChildProcess::Grouped(command.group_spawn()?)
+            let child = command.group_spawn()?;
+            debug!("Child process ID: {:?}", child.id());
+            ChildProcess::Grouped(child)
         } else {
-            ChildProcess::Ungrouped(command.spawn()?)
+            let child = command.spawn()?;
+            debug!("Child process ID: {:?}", child.id());
+            ChildProcess::Ungrouped(child)
         };
 
         Ok(())
