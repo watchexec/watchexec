@@ -282,6 +282,26 @@ async fn spawn_process(
 		let mut spawnable = command.to_spawnable()?;
 		spawnable.kill_on_drop(true);
 
+		// Required from Rust 1.66:
+		// https://github.com/rust-lang/rust/pull/101077
+		//
+		// We do that before the pre-spawn so that hook can be used to set a different mask if wanted.
+		#[cfg(unix)]
+		{
+			use nix::sys::signal::{sigprocmask, SigSet, SigmaskHow, Signal};
+			unsafe {
+				spawnable.pre_exec(|| {
+					let mut oldset = SigSet::empty();
+					let mut newset = SigSet::all();
+					newset.remove(Signal::SIGHUP); // leave SIGHUP alone so nohup works
+					debug!(unblocking=?newset, "resetting process sigmask");
+					sigprocmask(SigmaskHow::SIG_UNBLOCK, Some(&newset), Some(&mut oldset))?;
+					debug!(?oldset, "sigmask reset");
+					Ok(())
+				});
+			}
+		}
+
 		debug!("running pre-spawn handler");
 		Ok(PreSpawn::new(
 			command.clone(),
