@@ -269,7 +269,7 @@ impl ExecHandler {
             }
         }
 
-        // Required from Rust 1.64:
+        // Required from Rust 1.65:
         // https://github.com/rust-lang/rust/pull/101077
         #[cfg(unix)]
         {
