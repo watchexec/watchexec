@@ -2,6 +2,7 @@
 
 use std::str::FromStr;
 
+#[cfg(unix)]
 use nix::sys::signal::Signal as NixSignal;
 
 use crate::error::SignalParseError;
