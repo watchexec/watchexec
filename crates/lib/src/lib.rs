@@ -96,7 +96,6 @@
 #![doc(html_logo_url = "https://watchexec.github.io/logo:watchexec.svg")]
 #![warn(clippy::unwrap_used, missing_docs)]
 #![deny(rust_2018_idioms)]
-#![forbid(unsafe_code)]
 
 // the toolkit to make your own
 pub mod action;
