@@ -284,16 +284,11 @@ jobs:
   sign:
     needs: [build, info]
 
-    name: Checksum and sign
+    name: Checksum and publish
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v3
-
-      - name: Install rsign2
-        uses: taiki-e/install-action@v2
-        with:
-          tool: rsign2
 
       - name: Install b3sum
         uses: taiki-e/install-action@v2
@@ -304,32 +299,27 @@ jobs:
         with:
           name: builds
 
-      - name: Checksums with BLAKE3
-        run: b3sum watchexec-* | tee B3SUMS
-
-      - name: Checksums with SHA512
-        run: sha512sum watchexec-* | tee SHA512SUMS
-
-      - name: Sign checksums
-        shell: bash
-        env:
-          RELEASE_KEY: ${{ secrets.RELEASE_KEY }}
-          version: ${{ needs.info.outputs.cli_version }}
+      - name: Dist manifest
         run: |
-          set -u
-          echo "$RELEASE_KEY" > release.key
-          set -x
-          for algo in B3 SHA512; do
-            echo | rsign sign \
-              -p .github/workflows/release.pub \
-              -s release.key \
-              -t "watchexec v$version signed with automated key" \
-              -c 'see website for signing information' \
-              -x "${algo}SUMS.auto.minisig" \
-              "${algo}SUMS"
+          jq -ncf .github/workflows/dist-manifest.jq \
+            --arg version "{{ needs.info.outputs.cli_version }}" \
+            --arg changelog "{{ needs.info.outputs.release_notes }}" \
+            --arg files "$(ls watchexec-*)"
+            > dist-manifest.json
+
+      - name: Bulk checksums
+        run: |
+          b3sum watchexec-* | tee B3SUMS
+          sha512sum watchexec-* | tee SHA512SUMS
+          sha256sum watchexec-* | tee SHA256SUMS
+
+      - name: File checksums
+        run: |
+          for file in watchexec-* do
+            b3sum --no-names $file > "$file.b3"
+            sha256sum $file | cut -d ' ' -f1 > "$file.sha256"
+            sha512sum $file | cut -d ' ' -f1 > "$file.sha512"
           done
-          rm release.key
-          cat {B3,SHA512}SUMS.auto.minisig
 
       - uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844
         with:
@@ -339,11 +329,14 @@ jobs:
           append_body: true
           discussion_category_name: ${{ needs.info.outputs.announce }}
           files: |
+            dist-manifest.json
             watchexec-*.tar.xz
             watchexec-*.tar.zst
             watchexec-*.deb
             watchexec-*.rpm
             watchexec-*.zip
-            *SUMS*
+            *SUMS
+            *.b3
+            *.sha*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
