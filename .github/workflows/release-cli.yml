@@ -307,19 +307,18 @@ jobs:
             --arg files "$(ls watchexec-*)"
             > dist-manifest.json
 
-      - name: Checksums with BLAKE3
+      - name: Bulk checksums
         run: |
           b3sum watchexec-* | tee B3SUMS
-          for file in watchexec-* do
-            b3sum --no-names $file > "$file.b3"
-          done
-
-      - name: Checksums with SHA
-        run: |
           sha512sum watchexec-* | tee SHA512SUMS
           sha256sum watchexec-* | tee SHA256SUMS
+
+      - name: File checksums
+        run: |
           for file in watchexec-* do
+            b3sum --no-names $file > "$file.b3"
             sha256sum $file | cut -d ' ' -f1 > "$file.sha256"
+            sha512sum $file | cut -d ' ' -f1 > "$file.sha512"
           done
 
       - uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844
