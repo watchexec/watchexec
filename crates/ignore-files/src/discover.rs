@@ -5,7 +5,7 @@ use std::{
 	path::{Path, PathBuf},
 };
 
-use git_config::{path::interpolate::Context as InterpolateContext, File, Path as GitPath};
+use gix_config::{path::interpolate::Context as InterpolateContext, File, Path as GitPath};
 use project_origins::ProjectType;
 use tokio::fs::{canonicalize, metadata, read_dir};
 use tracing::{trace, trace_span};
@@ -48,7 +48,7 @@ const PATH_SEPARATOR: &str = ";";
 ///
 /// ## Async
 ///
-/// This future is not `Send` due to [`git_config`] internals.
+/// This future is not `Send` due to [`gix_config`] internals.
 #[allow(clippy::future_not_send)]
 pub async fn from_origin(path: impl AsRef<Path> + Send) -> (Vec<IgnoreFile>, Vec<Error>) {
 	let base = path.as_ref().to_owned();
@@ -199,7 +199,7 @@ pub async fn from_origin(path: impl AsRef<Path> + Send) -> (Vec<IgnoreFile>, Vec
 ///
 /// ## Async
 ///
-/// This future is not `Send` due to [`git_config`] internals.
+/// This future is not `Send` due to [`gix_config`] internals.
 #[allow(clippy::future_not_send)]
 pub async fn from_environment(appname: Option<&str>) -> (Vec<IgnoreFile>, Vec<Error>) {
 	let mut files = Vec::new();
