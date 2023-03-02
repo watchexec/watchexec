@@ -9,7 +9,6 @@ _Experimental filterer using tagged filters._
 
 - **[API documentation][docs]**.
 - Licensed under [Apache 2.0][license].
-- Minimum Supported Rust Version: 1.61.0 (incurs a minor semver bump).
 - Status: maintained.
 
 [docs]: https://docs.rs/watchexec-filterer-tagged
