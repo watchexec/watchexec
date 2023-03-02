@@ -1,14 +1,8 @@
-use std::{
-	env,
-	ffi::OsString,
-	fs::File,
-	io::{BufRead, BufReader},
-	path::{Path, PathBuf},
-};
+use std::{path::PathBuf, time::Duration};
 
-use clap::{Arg, ArgAction, ArgMatches, Command, Parser, ValueEnum};
-use miette::{Context, IntoDiagnostic, Result};
+use clap::{ArgAction, Parser, ValueEnum};
 use tracing::debug;
+use watchexec::signal::process::SubSignal;
 
 const OPTSET_FILTERING: &str = "Filtering options";
 const OPTSET_COMMAND: &str = "Command options";
@@ -20,7 +14,10 @@ const OPTSET_BEHAVIOUR: &str = "Behaviour options";
 #[derive(Debug, Clone, Parser)]
 #[command(author, version, about, long_about = None, after_help = "Use @argfile as first argument to load arguments from the file `argfile` (one argument per line) which will be inserted in place of the @argfile (further arguments on the CLI will override or add onto those in the file).")]
 #[cfg_attr(debug_assertions, command(before_help = "⚠ DEBUG BUILD ⚠"))]
-#[cfg_attr(feature = "dev-console", command(before_help = "⚠ DEV CONSOLE ENABLED ⚠"))]
+#[cfg_attr(
+	feature = "dev-console",
+	command(before_help = "⚠ DEV CONSOLE ENABLED ⚠")
+)]
 pub struct Args {
 	/// Command to run on changes
 	#[arg(
@@ -141,7 +138,7 @@ pub struct Args {
 		help_heading = OPTSET_BEHAVIOUR,
 		default_value = "60",
 	)]
-	pub timeout_stop: TimeSpan<Seconds>,
+	pub timeout_stop: TimeSpan,
 
 	/// Time to wait for new events before taking action
 	///
@@ -164,7 +161,7 @@ pub struct Args {
 		help_heading = OPTSET_BEHAVIOUR,
 		default_value = "50",
 	)]
-	pub debounce: TimeSpan<Milliseconds>,
+	pub debounce: TimeSpan<1000>,
 
 	/// Exit when stdin closes
 	///
@@ -295,7 +292,7 @@ pub struct Args {
 		long,
 		help_heading = OPTSET_BEHAVIOUR,
 	)]
-	pub delay_run: Option<TimeSpan<Seconds>>,
+	pub delay_run: Option<TimeSpan>,
 
 	/// Poll for filesystem changes
 	///
@@ -313,7 +310,7 @@ pub struct Args {
 		help_heading = OPTSET_BEHAVIOUR,
 		num_args = 0..=1, // TODO how does this work with 0?
 	)]
-	pub poll: Option<TimeSpan<Seconds>>,
+	pub poll: Option<TimeSpan>,
 
 	/// Use a different shell
 	///
@@ -480,8 +477,8 @@ pub struct Args {
 	/// With this, Watchexec will emit a desktop notification when a command starts and ends, on
 	/// supported platforms. On unsupported platforms, it may silently do nothing, or log a warning.
 	#[arg(
-		short = 'N'
 		long,
+		short = 'N',
 		help_heading = OPTSET_OUTPUT,
 	)]
 	pub notify: bool,
@@ -511,6 +508,66 @@ pub struct Args {
 		help_heading = OPTSET_COMMAND,
 	)]
 	pub workdir: Option<PathBuf>,
+
+	/// Filename extensions to filter to
+	///
+	/// This is a quick filter to only emit events for files with the given extensions. Extensions
+	/// can be given with or without the leading dot (e.g. `js` or `.js`). Multiple extensions can
+	/// be given by repeating the option or by separating them with commas.
+	#[arg(
+		long = "exts",
+		short = 'e',
+		help_heading = OPTSET_FILTERING,
+	)]
+	pub filter_extensions: Vec<String>,
+
+	/// Filename patterns to filter to
+	///
+	/// Provide a glob-like filter pattern, and only events for files matching the pattern will be
+	/// emitted. Multiple patterns can be given by repeating the option. Events that are not from
+	/// files (e.g. signals, keyboard events) will pass through untouched.
+	#[arg(
+		long = "filter",
+		short = 'f',
+		help_heading = OPTSET_FILTERING,
+	)]
+	pub filter_patterns: Vec<String>,
+
+	/// Filename patterns to filter out
+	///
+	/// Provide a glob-like filter pattern, and events for files matching the pattern will be
+	/// excluded. Multiple patterns can be given by repeating the option. Events that are not from
+	/// files (e.g. signals, keyboard events) will pass through untouched.
+	#[arg(
+		long = "ignore",
+		short = 'i',
+		help_heading = OPTSET_FILTERING,
+	)]
+	pub ignore_patterns: Vec<String>,
+
+	/// Filesystem events to filter to
+	///
+	/// This is a quick filter to only emit events for the given types of filesystem changes. Choose
+	/// from `access`, `create`, `remove`, `rename`, `modify`, `metadata`. Multiple types can be
+	/// given by repeating the option or by separating them with commas. By default, this is all
+	/// types except for `access`.
+	#[arg(
+		long = "fs-events",
+		help_heading = OPTSET_FILTERING,
+		default_value = "create,remove,rename,modify,metadata",
+	)]
+	pub filter_fs_events: Vec<FsEvent>,
+
+	/// Don't emit for metadata changes
+	///
+	/// This is a shorthand for `--fs-events create,remove,rename,modify`. Using it alongside the
+	/// `--fs-events` option is non-sensical and not allowed.
+	#[arg(
+		long = "no-meta",
+		help_heading = OPTSET_FILTERING,
+		conflicts_with = "filter_fs_events",
+	)]
+	pub filter_fs_meta: bool,
 }
 
 #[derive(Clone, Copy, Debug, Default, ValueEnum)]
@@ -533,68 +590,37 @@ pub enum OnBusyUpdate {
 	Signal,
 }
 
-pub fn get_args(tagged_filterer: bool) -> Result<ArgMatches> {
-	let mut app = Command::new("watchexec")
-	.arg(
-			Arg::new("extensions")
-				.help_heading(Some(OPTSET_FILTERING))
-				.help("Comma-separated list of file extensions to watch (e.g. js,css,html)")
-				.short('e')
-				.long("exts"), // .takes_value(true)
-			                // .allow_invalid_utf8(true),
-		)
-		.arg(
-			Arg::new("filter")
-				.help_heading(Some(OPTSET_FILTERING))
-				.help("Ignore all modifications except those matching the pattern")
-				.short('f')
-				.long("filter")
-				.number_of_values(1), // .multiple_occurrences(true)
-			                       // .takes_value(true)
-			                       // .value_name("pattern"),
-		)
-		.arg(
-			Arg::new("ignore")
-				.help_heading(Some(OPTSET_FILTERING))
-				.help("Ignore modifications to paths matching the pattern")
-				.short('i')
-				.long("ignore")
-				.number_of_values(1), // .multiple_occurrences(true)
-			                       // .takes_value(true)
-			                       // .value_name("pattern"),
-		)
-		.arg(
-			Arg::new("no-meta")
-				.help_heading(Some(OPTSET_FILTERING))
-				.help("Ignore metadata changes")
-				.long("no-meta"),
-		);
+#[derive(Clone, Copy, Debug, ValueEnum)]
+pub enum FsEvent {
+	Access,
+	Create,
+	Remove,
+	Rename,
+	Modify,
+	Metadata,
+}
 
+// TODO: FromStr or ValueParser
+#[derive(Clone, Copy, Debug)]
+pub struct TimeSpan<const UNITLESS_SECONDS_MULTIPLIER: u64 = {1}> {
+	pub duration: Duration,
+}
+
+// TODO: FromStr or ValueParser
+#[derive(Clone, Copy, Debug)]
+pub struct Signal(SubSignal);
+
+pub fn get_args() -> Box<Args> {
 	if std::env::var("RUST_LOG").is_ok() {
 		eprintln!("⚠ RUST_LOG environment variable set, logging options have no effect");
 	}
 
-	let mut raw_args: Vec<OsString> = env::args_os().collect();
+	debug!("expanding @argfile arguments if any");
+	let args = argfile::expand_args(argfile::parse_fromfile, argfile::PREFIX).unwrap();
 
-	if let Some(first) = raw_args.get(1).and_then(|s| s.to_str()) {
-		if let Some(arg_path) = first.strip_prefix('@').map(Path::new) {
-			let arg_file = BufReader::new(
-				File::open(arg_path)
-					.into_diagnostic()
-					.wrap_err_with(|| format!("Failed to open argument file {arg_path:?}"))?,
-			);
+	debug!("parsing arguments");
+	let args = Args::parse_from(args);
 
-			let mut more_args: Vec<OsString> = arg_file
-				.lines()
-				.map(|l| l.map(OsString::from).into_diagnostic())
-				.collect::<Result<_>>()?;
-
-			more_args.insert(0, raw_args.remove(0));
-			more_args.extend(raw_args.into_iter().skip(1));
-			raw_args = more_args;
-		}
-	}
-
-	debug!(?raw_args, "parsing arguments");
-	Ok(app.get_matches_from(raw_args))
+	debug!(?args, "got arguments");
+	Box::new(args)
 }

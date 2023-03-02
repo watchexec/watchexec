@@ -44,6 +44,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "224afbd727c3d6e4b90103ece64b8d1b67fbb1973b1046c2281eed3f3803f800"
 
 [[package]]
+name = "argfile"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "265f5108974489a217d5098cd81666b60480c8dd67302acbbe7cbdd8aa09d638"
+dependencies = [
+ "os_str_bytes",
+]
+
+[[package]]
 name = "async-broadcast"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1644,6 +1653,9 @@ name = "os_str_bytes"
 version = "6.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b7820b9daea5457c9f21c69448905d723fbd21136ccf521748f23fd49e723ee"
+dependencies = [
+ "memchr",
+]
 
 [[package]]
 name = "overload"
@@ -2760,6 +2772,7 @@ dependencies = [
 name = "watchexec-cli"
 version = "1.21.1"
 dependencies = [
+ "argfile",
  "clap",
  "console-subscriber",
  "dirs",

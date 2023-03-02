@@ -26,10 +26,11 @@ futures = "0.3.17"
 miette = { version = "5.3.0", features = ["fancy"] }
 notify-rust = "4.5.2"
 tracing = "0.1.26"
+argfile = "0.1.5"
 
 [dependencies.clap]
 version = "4.1.8"
-features = ["cargo", "derive", "deprecated"]
+features = ["cargo", "derive"]
 
 [dependencies.ignore-files]
 version = "1.1.0"
