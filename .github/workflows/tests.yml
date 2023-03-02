@@ -30,19 +30,16 @@ jobs:
           - macos
           - ubuntu
           - windows
-        toolchain:
-          - stable
-          - 1.62.1
 
-    name: Test ${{ matrix.platform }} with Rust ${{ matrix.toolchain }}
+    name: Test ${{ matrix.platform }}
     runs-on: "${{ matrix.platform }}-latest"
 
     steps:
     - uses: actions/checkout@v3
     - name: Configure toolchain
       run: |
-        rustup toolchain install ${{ matrix.toolchain }} --profile minimal --no-self-update
-        rustup default ${{ matrix.toolchain }}
+        rustup toolchain install --profile minimal --no-self-update stable
+        rustup default stable
 
     # https://github.com/actions/cache/issues/752
     - if: ${{ runner.os == 'Windows' }}
@@ -59,19 +56,16 @@ jobs:
           ~/.cargo/registry/index/
           ~/.cargo/registry/cache/
           ~/.cargo/git/db/
-        key: ${{ runner.os }}-cargo-${{ matrix.toolchain }}-${{ hashFiles('**/Cargo.lock') }}
+        key: ${{ runner.os }}-cargo-stable-${{ hashFiles('**/Cargo.lock') }}
         restore-keys: |
-          ${{ runner.os }}-cargo-${{ matrix.toolchain }}-
+          ${{ runner.os }}-cargo-stable-
           ${{ runner.os }}-cargo-
 
     - name: Compilation caching
       uses: actions/cache@v3
       with:
         path: target/
-        key: ${{ runner.os }}-target-${{ matrix.toolchain }}-${{ hashFiles('**/Cargo.lock') }}
-
-    - if: matrix.toolchain != 'stable'
-      run: echo "flags=--locked" >> $GITHUB_ENV
+        key: ${{ runner.os }}-target-stable-${{ hashFiles('**/Cargo.lock') }}
 
     - name: Run test suite
       run: cargo test ${{ env.flags }}
