@@ -1,7 +1,6 @@
 [![Crates.io page](https://badgen.net/crates/v/watchexec)](https://crates.io/crates/watchexec)
 [![API Docs](https://docs.rs/watchexec/badge.svg)][docs]
 [![Crate license: Apache 2.0](https://badgen.net/badge/license/Apache%202.0)][license]
-![MSRV: 1.61.0 (minor)](https://badgen.net/badge/MSRV/1.61.0%20%28minor%29/0b7261)
 [![CI status](https://github.com/watchexec/watchexec/actions/workflows/check.yml/badge.svg)](https://github.com/watchexec/watchexec/actions/workflows/check.yml)
 
 # Watchexec library
@@ -10,7 +9,6 @@ _The library which powers [Watchexec CLI](https://watchexec.github.io) and other
 
 - **[API documentation][docs]**.
 - Licensed under [Apache 2.0][license].
-- Minimum Supported Rust Version: 1.61.0 (incurs a minor semver bump).
 - Status: maintained.
 
 [docs]: https://docs.rs/watchexec
@@ -123,3 +121,16 @@ There are also separate, standalone crates used to build Watchexec which you can
 
 - **[Project Origins](https://docs.rs/project-origins)** finds the origin (or root) path of a
   project, and what kind of project it is.
+
+## Rust version (MSRV)
+
+Due to the unpredictability of dependencies changing their MSRV, this library no longer tries to
+keep to a minimum supported Rust version behind stable. Instead, it is assumed that developers use
+the latest stable at all times.
+
+Applications that wish to support lower-than-stable Rust (such as the Watchexec CLI does) should:
+- use a lock file
+- recommend the use of `--locked` when installing from source
+- provide pre-built binaries (and [Binstall] support) for non-distro users
+- avoid using newer features until some time has passed, to let distro users catch up
+- consider recommending that distro-Rust users switch to distro `rustup` where available
