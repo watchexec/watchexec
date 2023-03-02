@@ -4,7 +4,7 @@
 |:-|:-|:-:|:-:|-:|
 | Linux | Alpine | [`watchexec`](https://pkgs.alpinelinux.org/packages?name=watchexec) | testing | `apk add watchexec` |
 | Linux | ALT Sisyphus | [`watchexec`](https://packages.altlinux.org/en/sisyphus/srpms/watchexec/) | outdated | `apt-get install watchexec` |
-| Linux | APT repo | [`watchexec`](https://apt.cli.rs) | unofficial | `apt install watchexec` |
+| Linux | APT repo | [`watchexec-cli`](https://apt.cli.rs) | unofficial | `apt install watchexec-cli` |
 | Linux | Arch | [`watchexec`](https://archlinux.org/packages/community/x86_64/watchexec/) | official | `pacman -S watchexec` |
 | Linux | Gentoo GURU | [`watchexec`](https://gpo.zugaina.org/Overlays/guru/app-misc/watchexec) | unofficial | `emerge -av watchexec` |
 | Linux | GNU Guix | [`watchexec`](https://guix.gnu.org/packages/watchexec-1.16.1/) | outdated | ? |
@@ -19,6 +19,6 @@
 | Windows | Chocolatey | [`watchexec`](https://community.chocolatey.org/packages/watchexec) | community | `choco install watchexec` |
 | Windows | MSYS2 mingw | [`mingw-w64-watchexec`](https://github.com/msys2/MINGW-packages/blob/master/mingw-w64-watchexec) | official | `pacman -S mingw-w64-x86_64-watchexec` |
 | Windows | Scoop | [`watchexec`](https://github.com/ScoopInstaller/Main/blob/master/bucket/watchexec.json) | official | `scoop install watchexec` |
-| _Any_ | Crates.io | [`watchexec-cli`](https://crates.io/crates/watchexec-cli) | first-party | `cargo install watchexec-cli` |
+| _Any_ | Crates.io | [`watchexec-cli`](https://crates.io/crates/watchexec-cli) | first-party | `cargo install --locked watchexec-cli` |
 | _Any_ | Binstall | [`watchexec-cli`](https://crates.io/crates/watchexec-cli) | first-party | `cargo binstall watchexec-cli` |
 | _Any_ | Webi | [`watchexec`](https://webinstall.dev/watchexec/) | third-party | varies (see webpage) |
