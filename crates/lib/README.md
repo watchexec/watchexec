@@ -84,14 +84,14 @@ struct YourConfigFormat; impl YourConfigFormat { async fn load_from_file(_: &str
 The library also exposes a number of components which are available to make your own tool, or to
 make anything else you may want:
 
-- **[Command handling](https://docs.rs/watchexec/2.0.0-pre.6/watchexec/command/index.html)**, to
+- **[Command handling](https://docs.rs/watchexec/2/watchexec/command/index.html)**, to
   build a command with an arbitrary shell, deal with grouped and ungrouped processes the same way,
   and supervise a process while also listening for & acting on interventions such as sending signals.
 
-- **Event sources**: [Filesystem](https://docs.rs/watchexec/2.0.0-pre.6/watchexec/fs/index.html),
-  [Signals](https://docs.rs/watchexec/2.0.0-pre.6/watchexec/signal/source/index.html), (more to come).
+- **Event sources**: [Filesystem](https://docs.rs/watchexec/2/watchexec/fs/index.html),
+  [Signals](https://docs.rs/watchexec/2/watchexec/signal/source/index.html), (more to come).
 
-- Finding **[a common prefix](https://docs.rs/watchexec/2.0.0-pre.6/watchexec/paths/fn.common_prefix.html)**
+- Finding **[a common prefix](https://docs.rs/watchexec/2/watchexec/paths/fn.common_prefix.html)**
   of a set of paths.
 
 - And [more][docs]!
@@ -131,6 +131,6 @@ the latest stable at all times.
 Applications that wish to support lower-than-stable Rust (such as the Watchexec CLI does) should:
 - use a lock file
 - recommend the use of `--locked` when installing from source
-- provide pre-built binaries (and [Binstall] support) for non-distro users
+- provide pre-built binaries (and [Binstall](https://github.com/cargo-bins/cargo-binstall) support) for non-distro users
 - avoid using newer features until some time has passed, to let distro users catch up
 - consider recommending that distro-Rust users switch to distro `rustup` where available
