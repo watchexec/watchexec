@@ -28,8 +28,8 @@ notify-rust = "4.5.2"
 tracing = "0.1.26"
 
 [dependencies.clap]
-version = "3.1.18"
-features = ["cargo", "wrap_help"]
+version = "4.1.8"
+features = ["cargo", "derive", "deprecated"]
 
 [dependencies.ignore-files]
 version = "1.1.0"
