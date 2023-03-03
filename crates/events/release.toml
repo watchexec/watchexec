@@ -1,0 +1,10 @@
+pre-release-commit-message = "release: events v{{version}}"
+tag-prefix = "events-"
+tag-message = "watchexec-events {{version}}"
+
+[[pre-release-replacements]]
+file = "CHANGELOG.md"
+search = "^## Next.*$"
+replace = "## Next (YYYY-MM-DD)\n\n## v{{version}} ({{date}})"
+prerelease = true
+max = 1

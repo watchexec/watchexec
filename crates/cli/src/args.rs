@@ -494,6 +494,7 @@ pub struct Args {
 	///
 	/// ```json
 	/// {
+	///   "v": 1,
 	///   "tags": [
 	///     {
 	///       "kind": "path",
@@ -518,6 +519,7 @@ pub struct Args {
 	///
 	/// The fields are as follows:
 	///
+	/// - `v`, the version of the JSON format. Currently 1.
 	/// - `tags`, structured event data.
 	/// - `tags[].kind`, which can be:
 	///   * 'path', along with:

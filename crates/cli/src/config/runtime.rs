@@ -8,13 +8,12 @@ use watchexec::{
 	command::{Command, Shell},
 	config::RuntimeConfig,
 	error::RuntimeError,
-	event::{Event, ProcessEnd, Tag},
 	fs::Watcher,
 	handler::SyncFnHandler,
-	keyboard::Keyboard,
 	paths::summarise_events_to_env,
-	signal::{process::SubSignal, source::MainSignal},
 };
+use watchexec_events::{Event, ProcessEnd, Tag, Keyboard};
+use watchexec_signals::{SubSignal, MainSignal};
 
 use crate::args::{Args, ClearMode, EmitEvents, OnBusyUpdate};
 

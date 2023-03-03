@@ -5,6 +5,7 @@ use tokio::{
 	sync::{mpsc, oneshot, watch},
 };
 use tracing::trace;
+pub use watchexec_events::Keyboard;
 
 use crate::{
 	error::{CriticalError, KeyboardWatcherError, RuntimeError},
@@ -19,14 +20,6 @@ use crate::{
 pub struct WorkingData {
 	/// Whether or not to watch for 'end of file' on stdin
 	pub eof: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[non_exhaustive]
-/// Enumeration of different keyboard events
-pub enum Keyboard {
-	/// Event representing an 'end of file' on stdin
-	Eof,
 }
 
 /// Launch the filesystem event worker.

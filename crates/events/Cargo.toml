@@ -1,0 +1,26 @@
+[package]
+name = "watchexec-events"
+version = "1.0.0"
+
+authors = ["Félix Saparelli <felix@passcod.name>"]
+license = "Apache-2.0 OR MIT"
+description = "Watchexec's event types"
+keywords = ["watchexec", "event", "format", "json"]
+
+documentation = "https://docs.rs/watchexec-events"
+repository = "https://github.com/watchexec/watchexec"
+readme = "README.md"
+
+rust-version = "1.61.0"
+edition = "2021"
+
+[dependencies.notify]
+version = "5.0.0"
+
+[dependencies.watchexec-signals]
+version = "1.0.0"
+path = "../signals"
+
+[target.'cfg(unix)'.dependencies.nix]
+version = "0.26.2"
+features = ["signal"]

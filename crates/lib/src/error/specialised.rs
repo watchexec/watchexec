@@ -6,6 +6,10 @@ use tokio::sync::watch;
 
 use crate::{action, fs, keyboard};
 
+// compatibility re-export
+#[deprecated(note = "use the `watchexec_signals` crate directly instead")]
+pub use watchexec_signals::SignalParseError;
+
 /// Errors occurring from reconfigs.
 #[derive(Debug, Diagnostic, Error)]
 #[non_exhaustive]
@@ -25,33 +29,6 @@ pub enum ReconfigError {
 	#[error("reconfig: keyboard watch: {0}")]
 	#[diagnostic(code(watchexec::reconfig::keyboard_watch))]
 	KeyboardWatch(#[from] watch::error::SendError<keyboard::WorkingData>),
-}
-
-/// Error when parsing a signal from string.
-#[derive(Debug, Diagnostic, Error)]
-#[error("invalid signal `{src}`: {err}")]
-#[diagnostic(code(watchexec::signal::process::parse), url(docsrs))]
-pub struct SignalParseError {
-	// The string that was parsed.
-	#[source_code]
-	src: String,
-
-	// The error that occurred.
-	err: String,
-
-	// The span of the source which is in error.
-	#[label = "invalid signal"]
-	span: (usize, usize),
-}
-
-impl SignalParseError {
-	pub(crate) fn new(src: &str, err: &str) -> Self {
-		Self {
-			src: src.to_owned(),
-			err: err.to_owned(),
-			span: (0, src.len()),
-		}
-	}
 }
 
 /// Errors emitted by the filesystem watcher.

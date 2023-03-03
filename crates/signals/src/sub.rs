@@ -1,13 +1,12 @@
-//! Types for cross-platform and cross-purpose handling of subprocess signals.
+//! Notifications (signals or Windows control events) sent to or received from a sub process.
 
+#[cfg(feature = "parse")]
 use std::str::FromStr;
 
 #[cfg(unix)]
 use nix::sys::signal::Signal as NixSignal;
 
-use crate::error::SignalParseError;
-
-use super::source::MainSignal;
+use crate::MainSignal;
 
 /// A notification sent to a subprocess.
 ///
@@ -173,6 +172,7 @@ impl From<i32> for SubSignal {
 	}
 }
 
+#[cfg(feature = "parse")]
 impl SubSignal {
 	/// Parse the input as a unix signal.
 	///
@@ -262,10 +262,39 @@ impl SubSignal {
 	}
 }
 
+#[cfg(feature = "parse")]
 impl FromStr for SubSignal {
 	type Err = SignalParseError;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		Self::from_windows_str(s).or_else(|err| Self::from_unix_str(s).map_err(|_| err))
+	}
+}
+
+/// Error when parsing a signal from string.
+#[cfg(feature = "parse")]
+#[cfg_attr(feature = "miette", derive(miette::Diagnostic))]
+#[derive(Debug, thiserror::Error)]
+#[error("invalid signal `{src}`: {err}")]
+pub struct SignalParseError {
+	// The string that was parsed.
+	#[cfg_attr(feature = "miette", source_code)]
+	src: String,
+
+	// The error that occurred.
+	err: String,
+
+	// The span of the source which is in error.
+	#[cfg_attr(feature = "miette", label = "invalid signal")]
+	span: (usize, usize),
+}
+
+impl SignalParseError {
+	pub fn new(src: &str, err: &str) -> Self {
+		Self {
+			src: src.to_owned(),
+			err: err.to_owned(),
+			span: (0, src.len()),
+		}
 	}
 }

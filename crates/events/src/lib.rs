@@ -16,8 +16,7 @@ use std::{
 
 use filekind::FileEventKind;
 
-use crate::keyboard::Keyboard;
-use crate::signal::{process::SubSignal, source::MainSignal};
+use watchexec_signals::{SubSignal, MainSignal};
 
 /// Re-export of the Notify file event types.
 pub mod filekind {
@@ -56,7 +55,7 @@ pub enum Tag {
 	/// The general source of the event.
 	Source(Source),
 
-	/// The event was caused by specific keyboard input
+	/// The event is about a keyboard input.
 	Keyboard(Keyboard),
 
 	/// The event was caused by a particular process.
@@ -83,6 +82,14 @@ impl Tag {
 			Self::ProcessCompletion(_) => "ProcessCompletion",
 		}
 	}
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+/// A keyboard input.
+pub enum Keyboard {
+	/// Event representing an 'end of file' on stdin
+	Eof,
 }
 
 /// The type of a file.

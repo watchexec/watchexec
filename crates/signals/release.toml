@@ -1,0 +1,10 @@
+pre-release-commit-message = "release: signals v{{version}}"
+tag-prefix = "signals-"
+tag-message = "watchexec-signals {{version}}"
+
+[[pre-release-replacements]]
+file = "CHANGELOG.md"
+search = "^## Next.*$"
+replace = "## Next (YYYY-MM-DD)\n\n## v{{version}} ({{date}})"
+prerelease = true
+max = 1
