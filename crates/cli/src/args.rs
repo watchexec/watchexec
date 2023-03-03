@@ -21,23 +21,23 @@ shadow_rs::shadow!(build);
 ///
 /// Rebuild a project when source files change:
 ///
-///     $ watchexec make
+///   $ watchexec make
 ///
 /// Watch all HTML, CSS, and JavaScript files for changes:
 ///
-///     $ watchexec -e html,css,js make
+///   $ watchexec -e html,css,js make
 ///
 /// Run tests when source files change, clearing the screen each time:
 ///
-///     $ watchexec -c make test
+///   $ watchexec -c make test
 ///
 /// Launch and restart a node.js server:
 ///
-///     $ watchexec -r node app.js
+///   $ watchexec -r node app.js
 ///
 /// Watch lib and src directories for changes, rebuilding each time:
 ///
-///     $ watchexec -w lib -w src make
+///   $ watchexec -w lib -w src make
 #[derive(Debug, Clone, Parser)]
 #[command(
 	name = "watchexec",
@@ -62,19 +62,19 @@ pub struct Args {
 	///
 	/// Examples:
 	///
-	///     $ watchexec -w src npm run build
+	///   $ watchexec -w src npm run build
 	///
-	///     $ watchexec -w src -- rsync -a src dest
+	///   $ watchexec -w src -- rsync -a src dest
 	///
 	/// Take care when using globs or other shell expansions in the command. Your shell may expand
 	/// them before ever passing them to Watchexec, and the results may not be what you expect.
 	/// Compare:
 	///
-	///     $ watchexec echo src/*.rs
+	///   $ watchexec echo src/*.rs
 	///
-	///     $ watchexec echo 'src/*.rs'
+	///   $ watchexec echo 'src/*.rs'
 	///
-	///     $ watchexec --shell=none echo 'src/*.rs'
+	///   $ watchexec --shell=none echo 'src/*.rs'
 	///
 	/// Behaviour depends on the value of '--shell': for all except 'none', every part of the
 	/// command is joined together into one string with a single ascii space character, and given to
@@ -393,23 +393,23 @@ pub struct Args {
 	///
 	/// Use without shell:
 	///
-	///     $ watchexec -n -- zsh -x -o shwordsplit scr
+	///   $ watchexec -n -- zsh -x -o shwordsplit scr
 	///
 	/// Use with powershell:
 	///
-	///     $ watchexec --shell=powershell -- test-connection localhost
+	///   $ watchexec --shell=powershell -- test-connection localhost
 	///
 	/// Use with cmd:
 	///
-	///     $ watchexec --shell=cmd -- dir
+	///   $ watchexec --shell=cmd -- dir
 	///
 	/// Use with a different unix shell:
 	///
-	///     $ watchexec --shell=bash -- 'echo $BASH_VERSION'
+	///   $ watchexec --shell=bash -- 'echo $BASH_VERSION'
 	///
 	/// Use with a unix shell and options:
 	///
-	///     $ watchexec --shell='zsh -x -o shwordsplit' -- scr
+	///   $ watchexec --shell='zsh -x -o shwordsplit' -- scr
 	#[arg(
 		long,
 		help_heading = OPTSET_COMMAND,
