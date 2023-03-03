@@ -1,22 +1,29 @@
 #![deny(rust_2018_idioms)]
 #![allow(clippy::missing_const_for_fn, clippy::future_not_send)]
 
-use std::{env::var, fs::File, sync::Mutex};
+use std::{env::var, fs::File, io::Write, sync::Mutex, process::Stdio};
 
-use miette::{IntoDiagnostic, Result, Context};
-use tokio::fs::metadata;
+use args::Args;
+use clap::CommandFactory;
+use clap_mangen::Man;
+use command_group::AsyncCommandGroup;
+use is_terminal::IsTerminal;
+use miette::{Context, IntoDiagnostic, Result};
+use tokio::{fs::metadata, process::Command, io::AsyncWriteExt};
 use tracing::{debug, info, warn};
 use watchexec::{
 	event::{Event, Priority},
 	Watchexec,
 };
 
-mod args;
+use crate::args::build;
+
+pub mod args;
 mod config;
 mod filterer;
 mod os_string_ops;
 
-pub async fn run() -> Result<()> {
+async fn init() -> Result<Args> {
 	let mut log_on = false;
 
 	#[cfg(feature = "dev-console")]
@@ -48,8 +55,8 @@ pub async fn run() -> Result<()> {
 	} else if verbosity > 0 {
 		let log_file = if let Some(file) = &args.log_file {
 			let info = metadata(&file)
-			.await
-			.into_diagnostic()
+				.await
+				.into_diagnostic()
 				.wrap_err("Opening log file failed")?;
 			let path = if info.is_dir() {
 				let filename = format!(
@@ -92,8 +99,11 @@ pub async fn run() -> Result<()> {
 		}
 	}
 
+	Ok(args)
+}
+
+async fn run_watchexec(args: Args) -> Result<()> {
 	info!(version=%env!("CARGO_PKG_VERSION"), "constructing Watchexec from CLI");
-	debug!(?args, "arguments");
 
 	let init = config::init(&args);
 	let mut runtime = config::runtime(&args)?;
@@ -112,4 +122,47 @@ pub async fn run() -> Result<()> {
 	info!("done with main loop");
 
 	Ok(())
+}
+
+async fn run_manpage(_args: Args) -> Result<()> {
+	info!(version=%env!("CARGO_PKG_VERSION"), "constructing manpage");
+
+	let man = Man::new(Args::command()).date(build::COMMIT_DATE.split_once(' ').unwrap().0);
+	let mut buffer: Vec<u8> = Default::default();
+	man.render(&mut buffer).into_diagnostic()?;
+
+	if std::io::stdout().is_terminal() && which::which("man").is_ok() {
+		let mut child = Command::new("man")
+			.arg("-l")
+			.arg("-")
+			.stdin(Stdio::piped())
+			.stdout(Stdio::inherit())
+			.stderr(Stdio::inherit())
+			.group()
+			.kill_on_drop(true)
+			.spawn().into_diagnostic()?;
+		child.inner().stdin.as_mut().unwrap().write_all(&buffer).await.into_diagnostic()?;
+		let exit = child.wait().await.into_diagnostic()?;
+		if let Some(code) = exit.code() {
+			return Err(miette::miette!("Exited with status code {}", code));
+		}
+	} else {
+		std::io::stdout()
+			.lock()
+			.write_all(&buffer)
+			.into_diagnostic()?;
+	}
+
+	Ok(())
+}
+
+pub async fn run() -> Result<()> {
+	let args = init().await?;
+	debug!(?args, "arguments");
+
+	if args.manpage {
+		run_manpage(args).await
+	} else {
+		run_watchexec(args).await
+	}
 }

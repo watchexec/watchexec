@@ -20,19 +20,25 @@ name = "watchexec"
 path = "src/main.rs"
 
 [dependencies]
+argfile = "0.1.5"
+chrono = "0.4.23"
+clap_mangen = "0.2.9"
+command-group = { version = "2.1.0", features = ["with-tokio"] }
 console-subscriber = { version = "0.1.0", optional = true }
 dirs = "4.0.0"
 futures = "0.3.17"
+humantime = "2.1.0"
+is-terminal = "0.4.4"
 miette = { version = "5.3.0", features = ["fancy"] }
 notify-rust = "4.5.2"
+pager = "0.16.1"
+shadow-rs = "0.21.0"
 tracing = "0.1.26"
-argfile = "0.1.5"
-chrono = "0.4.23"
-humantime = "2.1.0"
+which = "4.4.0"
 
 [dependencies.clap]
 version = "4.1.8"
-features = ["cargo", "derive", "wrap_help"]
+features = ["cargo", "derive", "env", "wrap_help"]
 
 [dependencies.ignore-files]
 version = "1.1.0"
@@ -76,6 +82,7 @@ mimalloc = "0.1.26"
 
 [build-dependencies]
 embed-resource = "1.6.1"
+shadow-rs = "0.21.0"
 
 [features]
 ## For debugging only: enables the Tokio Console.
