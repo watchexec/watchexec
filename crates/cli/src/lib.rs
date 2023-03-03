@@ -17,8 +17,6 @@ use watchexec::{
 	Watchexec,
 };
 
-use crate::args::build;
-
 pub mod args;
 mod config;
 mod filterer;
@@ -127,8 +125,7 @@ async fn run_watchexec(args: Args) -> Result<()> {
 async fn run_manpage(_args: Args) -> Result<()> {
 	info!(version=%env!("CARGO_PKG_VERSION"), "constructing manpage");
 
-	let man = Man::new(Args::command().long_version(None))
-		.date(build::COMMIT_DATE.split_once(' ').unwrap().0);
+	let man = Man::new(Args::command().long_version(None));
 	let mut buffer: Vec<u8> = Default::default();
 	man.render(&mut buffer).into_diagnostic()?;
 
