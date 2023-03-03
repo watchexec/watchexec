@@ -1,8 +1,4 @@
-use std::{
-	ffi::{OsString},
-	path::MAIN_SEPARATOR,
-	sync::Arc,
-};
+use std::{ffi::OsString, path::MAIN_SEPARATOR, sync::Arc};
 
 use miette::{IntoDiagnostic, Result};
 use tracing::info;
@@ -48,16 +44,20 @@ pub async fn globset(args: &Args) -> Result<Arc<WatchexecFilterer>> {
 		]);
 	}
 
-	let filters = args.filter_patterns.iter()
+	let filters = args
+		.filter_patterns
+		.iter()
 		.map(|f| (f.to_owned(), Some(workdir.clone())));
 
 	ignores.extend(
-		args.ignore_patterns.iter()
+		args.ignore_patterns
+			.iter()
 			.map(|f| (f.to_owned(), Some(workdir.clone()))),
 	);
 
 	// TODO: bring split and strip into args
-	let exts = args.filter_extensions
+	let exts = args
+		.filter_extensions
 		.iter()
 		.map(|e| OsString::from(e.strip_prefix('.').unwrap_or(e)));
 

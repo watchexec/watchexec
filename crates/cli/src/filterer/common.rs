@@ -92,11 +92,7 @@ pub async fn vcs_types(origin: &Path) -> Vec<ProjectType> {
 	vcs_types
 }
 
-pub async fn ignores(
-	args: &Args,
-	vcs_types: &[ProjectType],
-	origin: &Path,
-) -> Vec<IgnoreFile> {
+pub async fn ignores(args: &Args, vcs_types: &[ProjectType], origin: &Path) -> Vec<IgnoreFile> {
 	let (mut ignores, errors) = ignore_files::from_origin(origin).await;
 	for err in errors {
 		warn!("while discovering project-local ignore files: {}", err);
