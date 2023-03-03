@@ -32,7 +32,6 @@ humantime = "2.1.0"
 is-terminal = "0.4.4"
 miette = { version = "5.3.0", features = ["fancy"] }
 notify-rust = "4.5.2"
-shadow-rs = "0.21.0"
 tracing = "0.1.26"
 which = "4.4.0"
 clap_complete_nushell = "0.1.10"
@@ -81,9 +80,14 @@ features = [
 [target.'cfg(target_env = "musl")'.dependencies]
 mimalloc = "0.1.26"
 
+[target.'cfg(target_os = "linux")'.dependencies]
+shadow-rs = "0.21.0"
+
+[target.'cfg(target_os = "linux")'.build-dependencies]
+shadow-rs = "0.21.0"
+
 [build-dependencies]
 embed-resource = "1.6.1"
-shadow-rs = "0.21.0"
 
 [features]
 ## For debugging only: enables the Tokio Console.
