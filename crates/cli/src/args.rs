@@ -1,18 +1,23 @@
-use std::{path::PathBuf, time::Duration, str::FromStr};
+use std::{path::PathBuf, str::FromStr, time::Duration};
 
-use clap::{ArgAction, Parser, ValueEnum};
+use clap::{ArgAction, Parser, ValueEnum, ValueHint};
 use tracing::{debug, warn};
 use watchexec::signal::process::SubSignal;
 
-const OPTSET_FILTERING: &str = "Filtering options";
-const OPTSET_COMMAND: &str = "Command options";
-const OPTSET_DEBUGGING: &str = "Debugging options";
-const OPTSET_OUTPUT: &str = "Output options";
-const OPTSET_BEHAVIOUR: &str = "Behaviour options";
+const OPTSET_FILTERING: &str = "Filtering";
+const OPTSET_COMMAND: &str = "Command";
+const OPTSET_DEBUGGING: &str = "Debugging";
 
 // Execute commands when watched files change.
 #[derive(Debug, Clone, Parser)]
-#[command(author, version, about, long_about = None, after_help = "Use @argfile as first argument to load arguments from the file `argfile` (one argument per line) which will be inserted in place of the @argfile (further arguments on the CLI will override or add onto those in the file).")]
+#[command(
+	author,
+	version,
+	about = "Execute commands when watched files change.",
+	long_about = None,
+	after_help = "Use @argfile as first argument to load arguments from the file `argfile` (one argument per line) which will be inserted in place of the @argfile (further arguments on the CLI will override or add onto those in the file).",
+	hide_possible_values = true,
+)]
 #[cfg_attr(debug_assertions, command(before_help = "⚠ DEBUG BUILD ⚠"))]
 #[cfg_attr(
 	feature = "dev-console",
@@ -21,9 +26,11 @@ const OPTSET_BEHAVIOUR: &str = "Behaviour options";
 pub struct Args {
 	/// Command to run on changes
 	#[arg(
-		help_heading = OPTSET_COMMAND,
 		trailing_var_arg = true,
 		num_args = 1..,
+		value_hint = ValueHint::CommandString,
+		value_name = "COMMAND",
+		required = true,
 	)]
 	pub command: Vec<String>,
 
@@ -38,6 +45,8 @@ pub struct Args {
 		short = 'w',
 		long = "watch",
 		help_heading = OPTSET_FILTERING,
+		value_hint = ValueHint::AnyPath,
+		value_name = "PATH",
 	)]
 	pub paths: Vec<PathBuf>,
 
@@ -45,10 +54,10 @@ pub struct Args {
 	///
 	/// If this doesn't completely clear the screen, try `--clear=reset`.
 	#[arg(
-		short,
-		long,
-		help_heading = OPTSET_OUTPUT,
+		short = 'c',
+		long = "clear",
 		num_args = 0..=1, // what does that do with 0?
+		value_name = "MODE",
 	)]
 	pub screen_clear: Option<ClearMode>,
 
@@ -68,7 +77,9 @@ pub struct Args {
 	#[arg(
 		short,
 		long,
-		help_heading = OPTSET_BEHAVIOUR,
+		default_value = "queue",
+		hide_default_value = true,
+		value_name = "MODE"
 	)]
 	pub on_busy_update: OnBusyUpdate,
 
@@ -78,10 +89,9 @@ pub struct Args {
 	#[arg(
 		long,
 		short = 'W',
-		help_heading = OPTSET_BEHAVIOUR,
 		hide = true,
 		conflicts_with = "on_busy_update",
-		conflicts_with = "restart",
+		conflicts_with = "restart"
 	)]
 	pub watch_when_idle: bool,
 
@@ -91,9 +101,8 @@ pub struct Args {
 	#[arg(
 		short,
 		long,
-		help_heading = OPTSET_BEHAVIOUR,
 		conflicts_with = "on_busy_update",
-		conflicts_with = "watch_when_idle",
+		conflicts_with = "watch_when_idle"
 	)]
 	pub restart: bool,
 
@@ -107,18 +116,14 @@ pub struct Args {
 	#[arg(
 		short,
 		long,
-		help_heading = OPTSET_BEHAVIOUR,
 		conflicts_with = "restart",
 		conflicts_with = "watch_when_idle",
+		value_name = "TIMEOUT"
 	)]
 	pub signal: Option<SubSignal>,
 
 	/// Hidden legacy shorthand for `--signal=kill`.
-	#[arg(
-		short,
-		long,
-		help_heading = OPTSET_BEHAVIOUR,
-	)]
+	#[arg(short, long)]
 	pub kill: bool,
 
 	/// Signal to send to stop the command
@@ -137,10 +142,7 @@ pub struct Args {
 	/// has termination (here called "KILL" or "STOP") and "CTRL+C", "CTRL+BREAK", and "CTRL+CLOSE"
 	/// events. For portability the unix signals "SIGKILL", "SIGINT", "SIGTERM", and "SIGHUP" are
 	/// respectively mapped to these.
-	#[arg(
-		long,
-		help_heading = OPTSET_BEHAVIOUR,
-	)]
+	#[arg(long, value_name = "SIGNAL")]
 	pub kill_signal: Option<SubSignal>,
 
 	/// Time to wait for the command to exit gracefully
@@ -154,8 +156,9 @@ pub struct Args {
 	/// The default is 60 seconds. Set to 0 to immediately force-kill the command.
 	#[arg(
 		long,
-		help_heading = OPTSET_BEHAVIOUR,
 		default_value = "60",
+		hide_default_value = true,
+		value_name = "TIMEOUT"
 	)]
 	pub timeout_stop: TimeSpan,
 
@@ -177,8 +180,9 @@ pub struct Args {
 	/// The default is 50 milliseconds. Setting to 0 is highly discouraged.
 	#[arg(
 		long,
-		help_heading = OPTSET_BEHAVIOUR,
 		default_value = "50",
+		hide_default_value = true,
+		value_name = "TIMEOUT"
 	)]
 	pub debounce: TimeSpan<1_000_000>,
 
@@ -186,10 +190,7 @@ pub struct Args {
 	///
 	/// This watches the stdin file descriptor for EOF, and exits Watchexec gracefully when it is
 	/// closed. This is used by some process managers to avoid leaving zombie processes around.
-	#[arg(
-		long,
-		help_heading = OPTSET_BEHAVIOUR,
-	)]
+	#[arg(long)]
 	pub stdin_quit: bool,
 
 	/// Set diagnostic log level
@@ -202,6 +203,7 @@ pub struct Args {
 	/// You may want to use with `--log-file` to avoid polluting your terminal.
 	#[arg(
 		long,
+		short,
 		help_heading = OPTSET_DEBUGGING,
 		action = ArgAction::Count,
 		num_args = 0,
@@ -223,6 +225,8 @@ pub struct Args {
 		long,
 		help_heading = OPTSET_DEBUGGING,
 		num_args = 0..=1,
+		value_hint = ValueHint::AnyPath,
+		value_name = "PATH",
 	)]
 	pub log_file: Option<PathBuf>,
 
@@ -293,11 +297,7 @@ pub struct Args {
 	///
 	/// By default, Watchexec will run the command once immediately. With this option, it will
 	/// instead wait until an event is detected before running the command as normal.
-	#[arg(
-		long,
-		short,
-		help_heading = OPTSET_BEHAVIOUR,
-	)]
+	#[arg(long, short)]
 	pub postpone: bool,
 
 	/// Sleep before running the command
@@ -307,10 +307,7 @@ pub struct Args {
 	/// but portable and slightly more efficient.
 	///
 	/// Takes a unit-less value in seconds, or a time span value such as "2min 5s".
-	#[arg(
-		long,
-		help_heading = OPTSET_BEHAVIOUR,
-	)]
+	#[arg(long, value_name = "DURATION")]
 	pub delay_run: Option<TimeSpan>,
 
 	/// Poll for filesystem changes
@@ -326,8 +323,8 @@ pub struct Args {
 	#[arg(
 		long,
 		alias = "force-poll",
-		help_heading = OPTSET_BEHAVIOUR,
 		num_args = 0..=1, // TODO how does this work with 0?
+		value_name = "INTERVAL",
 	)]
 	pub poll: Option<TimeSpan>,
 
@@ -352,6 +349,7 @@ pub struct Args {
 	#[arg(
 		long,
 		help_heading = OPTSET_COMMAND,
+		value_name = "SHELL",
 	)]
 	pub shell: Option<String>,
 
@@ -456,7 +454,10 @@ pub struct Args {
 	#[arg(
 		long,
 		help_heading = OPTSET_COMMAND,
+		verbatim_doc_comment,
 		default_value = "environment",
+		hide_default_value = true,
+		value_name = "MODE",
 	)]
 	pub emit_events_to: EmitEvents,
 
@@ -470,6 +471,7 @@ pub struct Args {
 		long,
 		short = 'E',
 		help_heading = OPTSET_COMMAND,
+		value_name = "KEY=VALUE",
 	)]
 	pub env: Vec<String>,
 
@@ -485,22 +487,14 @@ pub struct Args {
 	pub no_process_group: bool,
 
 	/// Testing only: exit Watchexec after the first run
-	#[arg(
-		short = '1',
-		help_heading = OPTSET_BEHAVIOUR,
-		hide = true,
-	)]
+	#[arg(short = '1', hide = true)]
 	pub once: bool,
 
 	/// Alert when commands start and end
 	///
 	/// With this, Watchexec will emit a desktop notification when a command starts and ends, on
 	/// supported platforms. On unsupported platforms, it may silently do nothing, or log a warning.
-	#[arg(
-		long,
-		short = 'N',
-		help_heading = OPTSET_OUTPUT,
-	)]
+	#[arg(long, short = 'N')]
 	pub notify: bool,
 
 	/// Set the project origin
@@ -515,7 +509,8 @@ pub struct Args {
 	/// When set, Watchexec will also not bother searching, which can be significantly faster.
 	#[arg(
 		long,
-		help_heading = OPTSET_FILTERING,
+		value_hint = ValueHint::DirPath,
+		value_name = "DIRECTORY",
 	)]
 	pub project_origin: Option<PathBuf>,
 
@@ -525,7 +520,8 @@ pub struct Args {
 	/// can change that with this option. Note that paths may be less intuitive to use with this.
 	#[arg(
 		long,
-		help_heading = OPTSET_COMMAND,
+		value_hint = ValueHint::DirPath,
+		value_name = "DIRECTORY",
 	)]
 	pub workdir: Option<PathBuf>,
 
@@ -538,6 +534,8 @@ pub struct Args {
 		long = "exts",
 		short = 'e',
 		help_heading = OPTSET_FILTERING,
+		value_delimiter = ',',
+		value_name = "EXTENSIONS",
 	)]
 	pub filter_extensions: Vec<String>,
 
@@ -550,6 +548,7 @@ pub struct Args {
 		long = "filter",
 		short = 'f',
 		help_heading = OPTSET_FILTERING,
+		value_name = "PATTERN",
 	)]
 	pub filter_patterns: Vec<String>,
 
@@ -562,6 +561,7 @@ pub struct Args {
 		long = "ignore",
 		short = 'i',
 		help_heading = OPTSET_FILTERING,
+		value_name = "PATTERN",
 	)]
 	pub ignore_patterns: Vec<String>,
 
@@ -578,6 +578,9 @@ pub struct Args {
 		long = "fs-events",
 		help_heading = OPTSET_FILTERING,
 		default_value = "create,remove,rename,modify,metadata",
+		value_delimiter = ',',
+		hide_default_value = true,
+		value_name = "EVENTS",
 	)]
 	pub filter_fs_events: Vec<FsEvent>,
 
@@ -632,7 +635,7 @@ pub enum FsEvent {
 
 // TODO: FromStr or ValueParser
 #[derive(Clone, Copy, Debug)]
-pub struct TimeSpan<const UNITLESS_NANOS_MULTIPLIER: u64 = {1_000_000_000}>(pub Duration);
+pub struct TimeSpan<const UNITLESS_NANOS_MULTIPLIER: u64 = { 1_000_000_000 }>(pub Duration);
 
 impl<const UNITLESS_NANOS_MULTIPLIER: u64> FromStr for TimeSpan<UNITLESS_NANOS_MULTIPLIER> {
 	type Err = humantime::DurationError;
@@ -640,8 +643,9 @@ impl<const UNITLESS_NANOS_MULTIPLIER: u64> FromStr for TimeSpan<UNITLESS_NANOS_M
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s.parse::<u64>() {
 			Ok(unitless) => Ok(Duration::from_nanos(unitless * UNITLESS_NANOS_MULTIPLIER)),
-			Err(_) => humantime::parse_duration(s)
-		}.map(TimeSpan)
+			Err(_) => humantime::parse_duration(s),
+		}
+		.map(TimeSpan)
 	}
 }
 
@@ -681,7 +685,12 @@ pub fn get_args() -> Args {
 	}
 
 	if args.filter_fs_meta {
-		args.filter_fs_events = vec![FsEvent::Create, FsEvent::Remove, FsEvent::Rename, FsEvent::Modify];
+		args.filter_fs_events = vec![
+			FsEvent::Create,
+			FsEvent::Remove,
+			FsEvent::Rename,
+			FsEvent::Modify,
+		];
 	}
 
 	debug!(?args, "got arguments");
