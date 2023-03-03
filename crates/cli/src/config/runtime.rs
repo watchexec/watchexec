@@ -1,9 +1,8 @@
 use std::{
-	collections::HashMap, convert::Infallible, env::current_dir, ffi::OsString, path::Path,
-	str::FromStr, string::ToString, time::Duration,
+	collections::HashMap, convert::Infallible, env::current_dir, ffi::OsString,
+	time::Duration,
 };
 
-use clap::ArgMatches;
 use miette::{miette, IntoDiagnostic, Result};
 use notify_rust::Notification;
 use tracing::{debug, debug_span};
@@ -20,64 +19,37 @@ use watchexec::{
 	signal::{process::SubSignal, source::MainSignal},
 };
 
-pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
+use crate::args::{Args, EmitEvents, OnBusyUpdate};
+
+pub fn runtime(args: &Args) -> Result<RuntimeConfig> {
 	let _span = debug_span!("args-runtime").entered();
 	let mut config = RuntimeConfig::default();
 
 	config.command(interpret_command_args(args)?);
 
-	config.pathset(match args.values_of_os("paths") {
-		Some(paths) => paths.map(|os| Path::new(os).to_owned()).collect(),
-		None => vec![current_dir().into_diagnostic()?],
+	config.pathset(if args.paths.is_empty() {
+		vec![current_dir().into_diagnostic()?]
+	} else {
+		args.paths.clone()
 	});
 
-	config.action_throttle(Duration::from_millis(
-		args.value_of("debounce")
-			.unwrap_or("50")
-			.parse()
-			.into_diagnostic()?,
-	));
+	config.action_throttle(args.debounce.0);
+	config.command_grouped(!args.no_process_group);
+	config.keyboard_emit_eof(args.stdin_quit);
 
-	config.keyboard_emit_eof(args.is_present("stdin-quit"));
-
-	if let Some(interval) = args.value_of("poll") {
-		config.file_watcher(Watcher::Poll(Duration::from_millis(
-			interval.parse().into_diagnostic()?,
-		)));
+	if let Some(interval) = args.poll {
+		config.file_watcher(Watcher::Poll(interval.0));
 	}
 
-	if args.is_present("no-process-group") {
-		config.command_grouped(false);
-	}
+	let clear = args.screen_clear.is_some();
+	let notif = args.notify;
+	let on_busy = args.on_busy_update;
 
-	let clear = args.is_present("clear");
-	let notif = args.is_present("notif");
-	let on_busy = if args.is_present("restart") {
-		"restart"
-	} else if args.is_present("watch-when-idle") {
-		"do-nothing"
-	} else {
-		args.value_of("on-busy-update").unwrap_or("queue")
-	}
-	.to_owned();
+	let signal = args.signal;
 
-	let signal = if args.is_present("kill") {
-		Some(SubSignal::ForceStop)
-	} else {
-		args.value_of("signal")
-			.map(SubSignal::from_str)
-			.transpose()
-			.into_diagnostic()?
-	};
-
-	let print_events = args.is_present("print-events");
-	let once = args.is_present("once");
-	let delay_run = args
-		.value_of("delay-run")
-		.map(u64::from_str)
-		.transpose()
-		.into_diagnostic()?
-		.map(Duration::from_secs);
+	let print_events = args.print_events;
+	let once = args.once;
+	let delay_run = args.delay_run.map(|ts| ts.0);
 
 	config.on_action(move |action: Action| {
 		let fut = async { Ok::<(), Infallible>(()) };
@@ -189,8 +161,8 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 		};
 
 		let when_idle = start.clone();
-		let when_running = match on_busy.as_str() {
-			"restart" => Outcome::both(
+		let when_running = match on_busy {
+			OnBusyUpdate::Restart => Outcome::both(
 				if let Some(sig) = signal {
 					Outcome::both(
 						Outcome::Signal(sig),
@@ -201,10 +173,9 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 				},
 				start,
 			),
-			"signal" => Outcome::Signal(signal.unwrap_or(SubSignal::Terminate)),
-			"queue" => Outcome::wait(start),
-			// "do-nothing" => Outcome::DoNothing,
-			_ => Outcome::DoNothing,
+			OnBusyUpdate::Signal => Outcome::Signal(signal.unwrap_or(SubSignal::Terminate)),
+			OnBusyUpdate::Queue => Outcome::wait(start),
+			OnBusyUpdate::DoNothing => Outcome::DoNothing,
 		};
 
 		action.outcome(Outcome::if_running(when_running, when_idle));
@@ -213,7 +184,8 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 	});
 
 	let mut add_envs = HashMap::new();
-	for pair in args.values_of("command-env").unwrap_or_default() {
+	// TODO: move to args and use osstrings
+	for pair in &args.env {
 		if let Some((k, v)) = pair.split_once('=') {
 			add_envs.insert(k.to_owned(), OsString::from(v));
 		} else {
@@ -225,28 +197,33 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 		"additional environment variables to add to command"
 	);
 
-	let workdir = args
-		.value_of_os("command-workdir")
-		.map(|wkd| Path::new(wkd).to_owned());
+	let workdir = args.workdir.clone();
 
-	let no_env = args.is_present("no-environment");
+	let filter_fs_events = args.filter_fs_events.clone();
+	let emit_events_to = args.emit_events_to;
 	config.on_pre_spawn(move |prespawn: PreSpawn| {
-		let add_envs = add_envs.clone();
 		let workdir = workdir.clone();
+		let mut add_envs = add_envs.clone();
+
+		match emit_events_to {
+			EmitEvents::Environment => {
+				add_envs.extend(
+					summarise_events_to_env(prespawn.events.iter())
+						.into_iter()
+						.map(|(k, v)| (format!("WATCHEXEC_{k}_PATH"), v)),
+				);
+			}
+			EmitEvents::Stdin => todo!(),
+			EmitEvents::File => todo!(),
+			EmitEvents::JsonStdin => todo!(),
+			EmitEvents::JsonFile => todo!(),
+			EmitEvents::None => {}
+		}
+
 		async move {
-			if !no_env || !add_envs.is_empty() || workdir.is_some() {
+			if !add_envs.is_empty() || workdir.is_some() {
 				if let Some(mut command) = prespawn.command().await {
-					let mut envs = add_envs.clone();
-
-					if !no_env {
-						envs.extend(
-							summarise_events_to_env(prespawn.events.iter())
-								.into_iter()
-								.map(|(k, v)| (format!("WATCHEXEC_{k}_PATH"), v)),
-						);
-					}
-
-					for (k, v) in envs {
+					for (k, v) in add_envs {
 						debug!(?k, ?v, "inserting environment variable");
 						command.env(k, v);
 					}
@@ -282,20 +259,19 @@ pub fn runtime(args: &ArgMatches) -> Result<RuntimeConfig> {
 	Ok(config)
 }
 
-fn interpret_command_args(args: &ArgMatches) -> Result<Command> {
-	let mut cmd = args
-		.values_of("command")
-		.expect("(clap) Bug: command is not present")
-		.map(ToString::to_string)
-		.collect::<Vec<_>>();
+fn interpret_command_args(args: &Args) -> Result<Command> {
+	let mut cmd = args.command.clone();
+	if cmd.is_empty() {
+		panic!("(clap) Bug: command is not present");
+	}
 
-	Ok(if args.is_present("no-shell") {
+	Ok(if args.no_shell || args.no_shell_long {
 		Command::Exec {
 			prog: cmd.remove(0),
 			args: cmd,
 		}
 	} else {
-		let (shell, shopts) = if let Some(s) = args.value_of("shell") {
+		let (shell, shopts) = if let Some(s) = &args.shell {
 			if s.is_empty() {
 				return Err(RuntimeError::CommandShellEmptyShell).into_diagnostic();
 			} else if s.eq_ignore_ascii_case("powershell") {

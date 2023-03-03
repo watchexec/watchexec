@@ -3,7 +3,8 @@
 
 use std::{env::var, fs::File, sync::Mutex};
 
-use miette::{IntoDiagnostic, Result};
+use miette::{IntoDiagnostic, Result, Context};
+use tokio::fs::metadata;
 use tracing::{debug, info, warn};
 use watchexec::{
 	event::{Event, Priority},
@@ -13,6 +14,7 @@ use watchexec::{
 mod args;
 mod config;
 mod filterer;
+mod os_string_ops;
 
 pub async fn run() -> Result<()> {
 	let mut log_on = false;
@@ -38,19 +40,29 @@ pub async fn run() -> Result<()> {
 		}
 	}
 
-	let tagged_filterer = var("WATCHEXEC_FILTERER")
-		.map(|v| v == "tagged")
-		.unwrap_or(false);
-
-	let args = args::get_args(tagged_filterer)?;
-	let verbosity = args.occurrences_of("verbose");
+	let args = args::get_args();
+	let verbosity = args.verbose.unwrap_or(0);
 
 	if log_on {
 		warn!("ignoring logging options from args");
 	} else if verbosity > 0 {
-		let log_file = if let Some(file) = args.value_of_os("log-file") {
+		let log_file = if let Some(file) = &args.log_file {
+			let info = metadata(&file)
+			.await
+			.into_diagnostic()
+				.wrap_err("Opening log file failed")?;
+			let path = if info.is_dir() {
+				let filename = format!(
+					"watchexec.{}.log",
+					chrono::Utc::now().format("%Y-%m-%dT%H-%M-%SZ")
+				);
+				file.join(filename)
+			} else {
+				file.to_owned()
+			};
+
 			// TODO: use tracing-appender instead
-			Some(File::create(file).into_diagnostic()?)
+			Some(File::create(path).into_diagnostic()?)
 		} else {
 			None
 		};
@@ -85,17 +97,12 @@ pub async fn run() -> Result<()> {
 
 	let init = config::init(&args);
 	let mut runtime = config::runtime(&args)?;
-	runtime.filterer(if tagged_filterer {
-		eprintln!("!!! EXPERIMENTAL: using tagged filterer !!!");
-		filterer::tagged(&args).await?
-	} else {
-		filterer::globset(&args).await?
-	});
+	runtime.filterer(filterer::globset(&args).await?);
 
 	info!("initialising Watchexec runtime");
 	let wx = Watchexec::new(init, runtime)?;
 
-	if !args.is_present("postpone") {
+	if !args.postpone {
 		debug!("kicking off with empty event");
 		wx.send_event(Event::default(), Priority::Urgent).await?;
 	}

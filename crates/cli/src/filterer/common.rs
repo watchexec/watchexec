@@ -4,7 +4,6 @@ use std::{
 	path::{Path, PathBuf},
 };
 
-use clap::ArgMatches;
 use ignore_files::IgnoreFile;
 use miette::{miette, IntoDiagnostic, Result};
 use project_origins::ProjectType;
@@ -12,12 +11,14 @@ use tokio::fs::canonicalize;
 use tracing::{debug, info, warn};
 use watchexec::paths::common_prefix;
 
-pub async fn dirs(args: &ArgMatches) -> Result<(PathBuf, PathBuf)> {
+use crate::args::Args;
+
+pub async fn dirs(args: &Args) -> Result<(PathBuf, PathBuf)> {
 	let curdir = env::current_dir().into_diagnostic()?;
 	let curdir = canonicalize(curdir).await.into_diagnostic()?;
 	debug!(?curdir, "current directory");
 
-	let project_origin = if let Some(origin) = args.value_of_os("project-origin") {
+	let project_origin = if let Some(origin) = &args.project_origin {
 		debug!(?origin, "project origin override");
 		canonicalize(origin).await.into_diagnostic()?
 	} else {
@@ -28,7 +29,7 @@ pub async fn dirs(args: &ArgMatches) -> Result<(PathBuf, PathBuf)> {
 		debug!(?homedir, "home directory");
 
 		let mut paths = HashSet::new();
-		for path in args.values_of_os("paths").unwrap_or_default() {
+		for path in &args.paths {
 			paths.insert(canonicalize(path).await.into_diagnostic()?);
 		}
 
@@ -92,7 +93,7 @@ pub async fn vcs_types(origin: &Path) -> Vec<ProjectType> {
 }
 
 pub async fn ignores(
-	args: &ArgMatches,
+	args: &Args,
 	vcs_types: &[ProjectType],
 	origin: &Path,
 ) -> Vec<IgnoreFile> {
@@ -163,7 +164,7 @@ pub async fn ignores(
 		"combined and applied overall vcs filter over ignores"
 	);
 
-	if args.is_present("no-project-ignore") {
+	if args.no_project_ignore {
 		ignores = ignores
 			.into_iter()
 			.filter(|ig| {
@@ -178,7 +179,7 @@ pub async fn ignores(
 		);
 	}
 
-	if args.is_present("no-global-ignore") {
+	if args.no_global_ignore {
 		ignores = ignores
 			.into_iter()
 			.filter(|ig| !matches!(ig.applies_in, None))
@@ -186,7 +187,7 @@ pub async fn ignores(
 		debug!(?ignores, "filtered ignores to exclude global ignores");
 	}
 
-	if args.is_present("no-vcs-ignore") {
+	if args.no_vcs_ignore {
 		ignores = ignores
 			.into_iter()
 			.filter(|ig| matches!(ig.applies_to, None))

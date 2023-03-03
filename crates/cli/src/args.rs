@@ -1,7 +1,7 @@
-use std::{path::PathBuf, time::Duration};
+use std::{path::PathBuf, time::Duration, str::FromStr};
 
 use clap::{ArgAction, Parser, ValueEnum};
-use tracing::debug;
+use tracing::{debug, warn};
 use watchexec::signal::process::SubSignal;
 
 const OPTSET_FILTERING: &str = "Filtering options";
@@ -25,23 +25,32 @@ pub struct Args {
 		trailing_var_arg = true,
 		num_args = 1..,
 	)]
-	pub command: String,
+	pub command: Vec<String>,
 
 	/// Watch a specific file or directory
+	///
+	/// When watching a single file, it's often better to watch the containing directory instead,
+	/// and filter on the filename. Some editors may replace the file with a new one when saving,
+	/// and some platforms may not detect that or further changes.
+	///
+	/// This option can be specified multiple times to watch multiple files or directories.
 	#[arg(
-		short,
-		long,
+		short = 'w',
+		long = "watch",
 		help_heading = OPTSET_FILTERING,
 	)]
-	pub watch: Vec<PathBuf>,
+	pub paths: Vec<PathBuf>,
 
 	/// Clear screen before running command
+	///
+	/// If this doesn't completely clear the screen, try `--clear=reset`.
 	#[arg(
 		short,
 		long,
 		help_heading = OPTSET_OUTPUT,
+		num_args = 0..=1, // what does that do with 0?
 	)]
-	pub clear: bool,
+	pub screen_clear: Option<ClearMode>,
 
 	/// What to do when receiving events while the command is running
 	///
@@ -71,6 +80,8 @@ pub struct Args {
 		short = 'W',
 		help_heading = OPTSET_BEHAVIOUR,
 		hide = true,
+		conflicts_with = "on_busy_update",
+		conflicts_with = "restart",
 	)]
 	pub watch_when_idle: bool,
 
@@ -81,6 +92,8 @@ pub struct Args {
 		short,
 		long,
 		help_heading = OPTSET_BEHAVIOUR,
+		conflicts_with = "on_busy_update",
+		conflicts_with = "watch_when_idle",
 	)]
 	pub restart: bool,
 
@@ -95,8 +108,10 @@ pub struct Args {
 		short,
 		long,
 		help_heading = OPTSET_BEHAVIOUR,
+		conflicts_with = "restart",
+		conflicts_with = "watch_when_idle",
 	)]
-	pub signal: Option<Signal>,
+	pub signal: Option<SubSignal>,
 
 	/// Hidden legacy shorthand for `--signal=kill`.
 	#[arg(
@@ -112,17 +127,21 @@ pub struct Args {
 	/// provided). The restart behaviour is to send the signal, wait for the command to exit, and if
 	/// it hasn't exited after some time (see `--timeout-stop`), forcefully terminate it.
 	///
-	/// The default on unix is **SIGTERM**, and on Windows it's **CTRL-BREAK**.
+	/// The default on unix is **SIGTERM**.
 	///
 	/// Input is parsed as a full signal name (like "SIGTERM"), a short signal name (like "TERM"),
-	/// or a signal number (like "15"). On Windows there are only two signals available, called
-	/// "CTRL-C" and "CTRL-BREAK", but "SIGTERM" is mapped to "CTRL-BREAK" and "SIGINT" is mapped to
-	/// "CTRL-C" for portability. All input is case-insensitive.
+	/// or a signal number (like "15"). All input is case-insensitive.
+	///
+	/// On Windows this option is technically supported but only supports the "KILL" event, as
+	/// Watchexec cannot yet deliver other events. Windows doesn't have signals as such; instead it
+	/// has termination (here called "KILL" or "STOP") and "CTRL+C", "CTRL+BREAK", and "CTRL+CLOSE"
+	/// events. For portability the unix signals "SIGKILL", "SIGINT", "SIGTERM", and "SIGHUP" are
+	/// respectively mapped to these.
 	#[arg(
 		long,
 		help_heading = OPTSET_BEHAVIOUR,
 	)]
-	pub kill_signal: Option<Signal>,
+	pub kill_signal: Option<SubSignal>,
 
 	/// Time to wait for the command to exit gracefully
 	///
@@ -161,7 +180,7 @@ pub struct Args {
 		help_heading = OPTSET_BEHAVIOUR,
 		default_value = "50",
 	)]
-	pub debounce: TimeSpan<1000>,
+	pub debounce: TimeSpan<1_000_000>,
 
 	/// Exit when stdin closes
 	///
@@ -363,6 +382,7 @@ pub struct Args {
 	#[arg(
 		long,
 		help_heading = OPTSET_COMMAND,
+		// TODO: deprecate then remove
 	)]
 	pub no_environment: bool,
 
@@ -551,6 +571,9 @@ pub struct Args {
 	/// from `access`, `create`, `remove`, `rename`, `modify`, `metadata`. Multiple types can be
 	/// given by repeating the option or by separating them with commas. By default, this is all
 	/// types except for `access`.
+	///
+	/// This may apply filtering at the kernel level when possible, which can be more efficient, but
+	/// may be more confusing when reading the logs.
 	#[arg(
 		long = "fs-events",
 		help_heading = OPTSET_FILTERING,
@@ -558,7 +581,7 @@ pub struct Args {
 	)]
 	pub filter_fs_events: Vec<FsEvent>,
 
-	/// Don't emit for metadata changes
+	/// Don't emit fs events for metadata changes
 	///
 	/// This is a shorthand for `--fs-events create,remove,rename,modify`. Using it alongside the
 	/// `--fs-events` option is non-sensical and not allowed.
@@ -590,7 +613,14 @@ pub enum OnBusyUpdate {
 	Signal,
 }
 
-#[derive(Clone, Copy, Debug, ValueEnum)]
+#[derive(Clone, Copy, Debug, Default, ValueEnum)]
+pub enum ClearMode {
+	#[default]
+	Clear,
+	Reset,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
 pub enum FsEvent {
 	Access,
 	Create,
@@ -602,25 +632,58 @@ pub enum FsEvent {
 
 // TODO: FromStr or ValueParser
 #[derive(Clone, Copy, Debug)]
-pub struct TimeSpan<const UNITLESS_SECONDS_MULTIPLIER: u64 = {1}> {
-	pub duration: Duration,
+pub struct TimeSpan<const UNITLESS_NANOS_MULTIPLIER: u64 = {1_000_000_000}>(pub Duration);
+
+impl<const UNITLESS_NANOS_MULTIPLIER: u64> FromStr for TimeSpan<UNITLESS_NANOS_MULTIPLIER> {
+	type Err = humantime::DurationError;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		match s.parse::<u64>() {
+			Ok(unitless) => Ok(Duration::from_nanos(unitless * UNITLESS_NANOS_MULTIPLIER)),
+			Err(_) => humantime::parse_duration(s)
+		}.map(TimeSpan)
+	}
 }
 
-// TODO: FromStr or ValueParser
-#[derive(Clone, Copy, Debug)]
-pub struct Signal(SubSignal);
-
-pub fn get_args() -> Box<Args> {
+#[inline]
+pub fn get_args() -> Args {
 	if std::env::var("RUST_LOG").is_ok() {
-		eprintln!("⚠ RUST_LOG environment variable set, logging options have no effect");
+		warn!("⚠ RUST_LOG environment variable set, logging options have no effect");
+	}
+
+	if let Ok(filt) = std::env::var("WATCHEXEC_FILTERER") {
+		warn!("WATCHEXEC_FILTERER is deprecated");
+		if filt == "tagged" {
+			eprintln!("Tagged filterer has been removed. Open an issue if you have no workaround.");
+		}
 	}
 
 	debug!("expanding @argfile arguments if any");
 	let args = argfile::expand_args(argfile::parse_fromfile, argfile::PREFIX).unwrap();
 
 	debug!("parsing arguments");
-	let args = Args::parse_from(args);
+	let mut args = Args::parse_from(args);
+
+	if args.signal.is_some() {
+		args.on_busy_update = OnBusyUpdate::Signal;
+	} else if args.restart {
+		args.on_busy_update = OnBusyUpdate::Restart;
+	} else if args.watch_when_idle {
+		args.on_busy_update = OnBusyUpdate::DoNothing;
+	}
+
+	if args.kill {
+		args.signal = Some(SubSignal::ForceStop);
+	}
+
+	if args.no_environment {
+		args.emit_events_to = EmitEvents::None;
+	}
+
+	if args.filter_fs_meta {
+		args.filter_fs_events = vec![FsEvent::Create, FsEvent::Remove, FsEvent::Rename, FsEvent::Modify];
+	}
 
 	debug!(?args, "got arguments");
-	Box::new(args)
+	args
 }

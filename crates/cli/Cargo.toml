@@ -27,6 +27,8 @@ miette = { version = "5.3.0", features = ["fancy"] }
 notify-rust = "4.5.2"
 tracing = "0.1.26"
 argfile = "0.1.5"
+chrono = "0.4.23"
+humantime = "2.1.0"
 
 [dependencies.clap]
 version = "4.1.8"
@@ -47,10 +49,6 @@ path = "../lib"
 [dependencies.watchexec-filterer-globset]
 version = "1.1.0"
 path = "../filterer/globset"
-
-[dependencies.watchexec-filterer-tagged]
-version = "0.2.0"
-path = "../filterer/tagged"
 
 [dependencies.tokio]
 version = "1.24.2"
