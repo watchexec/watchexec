@@ -173,11 +173,32 @@ impl From<i32> for SubSignal {
 	}
 }
 
-impl FromStr for SubSignal {
-	type Err = SignalParseError;
+impl SubSignal {
+	/// Parse the input as a unix signal.
+	///
+	/// This parses the input as a signal name, or a signal number, in a case-insensitive manner.
+	/// It supports integers, the short name of the signal (like `INT`, `HUP`, `USR1`, etc), and
+	/// the long name of the signal (like `SIGINT`, `SIGHUP`, `SIGUSR1`, etc).
+	///
+	/// Note that this is entirely accurate only when used on unix targets; on other targets it
+	/// falls back to a hardcoded approximation instead of looking up signal tables (via [`nix`]).
+	///
+	/// ```
+	/// # use watchexec::signal::process::SubSignal;
+	/// assert_eq!(SubSignal::Hangup, SubSignal::from_unix_str("hup").unwrap());
+	/// assert_eq!(SubSignal::Interrupt, SubSignal::from_unix_str("SIGINT").unwrap());
+	/// assert_eq!(SubSignal::ForceStop, SubSignal::from_unix_str("Kill").unwrap());
+	/// assert_eq!(SubSignal::User2, SubSignal::from_unix_str("12").unwrap());
+	/// ```
+	///
+	/// Using [`FromStr`] is recommended for practical use, as it will also parse Windows control
+	/// events, see [`SubSignal::from_windows_str`].
+	pub fn from_unix_str(s: &str) -> Result<Self, SignalParseError> {
+		Self::from_unix_str_impl(s)
+	}
 
 	#[cfg(unix)]
-	fn from_str(s: &str) -> Result<Self, Self::Err> {
+	fn from_unix_str_impl(s: &str) -> Result<Self, SignalParseError> {
 		if let Ok(sig) = i32::from_str(s) {
 			if let Ok(sig) = NixSignal::try_from(sig) {
 				return Ok(Self::from_nix(sig));
@@ -193,8 +214,45 @@ impl FromStr for SubSignal {
 		Err(SignalParseError::new(s, "unsupported signal"))
 	}
 
-	#[cfg(windows)]
-	fn from_str(s: &str) -> Result<Self, Self::Err> {
+	#[cfg(not(unix))]
+	fn from_unix_str_impl(s: &str) -> Result<Self, SignalParseError> {
+		match s.to_ascii_uppercase().as_str() {
+			"KILL" | "SIGKILL" | "9" => Ok(Self::ForceStop),
+			"HUP" | "SIGHUP" | "1" => Ok(Self::Hangup),
+			"INT" | "SIGINT" | "2" => Ok(Self::Interrupt),
+			"QUIT" | "SIGQUIT" | "3" => Ok(Self::Quit),
+			"TERM" | "SIGTERM" | "15" => Ok(Self::Terminate),
+			"USR1" | "SIGUSR1" | "10" => Ok(Self::User1),
+			"USR2" | "SIGUSR2" | "12" => Ok(Self::User2),
+			number => match i32::from_str(number) {
+				Ok(int) => Ok(Self::Custom(int)),
+				Err(_) => Err(SignalParseError::new(s, "unsupported signal")),
+			},
+		}
+	}
+
+	/// Parse the input as a windows control event.
+	///
+	/// This parses the input as a control event name, in a case-insensitive manner.
+	///
+	/// The names matched are mostly made up as there's no standard for them, but should be familiar
+	/// to Windows users. They are mapped to the corresponding unix concepts as follows:
+	///
+	/// - `CTRL-CLOSE`, `CTRL+CLOSE`, or `CLOSE` for a hangup
+	/// - `CTRL-BREAK`, `CTRL+BREAK`, or `BREAK` for a terminate
+	/// - `CTRL-C`, `CTRL+C`, or `C` for an interrupt
+	/// - `STOP`, `FORCE-STOP` for a forced stop. This is also mapped to `KILL` and `SIGKILL`.
+	///
+	/// ```
+	/// # use watchexec::signal::process::SubSignal;
+	/// assert_eq!(SubSignal::Hangup, SubSignal::from_windows_str("ctrl+close").unwrap());
+	/// assert_eq!(SubSignal::Interrupt, SubSignal::from_windows_str("C").unwrap());
+	/// assert_eq!(SubSignal::ForceStop, SubSignal::from_windows_str("Stop").unwrap());
+	/// ```
+	///
+	/// Using [`FromStr`] is recommended for practical use, as it will fall back to parsing as a
+	/// unix signal, which can be helpful for portability.
+	pub fn from_windows_str(s: &str) -> Result<Self, SignalParseError> {
 		match s.to_ascii_uppercase().as_str() {
 			"CTRL-CLOSE" | "CTRL+CLOSE" | "CLOSE" => Ok(Self::Hangup),
 			"CTRL-BREAK" | "CTRL+BREAK" | "BREAK" => Ok(Self::Terminate),
@@ -203,9 +261,12 @@ impl FromStr for SubSignal {
 			_ => Err(SignalParseError::new(s, "unknown control name")),
 		}
 	}
+}
 
-	#[cfg(not(any(unix, windows)))]
+impl FromStr for SubSignal {
+	type Err = SignalParseError;
+
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		Err(SignalParseError::new(s, "no signals supported"))
+		Self::from_windows_str(s).or_else(|err| Self::from_unix_str(s).map_err(|_| err))
 	}
 }
