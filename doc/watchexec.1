@@ -1,10 +1,10 @@
 .ie \n(.g .ds Aq \(aq
 .el .ds Aq '
-.TH watchexec-cli 1 2023-03-03 "watchexec-cli 1.21.1" 
+.TH watchexec 1 2023-03-03 "watchexec 1.21.1" 
 .SH NAME
-watchexec\-cli \- Execute commands when watched files change
+watchexec \- Execute commands when watched files change
 .SH SYNOPSIS
-\fBwatchexec\-cli\fR [\fB\-w\fR|\fB\-\-watch\fR] [\fB\-c\fR|\fB\-\-clear\fR] [\fB\-o\fR|\fB\-\-on\-busy\-update\fR] [\fB\-r\fR|\fB\-\-restart\fR] [\fB\-s\fR|\fB\-\-signal\fR] [\fB\-k\fR|\fB\-\-kill\fR] [\fB\-\-kill\-signal\fR] [\fB\-\-timeout\-stop\fR] [\fB\-\-debounce\fR] [\fB\-\-stdin\-quit\fR] [\fB\-v\fR|\fB\-\-verbose\fR]... [\fB\-\-log\-file\fR] [\fB\-\-manpage\fR] [\fB\-\-print\-events\fR] [\fB\-\-no\-vcs\-ignore\fR] [\fB\-\-no\-project\-ignore\fR] [\fB\-\-no\-global\-ignore\fR] [\fB\-\-no\-default\-ignore\fR] [\fB\-p\fR|\fB\-\-postpone\fR] [\fB\-\-delay\-run\fR] [\fB\-\-poll\fR] [\fB\-\-shell\fR] [\fB\-n \fR] [\fB\-\-no\-environment\fR] [\fB\-\-emit\-events\-to\fR] [\fB\-E\fR|\fB\-\-env\fR] [\fB\-\-no\-process\-group\fR] [\fB\-N\fR|\fB\-\-notify\fR] [\fB\-\-project\-origin\fR] [\fB\-\-workdir\fR] [\fB\-e\fR|\fB\-\-exts\fR] [\fB\-f\fR|\fB\-\-filter\fR] [\fB\-\-filter\-file\fR] [\fB\-i\fR|\fB\-\-ignore\fR] [\fB\-\-ignore\-file\fR] [\fB\-\-fs\-events\fR] [\fB\-\-no\-meta\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fICOMMAND\fR] 
+\fBwatchexec\fR [\fB\-w\fR|\fB\-\-watch\fR] [\fB\-c\fR|\fB\-\-clear\fR] [\fB\-o\fR|\fB\-\-on\-busy\-update\fR] [\fB\-r\fR|\fB\-\-restart\fR] [\fB\-s\fR|\fB\-\-signal\fR] [\fB\-k\fR|\fB\-\-kill\fR] [\fB\-\-kill\-signal\fR] [\fB\-\-timeout\-stop\fR] [\fB\-\-debounce\fR] [\fB\-\-stdin\-quit\fR] [\fB\-\-no\-vcs\-ignore\fR] [\fB\-\-no\-project\-ignore\fR] [\fB\-\-no\-global\-ignore\fR] [\fB\-\-no\-default\-ignore\fR] [\fB\-p\fR|\fB\-\-postpone\fR] [\fB\-\-delay\-run\fR] [\fB\-\-poll\fR] [\fB\-\-shell\fR] [\fB\-n \fR] [\fB\-\-no\-environment\fR] [\fB\-\-emit\-events\-to\fR] [\fB\-E\fR|\fB\-\-env\fR] [\fB\-\-no\-process\-group\fR] [\fB\-N\fR|\fB\-\-notify\fR] [\fB\-\-project\-origin\fR] [\fB\-\-workdir\fR] [\fB\-e\fR|\fB\-\-exts\fR] [\fB\-f\fR|\fB\-\-filter\fR] [\fB\-\-filter\-file\fR] [\fB\-i\fR|\fB\-\-ignore\fR] [\fB\-\-ignore\-file\fR] [\fB\-\-fs\-events\fR] [\fB\-\-no\-meta\fR] [\fB\-\-print\-events\fR] [\fB\-v\fR|\fB\-\-verbose\fR]... [\fB\-\-log\-file\fR] [\fB\-\-manpage\fR] [\fB\-\-completions\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fICOMMAND\fR] 
 .SH DESCRIPTION
 Execute commands when watched files change.
 .PP
@@ -110,38 +110,6 @@ The default is 50 milliseconds. Setting to 0 is highly discouraged.
 Exit when stdin closes
 
 This watches the stdin file descriptor for EOF, and exits Watchexec gracefully when it is closed. This is used by some process managers to avoid leaving zombie processes around.
-.TP
-\fB\-v\fR, \fB\-\-verbose\fR
-Set diagnostic log level
-
-This enables diagnostic logging, which is useful for investigating bugs or gaining more insight into faulty filters or "missing" events. Use multiple times to increase verbosity.
-
-Goes up to \*(Aq\-vvvv\*(Aq. When submitting bug reports, default to a \*(Aq\-vvv\*(Aq log level.
-
-You may want to use with \*(Aq\-\-log\-file\*(Aq to avoid polluting your terminal.
-
-Setting $RUST_LOG also works, and takes precendence, but is not recommended. However, using $RUST_LOG is the only way to get logs from before these options are parsed.
-.TP
-\fB\-\-log\-file\fR=\fIPATH\fR
-Write diagnostic logs to a file
-
-This writes diagnostic logs to a file, instead of the terminal, in JSON format. If a log level was not already specified, this will set it to \*(Aq\-vvv\*(Aq.
-
-If a path is not provided, the default is the working directory. Note that with \*(Aq\-\-ignore\-nothing\*(Aq, the write events to the log will likely get picked up by Watchexec, causing a loop; prefer setting a path outside of the watched directory.
-
-If the path provided is a directory, a file will be created in that directory. The file name will be the current date and time, in the format \*(Aqwatchexec.YYYY\-MM\-DDTHH\-MM\-SSZ.log\*(Aq.
-.TP
-\fB\-\-manpage\fR
-Show the manual page
-
-This shows the manual page for Watchexec, in the default pager. If the output is not a terminal, the manual page is printed to stdout in ROFF format (suitable for writing to a file and saving in the mandb).
-.TP
-\fB\-\-print\-events\fR
-Print events that trigger actions
-
-This prints the events that triggered the action when handling it (after debouncing), in a human readable form. This is useful for debugging filters.
-
-Use \*(Aq\-v\*(Aq when you need more diagnostic information.
 .TP
 \fB\-\-no\-vcs\-ignore\fR
 Don\*(Aqt load gitignores
@@ -431,6 +399,45 @@ Don\*(Aqt emit fs events for metadata changes
 
 This is a shorthand for \*(Aq\-\-fs\-events create,remove,rename,modify\*(Aq. Using it alongside the \*(Aq\-\-fs\-events\*(Aq option is non\-sensical and not allowed.
 .TP
+\fB\-\-print\-events\fR
+Print events that trigger actions
+
+This prints the events that triggered the action when handling it (after debouncing), in a human readable form. This is useful for debugging filters.
+
+Use \*(Aq\-v\*(Aq when you need more diagnostic information.
+.TP
+\fB\-v\fR, \fB\-\-verbose\fR
+Set diagnostic log level
+
+This enables diagnostic logging, which is useful for investigating bugs or gaining more insight into faulty filters or "missing" events. Use multiple times to increase verbosity.
+
+Goes up to \*(Aq\-vvvv\*(Aq. When submitting bug reports, default to a \*(Aq\-vvv\*(Aq log level.
+
+You may want to use with \*(Aq\-\-log\-file\*(Aq to avoid polluting your terminal.
+
+Setting $RUST_LOG also works, and takes precendence, but is not recommended. However, using $RUST_LOG is the only way to get logs from before these options are parsed.
+.TP
+\fB\-\-log\-file\fR=\fIPATH\fR
+Write diagnostic logs to a file
+
+This writes diagnostic logs to a file, instead of the terminal, in JSON format. If a log level was not already specified, this will set it to \*(Aq\-vvv\*(Aq.
+
+If a path is not provided, the default is the working directory. Note that with \*(Aq\-\-ignore\-nothing\*(Aq, the write events to the log will likely get picked up by Watchexec, causing a loop; prefer setting a path outside of the watched directory.
+
+If the path provided is a directory, a file will be created in that directory. The file name will be the current date and time, in the format \*(Aqwatchexec.YYYY\-MM\-DDTHH\-MM\-SSZ.log\*(Aq.
+.TP
+\fB\-\-manpage\fR
+Show the manual page
+
+This shows the manual page for Watchexec, if the output is a terminal and the \*(Aqman\*(Aq program is available. If not, the manual page is printed to stdout in ROFF format (suitable for writing to a watchexec.1 file).
+.TP
+\fB\-\-completions\fR=\fICOMPLETIONS\fR
+Generate a shell completions script
+
+Provides a completions script or configuration for the given shell. If Watchexec is not distributed with pre\-generated completions, you can use this to generate them yourself.
+
+Supported shells: bash, elvish, fish, nu, powershell, zsh.
+.TP
 \fB\-h\fR, \fB\-\-help\fR
 Print help (see a summary with \*(Aq\-h\*(Aq)
 .TP
@@ -462,8 +469,8 @@ Use @argfile as first argument to load arguments from the file \*(Aqargfile\*(Aq
 .SH VERSION
 v1.21.1
 branch:clap4
-commit_hash:3e1cccc9
-build_time:2023\-03\-04 00:18:39 +13:00
+commit_hash:2296775e
+build_time:2023\-03\-04 01:52:03 +13:00
 build_env:rustc 1.67.1 (d5a82bbd2 2023\-02\-07),stable\-x86_64\-unknown\-linux\-gnu
 .SH AUTHORS
-Matt Green <mattgreenrocks@gmail.com>, Félix Saparelli <felix@passcod.name>
+Félix Saparelli <felix@passcod.name>, Matt Green <mattgreenrocks@gmail.com>

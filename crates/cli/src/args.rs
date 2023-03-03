@@ -41,6 +41,7 @@ shadow_rs::shadow!(build);
 ///     $ watchexec -w lib -w src make
 #[derive(Debug, Clone, Parser)]
 #[command(
+	name = "watchexec",
 	bin_name = "watchexec",
 	author,
 	version,
