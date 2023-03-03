@@ -1,15 +1,16 @@
 #![deny(rust_2018_idioms)]
 #![allow(clippy::missing_const_for_fn, clippy::future_not_send)]
 
-use std::{env::var, fs::File, io::Write, sync::Mutex, process::Stdio};
+use std::{env::var, fs::File, io::Write, process::Stdio, sync::Mutex};
 
-use args::Args;
+use args::{Args, ShellCompletion};
 use clap::CommandFactory;
+use clap_complete::{Generator, Shell};
 use clap_mangen::Man;
 use command_group::AsyncCommandGroup;
 use is_terminal::IsTerminal;
 use miette::{Context, IntoDiagnostic, Result};
-use tokio::{fs::metadata, process::Command, io::AsyncWriteExt};
+use tokio::{fs::metadata, io::AsyncWriteExt, process::Command};
 use tracing::{debug, info, warn};
 use watchexec::{
 	event::{Event, Priority},
@@ -140,10 +141,24 @@ async fn run_manpage(_args: Args) -> Result<()> {
 			.stderr(Stdio::inherit())
 			.group()
 			.kill_on_drop(true)
-			.spawn().into_diagnostic()?;
-		child.inner().stdin.as_mut().unwrap().write_all(&buffer).await.into_diagnostic()?;
-		let exit = child.wait().await.into_diagnostic()?;
-		if let Some(code) = exit.code() {
+			.spawn()
+			.into_diagnostic()?;
+		child
+			.inner()
+			.stdin
+			.as_mut()
+			.unwrap()
+			.write_all(&buffer)
+			.await
+			.into_diagnostic()?;
+
+		if let Some(code) = child
+			.wait()
+			.await
+			.into_diagnostic()?
+			.code()
+			.and_then(|code| if code == 0 { None } else { Some(code) })
+		{
 			return Err(miette::miette!("Exited with status code {}", code));
 		}
 	} else {
@@ -156,12 +171,34 @@ async fn run_manpage(_args: Args) -> Result<()> {
 	Ok(())
 }
 
+async fn run_completions(shell: ShellCompletion) -> Result<()> {
+	info!(version=%env!("CARGO_PKG_VERSION"), "constructing completions");
+
+	fn generate(generator: impl Generator) {
+		let mut cmd = Args::command();
+		clap_complete::generate(generator, &mut cmd, "watchexec", &mut std::io::stdout());
+	}
+
+	match shell {
+		ShellCompletion::Bash => generate(Shell::Bash),
+		ShellCompletion::Elvish => generate(Shell::Elvish),
+		ShellCompletion::Fish => generate(Shell::Fish),
+		ShellCompletion::Nu => generate(clap_complete_nushell::Nushell),
+		ShellCompletion::Powershell => generate(Shell::PowerShell),
+		ShellCompletion::Zsh => generate(Shell::Zsh),
+	}
+
+	Ok(())
+}
+
 pub async fn run() -> Result<()> {
 	let args = init().await?;
 	debug!(?args, "arguments");
 
 	if args.manpage {
 		run_manpage(args).await
+	} else if let Some(shell) = args.completions {
+		run_completions(shell).await
 	} else {
 		run_watchexec(args).await
 	}

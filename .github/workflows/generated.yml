@@ -31,3 +31,17 @@ jobs:
 
     - run: bin/manpage
     - run: git diff --exit-code -- doc/wachexec.1
+
+  completions:
+    name: Check completions are up to date
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Configure toolchain
+      run: |
+        rustup toolchain install stable --profile minimal --no-self-update --component clippy
+        rustup default stable
+
+    - run: bin/completions
+    - run: git diff --exit-code -- completions

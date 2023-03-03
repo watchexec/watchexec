@@ -41,6 +41,7 @@ shadow_rs::shadow!(build);
 ///     $ watchexec -w lib -w src make
 #[derive(Debug, Clone, Parser)]
 #[command(
+	bin_name = "watchexec",
 	author,
 	version,
 	long_version = build::CLAP_LONG_VERSION,
@@ -85,7 +86,7 @@ pub struct Args {
 		num_args = 1..,
 		value_hint = ValueHint::CommandString,
 		value_name = "COMMAND",
-		required_unless_present = "manpage",
+		required_unless_present_any = ["completions", "manpage"],
 	)]
 	pub command: Vec<String>,
 
@@ -775,9 +776,22 @@ pub struct Args {
 	#[arg(
 		long,
 		help_heading = OPTSET_DEBUGGING,
-		conflicts_with = "command",
+		conflicts_with_all = ["command", "completions"],
 	)]
 	pub manpage: bool,
+
+	/// Generate a shell completions script
+	///
+	/// Provides a completions script or configuration for the given shell. If Watchexec is not
+	/// distributed with pre-generated completions, you can use this to generate them yourself.
+	///
+	/// Supported shells: bash, elvish, fish, nu, powershell, zsh.
+	#[arg(
+		long,
+		help_heading = OPTSET_DEBUGGING,
+		conflicts_with_all = ["command", "manpage"],
+	)]
+	pub completions: Option<ShellCompletion>,
 }
 
 #[derive(Clone, Copy, Debug, Default, ValueEnum)]
@@ -815,6 +829,16 @@ pub enum FsEvent {
 	Rename,
 	Modify,
 	Metadata,
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+pub enum ShellCompletion {
+	Bash,
+	Elvish,
+	Fish,
+	Nu,
+	Powershell,
+	Zsh,
 }
 
 // TODO: FromStr or ValueParser

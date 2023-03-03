@@ -1,0 +1,83 @@
+
+use builtin;
+use str;
+
+set edit:completion:arg-completer[watchexec] = {|@words|
+    fn spaces {|n|
+        builtin:repeat $n ' ' | str:join ''
+    }
+    fn cand {|text desc|
+        edit:complex-candidate $text &display=$text' '(spaces (- 14 (wcswidth $text)))$desc
+    }
+    var command = 'watchexec'
+    for word $words[1..-1] {
+        if (str:has-prefix $word '-') {
+            break
+        }
+        set command = $command';'$word
+    }
+    var completions = [
+        &'watchexec'= {
+            cand -w 'Watch a specific file or directory'
+            cand --watch 'Watch a specific file or directory'
+            cand -c 'Clear screen before running command'
+            cand --clear 'Clear screen before running command'
+            cand -o 'What to do when receiving events while the command is running'
+            cand --on-busy-update 'What to do when receiving events while the command is running'
+            cand -s 'Send a signal to the process when it''s still running'
+            cand --signal 'Send a signal to the process when it''s still running'
+            cand --kill-signal 'Signal to send to stop the command'
+            cand --timeout-stop 'Time to wait for the command to exit gracefully'
+            cand --debounce 'Time to wait for new events before taking action'
+            cand --delay-run 'Sleep before running the command'
+            cand --poll 'Poll for filesystem changes'
+            cand --shell 'Use a different shell'
+            cand --emit-events-to 'Configure event emission'
+            cand -E 'Add env vars to the command'
+            cand --env 'Add env vars to the command'
+            cand --project-origin 'Set the project origin'
+            cand --workdir 'Set the working directory'
+            cand -e 'Filename extensions to filter to'
+            cand --exts 'Filename extensions to filter to'
+            cand -f 'Filename patterns to filter to'
+            cand --filter 'Filename patterns to filter to'
+            cand --filter-file 'Files to load filters from // TODO'
+            cand -i 'Filename patterns to filter out'
+            cand --ignore 'Filename patterns to filter out'
+            cand --ignore-file 'Files to load ignores from // TODO'
+            cand --fs-events 'Filesystem events to filter to'
+            cand --log-file 'Write diagnostic logs to a file'
+            cand --completions 'Generate a shell completions script'
+            cand -W 'Deprecated alias for ''--on-busy-update=do-nothing'''
+            cand --watch-when-idle 'Deprecated alias for ''--on-busy-update=do-nothing'''
+            cand -r 'Restart the process if it''s still running'
+            cand --restart 'Restart the process if it''s still running'
+            cand -k 'Hidden legacy shorthand for ''--signal=kill'''
+            cand --kill 'Hidden legacy shorthand for ''--signal=kill'''
+            cand --stdin-quit 'Exit when stdin closes'
+            cand --no-vcs-ignore 'Don''t load gitignores'
+            cand --no-project-ignore 'Don''t load project-local ignores'
+            cand --no-global-ignore 'Don''t load global ignores'
+            cand --no-default-ignore 'Don''t use internal default ignores'
+            cand -p 'Wait until first change before running command'
+            cand --postpone 'Wait until first change before running command'
+            cand -n 'Don''t use a shell'
+            cand --no-shell-long 'Don''t use a shell'
+            cand --no-environment 'Shorthand for ''--emit-events=none'''
+            cand --no-process-group 'Don''t use a process group'
+            cand -1 'Testing only: exit Watchexec after the first run'
+            cand -N 'Alert when commands start and end'
+            cand --notify 'Alert when commands start and end'
+            cand --no-meta 'Don''t emit fs events for metadata changes'
+            cand --print-events 'Print events that trigger actions'
+            cand -v 'Set diagnostic log level'
+            cand --verbose 'Set diagnostic log level'
+            cand --manpage 'Show the manual page'
+            cand -h 'Print help (see more with ''--help'')'
+            cand --help 'Print help (see more with ''--help'')'
+            cand -V 'Print version'
+            cand --version 'Print version'
+        }
+    ]
+    $completions[$command]
+}
