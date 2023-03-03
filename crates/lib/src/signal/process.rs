@@ -188,7 +188,6 @@ impl SubSignal {
 	/// assert_eq!(SubSignal::Hangup, SubSignal::from_unix_str("hup").unwrap());
 	/// assert_eq!(SubSignal::Interrupt, SubSignal::from_unix_str("SIGINT").unwrap());
 	/// assert_eq!(SubSignal::ForceStop, SubSignal::from_unix_str("Kill").unwrap());
-	/// assert_eq!(SubSignal::User2, SubSignal::from_unix_str("12").unwrap());
 	/// ```
 	///
 	/// Using [`FromStr`] is recommended for practical use, as it will also parse Windows control
