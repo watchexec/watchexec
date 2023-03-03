@@ -28,6 +28,7 @@ pub async fn globset(args: &Args) -> Result<Arc<WatchexecFilterer>> {
 	if !args.no_default_ignore {
 		ignores.extend([
 			(format!("**{MAIN_SEPARATOR}.DS_Store"), None),
+			(String::from("watchexec.*.log"), None),
 			(String::from("*.py[co]"), None),
 			(String::from("#*#"), None),
 			(String::from(".#*"), None),

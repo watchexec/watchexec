@@ -118,7 +118,8 @@ pub struct Args {
 	#[arg(
 		short = 'c',
 		long = "clear",
-		num_args = 0..=1, // what does that do with 0?
+		num_args = 0..=1,
+		default_missing_value = "clear",
 		value_name = "MODE",
 	)]
 	pub screen_clear: Option<ClearMode>,
@@ -321,7 +322,7 @@ pub struct Args {
 	///
 	/// Watchexec has a set of default ignore patterns, such as editor swap files, `*.pyc`, `*.pyo`,
 	/// `.DS_Store`, `.bzr`, `_darcs`, `.fossil-settings`, `.git`, `.hg`, `.pijul`, `.svn`, and
-	/// Watchexec log files. // TODO
+	/// Watchexec log files.
 	#[arg(
 		long,
 		help_heading = OPTSET_FILTERING,
@@ -359,7 +360,8 @@ pub struct Args {
 	#[arg(
 		long,
 		alias = "force-poll",
-		num_args = 0..=1, // TODO how does this work with 0?
+		num_args = 0..=1,
+		default_missing_value = "1000",
 		value_name = "INTERVAL",
 	)]
 	pub poll: Option<TimeSpan>,
@@ -764,6 +766,7 @@ pub struct Args {
 		long,
 		help_heading = OPTSET_DEBUGGING,
 		num_args = 0..=1,
+		default_missing_value = ".",
 		value_hint = ValueHint::AnyPath,
 		value_name = "PATH",
 	)]
@@ -842,7 +845,6 @@ pub enum ShellCompletion {
 	Zsh,
 }
 
-// TODO: FromStr or ValueParser
 #[derive(Clone, Copy, Debug)]
 pub struct TimeSpan<const UNITLESS_NANOS_MULTIPLIER: u64 = { 1_000_000_000 }>(pub Duration);
 

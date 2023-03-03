@@ -246,7 +246,7 @@ OOPPTTIIOONNSS
               Watchexec has a set of default ignore patterns, such  as  editor
               swap  files,  `*.pyc`,  `*.pyo`,  `.DS_Store`, `.bzr`, `_darcs`,
               `.fossil-settings`,  `.git`,  `.hg`,   `.pijul`,   `.svn`,   and
-              Watchexec log files. // TODO
+              Watchexec log files.
 
        --pp, ----ppoossttppoonnee
               Wait until first change before running command
