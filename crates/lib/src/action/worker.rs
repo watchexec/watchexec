@@ -76,9 +76,7 @@ pub async fn worker(
 					trace!(?event, ?priority, "got event");
 
 					if priority == Priority::Urgent {
-						trace!("urgent event, by-passing filters and throttle");
-						set.push(event);
-						break;
+						trace!("urgent event, by-passing filters");
 					} else if event.is_empty() {
 						trace!("empty event, by-passing filters");
 					} else {
