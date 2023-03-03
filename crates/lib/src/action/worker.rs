@@ -76,9 +76,7 @@ pub async fn worker(
 					trace!(?event, ?priority, "got event");
 
 					if priority == Priority::Urgent {
-						trace!("urgent event, by-passing filters and throttle");
-						set.push(event);
-						break;
+						trace!("urgent event, by-passing filters");
 					} else if event.is_empty() {
 						trace!("empty event, by-passing filters");
 					} else {
@@ -106,10 +104,14 @@ pub async fn worker(
 
 					set.push(event);
 
-					let elapsed = last.elapsed();
-					if elapsed < working.borrow().throttle {
-						trace!(?elapsed, "still within throttle window, cycling");
-						continue;
+					if priority == Priority::Urgent {
+						trace!("urgent event, by-passing throttle");
+					} else {
+						let elapsed = last.elapsed();
+						if elapsed < working.borrow().throttle {
+							trace!(?elapsed, "still within throttle window, cycling");
+							continue;
+						}
 					}
 				}
 			}
