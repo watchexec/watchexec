@@ -673,9 +673,7 @@ file).
 
 # VERSION
 
-v1.21.1 branch:clap4 commit_hash:9ac37000 build_time:2023-03-04 02:43:21
-+13:00 build_env:rustc 1.67.1 (d5a82bbd2
-2023-02-07),stable-x86_64-unknown-linux-gnu
+v1.21.1
 
 # AUTHORS
 
