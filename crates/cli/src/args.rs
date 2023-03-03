@@ -7,7 +7,6 @@ const OPTSET_FILTERING: &str = "Filtering";
 const OPTSET_COMMAND: &str = "Command";
 const OPTSET_DEBUGGING: &str = "Debugging";
 
-// don't use shadow in the build.rs
 shadow_rs::shadow!(build);
 
 /// Execute commands when watched files change.

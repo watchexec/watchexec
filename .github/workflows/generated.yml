@@ -29,7 +29,7 @@ jobs:
         rustup toolchain install stable --profile minimal --no-self-update --component clippy
         rustup default stable
 
-    - run: bin/manpage
+    - run: cargo run -p watchexec-cli -- --manpage > doc/watchexec.1
     - run: git diff --exit-code -- doc/
 
   completions:
