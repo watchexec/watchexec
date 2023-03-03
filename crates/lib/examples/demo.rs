@@ -56,7 +56,7 @@ async fn main() -> Result<()> {
 				eprintln!("Switching to polling for funsies");
 				config.file_watcher(Watcher::Poll(Duration::from_millis(50)));
 				w.reconfigure(config)?;
-			} else if (action.events.iter().flat_map(Event::paths).next().is_some()) {
+			} else if action.events.iter().flat_map(Event::paths).next().is_some() {
 				action.outcome(Outcome::if_running(
 					Outcome::both(Outcome::Stop, Outcome::Start),
 					Outcome::Start,

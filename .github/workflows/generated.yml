@@ -30,7 +30,7 @@ jobs:
         rustup default stable
 
     - run: bin/manpage
-    - run: git diff --exit-code -- doc/wachexec.1
+    - run: git diff --exit-code -- doc/
 
   completions:
     name: Check completions are up to date

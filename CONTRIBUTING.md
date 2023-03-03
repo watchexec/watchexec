@@ -128,8 +128,5 @@ These are generic guides for implementing specific bits of functionality.
 - process relevant events [in the action
   handler](https://github.com/watchexec/watchexec/blob/main/crates/cli/src/config/runtime.rs)
 
-- document the option in the [manual
-  page](https://github.com/watchexec/watchexec/blob/main/doc/watchexec.1.ronn)
-
 ---
 vim: tw=100

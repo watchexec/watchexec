@@ -47,8 +47,9 @@ More usage examples: [in the CLI README](./crates/cli/#usage-examples)!
 - As [pre-built binary package from Github](https://github.com/watchexec/watchexec/releases/latest)
 - From source with Cargo: `cargo install --locked watchexec-cli`
 
-All options in detail: [in the CLI README](./crates/cli/#installation)
-and [in the manual page](./doc/watchexec.1.ronn).
+All options in detail: [in the CLI README](./crates/cli/#installation),
+in the help (`watchexec --help`),
+and [in the manual page](./doc/watchexec.1.txt).
 
 
 ## Augment

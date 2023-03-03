@@ -1,2 +1,3 @@
 #!/bin/sh
 cargo run -p watchexec-cli -- --manpage > doc/watchexec.1
+roff2text < doc/watchexec.1 > doc/watchexec.1.txt
