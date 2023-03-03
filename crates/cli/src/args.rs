@@ -126,16 +126,16 @@ pub struct Args {
 
 	/// What to do when receiving events while the command is running
 	///
-	/// Default is to **queue** up events and run the command once again when the previous run has
-	/// finished. You can also use **do-nothing**, which ignores events while the command is running
-	/// and may be useful to avoid spurious changes made by that command, or **restart**, which
-	/// terminates the running command and starts a new one. Finally, there's **signal**, which only
+	/// Default is to 'queue' up events and run the command once again when the previous run has
+	/// finished. You can also use 'do-nothing', which ignores events while the command is running
+	/// and may be useful to avoid spurious changes made by that command, or 'restart', which
+	/// terminates the running command and starts a new one. Finally, there's 'signal', which only
 	/// sends a signal; this can be useful with programs that can reload their configuration without
 	/// a full restart.
 	///
 	/// The signal can be specified with the '--signal' option.
 	///
-	/// Note that this option is scheduled to change its default to **do-nothing** in the next major
+	/// Note that this option is scheduled to change its default to 'do-nothing' in the next major
 	/// release. File an issue if you have any concerns.
 	#[arg(
 		short,
@@ -170,7 +170,7 @@ pub struct Args {
 	/// Send a signal to the process when it's still running
 	///
 	/// Specify a signal to send to the process when it's still running. This implies
-	/// '--on-busy-update=signal'; otherwise the signal used when that mode is **restart** is
+	/// '--on-busy-update=signal'; otherwise the signal used when that mode is 'restart' is
 	/// controlled by '--stop-signal'.
 	///
 	/// See the long documentation for '--stop-signal' for syntax.
@@ -188,11 +188,11 @@ pub struct Args {
 
 	/// Signal to send to stop the command
 	///
-	/// This is used by **restart** and **signal** modes of '--on-busy-update' (unless '--signal' is
+	/// This is used by 'restart' and 'signal' modes of '--on-busy-update' (unless '--signal' is
 	/// provided). The restart behaviour is to send the signal, wait for the command to exit, and if
 	/// it hasn't exited after some time (see '--timeout-stop'), forcefully terminate it.
 	///
-	/// The default on unix is **SIGTERM**.
+	/// The default on unix is "SIGTERM".
 	///
 	/// Input is parsed as a full signal name (like "SIGTERM"), a short signal name (like "TERM"),
 	/// or a signal number (like "15"). All input is case-insensitive.
@@ -207,7 +207,7 @@ pub struct Args {
 
 	/// Time to wait for the command to exit gracefully
 	///
-	/// This is used by the **restart** mode of '--on-busy-update'. After the graceful stop signal
+	/// This is used by the 'restart' mode of '--on-busy-update'. After the graceful stop signal
 	/// is sent, Watchexec will wait for the command to exit. If it hasn't exited after this time,
 	/// it is forcefully terminated.
 	///

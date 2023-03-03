@@ -54,11 +54,11 @@ If this doesn\*(Aqt completely clear the screen, try \*(Aq\-\-clear=reset\*(Aq.
 \fB\-o\fR, \fB\-\-on\-busy\-update\fR=\fIMODE\fR
 What to do when receiving events while the command is running
 
-Default is to **queue** up events and run the command once again when the previous run has finished. You can also use **do\-nothing**, which ignores events while the command is running and may be useful to avoid spurious changes made by that command, or **restart**, which terminates the running command and starts a new one. Finally, there\*(Aqs **signal**, which only sends a signal; this can be useful with programs that can reload their configuration without a full restart.
+Default is to \*(Aqqueue\*(Aq up events and run the command once again when the previous run has finished. You can also use \*(Aqdo\-nothing\*(Aq, which ignores events while the command is running and may be useful to avoid spurious changes made by that command, or \*(Aqrestart\*(Aq, which terminates the running command and starts a new one. Finally, there\*(Aqs \*(Aqsignal\*(Aq, which only sends a signal; this can be useful with programs that can reload their configuration without a full restart.
 
 The signal can be specified with the \*(Aq\-\-signal\*(Aq option.
 
-Note that this option is scheduled to change its default to **do\-nothing** in the next major release. File an issue if you have any concerns.
+Note that this option is scheduled to change its default to \*(Aqdo\-nothing\*(Aq in the next major release. File an issue if you have any concerns.
 .TP
 \fB\-r\fR, \fB\-\-restart\fR
 Restart the process if it\*(Aqs still running
@@ -68,7 +68,7 @@ This is a shorthand for \*(Aq\-\-on\-busy\-update=restart\*(Aq.
 \fB\-s\fR, \fB\-\-signal\fR=\fISIGNAL\fR
 Send a signal to the process when it\*(Aqs still running
 
-Specify a signal to send to the process when it\*(Aqs still running. This implies \*(Aq\-\-on\-busy\-update=signal\*(Aq; otherwise the signal used when that mode is **restart** is controlled by \*(Aq\-\-stop\-signal\*(Aq.
+Specify a signal to send to the process when it\*(Aqs still running. This implies \*(Aq\-\-on\-busy\-update=signal\*(Aq; otherwise the signal used when that mode is \*(Aqrestart\*(Aq is controlled by \*(Aq\-\-stop\-signal\*(Aq.
 
 See the long documentation for \*(Aq\-\-stop\-signal\*(Aq for syntax.
 .TP
@@ -78,9 +78,9 @@ Hidden legacy shorthand for \*(Aq\-\-signal=kill\*(Aq
 \fB\-\-stop\-signal\fR=\fISIGNAL\fR
 Signal to send to stop the command
 
-This is used by **restart** and **signal** modes of \*(Aq\-\-on\-busy\-update\*(Aq (unless \*(Aq\-\-signal\*(Aq is provided). The restart behaviour is to send the signal, wait for the command to exit, and if it hasn\*(Aqt exited after some time (see \*(Aq\-\-timeout\-stop\*(Aq), forcefully terminate it.
+This is used by \*(Aqrestart\*(Aq and \*(Aqsignal\*(Aq modes of \*(Aq\-\-on\-busy\-update\*(Aq (unless \*(Aq\-\-signal\*(Aq is provided). The restart behaviour is to send the signal, wait for the command to exit, and if it hasn\*(Aqt exited after some time (see \*(Aq\-\-timeout\-stop\*(Aq), forcefully terminate it.
 
-The default on unix is **SIGTERM**.
+The default on unix is "SIGTERM".
 
 Input is parsed as a full signal name (like "SIGTERM"), a short signal name (like "TERM"), or a signal number (like "15"). All input is case\-insensitive.
 
@@ -89,7 +89,7 @@ On Windows this option is technically supported but only supports the "KILL" eve
 \fB\-\-stop\-timeout\fR=\fITIMEOUT\fR
 Time to wait for the command to exit gracefully
 
-This is used by the **restart** mode of \*(Aq\-\-on\-busy\-update\*(Aq. After the graceful stop signal is sent, Watchexec will wait for the command to exit. If it hasn\*(Aqt exited after this time, it is forcefully terminated.
+This is used by the \*(Aqrestart\*(Aq mode of \*(Aq\-\-on\-busy\-update\*(Aq. After the graceful stop signal is sent, Watchexec will wait for the command to exit. If it hasn\*(Aqt exited after this time, it is forcefully terminated.
 
 Takes a unit\-less value in seconds, or a time span value such as "5min 20s".
 
