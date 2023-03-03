@@ -1,6 +1,4 @@
-use std::{
-	collections::HashMap, convert::Infallible, env::current_dir, ffi::OsString, time::Duration,
-};
+use std::{collections::HashMap, convert::Infallible, env::current_dir, ffi::OsString};
 
 use miette::{miette, IntoDiagnostic, Result};
 use notify_rust::Notification;
@@ -45,6 +43,8 @@ pub fn runtime(args: &Args) -> Result<RuntimeConfig> {
 	let on_busy = args.on_busy_update;
 
 	let signal = args.signal;
+	let stop_signal = args.stop_signal;
+	let stop_timeout = args.stop_timeout.0;
 
 	let print_events = args.print_events;
 	let once = args.once;
@@ -168,17 +168,15 @@ pub fn runtime(args: &Args) -> Result<RuntimeConfig> {
 		let when_idle = start.clone();
 		let when_running = match on_busy {
 			OnBusyUpdate::Restart => Outcome::both(
-				if let Some(sig) = signal {
-					Outcome::both(
-						Outcome::Signal(sig),
-						Outcome::both(Outcome::Sleep(Duration::from_secs(60)), Outcome::Stop),
-					)
-				} else {
-					Outcome::Stop
-				},
+				Outcome::both(
+					Outcome::Signal(stop_signal.unwrap_or(SubSignal::Terminate)),
+					Outcome::both(Outcome::Sleep(stop_timeout), Outcome::Stop),
+				),
 				start,
 			),
-			OnBusyUpdate::Signal => Outcome::Signal(signal.unwrap_or(SubSignal::Terminate)),
+			OnBusyUpdate::Signal => {
+				Outcome::Signal(stop_signal.or(signal).unwrap_or(SubSignal::Terminate))
+			}
 			OnBusyUpdate::Queue => Outcome::wait(start),
 			OnBusyUpdate::DoNothing => Outcome::DoNothing,
 		};

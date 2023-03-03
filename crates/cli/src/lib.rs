@@ -22,7 +22,6 @@ use crate::args::build;
 pub mod args;
 mod config;
 mod filterer;
-mod os_string_ops;
 
 async fn init() -> Result<Args> {
 	let mut log_on = false;

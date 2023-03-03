@@ -171,9 +171,9 @@ pub struct Args {
 	///
 	/// Specify a signal to send to the process when it's still running. This implies
 	/// '--on-busy-update=signal'; otherwise the signal used when that mode is **restart** is
-	/// controlled by '--kill-signal'.
+	/// controlled by '--stop-signal'.
 	///
-	/// See the long documentation for '--kill-signal' for syntax.
+	/// See the long documentation for '--stop-signal' for syntax.
 	#[arg(
 		short,
 		long,
@@ -203,7 +203,7 @@ pub struct Args {
 	/// events. For portability the unix signals "SIGKILL", "SIGINT", "SIGTERM", and "SIGHUP" are
 	/// respectively mapped to these.
 	#[arg(long, value_name = "SIGNAL")]
-	pub kill_signal: Option<SubSignal>, // TODO
+	pub stop_signal: Option<SubSignal>, // TODO
 
 	/// Time to wait for the command to exit gracefully
 	///
@@ -220,7 +220,7 @@ pub struct Args {
 		hide_default_value = true,
 		value_name = "TIMEOUT"
 	)]
-	pub timeout_stop: TimeSpan, // TODO
+	pub stop_timeout: TimeSpan, // TODO
 
 	/// Time to wait for new events before taking action
 	///

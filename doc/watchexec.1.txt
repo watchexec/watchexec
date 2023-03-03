@@ -7,15 +7,15 @@ NNAAMMEE
 
 SSYYNNOOPPSSIISS
        wwaattcchheexxeecc      [--ww|----wwaattcchh]      [--cc|----cclleeaarr]     [--oo|----oonn--bbuussyy--uuppddaattee]
-       [--rr|----rreessttaarrtt]  [--ss|----ssiiggnnaall]  [--kk|----kkiillll]   [----kkiillll--ssiiggnnaall]   [----ttiimmee‐‐
-       oouutt--ssttoopp]       [----ddeebboouunnccee]      [----ssttddiinn--qquuiitt]      [----nnoo--vvccss--iiggnnoorree]
-       [----nnoo--pprroojjeecctt--iiggnnoorree]    [----nnoo--gglloobbaall--iiggnnoorree]     [----nnoo--ddeeffaauulltt--iiggnnoorree]
-       [--pp|----ppoossttppoonnee]  [----ddeellaayy--rruunn]  [----ppoollll] [----sshheellll] [--nn ] [----nnoo--eennvviirroonn‐‐
-       mmeenntt] [----eemmiitt--eevveennttss--ttoo] [--EE|----eennvv] [----nnoo--pprroocceessss--ggrroouupp]  [--NN|----nnoottiiffyy]
-       [----pprroojjeecctt--oorriiggiinn]   [----wwoorrkkddiirr]   [--ee|----eexxttss]   [--ff|----ffiilltteerr]  [----ffiill‐‐
-       tteerr--ffiillee]  [--ii|----iiggnnoorree]  [----iiggnnoorree--ffiillee]   [----ffss--eevveennttss]   [----nnoo--mmeettaa]
-       [----pprriinntt--eevveennttss]  [--vv|----vveerrbboossee]... [----lloogg--ffiillee] [----mmaannppaaggee] [----ccoommppllee‐‐
-       ttiioonnss] [--hh|----hheellpp] [--VV|----vveerrssiioonn] [_C_O_M_M_A_N_D]
+       [--rr|----rreessttaarrtt] [--ss|----ssiiggnnaall] [--kk|----kkiillll] [----ssttoopp--ssiiggnnaall]  [----ssttoopp--ttiimmee‐‐
+       oouutt]  [----ddeebboouunnccee]  [----ssttddiinn--qquuiitt]  [----nnoo--vvccss--iiggnnoorree] [----nnoo--pprroojjeecctt--iigg‐‐
+       nnoorree] [----nnoo--gglloobbaall--iiggnnoorree] [----nnoo--ddeeffaauulltt--iiggnnoorree] [--pp|----ppoossttppoonnee] [----ddee‐‐
+       llaayy--rruunn] [----ppoollll] [----sshheellll] [--nn ] [----nnoo--eennvviirroonnmmeenntt] [----eemmiitt--eevveennttss--ttoo]
+       [--EE|----eennvv]   [----nnoo--pprroocceessss--ggrroouupp]   [--NN|----nnoottiiffyy]    [----pprroojjeecctt--oorriiggiinn]
+       [----wwoorrkkddiirr]  [--ee|----eexxttss]  [--ff|----ffiilltteerr]  [----ffiilltteerr--ffiillee]  [--ii|----iiggnnoorree]
+       [----iiggnnoorree--ffiillee] [----ffss--eevveennttss] [----nnoo--mmeettaa]  [----pprriinntt--eevveennttss]  [--vv|----vveerr‐‐
+       bboossee]...    [----lloogg--ffiillee]    [----mmaannppaaggee]   [----ccoommpplleettiioonnss]   [--hh|----hheellpp]
+       [--VV|----vveerrssiioonn] [_C_O_M_M_A_N_D]
 
 DDEESSCCRRIIPPTTIIOONN
        Execute commands when watched files change.
@@ -97,20 +97,20 @@ OOPPTTIIOONNSS
 
               This is a shorthand for '--on-busy-update=restart'.
 
-       --ss, ----ssiiggnnaall=_T_I_M_E_O_U_T
+       --ss, ----ssiiggnnaall=_S_I_G_N_A_L
               Send a signal to the process when it's still running
 
               Specify a signal to send to the process when it's still running.
               This  implies  '--on-busy-update=signal';  otherwise  the signal
-              used when that mode is **restart** is controlled by '--kill-sig‐
+              used when that mode is **restart** is controlled by '--stop-sig‐
               nal'.
 
-              See the long documentation for '--kill-signal' for syntax.
+              See the long documentation for '--stop-signal' for syntax.
 
        --kk, ----kkiillll
               Hidden legacy shorthand for '--signal=kill'
 
-       ----kkiillll--ssiiggnnaall=_S_I_G_N_A_L
+       ----ssttoopp--ssiiggnnaall=_S_I_G_N_A_L
               Signal to send to stop the command
 
               This   is   used   by   **restart**   and  **signal**  modes  of
@@ -133,7 +133,7 @@ OOPPTTIIOONNSS
               signals "SIGKILL", "SIGINT", "SIGTERM", and "SIGHUP" are respec‐
               tively mapped to these.
 
-       ----ttiimmeeoouutt--ssttoopp=_T_I_M_E_O_U_T
+       ----ssttoopp--ttiimmeeoouutt=_T_I_M_E_O_U_T
               Time to wait for the command to exit gracefully
 
               This  is used by the **restart** mode of '--on-busy-update'. Af‐
@@ -277,7 +277,7 @@ OOPPTTIIOONNSS
 
               Optionally  takes  a  unit-less value in milliseconds, or a time
               span value such as "2s 500ms", to use as the  polling  interval.
-              If not specified, the default is 1 second.
+              If not specified, the default is 30 seconds.
 
               Aliased as '--force-poll'.
 
@@ -667,8 +667,8 @@ EEXXTTRRAA
        those in the file).
 
 VVEERRSSIIOONN
-       v1.21.1    branch:clap4    commit_hash:2296775e   build_time:2023-03-04
-       01:52:03  +13:00  build_env:rustc  1.67.1  (d5a82bbd2  2023-02-07),sta‐
+       v1.21.1    branch:clap4    commit_hash:9ac37000   build_time:2023-03-04
+       02:43:21  +13:00  build_env:rustc  1.67.1  (d5a82bbd2  2023-02-07),sta‐
        ble-x86_64-unknown-linux-gnu
 
 AAUUTTHHOORRSS

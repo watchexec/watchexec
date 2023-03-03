@@ -30,8 +30,8 @@ module completions {
     --restart(-r)             # Restart the process if it's still running
     --signal(-s): string      # Send a signal to the process when it's still running
     --kill(-k)                # Hidden legacy shorthand for '--signal=kill'
-    --kill-signal: string     # Signal to send to stop the command
-    --timeout-stop: string    # Time to wait for the command to exit gracefully
+    --stop-signal: string     # Signal to send to stop the command
+    --stop-timeout: string    # Time to wait for the command to exit gracefully
     --debounce: string        # Time to wait for new events before taking action
     --stdin-quit              # Exit when stdin closes
     --no-vcs-ignore           # Don't load gitignores

@@ -2,8 +2,8 @@ complete -c watchexec -s w -l watch -d 'Watch a specific file or directory' -r -
 complete -c watchexec -s c -l clear -d 'Clear screen before running command' -r -f -a "{clear	,reset	}"
 complete -c watchexec -s o -l on-busy-update -d 'What to do when receiving events while the command is running' -r -f -a "{queue	,do-nothing	,restart	,signal	}"
 complete -c watchexec -s s -l signal -d 'Send a signal to the process when it\'s still running' -r
-complete -c watchexec -l kill-signal -d 'Signal to send to stop the command' -r
-complete -c watchexec -l timeout-stop -d 'Time to wait for the command to exit gracefully' -r
+complete -c watchexec -l stop-signal -d 'Signal to send to stop the command' -r
+complete -c watchexec -l stop-timeout -d 'Time to wait for the command to exit gracefully' -r
 complete -c watchexec -l debounce -d 'Time to wait for new events before taking action' -r
 complete -c watchexec -l delay-run -d 'Sleep before running the command' -r
 complete -c watchexec -l poll -d 'Poll for filesystem changes' -r

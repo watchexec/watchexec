@@ -21,10 +21,10 @@ _watchexec() {
 '--clear=[Clear screen before running command]' \
 '-o+[What to do when receiving events while the command is running]:MODE:(queue do-nothing restart signal)' \
 '--on-busy-update=[What to do when receiving events while the command is running]:MODE:(queue do-nothing restart signal)' \
-'(-r --restart -W --watch-when-idle)-s+[Send a signal to the process when it'\''s still running]:TIMEOUT: ' \
-'(-r --restart -W --watch-when-idle)--signal=[Send a signal to the process when it'\''s still running]:TIMEOUT: ' \
-'--kill-signal=[Signal to send to stop the command]:SIGNAL: ' \
-'--timeout-stop=[Time to wait for the command to exit gracefully]:TIMEOUT: ' \
+'(-r --restart -W --watch-when-idle)-s+[Send a signal to the process when it'\''s still running]:SIGNAL: ' \
+'(-r --restart -W --watch-when-idle)--signal=[Send a signal to the process when it'\''s still running]:SIGNAL: ' \
+'--stop-signal=[Signal to send to stop the command]:SIGNAL: ' \
+'--stop-timeout=[Time to wait for the command to exit gracefully]:TIMEOUT: ' \
 '--debounce=[Time to wait for new events before taking action]:TIMEOUT: ' \
 '--delay-run=[Sleep before running the command]:DURATION: ' \
 '--poll=[Poll for filesystem changes]' \

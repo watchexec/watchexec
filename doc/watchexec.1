@@ -4,7 +4,7 @@
 .SH NAME
 watchexec \- Execute commands when watched files change
 .SH SYNOPSIS
-\fBwatchexec\fR [\fB\-w\fR|\fB\-\-watch\fR] [\fB\-c\fR|\fB\-\-clear\fR] [\fB\-o\fR|\fB\-\-on\-busy\-update\fR] [\fB\-r\fR|\fB\-\-restart\fR] [\fB\-s\fR|\fB\-\-signal\fR] [\fB\-k\fR|\fB\-\-kill\fR] [\fB\-\-kill\-signal\fR] [\fB\-\-timeout\-stop\fR] [\fB\-\-debounce\fR] [\fB\-\-stdin\-quit\fR] [\fB\-\-no\-vcs\-ignore\fR] [\fB\-\-no\-project\-ignore\fR] [\fB\-\-no\-global\-ignore\fR] [\fB\-\-no\-default\-ignore\fR] [\fB\-p\fR|\fB\-\-postpone\fR] [\fB\-\-delay\-run\fR] [\fB\-\-poll\fR] [\fB\-\-shell\fR] [\fB\-n \fR] [\fB\-\-no\-environment\fR] [\fB\-\-emit\-events\-to\fR] [\fB\-E\fR|\fB\-\-env\fR] [\fB\-\-no\-process\-group\fR] [\fB\-N\fR|\fB\-\-notify\fR] [\fB\-\-project\-origin\fR] [\fB\-\-workdir\fR] [\fB\-e\fR|\fB\-\-exts\fR] [\fB\-f\fR|\fB\-\-filter\fR] [\fB\-\-filter\-file\fR] [\fB\-i\fR|\fB\-\-ignore\fR] [\fB\-\-ignore\-file\fR] [\fB\-\-fs\-events\fR] [\fB\-\-no\-meta\fR] [\fB\-\-print\-events\fR] [\fB\-v\fR|\fB\-\-verbose\fR]... [\fB\-\-log\-file\fR] [\fB\-\-manpage\fR] [\fB\-\-completions\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fICOMMAND\fR] 
+\fBwatchexec\fR [\fB\-w\fR|\fB\-\-watch\fR] [\fB\-c\fR|\fB\-\-clear\fR] [\fB\-o\fR|\fB\-\-on\-busy\-update\fR] [\fB\-r\fR|\fB\-\-restart\fR] [\fB\-s\fR|\fB\-\-signal\fR] [\fB\-k\fR|\fB\-\-kill\fR] [\fB\-\-stop\-signal\fR] [\fB\-\-stop\-timeout\fR] [\fB\-\-debounce\fR] [\fB\-\-stdin\-quit\fR] [\fB\-\-no\-vcs\-ignore\fR] [\fB\-\-no\-project\-ignore\fR] [\fB\-\-no\-global\-ignore\fR] [\fB\-\-no\-default\-ignore\fR] [\fB\-p\fR|\fB\-\-postpone\fR] [\fB\-\-delay\-run\fR] [\fB\-\-poll\fR] [\fB\-\-shell\fR] [\fB\-n \fR] [\fB\-\-no\-environment\fR] [\fB\-\-emit\-events\-to\fR] [\fB\-E\fR|\fB\-\-env\fR] [\fB\-\-no\-process\-group\fR] [\fB\-N\fR|\fB\-\-notify\fR] [\fB\-\-project\-origin\fR] [\fB\-\-workdir\fR] [\fB\-e\fR|\fB\-\-exts\fR] [\fB\-f\fR|\fB\-\-filter\fR] [\fB\-\-filter\-file\fR] [\fB\-i\fR|\fB\-\-ignore\fR] [\fB\-\-ignore\-file\fR] [\fB\-\-fs\-events\fR] [\fB\-\-no\-meta\fR] [\fB\-\-print\-events\fR] [\fB\-v\fR|\fB\-\-verbose\fR]... [\fB\-\-log\-file\fR] [\fB\-\-manpage\fR] [\fB\-\-completions\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fICOMMAND\fR] 
 .SH DESCRIPTION
 Execute commands when watched files change.
 .PP
@@ -65,17 +65,17 @@ Restart the process if it\*(Aqs still running
 
 This is a shorthand for \*(Aq\-\-on\-busy\-update=restart\*(Aq.
 .TP
-\fB\-s\fR, \fB\-\-signal\fR=\fITIMEOUT\fR
+\fB\-s\fR, \fB\-\-signal\fR=\fISIGNAL\fR
 Send a signal to the process when it\*(Aqs still running
 
-Specify a signal to send to the process when it\*(Aqs still running. This implies \*(Aq\-\-on\-busy\-update=signal\*(Aq; otherwise the signal used when that mode is **restart** is controlled by \*(Aq\-\-kill\-signal\*(Aq.
+Specify a signal to send to the process when it\*(Aqs still running. This implies \*(Aq\-\-on\-busy\-update=signal\*(Aq; otherwise the signal used when that mode is **restart** is controlled by \*(Aq\-\-stop\-signal\*(Aq.
 
-See the long documentation for \*(Aq\-\-kill\-signal\*(Aq for syntax.
+See the long documentation for \*(Aq\-\-stop\-signal\*(Aq for syntax.
 .TP
 \fB\-k\fR, \fB\-\-kill\fR
 Hidden legacy shorthand for \*(Aq\-\-signal=kill\*(Aq
 .TP
-\fB\-\-kill\-signal\fR=\fISIGNAL\fR
+\fB\-\-stop\-signal\fR=\fISIGNAL\fR
 Signal to send to stop the command
 
 This is used by **restart** and **signal** modes of \*(Aq\-\-on\-busy\-update\*(Aq (unless \*(Aq\-\-signal\*(Aq is provided). The restart behaviour is to send the signal, wait for the command to exit, and if it hasn\*(Aqt exited after some time (see \*(Aq\-\-timeout\-stop\*(Aq), forcefully terminate it.
@@ -86,7 +86,7 @@ Input is parsed as a full signal name (like "SIGTERM"), a short signal name (lik
 
 On Windows this option is technically supported but only supports the "KILL" event, as Watchexec cannot yet deliver other events. Windows doesn\*(Aqt have signals as such; instead it has termination (here called "KILL" or "STOP") and "CTRL+C", "CTRL+BREAK", and "CTRL+CLOSE" events. For portability the unix signals "SIGKILL", "SIGINT", "SIGTERM", and "SIGHUP" are respectively mapped to these.
 .TP
-\fB\-\-timeout\-stop\fR=\fITIMEOUT\fR
+\fB\-\-stop\-timeout\fR=\fITIMEOUT\fR
 Time to wait for the command to exit gracefully
 
 This is used by the **restart** mode of \*(Aq\-\-on\-busy\-update\*(Aq. After the graceful stop signal is sent, Watchexec will wait for the command to exit. If it hasn\*(Aqt exited after this time, it is forcefully terminated.
@@ -181,7 +181,7 @@ Poll for filesystem changes
 
 By default, and where available, Watchexec uses the operating system\*(Aqs native file system watching capabilities. This option disables that and instead uses a polling mechanism, which is less efficient but can work around issues with some file systems (like network shares) or edge cases.
 
-Optionally takes a unit\-less value in milliseconds, or a time span value such as "2s 500ms", to use as the polling interval. If not specified, the default is 1 second.
+Optionally takes a unit\-less value in milliseconds, or a time span value such as "2s 500ms", to use as the polling interval. If not specified, the default is 30 seconds.
 
 Aliased as \*(Aq\-\-force\-poll\*(Aq.
 .TP
@@ -469,8 +469,8 @@ Use @argfile as first argument to load arguments from the file \*(Aqargfile\*(Aq
 .SH VERSION
 v1.21.1
 branch:clap4
-commit_hash:2296775e
-build_time:2023\-03\-04 01:52:03 +13:00
+commit_hash:9ac37000
+build_time:2023\-03\-04 02:43:21 +13:00
 build_env:rustc 1.67.1 (d5a82bbd2 2023\-02\-07),stable\-x86_64\-unknown\-linux\-gnu
 .SH AUTHORS
 Félix Saparelli <felix@passcod.name>, Matt Green <mattgreenrocks@gmail.com>
