@@ -1,2 +1,2 @@
 #!/bin/sh
-exec ronn --roff --html --style=toc doc/watchexec.1.ronn
+cargo run -p watchexec-cli -- --manpage > doc/watchexec.1
