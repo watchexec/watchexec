@@ -515,11 +515,14 @@ events) will pass through untouched.
 
 **\--filter-file**=*PATH*
 
-:   Files to load filters from // TODO
+:   Files to load filters from
 
 Provide a path to a file containing filters, one per line. Empty lines
 and lines starting with \# are ignored. Uses the same pattern format as
 the \--filter option.
+
+This can also be used via the \$WATCHEXEC_FILTER_FILES environment
+variable.
 
 **-i**, **\--ignore**=*PATTERN*
 
@@ -532,11 +535,14 @@ events) will pass through untouched.
 
 **\--ignore-file**=*PATH*
 
-:   Files to load ignores from // TODO
+:   Files to load ignores from
 
 Provide a path to a file containing ignores, one per line. Empty lines
 and lines starting with \# are ignored. Uses the same pattern format as
 the \--ignore option.
+
+This can also be used via the \$WATCHEXEC_IGNORE_FILES environment
+variable.
 
 **\--fs-events**=*EVENTS*
 

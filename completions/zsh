@@ -38,10 +38,10 @@ _watchexec() {
 '*--exts=[Filename extensions to filter to]:EXTENSIONS: ' \
 '*-f+[Filename patterns to filter to]:PATTERN: ' \
 '*--filter=[Filename patterns to filter to]:PATTERN: ' \
-'*--filter-file=[Files to load filters from // TODO]:PATH:_files' \
+'*--filter-file=[Files to load filters from]:PATH:_files' \
 '*-i+[Filename patterns to filter out]:PATTERN: ' \
 '*--ignore=[Filename patterns to filter out]:PATTERN: ' \
-'*--ignore-file=[Files to load ignores from // TODO]:PATH:_files' \
+'*--ignore-file=[Files to load ignores from]:PATH:_files' \
 '*--fs-events=[Filesystem events to filter to]:EVENTS:(access create remove rename modify metadata)' \
 '--log-file=[Write diagnostic logs to a file]' \
 '(--manpage)--completions=[Generate a shell completions script]:COMPLETIONS:(bash elvish fish nu powershell zsh)' \

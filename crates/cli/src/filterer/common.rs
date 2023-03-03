@@ -99,8 +99,6 @@ pub async fn ignores(args: &Args, vcs_types: &[ProjectType], origin: &Path) -> V
 	}
 	debug!(?ignores, "discovered ignore files from project origin");
 
-	// TODO: use drain_ignore instead for x = x.filter()... when that stabilises
-
 	let mut skip_git_global_excludes = false;
 	if !vcs_types.is_empty() {
 		ignores = ignores
@@ -158,6 +156,17 @@ pub async fn ignores(args: &Args, vcs_types: &[ProjectType], origin: &Path) -> V
 		?ignores,
 		?vcs_types,
 		"combined and applied overall vcs filter over ignores"
+	);
+
+	ignores.extend(args.ignore_files.iter().map(|ig| IgnoreFile {
+		applies_to: None,
+		applies_in: None,
+		path: ig.clone(),
+	}));
+	debug!(
+		?ignores,
+		?args.ignore_files,
+		"combined with ignore files from command line / env"
 	);
 
 	if args.no_project_ignore {

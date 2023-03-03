@@ -373,9 +373,11 @@ Filename patterns to filter to
 Provide a glob\-like filter pattern, and only events for files matching the pattern will be emitted. Multiple patterns can be given by repeating the option. Events that are not from files (e.g. signals, keyboard events) will pass through untouched.
 .TP
 \fB\-\-filter\-file\fR=\fIPATH\fR
-Files to load filters from // TODO
+Files to load filters from
 
 Provide a path to a file containing filters, one per line. Empty lines and lines starting with \*(Aq#\*(Aq are ignored. Uses the same pattern format as the \*(Aq\-\-filter\*(Aq option.
+
+This can also be used via the $WATCHEXEC_FILTER_FILES environment variable.
 .TP
 \fB\-i\fR, \fB\-\-ignore\fR=\fIPATTERN\fR
 Filename patterns to filter out
@@ -383,9 +385,11 @@ Filename patterns to filter out
 Provide a glob\-like filter pattern, and events for files matching the pattern will be excluded. Multiple patterns can be given by repeating the option. Events that are not from files (e.g. signals, keyboard events) will pass through untouched.
 .TP
 \fB\-\-ignore\-file\fR=\fIPATH\fR
-Files to load ignores from // TODO
+Files to load ignores from
 
 Provide a path to a file containing ignores, one per line. Empty lines and lines starting with \*(Aq#\*(Aq are ignored. Uses the same pattern format as the \*(Aq\-\-ignore\*(Aq option.
+
+This can also be used via the $WATCHEXEC_IGNORE_FILES environment variable.
 .TP
 \fB\-\-fs\-events\fR=\fIEVENTS\fR
 Filesystem events to filter to

@@ -54,9 +54,9 @@ module completions {
     --workdir: string         # Set the working directory
     --exts(-e): string        # Filename extensions to filter to
     --filter(-f): string      # Filename patterns to filter to
-    --filter-file: string     # Files to load filters from // TODO
+    --filter-file: string     # Files to load filters from
     --ignore(-i): string      # Filename patterns to filter out
-    --ignore-file: string     # Files to load ignores from // TODO
+    --ignore-file: string     # Files to load ignores from
     --fs-events: string@"nu-complete watchexec filter_fs_events" # Filesystem events to filter to
     --no-meta                 # Don't emit fs events for metadata changes
     --print-events            # Print events that trigger actions

@@ -1,7 +1,7 @@
 use std::{path::PathBuf, str::FromStr, time::Duration};
 
 use clap::{ArgAction, Parser, ValueEnum, ValueHint};
-use watchexec::signal::process::SubSignal;
+use watchexec::{paths::PATH_SEPARATOR, signal::process::SubSignal};
 
 const OPTSET_FILTERING: &str = "Filtering";
 const OPTSET_COMMAND: &str = "Command";
@@ -203,7 +203,7 @@ pub struct Args {
 	/// events. For portability the unix signals "SIGKILL", "SIGINT", "SIGTERM", and "SIGHUP" are
 	/// respectively mapped to these.
 	#[arg(long, value_name = "SIGNAL")]
-	pub stop_signal: Option<SubSignal>, // TODO
+	pub stop_signal: Option<SubSignal>,
 
 	/// Time to wait for the command to exit gracefully
 	///
@@ -220,7 +220,7 @@ pub struct Args {
 		hide_default_value = true,
 		value_name = "TIMEOUT"
 	)]
-	pub stop_timeout: TimeSpan, // TODO
+	pub stop_timeout: TimeSpan,
 
 	/// Time to wait for new events before taking action
 	///
@@ -647,13 +647,16 @@ pub struct Args {
 	)]
 	pub filter_patterns: Vec<String>,
 
-	/// Files to load filters from // TODO
+	/// Files to load filters from
 	///
 	/// Provide a path to a file containing filters, one per line. Empty lines and lines starting
 	/// with '#' are ignored. Uses the same pattern format as the '--filter' option.
+	///
+	/// This can also be used via the $WATCHEXEC_FILTER_FILES environment variable.
 	#[arg(
 		long = "filter-file",
 		help_heading = OPTSET_FILTERING,
+		value_delimiter = PATH_SEPARATOR.chars().next().unwrap(),
 		value_hint = ValueHint::FilePath,
 		value_name = "PATH",
 		env = "WATCHEXEC_FILTER_FILES",
@@ -674,13 +677,16 @@ pub struct Args {
 	)]
 	pub ignore_patterns: Vec<String>,
 
-	/// Files to load ignores from // TODO
+	/// Files to load ignores from
 	///
 	/// Provide a path to a file containing ignores, one per line. Empty lines and lines starting
 	/// with '#' are ignored. Uses the same pattern format as the '--ignore' option.
+	///
+	/// This can also be used via the $WATCHEXEC_IGNORE_FILES environment variable.
 	#[arg(
 		long = "ignore-file",
 		help_heading = OPTSET_FILTERING,
+		value_delimiter = PATH_SEPARATOR.chars().next().unwrap(),
 		value_hint = ValueHint::FilePath,
 		value_name = "PATH",
 		env = "WATCHEXEC_IGNORE_FILES",

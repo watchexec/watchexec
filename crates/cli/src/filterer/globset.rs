@@ -1,7 +1,12 @@
-use std::{ffi::OsString, path::MAIN_SEPARATOR, sync::Arc};
+use std::{
+	ffi::OsString,
+	path::{Path, PathBuf, MAIN_SEPARATOR},
+	sync::Arc,
+};
 
 use miette::{IntoDiagnostic, Result};
-use tracing::info;
+use tokio::io::{AsyncBufReadExt, BufReader};
+use tracing::{info, trace, trace_span};
 use watchexec::{
 	error::RuntimeError,
 	event::{
@@ -44,10 +49,15 @@ pub async fn globset(args: &Args) -> Result<Arc<WatchexecFilterer>> {
 		]);
 	}
 
-	let filters = args
+	let mut filters = args
 		.filter_patterns
 		.iter()
-		.map(|f| (f.to_owned(), Some(workdir.clone())));
+		.map(|f| (f.to_owned(), Some(workdir.clone())))
+		.collect::<Vec<_>>();
+
+	for filter_file in &args.filter_files {
+		filters.extend(read_filter_file(filter_file).await?);
+	}
 
 	ignores.extend(
 		args.ignore_patterns
@@ -55,7 +65,6 @@ pub async fn globset(args: &Args) -> Result<Arc<WatchexecFilterer>> {
 			.map(|f| (f.to_owned(), Some(workdir.clone()))),
 	);
 
-	// TODO: bring split and strip into args
 	let exts = args
 		.filter_extensions
 		.iter()
@@ -68,6 +77,29 @@ pub async fn globset(args: &Args) -> Result<Arc<WatchexecFilterer>> {
 			.into_diagnostic()?,
 		fs_events: args.filter_fs_events.clone(),
 	}))
+}
+
+async fn read_filter_file(path: &Path) -> Result<Vec<(String, Option<PathBuf>)>> {
+	let _span = trace_span!("loading filter file", ?path).entered();
+
+	let file = tokio::fs::File::open(path).await.into_diagnostic()?;
+
+	let mut filters =
+		Vec::with_capacity(file.metadata().await.map(|m| m.len() as usize).unwrap_or(0) / 20);
+
+	let reader = BufReader::new(file);
+	let mut lines = reader.lines();
+	while let Some(line) = lines.next_line().await.into_diagnostic()? {
+		let line = line.trim();
+		if line.is_empty() || line.starts_with('#') {
+			continue;
+		}
+
+		trace!(?line, "adding filter line");
+		filters.push((line.to_owned(), Some(path.to_owned())));
+	}
+
+	Ok(filters)
 }
 
 /// A custom filterer that combines the library's Globset filterer and a switch for --no-meta
