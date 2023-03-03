@@ -178,7 +178,7 @@ pub struct Args {
 		short,
 		long,
 		conflicts_with_all = ["restart", "watch_when_idle"],
-		value_name = "TIMEOUT"
+		value_name = "SIGNAL"
 	)]
 	pub signal: Option<SubSignal>,
 
@@ -203,7 +203,7 @@ pub struct Args {
 	/// events. For portability the unix signals "SIGKILL", "SIGINT", "SIGTERM", and "SIGHUP" are
 	/// respectively mapped to these.
 	#[arg(long, value_name = "SIGNAL")]
-	pub kill_signal: Option<SubSignal>,
+	pub kill_signal: Option<SubSignal>, // TODO
 
 	/// Time to wait for the command to exit gracefully
 	///
@@ -220,7 +220,7 @@ pub struct Args {
 		hide_default_value = true,
 		value_name = "TIMEOUT"
 	)]
-	pub timeout_stop: TimeSpan,
+	pub timeout_stop: TimeSpan, // TODO
 
 	/// Time to wait for new events before taking action
 	///
@@ -354,17 +354,17 @@ pub struct Args {
 	/// edge cases.
 	///
 	/// Optionally takes a unit-less value in milliseconds, or a time span value such as "2s 500ms",
-	/// to use as the polling interval. If not specified, the default is 1 second.
+	/// to use as the polling interval. If not specified, the default is 30 seconds.
 	///
 	/// Aliased as '--force-poll'.
 	#[arg(
 		long,
 		alias = "force-poll",
 		num_args = 0..=1,
-		default_missing_value = "1000",
+		default_missing_value = "30s",
 		value_name = "INTERVAL",
 	)]
-	pub poll: Option<TimeSpan>,
+	pub poll: Option<TimeSpan<1_000_000>>,
 
 	/// Use a different shell
 	///
@@ -881,16 +881,16 @@ pub fn get_args() -> Args {
 	debug!("parsing arguments");
 	let mut args = Args::parse_from(args);
 
+	if args.kill {
+		args.signal = Some(SubSignal::ForceStop);
+	}
+
 	if args.signal.is_some() {
 		args.on_busy_update = OnBusyUpdate::Signal;
 	} else if args.restart {
 		args.on_busy_update = OnBusyUpdate::Restart;
 	} else if args.watch_when_idle {
 		args.on_busy_update = OnBusyUpdate::DoNothing;
-	}
-
-	if args.kill {
-		args.signal = Some(SubSignal::ForceStop);
 	}
 
 	if args.no_environment {

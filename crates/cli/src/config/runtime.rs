@@ -1,6 +1,5 @@
 use std::{
-	collections::HashMap, convert::Infallible, env::current_dir, ffi::OsString,
-	time::Duration,
+	collections::HashMap, convert::Infallible, env::current_dir, ffi::OsString, time::Duration,
 };
 
 use miette::{miette, IntoDiagnostic, Result};
@@ -19,7 +18,7 @@ use watchexec::{
 	signal::{process::SubSignal, source::MainSignal},
 };
 
-use crate::args::{Args, EmitEvents, OnBusyUpdate};
+use crate::args::{Args, ClearMode, EmitEvents, OnBusyUpdate};
 
 pub fn runtime(args: &Args) -> Result<RuntimeConfig> {
 	let _span = debug_span!("args-runtime").entered();
@@ -41,7 +40,7 @@ pub fn runtime(args: &Args) -> Result<RuntimeConfig> {
 		config.file_watcher(Watcher::Poll(interval.0));
 	}
 
-	let clear = args.screen_clear.is_some();
+	let clear = args.screen_clear;
 	let notif = args.notify;
 	let on_busy = args.on_busy_update;
 
@@ -148,8 +147,14 @@ pub fn runtime(args: &Args) -> Result<RuntimeConfig> {
 			}
 		}
 
-		let start = if clear {
-			Outcome::both(Outcome::Clear, Outcome::Start)
+		let start = if let Some(mode) = clear {
+			Outcome::both(
+				match mode {
+					ClearMode::Clear => Outcome::Clear,
+					ClearMode::Reset => Outcome::Reset,
+				},
+				Outcome::Start,
+			)
 		} else {
 			Outcome::Start
 		};
@@ -199,7 +204,6 @@ pub fn runtime(args: &Args) -> Result<RuntimeConfig> {
 
 	let workdir = args.workdir.clone();
 
-	let filter_fs_events = args.filter_fs_events.clone();
 	let emit_events_to = args.emit_events_to;
 	config.on_pre_spawn(move |prespawn: PreSpawn| {
 		let workdir = workdir.clone();
