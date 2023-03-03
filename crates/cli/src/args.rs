@@ -250,71 +250,6 @@ pub struct Args {
 	#[arg(long)]
 	pub stdin_quit: bool,
 
-	/// Set diagnostic log level
-	///
-	/// This enables diagnostic logging, which is useful for investigating bugs or gaining more
-	/// insight into faulty filters or "missing" events. Use multiple times to increase verbosity.
-	///
-	/// Goes up to '-vvvv'. When submitting bug reports, default to a '-vvv' log level.
-	///
-	/// You may want to use with '--log-file' to avoid polluting your terminal.
-	///
-	/// Setting $RUST_LOG also works, and takes precendence, but is not recommended. However, using
-	/// $RUST_LOG is the only way to get logs from before these options are parsed.
-	#[arg(
-		long,
-		short,
-		help_heading = OPTSET_DEBUGGING,
-		action = ArgAction::Count,
-		num_args = 0,
-	)]
-	pub verbose: Option<u8>,
-
-	/// Write diagnostic logs to a file
-	///
-	/// This writes diagnostic logs to a file, instead of the terminal, in JSON format. If a log
-	/// level was not already specified, this will set it to '-vvv'.
-	///
-	/// If a path is not provided, the default is the working directory. Note that with
-	/// '--ignore-nothing', the write events to the log will likely get picked up by Watchexec,
-	/// causing a loop; prefer setting a path outside of the watched directory.
-	///
-	/// If the path provided is a directory, a file will be created in that directory. The file name
-	/// will be the current date and time, in the format 'watchexec.YYYY-MM-DDTHH-MM-SSZ.log'.
-	#[arg(
-		long,
-		help_heading = OPTSET_DEBUGGING,
-		num_args = 0..=1,
-		value_hint = ValueHint::AnyPath,
-		value_name = "PATH",
-	)]
-	pub log_file: Option<PathBuf>,
-
-	/// Show the manual page
-	///
-	/// This shows the manual page for Watchexec, in the default pager. If the output is not a
-	/// terminal, the manual page is printed to stdout in ROFF format (suitable for writing to a
-	/// file and saving in the mandb).
-	#[arg(
-		long,
-		help_heading = OPTSET_DEBUGGING,
-		conflicts_with = "command",
-	)]
-	pub manpage: bool,
-
-	/// Print events that trigger actions
-	///
-	/// This prints the events that triggered the action when handling it (after debouncing), in a
-	/// human readable form. This is useful for debugging filters.
-	///
-	/// Use '-v' when you need more diagnostic information.
-	#[arg(
-		long,
-		alias = "changes-only", // deprecated
-		help_heading = OPTSET_DEBUGGING,
-	)]
-	pub print_events: bool,
-
 	/// Don't load gitignores
 	///
 	/// Among other VCS exclude files, like for Mercurial, Subversion, Bazaar, DARCS, Fossil. Note
@@ -778,6 +713,71 @@ pub struct Args {
 		conflicts_with = "filter_fs_events",
 	)]
 	pub filter_fs_meta: bool,
+
+	/// Print events that trigger actions
+	///
+	/// This prints the events that triggered the action when handling it (after debouncing), in a
+	/// human readable form. This is useful for debugging filters.
+	///
+	/// Use '-v' when you need more diagnostic information.
+	#[arg(
+		long,
+		alias = "changes-only", // deprecated
+		help_heading = OPTSET_DEBUGGING,
+	)]
+	pub print_events: bool,
+
+	/// Set diagnostic log level
+	///
+	/// This enables diagnostic logging, which is useful for investigating bugs or gaining more
+	/// insight into faulty filters or "missing" events. Use multiple times to increase verbosity.
+	///
+	/// Goes up to '-vvvv'. When submitting bug reports, default to a '-vvv' log level.
+	///
+	/// You may want to use with '--log-file' to avoid polluting your terminal.
+	///
+	/// Setting $RUST_LOG also works, and takes precendence, but is not recommended. However, using
+	/// $RUST_LOG is the only way to get logs from before these options are parsed.
+	#[arg(
+		long,
+		short,
+		help_heading = OPTSET_DEBUGGING,
+		action = ArgAction::Count,
+		num_args = 0,
+	)]
+	pub verbose: Option<u8>,
+
+	/// Write diagnostic logs to a file
+	///
+	/// This writes diagnostic logs to a file, instead of the terminal, in JSON format. If a log
+	/// level was not already specified, this will set it to '-vvv'.
+	///
+	/// If a path is not provided, the default is the working directory. Note that with
+	/// '--ignore-nothing', the write events to the log will likely get picked up by Watchexec,
+	/// causing a loop; prefer setting a path outside of the watched directory.
+	///
+	/// If the path provided is a directory, a file will be created in that directory. The file name
+	/// will be the current date and time, in the format 'watchexec.YYYY-MM-DDTHH-MM-SSZ.log'.
+	#[arg(
+		long,
+		help_heading = OPTSET_DEBUGGING,
+		num_args = 0..=1,
+		value_hint = ValueHint::AnyPath,
+		value_name = "PATH",
+	)]
+	pub log_file: Option<PathBuf>,
+
+	/// Show the manual page
+	///
+	/// This shows the manual page for Watchexec, if the output is a terminal and the 'man' program
+	/// is available. If not, the manual page is printed to stdout in ROFF format (suitable for
+	/// writing to a watchexec.1 file).
+	#[arg(
+		long,
+		help_heading = OPTSET_DEBUGGING,
+		conflicts_with = "command",
+	)]
+	pub manpage: bool,
 }
 
 #[derive(Clone, Copy, Debug, Default, ValueEnum)]
