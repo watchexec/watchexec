@@ -48,8 +48,8 @@ More usage examples: [in the CLI README](./crates/cli/#usage-examples)!
 - From source with Cargo: `cargo install --locked watchexec-cli`
 
 All options in detail: [in the CLI README](./crates/cli/#installation),
-in the help (`watchexec --help`),
-and [in the manual page](./doc/watchexec.1.txt).
+in the online help (`watchexec -h`, `watchexec --help`, or `watchexec --manual`),
+and [in the manual page](./doc/watchexec.1.md) ([PDF](./doc/watchexec.1.pdf)).
 
 
 ## Augment
