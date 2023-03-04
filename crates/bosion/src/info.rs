@@ -101,13 +101,15 @@ impl GitInfo {
 		let repo = gix::discover(path).err_string()?;
 		let head = repo.head_commit().err_string()?;
 		let time = head.time().err_string()?;
+		let timestamp =
+			OffsetDateTime::from_unix_timestamp(time.seconds_since_unix_epoch as _).err_string()?;
 
 		Ok(Self {
 			git_root: repo.path().canonicalize().err_string()?,
 			git_hash: head.id().to_string(),
 			git_shorthash: head.short_id().err_string()?.to_string(),
-			git_date: time.format(DATE_FORMAT),
-			git_datetime: time.format(DATETIME_FORMAT),
+			git_date: timestamp.format(DATE_FORMAT).err_string()?,
+			git_datetime: timestamp.format(DATETIME_FORMAT).err_string()?,
 		})
 	}
 }
