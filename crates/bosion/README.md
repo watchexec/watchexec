@@ -28,7 +28,7 @@ fn main() {
 
 In your `src/main.rs`:
 
-```rust ,no_run
+```rust ,ignore
 include!(env!("BOSION_PATH"));
 
 fn main() {
@@ -69,12 +69,12 @@ Customising the output file and struct names:
 
 ```rust ,no_run
 // build.rs
-bosion::gather_to("buildinfo.rs", "Build");
+bosion::gather_to("buildinfo.rs", "Build", /* public? */ false);
 ```
 
 Outputting build-time environment variables instead of source:
 
-```rust ,no_run
+```rust ,ignore
 // build.rs
 bosion::gather_to_env();
 
