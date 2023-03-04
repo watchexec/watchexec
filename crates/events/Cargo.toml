@@ -16,11 +16,23 @@ edition = "2021"
 
 [dependencies.notify]
 version = "5.0.0"
+optional = true
+
+[dependencies.serde]
+version = "1.0.152"
+optional = true
+features = ["derive"]
 
 [dependencies.watchexec-signals]
 version = "1.0.0"
 path = "../signals"
+default-features = false
 
 [target.'cfg(unix)'.dependencies.nix]
 version = "0.26.2"
 features = ["signal"]
+
+[features]
+default = ["notify"]
+notify = ["dep:notify"]
+serde = ["dep:serde", "notify?/serde", "watchexec-signals/serde"]

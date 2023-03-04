@@ -538,8 +538,7 @@ pub struct Args {
 	///     + `name`, the normalised signal name ('hangup', 'interrupt', 'quit', 'terminate', 'user1', 'user2').
 	///   * 'completion', for when a command ends:
 	///     + `disposition`, the exit disposition ('success', 'error', 'signal', 'stop', 'exception', 'continued').
-	///     + `code`, the exit, stop, or exception code.
-	///     + `signal`, the signal name or number if the exit was caused by a signal.
+	///     + `code`, the exit, signal, stop, or exception code.
 	///
 	/// The 'json-stdin' mode will emit JSON events to the standard input of the command, one per
 	/// line, then close stdin. The 'json-file' mode will create a temporary file, write the

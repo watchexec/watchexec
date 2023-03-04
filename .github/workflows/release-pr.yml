@@ -9,6 +9,8 @@ on:
         options:
           - cli
           - lib
+          - events
+          - signals
           - filterer/globset
           - filterer/ignore
           - filterer/tagged

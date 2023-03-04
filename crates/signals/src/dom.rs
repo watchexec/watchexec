@@ -7,6 +7,8 @@
 /// `Ctrl-Close` (the equivalent of `SIGHUP` on Unix, without the semantics of configuration reload)
 /// is not supported, and on console close the process will be terminated by the OS.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "kebab-case"))]
 pub enum MainSignal {
 	/// Received when the terminal is disconnected.
 	///

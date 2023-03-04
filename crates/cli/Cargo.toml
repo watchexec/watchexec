@@ -55,6 +55,7 @@ path = "../lib"
 [dependencies.watchexec-events]
 version = "1.0.0"
 path = "../events"
+features = ["serde"]
 
 [dependencies.watchexec-signals]
 version = "1.0.0"

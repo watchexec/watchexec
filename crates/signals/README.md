@@ -16,3 +16,9 @@ fn main() {
     assert_eq!(SubSignal::from_str("SIGINT").unwrap(), SubSignal::Interrupt);
 }
 ```
+
+## Features
+
+- `serde`: enables serde support.
+- `fromstr`: enables `FromStr` support (default).
+- `miette`: enables miette (rich diagnostics) support (default).

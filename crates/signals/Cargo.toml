@@ -22,11 +22,17 @@ optional = true
 version = "1.0.26"
 optional = true
 
+[dependencies.serde]
+version = "1.0.152"
+optional = true
+features = ["derive"]
+
 [target.'cfg(unix)'.dependencies.nix]
 version = "0.26.2"
 features = ["signal"]
 
 [features]
-default = ["parse", "miette"]
-parse = ["dep:thiserror"]
+default = ["fromstr", "miette"]
+fromstr = ["dep:thiserror"]
 miette = ["dep:miette"]
+serde = ["dep:serde"]

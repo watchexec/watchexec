@@ -17,6 +17,14 @@ updates:
     schedule:
       interval: "daily"
   - package-ecosystem: "cargo"
+    directory: "/crates/events"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "cargo"
+    directory: "/crates/signals"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "cargo"
     directory: "/crates/filterer/ignore"
     schedule:
       interval: "daily"

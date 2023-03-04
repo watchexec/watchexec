@@ -1,6 +1,6 @@
 //! Notifications (signals or Windows control events) sent to or received from a sub process.
 
-#[cfg(feature = "parse")]
+#[cfg(feature = "fromstr")]
 use std::str::FromStr;
 
 #[cfg(unix)]
@@ -15,6 +15,8 @@ use crate::MainSignal;
 /// On Unix, there are several "first-class" signals which have their own variants, and a generic
 /// [`Custom`][SubSignal::Custom] variant which can be used to send arbitrary signals.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "kebab-case"))]
 pub enum SubSignal {
 	/// Indicate that the terminal is disconnected.
 	///
@@ -172,7 +174,7 @@ impl From<i32> for SubSignal {
 	}
 }
 
-#[cfg(feature = "parse")]
+#[cfg(feature = "fromstr")]
 impl SubSignal {
 	/// Parse the input as a unix signal.
 	///
@@ -262,7 +264,7 @@ impl SubSignal {
 	}
 }
 
-#[cfg(feature = "parse")]
+#[cfg(feature = "fromstr")]
 impl FromStr for SubSignal {
 	type Err = SignalParseError;
 
@@ -272,7 +274,7 @@ impl FromStr for SubSignal {
 }
 
 /// Error when parsing a signal from string.
-#[cfg(feature = "parse")]
+#[cfg(feature = "fromstr")]
 #[cfg_attr(feature = "miette", derive(miette::Diagnostic))]
 #[derive(Debug, thiserror::Error)]
 #[error("invalid signal `{src}`: {err}")]
@@ -289,6 +291,7 @@ pub struct SignalParseError {
 	span: (usize, usize),
 }
 
+#[cfg(feature = "fromstr")]
 impl SignalParseError {
 	pub fn new(src: &str, err: &str) -> Self {
 		Self {

@@ -2277,6 +2277,7 @@ dependencies = [
  "kqueue",
  "libc",
  "mio",
+ "serde",
  "walkdir",
  "windows-sys 0.42.0",
 ]
@@ -3793,6 +3794,7 @@ version = "1.0.0"
 dependencies = [
  "nix 0.26.2",
  "notify",
+ "serde",
  "watchexec-signals",
 ]
 
@@ -3850,6 +3852,7 @@ version = "1.0.0"
 dependencies = [
  "miette",
  "nix 0.26.2",
+ "serde",
  "thiserror",
 ]
 
