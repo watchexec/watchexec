@@ -1,6 +1,6 @@
-#!/bin/sh
+#!/bin/bash
 
-set -e
+set -euo pipefail
 
 for test in default no-git no-std; do
 	echo "Testing $test"
