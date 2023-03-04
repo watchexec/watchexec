@@ -73,6 +73,10 @@ jobs:
     - name: Check that CLI runs
       run: cargo run ${{ env.flags }} -p watchexec-cli -- -1 echo
 
+    - name: Run bosion integration tests
+      run: ./run-tests.sh
+      working-directory: crates/bosion
+
     - name: Generate manpage
       run: cargo run ${{ env.flags }} -p watchexec-cli -- --manpage > doc/watchexec.1
     - name: Check that manpage is up to date

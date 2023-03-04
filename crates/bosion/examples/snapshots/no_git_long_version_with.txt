@@ -1,0 +1,6 @@
+0.1.0 ({today date}) +foo
+build-date: {today date}
+release: 0.1.0
+features: default,foo
+extra: field
+custom: 1.2.3
