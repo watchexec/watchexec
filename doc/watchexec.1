@@ -4,7 +4,7 @@
 .SH NAME
 watchexec \- Execute commands when watched files change
 .SH SYNOPSIS
-\fBwatchexec\fR [\fB\-w\fR|\fB\-\-watch\fR] [\fB\-c\fR|\fB\-\-clear\fR] [\fB\-o\fR|\fB\-\-on\-busy\-update\fR] [\fB\-r\fR|\fB\-\-restart\fR] [\fB\-s\fR|\fB\-\-signal\fR] [\fB\-k\fR|\fB\-\-kill\fR] [\fB\-\-stop\-signal\fR] [\fB\-\-stop\-timeout\fR] [\fB\-\-debounce\fR] [\fB\-\-stdin\-quit\fR] [\fB\-\-no\-vcs\-ignore\fR] [\fB\-\-no\-project\-ignore\fR] [\fB\-\-no\-global\-ignore\fR] [\fB\-\-no\-default\-ignore\fR] [\fB\-p\fR|\fB\-\-postpone\fR] [\fB\-\-delay\-run\fR] [\fB\-\-poll\fR] [\fB\-\-shell\fR] [\fB\-n \fR] [\fB\-\-no\-environment\fR] [\fB\-\-emit\-events\-to\fR] [\fB\-E\fR|\fB\-\-env\fR] [\fB\-\-no\-process\-group\fR] [\fB\-N\fR|\fB\-\-notify\fR] [\fB\-\-project\-origin\fR] [\fB\-\-workdir\fR] [\fB\-e\fR|\fB\-\-exts\fR] [\fB\-f\fR|\fB\-\-filter\fR] [\fB\-\-filter\-file\fR] [\fB\-i\fR|\fB\-\-ignore\fR] [\fB\-\-ignore\-file\fR] [\fB\-\-fs\-events\fR] [\fB\-\-no\-meta\fR] [\fB\-\-print\-events\fR] [\fB\-v\fR|\fB\-\-verbose\fR]... [\fB\-\-log\-file\fR] [\fB\-\-manpage\fR] [\fB\-\-completions\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fICOMMAND\fR] 
+\fBwatchexec\fR [\fB\-w\fR|\fB\-\-watch\fR] [\fB\-c\fR|\fB\-\-clear\fR] [\fB\-o\fR|\fB\-\-on\-busy\-update\fR] [\fB\-r\fR|\fB\-\-restart\fR] [\fB\-s\fR|\fB\-\-signal\fR] [\fB\-k\fR|\fB\-\-kill\fR] [\fB\-\-stop\-signal\fR] [\fB\-\-stop\-timeout\fR] [\fB\-\-debounce\fR] [\fB\-\-stdin\-quit\fR] [\fB\-\-no\-vcs\-ignore\fR] [\fB\-\-no\-project\-ignore\fR] [\fB\-\-no\-global\-ignore\fR] [\fB\-\-no\-default\-ignore\fR] [\fB\-p\fR|\fB\-\-postpone\fR] [\fB\-\-delay\-run\fR] [\fB\-\-poll\fR] [\fB\-\-shell\fR] [\fB\-n \fR] [\fB\-\-no\-environment\fR] [\fB\-E\fR|\fB\-\-env\fR] [\fB\-\-no\-process\-group\fR] [\fB\-N\fR|\fB\-\-notify\fR] [\fB\-\-project\-origin\fR] [\fB\-\-workdir\fR] [\fB\-e\fR|\fB\-\-exts\fR] [\fB\-f\fR|\fB\-\-filter\fR] [\fB\-\-filter\-file\fR] [\fB\-i\fR|\fB\-\-ignore\fR] [\fB\-\-ignore\-file\fR] [\fB\-\-fs\-events\fR] [\fB\-\-no\-meta\fR] [\fB\-\-print\-events\fR] [\fB\-v\fR|\fB\-\-verbose\fR]... [\fB\-\-log\-file\fR] [\fB\-\-manpage\fR] [\fB\-\-completions\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fICOMMAND\fR] 
 .SH DESCRIPTION
 Execute commands when watched files change.
 .PP
@@ -231,105 +231,6 @@ This is a shorthand for \*(Aq\-\-shell=none\*(Aq.
 Shorthand for \*(Aq\-\-emit\-events=none\*(Aq
 
 This is the old way to disable event emission into the environment. See \*(Aq\-\-emit\-events\*(Aq for more.
-.TP
-\fB\-\-emit\-events\-to\fR=\fIMODE\fR
-Configure event emission
-
-Watchexec emits event information when running a command, which can be used by the command
-to target specific changed files.
-
-One thing to take care of is assuming inherent behaviour where there is only chance.
-Notably, it could appear as if the `RENAMED` variable contains both the original and the new
-path being renamed. In previous versions, it would even appear on some platforms as if the
-original always came before the new. However, none of this was true. It\*(Aqs impossible to
-reliably and portably know which changed path is the old or new, "half" renames may appear
-(only the original, only the new), "unknown" renames may appear (change was a rename, but
-whether it was the old or new isn\*(Aqt known), rename events might split across two debouncing
-boundaries, and so on.
-
-This option controls where that information is emitted. It defaults to \*(Aqenvironment\*(Aq, which
-sets environment variables with the paths of the affected files, for filesystem events:
-
-$WATCHEXEC_COMMON_PATH is set to the longest common path of all of the below variables,
-and so should be prepended to each path to obtain the full/real path. Then:
-
-\- $WATCHEXEC_CREATED_PATH is set when files/folders were created
-\- $WATCHEXEC_REMOVED_PATH is set when files/folders were removed
-\- $WATCHEXEC_RENAMED_PATH is set when files/folders were renamed
-\- $WATCHEXEC_WRITTEN_PATH is set when files/folders were modified
-\- $WATCHEXEC_META_CHANGED_PATH is set when files/folders\*(Aq metadata were modified
-\- $WATCHEXEC_OTHERWISE_CHANGED_PATH is set for every other kind of pathed event
-
-Multiple paths are separated by the system path separator, \*(Aq;\*(Aq on Windows and \*(Aq:\*(Aq on unix.
-Within each variable, paths are deduplicated and sorted in binary order (i.e. neither
-Unicode nor locale aware).
-
-This is the legacy mode and will be deprecated and removed in the future. The environment of
-a process is a very restricted space, while also limited in what it can usefully represent.
-Large numbers of files will either cause the environment to be truncated, or may error or
-crash the process entirely.
-
-Two new modes are available: \*(Aqstdin\*(Aq writes absolute paths to the stdin of the command,
-one per line, each prefixed with `create:`, `remove:`, `rename:`, `modify:`, or `other:`,
-then closes the handle; \*(Aqfile\*(Aq writes the same thing to a temporary file, and its path is
-given with the $WATCHEXEC_EVENTS_FILE environment variable.
-
-There are also two JSON modes, which are based on JSON objects and can represent the full
-set of events Watchexec handles. Here\*(Aqs an example of a folder being created on Linux:
-
-```json
-{
-  "tags": [
-    {
-      "kind": "path",
-      "absolute": "/home/user/your/new\-folder",
-      "filetype": "dir"
-    },
-    {
-      "kind": "fs",
-      "simple": "create",
-      "full": "Create(Folder)"
-    },
-    {
-      "kind": "source",
-      "source": "filesystem",
-    }
-  ],
-  "metadata": {
-    "notify\-backend": "inotify"
-  }
-}
-```
-
-The fields are as follows:
-
-\- `tags`, structured event data.
-\- `tags[].kind`, which can be:
-  * \*(Aqpath\*(Aq, along with:
-    + `absolute`, an absolute path.
-    + `filetype`, a file type if known (\*(Aqdir\*(Aq, \*(Aqfile\*(Aq, \*(Aqsymlink\*(Aq, \*(Aqother\*(Aq).
-  * \*(Aqfs\*(Aq:
-    + `simple`, the "simple" event type (\*(Aqaccess\*(Aq, \*(Aqcreate\*(Aq, \*(Aqmodify\*(Aq, \*(Aqremove\*(Aq, or \*(Aqother\*(Aq).
-    + `full`, the "full" event type, which is too complex to fully describe here, but looks like \*(AqGeneral(Precise(Specific))\*(Aq.
-  * \*(Aqsource\*(Aq, along with:
-    + `source`, the source of the event (\*(Aqfilesystem\*(Aq, \*(Aqkeyboard\*(Aq, \*(Aqmouse\*(Aq, \*(Aqos\*(Aq, \*(Aqtime\*(Aq, \*(Aqinternal\*(Aq).
-  * \*(Aqkeyboard\*(Aq, along with:
-    + `keycode`. Currently only the value \*(Aqeof\*(Aq is supported.
-  * \*(Aqprocess\*(Aq, for events caused by processes:
-    + `pid`, the process ID.
-  * \*(Aqsignal\*(Aq, for signals sent to Watchexec:
-    + `name`, the normalised signal name (\*(Aqhangup\*(Aq, \*(Aqinterrupt\*(Aq, \*(Aqquit\*(Aq, \*(Aqterminate\*(Aq, \*(Aquser1\*(Aq, \*(Aquser2\*(Aq).
-  * \*(Aqcompletion\*(Aq, for when a command ends:
-    + `disposition`, the exit disposition (\*(Aqsuccess\*(Aq, \*(Aqerror\*(Aq, \*(Aqsignal\*(Aq, \*(Aqstop\*(Aq, \*(Aqexception\*(Aq, \*(Aqcontinued\*(Aq).
-    + `code`, the exit, stop, or exception code.
-    + `signal`, the signal name or number if the exit was caused by a signal.
-
-The \*(Aqjson\-stdin\*(Aq mode will emit JSON events to the standard input of the command, one per
-line, then close stdin. The \*(Aqjson\-file\*(Aq mode will create a temporary file, write the
-events to it, and provide the path to the file with the $WATCHEXEC_EVENTS_FILE
-environment variable.
-
-Finally, the special \*(Aqnone\*(Aq mode will disable event emission entirely.
 .TP
 \fB\-E\fR, \fB\-\-env\fR=\fIKEY=VALUE\fR
 Add env vars to the command
