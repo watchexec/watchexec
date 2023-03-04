@@ -6,15 +6,15 @@ watchexec - Execute commands when watched files change
 
 **watchexec** \[**-w**\|**\--watch**\] \[**-c**\|**\--clear**\]
 \[**-o**\|**\--on-busy-update**\] \[**-r**\|**\--restart**\]
-\[**-s**\|**\--signal**\] \[**-k**\|**\--kill**\] \[**\--stop-signal**\]
-\[**\--stop-timeout**\] \[**\--debounce**\] \[**\--stdin-quit**\]
-\[**\--no-vcs-ignore**\] \[**\--no-project-ignore**\]
-\[**\--no-global-ignore**\] \[**\--no-default-ignore**\]
-\[**-p**\|**\--postpone**\] \[**\--delay-run**\] \[**\--poll**\]
-\[**\--shell**\] \[**-n **\] \[**\--no-environment**\]
-\[**-E**\|**\--env**\] \[**\--no-process-group**\]
-\[**-N**\|**\--notify**\] \[**\--project-origin**\] \[**\--workdir**\]
-\[**-e**\|**\--exts**\] \[**-f**\|**\--filter**\] \[**\--filter-file**\]
+\[**-s**\|**\--signal**\] \[**\--stop-signal**\] \[**\--stop-timeout**\]
+\[**\--debounce**\] \[**\--stdin-quit**\] \[**\--no-vcs-ignore**\]
+\[**\--no-project-ignore**\] \[**\--no-global-ignore**\]
+\[**\--no-default-ignore**\] \[**-p**\|**\--postpone**\]
+\[**\--delay-run**\] \[**\--poll**\] \[**\--shell**\] \[**-n **\]
+\[**\--no-environment**\] \[**-E**\|**\--env**\]
+\[**\--no-process-group**\] \[**-N**\|**\--notify**\]
+\[**\--project-origin**\] \[**\--workdir**\] \[**-e**\|**\--exts**\]
+\[**-f**\|**\--filter**\] \[**\--filter-file**\]
 \[**-i**\|**\--ignore**\] \[**\--ignore-file**\] \[**\--fs-events**\]
 \[**\--no-meta**\] \[**\--print-events**\]
 \[**-v**\|**\--verbose**\]\... \[**\--log-file**\] \[**\--manpage**\]
@@ -112,10 +112,6 @@ implies \--on-busy-update=signal; otherwise the signal used when that
 mode is restart is controlled by \--stop-signal.
 
 See the long documentation for \--stop-signal for syntax.
-
-**-k**, **\--kill**
-
-:   Hidden legacy shorthand for \--signal=kill
 
 **\--stop-signal**=*SIGNAL*
 

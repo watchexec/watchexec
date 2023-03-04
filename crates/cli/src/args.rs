@@ -183,7 +183,7 @@ pub struct Args {
 	pub signal: Option<SubSignal>,
 
 	/// Hidden legacy shorthand for '--signal=kill'.
-	#[arg(short, long)]
+	#[arg(short, long, hide = true)]
 	pub kill: bool,
 
 	/// Signal to send to stop the command
