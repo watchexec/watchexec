@@ -15,7 +15,7 @@ In your `Cargo.toml`:
 
 ```toml
 [build-dependencies]
-bosion = "0.0.0"
+bosion = "1.0.0"
 ```
 
 In your `build.rs`:
