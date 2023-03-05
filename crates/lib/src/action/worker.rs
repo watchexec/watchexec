@@ -104,10 +104,14 @@ pub async fn worker(
 
 					set.push(event);
 
-					let elapsed = last.elapsed();
-					if elapsed < working.borrow().throttle {
-						trace!(?elapsed, "still within throttle window, cycling");
-						continue;
+					if priority == Priority::Urgent {
+						trace!("urgent event, by-passing throttle");
+					} else {
+						let elapsed = last.elapsed();
+						if elapsed < working.borrow().throttle {
+							trace!(?elapsed, "still within throttle window, cycling");
+							continue;
+						}
 					}
 				}
 			}

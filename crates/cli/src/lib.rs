@@ -1,20 +1,27 @@
 #![deny(rust_2018_idioms)]
 #![allow(clippy::missing_const_for_fn, clippy::future_not_send)]
 
-use std::{env::var, fs::File, sync::Mutex};
+use std::{env::var, fs::File, io::Write, process::Stdio, sync::Mutex};
 
-use miette::{IntoDiagnostic, Result};
+use args::{Args, ShellCompletion};
+use clap::CommandFactory;
+use clap_complete::{Generator, Shell};
+use clap_mangen::Man;
+use command_group::AsyncCommandGroup;
+use is_terminal::IsTerminal;
+use miette::{Context, IntoDiagnostic, Result};
+use tokio::{fs::metadata, io::AsyncWriteExt, process::Command};
 use tracing::{debug, info, warn};
 use watchexec::{
 	event::{Event, Priority},
 	Watchexec,
 };
 
-mod args;
+pub mod args;
 mod config;
 mod filterer;
 
-pub async fn run() -> Result<()> {
+async fn init() -> Result<Args> {
 	let mut log_on = false;
 
 	#[cfg(feature = "dev-console")]
@@ -38,19 +45,29 @@ pub async fn run() -> Result<()> {
 		}
 	}
 
-	let tagged_filterer = var("WATCHEXEC_FILTERER")
-		.map(|v| v == "tagged")
-		.unwrap_or(false);
-
-	let args = args::get_args(tagged_filterer)?;
-	let verbosity = args.occurrences_of("verbose");
+	let args = args::get_args();
+	let verbosity = args.verbose.unwrap_or(0);
 
 	if log_on {
 		warn!("ignoring logging options from args");
 	} else if verbosity > 0 {
-		let log_file = if let Some(file) = args.value_of_os("log-file") {
+		let log_file = if let Some(file) = &args.log_file {
+			let info = metadata(&file)
+				.await
+				.into_diagnostic()
+				.wrap_err("Opening log file failed")?;
+			let path = if info.is_dir() {
+				let filename = format!(
+					"watchexec.{}.log",
+					chrono::Utc::now().format("%Y-%m-%dT%H-%M-%SZ")
+				);
+				file.join(filename)
+			} else {
+				file.to_owned()
+			};
+
 			// TODO: use tracing-appender instead
-			Some(File::create(file).into_diagnostic()?)
+			Some(File::create(path).into_diagnostic()?)
 		} else {
 			None
 		};
@@ -80,22 +97,20 @@ pub async fn run() -> Result<()> {
 		}
 	}
 
+	Ok(args)
+}
+
+async fn run_watchexec(args: Args) -> Result<()> {
 	info!(version=%env!("CARGO_PKG_VERSION"), "constructing Watchexec from CLI");
-	debug!(?args, "arguments");
 
 	let init = config::init(&args);
 	let mut runtime = config::runtime(&args)?;
-	runtime.filterer(if tagged_filterer {
-		eprintln!("!!! EXPERIMENTAL: using tagged filterer !!!");
-		filterer::tagged(&args).await?
-	} else {
-		filterer::globset(&args).await?
-	});
+	runtime.filterer(filterer::globset(&args).await?);
 
 	info!("initialising Watchexec runtime");
 	let wx = Watchexec::new(init, runtime)?;
 
-	if !args.is_present("postpone") {
+	if !args.postpone {
 		debug!("kicking off with empty event");
 		wx.send_event(Event::default(), Priority::Urgent).await?;
 	}
@@ -105,4 +120,83 @@ pub async fn run() -> Result<()> {
 	info!("done with main loop");
 
 	Ok(())
+}
+
+async fn run_manpage(_args: Args) -> Result<()> {
+	info!(version=%env!("CARGO_PKG_VERSION"), "constructing manpage");
+
+	let man = Man::new(Args::command().long_version(None));
+	let mut buffer: Vec<u8> = Default::default();
+	man.render(&mut buffer).into_diagnostic()?;
+
+	if std::io::stdout().is_terminal() && which::which("man").is_ok() {
+		let mut child = Command::new("man")
+			.arg("-l")
+			.arg("-")
+			.stdin(Stdio::piped())
+			.stdout(Stdio::inherit())
+			.stderr(Stdio::inherit())
+			.group()
+			.kill_on_drop(true)
+			.spawn()
+			.into_diagnostic()?;
+		child
+			.inner()
+			.stdin
+			.as_mut()
+			.unwrap()
+			.write_all(&buffer)
+			.await
+			.into_diagnostic()?;
+
+		if let Some(code) = child
+			.wait()
+			.await
+			.into_diagnostic()?
+			.code()
+			.and_then(|code| if code == 0 { None } else { Some(code) })
+		{
+			return Err(miette::miette!("Exited with status code {}", code));
+		}
+	} else {
+		std::io::stdout()
+			.lock()
+			.write_all(&buffer)
+			.into_diagnostic()?;
+	}
+
+	Ok(())
+}
+
+async fn run_completions(shell: ShellCompletion) -> Result<()> {
+	info!(version=%env!("CARGO_PKG_VERSION"), "constructing completions");
+
+	fn generate(generator: impl Generator) {
+		let mut cmd = Args::command();
+		clap_complete::generate(generator, &mut cmd, "watchexec", &mut std::io::stdout());
+	}
+
+	match shell {
+		ShellCompletion::Bash => generate(Shell::Bash),
+		ShellCompletion::Elvish => generate(Shell::Elvish),
+		ShellCompletion::Fish => generate(Shell::Fish),
+		ShellCompletion::Nu => generate(clap_complete_nushell::Nushell),
+		ShellCompletion::Powershell => generate(Shell::PowerShell),
+		ShellCompletion::Zsh => generate(Shell::Zsh),
+	}
+
+	Ok(())
+}
+
+pub async fn run() -> Result<()> {
+	let args = init().await?;
+	debug!(?args, "arguments");
+
+	if args.manpage {
+		run_manpage(args).await
+	} else if let Some(shell) = args.completions {
+		run_completions(shell).await
+	} else {
+		run_watchexec(args).await
+	}
 }

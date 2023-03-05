@@ -1,6 +1,5 @@
 use std::convert::Infallible;
 
-use clap::ArgMatches;
 use miette::Report;
 use tracing::error;
 use watchexec::{
@@ -10,7 +9,9 @@ use watchexec::{
 	ErrorHook,
 };
 
-pub fn init(_args: &ArgMatches) -> InitConfig {
+use crate::args::Args;
+
+pub fn init(_args: &Args) -> InitConfig {
 	let mut config = InitConfig::default();
 	config.on_error(SyncFnHandler::from(
 		|err: ErrorHook| -> std::result::Result<(), Infallible> {

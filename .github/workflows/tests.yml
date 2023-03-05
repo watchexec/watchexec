@@ -25,6 +25,7 @@ concurrency:
 jobs:
   test:
     strategy:
+      fail-fast: false
       matrix:
         platform:
           - macos
@@ -71,6 +72,16 @@ jobs:
       run: cargo test ${{ env.flags }}
     - name: Check that CLI runs
       run: cargo run ${{ env.flags }} -p watchexec-cli -- -1 echo
+
+    - name: Generate manpage
+      run: cargo run ${{ env.flags }} -p watchexec-cli -- --manpage > doc/watchexec.1
+    - name: Check that manpage is up to date
+      run: git diff --exit-code -- doc/
+
+    - name: Generate completions
+      run: bin/completions
+    - name: Check that completions are up to date
+      run: git diff --exit-code -- completions/
 
   cross-checks:
     name: Checks only against select targets

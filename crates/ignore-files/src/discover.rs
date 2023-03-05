@@ -12,13 +12,6 @@ use tracing::{trace, trace_span};
 
 use crate::{IgnoreFile, IgnoreFilter};
 
-/// The separator for paths used in environment variables.
-#[cfg(unix)]
-const PATH_SEPARATOR: &str = ":";
-/// The separator for paths used in environment variables.
-#[cfg(not(unix))]
-const PATH_SEPARATOR: &str = ";";
-
 /// Finds all ignore files in the given directory and subdirectories.
 ///
 /// This considers:
@@ -184,14 +177,12 @@ pub async fn from_origin(path: impl AsRef<Path> + Send) -> (Vec<IgnoreFile>, Vec
 
 /// Finds all ignore files that apply to the current runtime.
 ///
-/// Takes an optional `appname` for the calling application for looking at an environment variable
-/// and an application-specific config location.
+/// Takes an optional `appname` for the calling application for application-specific config files.
 ///
 /// This considers:
 /// - User-specific git ignore files (e.g. `~/.gitignore`)
 /// - Git configurable ignore files (e.g. with `core.excludesFile` in system or user config)
 /// - `$XDG_CONFIG_HOME/{appname}/ignore`, as well as other locations (APPDATA on Windows…)
-/// - Files from the `{APPNAME}_IGNORE_FILES` environment variable (separated the same was as `PATH`)
 ///
 /// All errors (permissions, etc) are collected and returned alongside the ignore files: you may
 /// want to show them to the user while still using whatever ignores were successfully found. Errors
@@ -204,15 +195,6 @@ pub async fn from_origin(path: impl AsRef<Path> + Send) -> (Vec<IgnoreFile>, Vec
 pub async fn from_environment(appname: Option<&str>) -> (Vec<IgnoreFile>, Vec<Error>) {
 	let mut files = Vec::new();
 	let mut errors = Vec::new();
-
-	if let Some(name) = appname {
-		for path in env::var(format!("{}_IGNORE_FILES", name.to_uppercase()))
-			.unwrap_or_default()
-			.split(PATH_SEPARATOR)
-		{
-			discover_file(&mut files, &mut errors, None, None, PathBuf::from(path)).await;
-		}
-	}
 
 	let mut found_git_global = false;
 	match File::from_environment_overrides().map(|mut env| {

@@ -2,7 +2,7 @@
 name = "watchexec-cli"
 version = "1.21.1"
 
-authors = ["Matt Green <mattgreenrocks@gmail.com>", "Félix Saparelli <felix@passcod.name>"]
+authors = ["Félix Saparelli <felix@passcod.name>", "Matt Green <mattgreenrocks@gmail.com>"]
 license = "Apache-2.0"
 description = "Executes commands in response to file modifications"
 keywords = ["watcher", "filesystem", "cli", "watchexec"]
@@ -20,16 +20,25 @@ name = "watchexec"
 path = "src/main.rs"
 
 [dependencies]
+argfile = "0.1.5"
+chrono = "0.4.23"
+clap_complete = "4.1.4"
+clap_mangen = "0.2.9"
+command-group = { version = "2.1.0", features = ["with-tokio"] }
 console-subscriber = { version = "0.1.0", optional = true }
 dirs = "4.0.0"
 futures = "0.3.17"
+humantime = "2.1.0"
+is-terminal = "0.4.4"
 miette = { version = "5.3.0", features = ["fancy"] }
 notify-rust = "4.5.2"
 tracing = "0.1.26"
+which = "4.4.0"
+clap_complete_nushell = "0.1.10"
 
 [dependencies.clap]
-version = "3.1.18"
-features = ["cargo", "wrap_help"]
+version = "4.1.8"
+features = ["cargo", "derive", "env", "wrap_help"]
 
 [dependencies.ignore-files]
 version = "1.1.0"
@@ -46,10 +55,6 @@ path = "../lib"
 [dependencies.watchexec-filterer-globset]
 version = "1.1.0"
 path = "../filterer/globset"
-
-[dependencies.watchexec-filterer-tagged]
-version = "0.2.0"
-path = "../filterer/tagged"
 
 [dependencies.tokio]
 version = "1.24.2"
@@ -74,6 +79,12 @@ features = [
 
 [target.'cfg(target_env = "musl")'.dependencies]
 mimalloc = "0.1.26"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+shadow-rs = "0.21.0"
+
+[target.'cfg(target_os = "linux")'.build-dependencies]
+shadow-rs = "0.21.0"
 
 [build-dependencies]
 embed-resource = "1.6.1"

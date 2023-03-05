@@ -1,425 +1,374 @@
-.\" generated with Ronn/v0.7.3
-.\" http://github.com/rtomayko/ronn/tree/0.7.3
-.
-.TH "WATCHEXEC" "1" "June 2022" "" ""
-.
-.SH "NAME"
-\fBwatchexec\fR \- execute commands when watched files change
-.
-.SH "SYNOPSIS"
-watchexec [OPTIONS] [\-\-] \fIcommand\fR [\fIargument\fR\.\.\.] watchexec \-V|\-\-version watchexec [\-h|\-\-help]
-.
-.SH "DESCRIPTION"
-Recursively monitors the current directory for changes, executing the command when a filesystem change is detected\. By default, watchexec uses efficient kernel\-level mechanisms to watch for changes\.
-.
-.P
-At startup, the specified \fIcommand\fR (passing any supplied \fIargument\fRs) is run once, and watchexec begins monitoring for changes\.
-.
-.SH "OPTIONS"
-.
-.SS "Command options"
-.
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH watchexec 1  "watchexec 1.21.1" 
+.SH NAME
+watchexec \- Execute commands when watched files change
+.SH SYNOPSIS
+\fBwatchexec\fR [\fB\-w\fR|\fB\-\-watch\fR] [\fB\-c\fR|\fB\-\-clear\fR] [\fB\-o\fR|\fB\-\-on\-busy\-update\fR] [\fB\-r\fR|\fB\-\-restart\fR] [\fB\-s\fR|\fB\-\-signal\fR] [\fB\-\-stop\-signal\fR] [\fB\-\-stop\-timeout\fR] [\fB\-\-debounce\fR] [\fB\-\-stdin\-quit\fR] [\fB\-\-no\-vcs\-ignore\fR] [\fB\-\-no\-project\-ignore\fR] [\fB\-\-no\-global\-ignore\fR] [\fB\-\-no\-default\-ignore\fR] [\fB\-p\fR|\fB\-\-postpone\fR] [\fB\-\-delay\-run\fR] [\fB\-\-poll\fR] [\fB\-\-shell\fR] [\fB\-n \fR] [\fB\-\-no\-environment\fR] [\fB\-E\fR|\fB\-\-env\fR] [\fB\-\-no\-process\-group\fR] [\fB\-N\fR|\fB\-\-notify\fR] [\fB\-\-project\-origin\fR] [\fB\-\-workdir\fR] [\fB\-e\fR|\fB\-\-exts\fR] [\fB\-f\fR|\fB\-\-filter\fR] [\fB\-\-filter\-file\fR] [\fB\-i\fR|\fB\-\-ignore\fR] [\fB\-\-ignore\-file\fR] [\fB\-\-fs\-events\fR] [\fB\-\-no\-meta\fR] [\fB\-\-print\-events\fR] [\fB\-v\fR|\fB\-\-verbose\fR]... [\fB\-\-log\-file\fR] [\fB\-\-manpage\fR] [\fB\-\-completions\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fICOMMAND\fR] 
+.SH DESCRIPTION
+Execute commands when watched files change.
+.PP
+Recursively monitors the current directory for changes, executing the command when a filesystem change is detected (among other event sources). By default, watchexec uses efficient kernel\-level mechanisms to watch for changes.
+.PP
+At startup, the specified <COMMAND> is run once, and watchexec begins monitoring for changes.
+.PP
+Examples:
+.PP
+Rebuild a project when source files change:
+.PP
+$ watchexec make
+.PP
+Watch all HTML, CSS, and JavaScript files for changes:
+.PP
+$ watchexec \-e html,css,js make
+.PP
+Run tests when source files change, clearing the screen each time:
+.PP
+$ watchexec \-c make test
+.PP
+Launch and restart a node.js server:
+.PP
+$ watchexec \-r node app.js
+.PP
+Watch lib and src directories for changes, rebuilding each time:
+.PP
+$ watchexec \-w lib \-w src make
+.SH OPTIONS
 .TP
-\fIcommand\fR
-Command to run when watched files are modified, and at startup, unless \fB\-\-postpone\fR is specified\. All \fIargument\fRs are passed to \fIcommand\fR\. If you pass flags to the command, you should separate it with \fB\-\-\fR, for example: \fBwatchexec \-w src \-\- rsync \-a src dest\fR\.
-.
-.P
-Behaviour depends on the value of \fB\-\-shell\fR: for all except \fBnone\fR, every part of \fIcommand\fR is joined together into one string with a single ascii space character, and given to the shell as described\. For \fBnone\fR, each distinct element of \fIcommand\fR is passed as per the execvp(3) convention: first argument is the program, as a file or searched in the \fBPATH\fR, rest are arguments\.
-.
+\fB\-w\fR, \fB\-\-watch\fR=\fIPATH\fR
+Watch a specific file or directory
+
+By default, Watchexec watches the current directory.
+
+When watching a single file, it\*(Aqs often better to watch the containing directory instead, and filter on the filename. Some editors may replace the file with a new one when saving, and some platforms may not detect that or further changes.
+
+Upon starting, Watchexec resolves a "project origin" from the watched paths. See the help for \*(Aq\-\-project\-origin\*(Aq for more information.
+
+This option can be specified multiple times to watch multiple files or directories.
 .TP
-\fB\-E\fR, \fB\-\-env\fR \fIkey=value pair\fR
-Set additional environment variables on the command (not to Watchexec itself)\. Can be given multiple times (one per variable to set)\.
-.
+\fB\-c\fR, \fB\-\-clear\fR=\fIMODE\fR
+Clear screen before running command
+
+If this doesn\*(Aqt completely clear the screen, try \*(Aq\-\-clear=reset\*(Aq.
 .TP
-\fB\-n\fR
-Shorthand for \fB\-\-shell=none\fR\.
-.
-.TP
-\fB\-\-no\-process\-group\fR
-Do not use a process group when running \fIcommand\fR\.
-.
-.TP
-\fB\-\-no\-environment\fR
-Do not set WATCHEXEC\fI*\fRPATH environment variables for the command\.
-.
-.TP
-\fB\-\-no\-shell\fR
-Deprecated\. Alias for \fB\-\-shell=none\fR\.
-.
-.TP
-\fB\-\-shell\fR \fIshell\fR
-Change the shell used to run the command\. Set to \fBnone\fR to run the command directly without a shell\.
-.
-.P
-The special value \fBpowershell\fR will use Microsoft Powershell\'s calling convention, otherwise \fBSHELL \-c COMMAND\fR\.
-.
-.P
-On Windows, the additional \fBcmd\fR special value uses CMD\.EXE calling convention\.
-.
-.P
-The \fBnone\fR value is especially useful in combination with \fB\-\-signal\fR, as the signal is then sent directly to the running command\. While \fB\-\-shell=none\fR is a little more performant than the default, it prevents using shell\-features like pipes and redirects\.
-.
-.P
-If not a special value, the string provided may contain arguments to the shell as long as that is kept simple: the string is split along whitespace, and used as per execvp(3): first is shell program, rest are arguments to the shell, then \fB\-c\fR is added, and finally the \fBCOMMAND\fR\.
-.
-.P
-See the \fIEXAMPLES\fR for uses of each of these\.
-.
-.TP
-\fB\-\-workdir <path>\fR
-Set the working directory of the command (not of Watchexec itself!)\. By default not set, and inherited from the Watchexec instance as is usual\.
-.
-.SS "Filtering options"
-.
-.TP
-\fB\-e\fR, \fB\-\-exts\fR \fIextensions\fR
-Comma\-separated list of file extensions to filter by\. Leading dots (\.rs) are allowed\. (This is a shorthand for \fB\-f\fR)\.
-.
-.TP
-\fB\-f\fR, \fB\-\-filter\fR \fIpattern\fR
-Ignores modifications from paths that do not match \fIpattern\fR\. This option can be specified multiple times, where a match on any given pattern causes the path to trigger \fIcommand\fR\.
-.
-.TP
-\fB\-i\fR, \fB\-\-ignore\fR \fIpattern\fR
-Ignores modifications from paths that match \fIpattern\fR\. This option can be specified multiple times, and a match on any pattern causes the path to be ignored\.
-.
-.TP
-\fB\-\-no\-default\-ignore\fR
-Skip default ignore statements\. By default, watchexec ignores common temporary files for you, for example \fB*\.swp\fR, \fB*\.pyc\fR, and \fB\.DS_Store\fR, as well as the data directories of known VCS: \fB\.bzr\fR, \fB_darcs\fR, \fB\.fossil\-settings\fR, \fB\.git\fR, \fB\.hg\fR, \fB\.pijul\fR, and \fB\.svn\fR\.
-.
-.TP
-\fB\-\-no\-global\-ignore\fR
-Skip loading of global ignore files\. By default, watchexec loads $HOME/\.gitignore and other such global files and uses them to filter change events\.
-.
-.TP
-\fB\-\-no\-meta\fR
-Ignore metadata changes\.
-.
-.TP
-\fB\-\-no\-project\-ignore\fR, \fB\-\-no\-ignore\fR (deprecated alias)
-Skip loading of project\-local ignore files (include VCS ignore files)\. By default, watchexec loads \.ignore, \.gitignore, \.hgignore, and other such files in the current directory (or child directories as applicable) and uses them to filter change events\.
-.
-.P
-The \fB\-\-no\-ignore\fR alias will be replaced by a new option in 2\.0\.0, beware!
-.
-.TP
-\fB\-\-no\-vcs\-ignore\fR
-Skip loading of version control system (VCS) ignore files\. By default, watchexec loads \.gitignore, \.hgignore, and other such files in the current directory (or child directories as applicable) and uses them to filter change events\.
-.
-.TP
-\fB\-\-project\-origin\fR \fIpath\fR
-Overrides the project origin, where ignore files are resolved from (see \fIPATHS\fR section below)\.
-.
-.TP
-\fB\-w\fR, \fB\-\-watch\fR \fIpath\fR
-Monitor a specific path for changes\. By default, the current working directory is watched\. This may be specified multiple times, where a change in any watched directory (and subdirectories) causes \fIcommand\fR to be executed\.
-.
-.SS "Behaviour options"
-.
-.TP
-\fB\-d\fR, \fB\-\-debounce\fR
-Set the timeout between detected change and command execution, to avoid restarting too frequently when there are many events; defaults to 100ms\.
-.
-.TP
-\fB\-\-force\-poll\fR \fIinterval\fR
-Poll for changes every \fIinterval\fR ms instead of using system\-specific notification mechanisms (such as inotify)\. This is useful when you are monitoring NFS shares\.
-.
-.TP
-\fB\-p\fR, \fB\-\-postpone\fR
-Postpone execution of \fIcommand\fR until the first file modification is detected\.
-.
+\fB\-o\fR, \fB\-\-on\-busy\-update\fR=\fIMODE\fR
+What to do when receiving events while the command is running
+
+Default is to \*(Aqqueue\*(Aq up events and run the command once again when the previous run has finished. You can also use \*(Aqdo\-nothing\*(Aq, which ignores events while the command is running and may be useful to avoid spurious changes made by that command, or \*(Aqrestart\*(Aq, which terminates the running command and starts a new one. Finally, there\*(Aqs \*(Aqsignal\*(Aq, which only sends a signal; this can be useful with programs that can reload their configuration without a full restart.
+
+The signal can be specified with the \*(Aq\-\-signal\*(Aq option.
+
+Note that this option is scheduled to change its default to \*(Aqdo\-nothing\*(Aq in the next major release. File an issue if you have any concerns.
 .TP
 \fB\-r\fR, \fB\-\-restart\fR
-Terminates the command if it is still running when subsequent file modifications are detected\. By default, sends \fBSIGTERM\fR; use \fB\-\-signal\fR to change that\.
-.
-.TP
-\fB\-s\fR, \fB\-\-signal\fR
-Sends the specified signal (e\.g\. \fBSIGKILL\fR) to the command\. Defaults to \fBSIGTERM\fR\.
-.
-.TP
-\fB\-W\fR, \fB\-\-watch\-when\-idle\fR
-Ignore events while the process is still running\. This is distinct from \fB\-\-restart\fR in that with this option, events received while the command is running will not trigger a new run immediately after the current command is done\.
-.
-.P
-This behaviour will become the default in v2\.0\.
-.
-.SS "Output options"
-.
-.TP
-\fB\-c\fR, \fB\-\-clear\fR
-Clears the screen before executing \fIcommand\fR\.
-.
-.TP
-\fB\-N\fR, \fB\-\-notify\fR
-Sends desktop notifications on command start and command end\.
-.
-.SS "Debugging options"
-.
-.TP
-\fB\-\-print\-events\fR, \fB\-\-changes\-only\fR (deprecated alias)
-Prints the events (changed paths, etc) that have triggered an action to STDERR\.
-.
-.TP
-\fB\-v\fR, \fB\-\-verbose\fR, \fB\-vv\fR, etc
-Prints diagnostic and debugging messages to STDERR\. Increase the amount of \fBv\fRs to get progressively more output: for bug reports use \fBthree\fR, and for deep debugging \fBfour\fR can be helpful\.
-.
-.TP
-\fB\-\-log\-file\fR \fIpath\fR
-Writes diagnostic and debugging messages (from the \fB\-v\fR options) to file instead of STDERR, in JSON format\. This is preferrable for reporting bugs\. Be careful \fBnot\fR to write to a file within the purview of Watchexec to avoid recursion!
-.
-.TP
-\fB\-V\fR, \fB\-\-version\fR
-Print the version of watchexec\.
-.
-.TP
-\fB\-h\fR, \fB\-\-help\fR
-Print a help message\.
-.
-.SH "PATHS"
-By default, Watchexec watches the current directory\. This can be changed with the \fB\-\-watch\fR option, which can be passed multiple times\.
-.
-.P
-Upon starting, Watchexec resolves a "project origin" from the watched paths\. To do so, it recurses up every parent directory from each watched path, looking for file and directory patterns which indicate a project origin among many different software systems, such as a Git repo, Cargo crate, licensing files, readmes, workspace configuration, etc\. For the full current list, consult the source at \fBlib/src/project\.rs\fR\.
-.
-.P
-Once it has a list of "potential project origins", it resolves the common prefix they all have, and uses this as the overall project origin\. Note that the home directory is excluded from potential origins unless it\'s explicitly requested as a watched path\.
-.
-.P
-The overall project origin is used to find and resolve ignore files, such that in most cases it acts as one would expect for a tool that runs anywhere inside a project\.
-.
-.P
-For this reason, it is not recommended to use Watchexec for watching disparate folders in a filesystem, where those would resolve to a too\-broad project origin\.
-.
-.P
-The project origin can be overridden with the \fB\-\-project\-origin\fR option\.
-.
-.SH "ENVIRONMENT"
-In variables that contain lists of paths, the separator is as for the \fB$PATH\fR environment variable (a colon, or semicolon on Windows)\.
-.
-.SS "Set on child processes"
-Processes started by watchexec have environment variables set describing the changes observed\.
-.
-.P
-\fB$WATCHEXEC_COMMON_PATH\fR is set to the longest common path of all of the below variables, and so should be prepended to each path to obtain the full/real path\. Then:
-.
-.IP "\(bu" 4
-\fB$WATCHEXEC_CREATED_PATH\fR is set when files/folders were created
-.
-.IP "\(bu" 4
-\fB$WATCHEXEC_REMOVED_PATH\fR is set when files/folders were removed
-.
-.IP "\(bu" 4
-\fB$WATCHEXEC_RENAMED_PATH\fR is set when files/folders were renamed
-.
-.IP "\(bu" 4
-\fB$WATCHEXEC_WRITTEN_PATH\fR is set when files/folders were modified
-.
-.IP "\(bu" 4
-\fB$WATCHEXEC_META_CHANGED_PATH\fR is set when files/folders\' metadata were modified
-.
-.IP "\(bu" 4
-\fB$WATCHEXEC_OTHERWISE_CHANGED_PATH\fR is set for every other kind of pathed event
-.
-.IP "" 0
-.
-.P
-These variables may contain multiple paths: these are separated by the platform\'s path separator, as with the \fBPATH\fR system environment variable\. On Unix that is \fB:\fR, and on Windows \fB;\fR\. Within each variable, paths are deduplicated and sorted in binary order (i\.e\. neither Unicode nor locale aware)\.
-.
-.P
-One thing to take care of is assuming inherent behaviour where there is only chance\. Notably, it could appear as if the \fBRENAMED\fR variable contains both the original and the new path being renamed\. In previous versions, it would even appear on some platforms as if the original always came before the new\. However, none of this was true\. It\'s impossible to reliably and portably know which changed path is the old or new, "half" renames may appear (only the original, only the new), "unknown" renames may appear (change was a rename, but whether it was the old or new isn\'t known), rename events might split across two debouncing boundaries, and so on\.
-.
-.P
-This variable group can be disabled or limited with \fB\-\-no\-environment\fR (doesn\'t set any of these variables) and \fB\-\-no\-meta\fR (ignores metadata changes)\.
-.
-.SS "Read upon startup"
-.
-.IP "\(bu" 4
-\fB$WATCHEXEC_FILTERER\fR: select the filterer implementation: \fBglobset\fR (default), or \fBtagged\fR (experimental)\.
-.
-.IP "\(bu" 4
-\fB$WATCHEXEC_IGNORE_FILES\fR: a list of paths to additional ignore files to be loaded\.
-.
-.IP "\(bu" 4
-\fB$WATCHEXEC_FILTER_FILES\fR: a list of paths to additional "Tagged" filter files to be loaded (when enabled)\.
-.
-.IP "\(bu" 4
-\fB$RUST_LOG\fR: use for advanced verbose logging configuration\. Refer to tracing\-subscriber for documentation\.
-.
-.IP "" 0
-.
-.SH "FILES"
-.
-.SS "Supported project ignore files"
-.
-.IP "\(bu" 4
-Git: \fB\.gitignore\fR at project root and child directories, \fB\.git/info/exclude\fR, and the file pointed to by \fBcore\.excludesFile\fR in \fB\.git/config\fR\.
-.
-.IP "\(bu" 4
-Mercurial: \fB\.hgignore\fR at project root and child directories\.
-.
-.IP "\(bu" 4
-Bazaar: \fB\.bzrignore\fR at project root\.
-.
-.IP "\(bu" 4
-Darcs: \fB_darcs/prefs/boring\fR
-.
-.IP "\(bu" 4
-Fossil: \fB\.fossil\-settings/ignore\-glob\fR
-.
-.IP "\(bu" 4
-Ripgrep/Watchexec/generic: \fB\.ignore\fR at project root and child directories\.
-.
-.IP "" 0
-.
-.P
-Note that VCS ignore files (Git, Mercurial, Bazaar, Darcs, Fossil) are only used if the corresponding VCS is discovered to be in use for the project/origin\. For example, a \fB\.bzrignore\fR in a Git repository will be discarded\.
-.
-.SS "Supported global ignore files"
-.
-.IP "\(bu" 4
-Git (if core\.excludesFile is set): the file at that path
-.
-.IP "\(bu" 4
-Git (otherwise): the first found of \fB$XDG_CONFIG_HOME/git/ignore\fR, \fB%APPDATA%/\.gitignore\fR, \fB%USERPROFILE%/\.gitignore\fR, \fB$HOME/\.config/git/ignore\fR, \fB$HOME/\.gitignore\fR\.
-.
-.IP "\(bu" 4
-Bazaar: the first found of \fB%APPDATA%/Bazzar/2\.0/ignore\fR, \fB$HOME/\.bazaar/ignore\fR\.
-.
-.IP "\(bu" 4
-Watchexec: the first found of \fB$XDG_CONFIG_HOME/watchexec/ignore\fR, \fB%APPDATA%/watchexec/ignore\fR, \fB%USERPROFILE%/\.watchexec/ignore\fR, \fB$HOME/\.watchexec/ignore\fR\.
-.
-.IP "" 0
-.
-.P
-Note that like for project files, Git and Bazaar global files will only be used for the corresponding VCS as used in the project\.
-.
-.SH "EXAMPLES"
-Rebuild a project when source files change:
-.
-.IP "" 4
-.
-.nf
+Restart the process if it\*(Aqs still running
 
-$ watchexec make
-.
-.fi
-.
-.IP "" 0
-.
-.P
-Watch all HTML, CSS, and JavaScript files for changes:
-.
-.IP "" 4
-.
-.nf
+This is a shorthand for \*(Aq\-\-on\-busy\-update=restart\*(Aq.
+.TP
+\fB\-s\fR, \fB\-\-signal\fR=\fISIGNAL\fR
+Send a signal to the process when it\*(Aqs still running
 
-$ watchexec \-e html,css,js make
-.
-.fi
-.
-.IP "" 0
-.
-.P
-Run tests when source files change, clearing the screen each time:
-.
-.IP "" 4
-.
-.nf
+Specify a signal to send to the process when it\*(Aqs still running. This implies \*(Aq\-\-on\-busy\-update=signal\*(Aq; otherwise the signal used when that mode is \*(Aqrestart\*(Aq is controlled by \*(Aq\-\-stop\-signal\*(Aq.
 
-$ watchexec \-c make test
-.
-.fi
-.
-.IP "" 0
-.
-.P
-Launch and restart a node\.js server:
-.
-.IP "" 4
-.
-.nf
+See the long documentation for \*(Aq\-\-stop\-signal\*(Aq for syntax.
+.TP
+\fB\-\-stop\-signal\fR=\fISIGNAL\fR
+Signal to send to stop the command
 
-$ watchexec \-r node app\.js
-.
-.fi
-.
-.IP "" 0
-.
-.P
-Watch lib and src directories for changes, rebuilding each time:
-.
-.IP "" 4
-.
-.nf
+This is used by \*(Aqrestart\*(Aq and \*(Aqsignal\*(Aq modes of \*(Aq\-\-on\-busy\-update\*(Aq (unless \*(Aq\-\-signal\*(Aq is provided). The restart behaviour is to send the signal, wait for the command to exit, and if it hasn\*(Aqt exited after some time (see \*(Aq\-\-timeout\-stop\*(Aq), forcefully terminate it.
 
-$ watchexec \-w lib \-w src make
-.
-.fi
-.
-.IP "" 0
-.
-.P
+The default on unix is "SIGTERM".
+
+Input is parsed as a full signal name (like "SIGTERM"), a short signal name (like "TERM"), or a signal number (like "15"). All input is case\-insensitive.
+
+On Windows this option is technically supported but only supports the "KILL" event, as Watchexec cannot yet deliver other events. Windows doesn\*(Aqt have signals as such; instead it has termination (here called "KILL" or "STOP") and "CTRL+C", "CTRL+BREAK", and "CTRL+CLOSE" events. For portability the unix signals "SIGKILL", "SIGINT", "SIGTERM", and "SIGHUP" are respectively mapped to these.
+.TP
+\fB\-\-stop\-timeout\fR=\fITIMEOUT\fR
+Time to wait for the command to exit gracefully
+
+This is used by the \*(Aqrestart\*(Aq mode of \*(Aq\-\-on\-busy\-update\*(Aq. After the graceful stop signal is sent, Watchexec will wait for the command to exit. If it hasn\*(Aqt exited after this time, it is forcefully terminated.
+
+Takes a unit\-less value in seconds, or a time span value such as "5min 20s".
+
+The default is 60 seconds. Set to 0 to immediately force\-kill the command.
+.TP
+\fB\-\-debounce\fR=\fITIMEOUT\fR
+Time to wait for new events before taking action
+
+When an event is received, Watchexec will wait for up to this amount of time before handling it (such as running the command). This is essential as what you might perceive as a single change may actually emit many events, and without this behaviour, Watchexec would run much too often. Additionally, it\*(Aqs not infrequent that file writes are not atomic, and each write may emit an event, so this is a good way to avoid running a command while a file is partially written.
+
+An alternative use is to set a high value (like "30min" or longer), to save power or bandwidth on intensive tasks, like an ad\-hoc backup script. In those use cases, note that every accumulated event will build up in memory.
+
+Takes a unit\-less value in milliseconds, or a time span value such as "5sec 20ms".
+
+The default is 50 milliseconds. Setting to 0 is highly discouraged.
+.TP
+\fB\-\-stdin\-quit\fR
+Exit when stdin closes
+
+This watches the stdin file descriptor for EOF, and exits Watchexec gracefully when it is closed. This is used by some process managers to avoid leaving zombie processes around.
+.TP
+\fB\-\-no\-vcs\-ignore\fR
+Don\*(Aqt load gitignores
+
+Among other VCS exclude files, like for Mercurial, Subversion, Bazaar, DARCS, Fossil. Note that Watchexec will detect which of these is in use, if any, and only load the relevant files. Both global (like \*(Aq~/.gitignore\*(Aq) and local (like \*(Aq.gitignore\*(Aq) files are considered.
+
+This option is useful if you want to watch files that are ignored by Git.
+.TP
+\fB\-\-no\-project\-ignore\fR
+Don\*(Aqt load project\-local ignores
+
+This disables loading of project\-local ignore files, like \*(Aq.gitignore\*(Aq or \*(Aq.ignore\*(Aq in the
+watched project. This is contrasted with \*(Aq\-\-no\-vcs\-ignore\*(Aq, which disables loading of Git
+and other VCS ignore files, and with \*(Aq\-\-no\-global\-ignore\*(Aq, which disables loading of global
+or user ignore files, like \*(Aq~/.gitignore\*(Aq or \*(Aq~/.config/watchexec/ignore\*(Aq.
+
+Supported project ignore files:
+
+\- Git: .gitignore at project root and child directories, .git/info/exclude, and the file pointed to by `core.excludesFile` in .git/config.
+\- Mercurial: .hgignore at project root and child directories.
+\- Bazaar: .bzrignore at project root.
+\- Darcs: _darcs/prefs/boring
+\- Fossil: .fossil\-settings/ignore\-glob
+\- Ripgrep/Watchexec/generic: .ignore at project root and child directories.
+
+VCS ignore files (Git, Mercurial, Bazaar, Darcs, Fossil) are only used if the corresponding
+VCS is discovered to be in use for the project/origin. For example, a .bzrignore in a Git
+repository will be discarded.
+
+Note that this was previously called \*(Aq\-\-no\-ignore\*(Aq, but that\*(Aqs now deprecated and its use is
+discouraged, as it may be repurposed in the future.
+.TP
+\fB\-\-no\-global\-ignore\fR
+Don\*(Aqt load global ignores
+
+This disables loading of global or user ignore files, like \*(Aq~/.gitignore\*(Aq,
+\*(Aq~/.config/watchexec/ignore\*(Aq, or \*(Aq%APPDATA%\\Bazzar\\2.0\\ignore\*(Aq. Contrast with
+\*(Aq\-\-no\-vcs\-ignore\*(Aq and \*(Aq\-\-no\-project\-ignore\*(Aq.
+
+Supported global ignore files
+
+\- Git (if core.excludesFile is set): the file at that path
+\- Git (otherwise): the first found of $XDG_CONFIG_HOME/git/ignore, %APPDATA%/.gitignore, %USERPROFILE%/.gitignore, $HOME/.config/git/ignore, $HOME/.gitignore.
+\- Bazaar: the first found of %APPDATA%/Bazzar/2.0/ignore, $HOME/.bazaar/ignore.
+\- Watchexec: the first found of $XDG_CONFIG_HOME/watchexec/ignore, %APPDATA%/watchexec/ignore, %USERPROFILE%/.watchexec/ignore, $HOME/.watchexec/ignore.
+
+Like for project files, Git and Bazaar global files will only be used for the corresponding
+VCS as used in the project.
+.TP
+\fB\-\-no\-default\-ignore\fR
+Don\*(Aqt use internal default ignores
+
+Watchexec has a set of default ignore patterns, such as editor swap files, `*.pyc`, `*.pyo`, `.DS_Store`, `.bzr`, `_darcs`, `.fossil\-settings`, `.git`, `.hg`, `.pijul`, `.svn`, and Watchexec log files.
+.TP
+\fB\-p\fR, \fB\-\-postpone\fR
+Wait until first change before running command
+
+By default, Watchexec will run the command once immediately. With this option, it will instead wait until an event is detected before running the command as normal.
+.TP
+\fB\-\-delay\-run\fR=\fIDURATION\fR
+Sleep before running the command
+
+This option will cause Watchexec to sleep for the specified amount of time before running the command, after an event is detected. This is like using "sleep 5 && command" in a shell, but portable and slightly more efficient.
+
+Takes a unit\-less value in seconds, or a time span value such as "2min 5s".
+.TP
+\fB\-\-poll\fR=\fIINTERVAL\fR
+Poll for filesystem changes
+
+By default, and where available, Watchexec uses the operating system\*(Aqs native file system watching capabilities. This option disables that and instead uses a polling mechanism, which is less efficient but can work around issues with some file systems (like network shares) or edge cases.
+
+Optionally takes a unit\-less value in milliseconds, or a time span value such as "2s 500ms", to use as the polling interval. If not specified, the default is 30 seconds.
+
+Aliased as \*(Aq\-\-force\-poll\*(Aq.
+.TP
+\fB\-\-shell\fR=\fISHELL\fR
+Use a different shell
+
+By default, Watchexec will use \*(Aqsh\*(Aq on unix and \*(Aqcmd\*(Aq (CMD.EXE) on Windows. With this, you can override that and use a different shell, for example one with more features or one which has your custom aliases and functions.
+
+If the value has spaces, it is parsed as a command line, and the first word used as the shell program, with the rest as arguments to the shell.
+
+The command is run with the \*(Aq\-c\*(Aq flag (except for \*(Aqcmd\*(Aq and \*(Aqpowershell\*(Aq on Windows, where the \*(Aq/C\*(Aq option is used).
+
+Note that the default shell will change at the next major release: the value of \*(Aq$SHELL\*(Aq will be respected, falling back to \*(Aqsh\*(Aq on unix and to PowerShell on Windows.
+
+The special value \*(Aqnone\*(Aq can be used to disable shell use entirely. In that case, the command provided to Watchexec will be parsed, with the first word being the executable and the rest being the arguments, and executed directly. Note that this parsing is rudimentary, and may not work as expected in all cases.
+
+Using \*(Aqnone\*(Aq is a little more efficient and can enable a stricter interpretation of the input, but it also means that you can\*(Aqt use shell features like globbing, redirection, or pipes.
+
+Examples:
+
 Use without shell:
-.
-.IP "" 4
-.
-.nf
 
 $ watchexec \-n \-\- zsh \-x \-o shwordsplit scr
-.
-.fi
-.
-.IP "" 0
-.
-.P
-Use with powershell (default on windows from 2\.0):
-.
-.IP "" 4
-.
-.nf
+
+Use with powershell:
 
 $ watchexec \-\-shell=powershell \-\- test\-connection localhost
-.
-.fi
-.
-.IP "" 0
-.
-.P
-Use with cmd (default on windows until 2\.0):
-.
-.IP "" 4
-.
-.nf
+
+Use with cmd:
 
 $ watchexec \-\-shell=cmd \-\- dir
-.
-.fi
-.
-.IP "" 0
-.
-.P
+
 Use with a different unix shell:
-.
-.IP "" 4
-.
-.nf
 
-$ watchexec \-\-shell=bash \-\- \'echo $BASH_VERSION\'
-.
-.fi
-.
-.IP "" 0
-.
-.P
+$ watchexec \-\-shell=bash \-\- \*(Aqecho $BASH_VERSION\*(Aq
+
 Use with a unix shell and options:
-.
-.IP "" 4
-.
-.nf
 
-$ watchexec \-\-shell=\'zsh \-x \-o shwordsplit\' \-\- scr
-.
-.fi
-.
-.IP "" 0
+$ watchexec \-\-shell=\*(Aqzsh \-x \-o shwordsplit\*(Aq \-\- scr
+.TP
+\fB\-n\fR
+Don\*(Aqt use a shell
 
+This is a shorthand for \*(Aq\-\-shell=none\*(Aq.
+.TP
+\fB\-\-no\-environment\fR
+Shorthand for \*(Aq\-\-emit\-events=none\*(Aq
+
+This is the old way to disable event emission into the environment. See \*(Aq\-\-emit\-events\*(Aq for more.
+.TP
+\fB\-E\fR, \fB\-\-env\fR=\fIKEY=VALUE\fR
+Add env vars to the command
+
+This is a convenience option for setting environment variables for the command, without setting them for the Watchexec process itself.
+
+Use key=value syntax. Multiple variables can be set by repeating the option.
+.TP
+\fB\-\-no\-process\-group\fR
+Don\*(Aqt use a process group
+
+By default, Watchexec will run the command in a process group, so that signals and terminations are sent to all processes in the group. Sometimes that\*(Aqs not what you want, and you can disable the behaviour with this option.
+.TP
+\fB\-N\fR, \fB\-\-notify\fR
+Alert when commands start and end
+
+With this, Watchexec will emit a desktop notification when a command starts and ends, on supported platforms. On unsupported platforms, it may silently do nothing, or log a warning.
+.TP
+\fB\-\-project\-origin\fR=\fIDIRECTORY\fR
+Set the project origin
+
+Watchexec will attempt to discover the project\*(Aqs "origin" (or "root") by searching for a variety of markers, like files or directory patterns. It does its best but sometimes gets it it wrong, and you can override that with this option.
+
+The project origin is used to determine the path of certain ignore files, which VCS is being used, the meaning of a leading \*(Aq/\*(Aq in filtering patterns, and maybe more in the future.
+
+When set, Watchexec will also not bother searching, which can be significantly faster.
+.TP
+\fB\-\-workdir\fR=\fIDIRECTORY\fR
+Set the working directory
+
+By default, the working directory of the command is the working directory of Watchexec. You can change that with this option. Note that paths may be less intuitive to use with this.
+.TP
+\fB\-e\fR, \fB\-\-exts\fR=\fIEXTENSIONS\fR
+Filename extensions to filter to
+
+This is a quick filter to only emit events for files with the given extensions. Extensions can be given with or without the leading dot (e.g. \*(Aqjs\*(Aq or \*(Aq.js\*(Aq). Multiple extensions can be given by repeating the option or by separating them with commas.
+.TP
+\fB\-f\fR, \fB\-\-filter\fR=\fIPATTERN\fR
+Filename patterns to filter to
+
+Provide a glob\-like filter pattern, and only events for files matching the pattern will be emitted. Multiple patterns can be given by repeating the option. Events that are not from files (e.g. signals, keyboard events) will pass through untouched.
+.TP
+\fB\-\-filter\-file\fR=\fIPATH\fR
+Files to load filters from
+
+Provide a path to a file containing filters, one per line. Empty lines and lines starting with \*(Aq#\*(Aq are ignored. Uses the same pattern format as the \*(Aq\-\-filter\*(Aq option.
+
+This can also be used via the $WATCHEXEC_FILTER_FILES environment variable.
+.TP
+\fB\-i\fR, \fB\-\-ignore\fR=\fIPATTERN\fR
+Filename patterns to filter out
+
+Provide a glob\-like filter pattern, and events for files matching the pattern will be excluded. Multiple patterns can be given by repeating the option. Events that are not from files (e.g. signals, keyboard events) will pass through untouched.
+.TP
+\fB\-\-ignore\-file\fR=\fIPATH\fR
+Files to load ignores from
+
+Provide a path to a file containing ignores, one per line. Empty lines and lines starting with \*(Aq#\*(Aq are ignored. Uses the same pattern format as the \*(Aq\-\-ignore\*(Aq option.
+
+This can also be used via the $WATCHEXEC_IGNORE_FILES environment variable.
+.TP
+\fB\-\-fs\-events\fR=\fIEVENTS\fR
+Filesystem events to filter to
+
+This is a quick filter to only emit events for the given types of filesystem changes. Choose from \*(Aqaccess\*(Aq, \*(Aqcreate\*(Aq, \*(Aqremove\*(Aq, \*(Aqrename\*(Aq, \*(Aqmodify\*(Aq, \*(Aqmetadata\*(Aq. Multiple types can be given by repeating the option or by separating them with commas. By default, this is all types except for \*(Aqaccess\*(Aq.
+
+This may apply filtering at the kernel level when possible, which can be more efficient, but may be more confusing when reading the logs.
+.TP
+\fB\-\-no\-meta\fR
+Don\*(Aqt emit fs events for metadata changes
+
+This is a shorthand for \*(Aq\-\-fs\-events create,remove,rename,modify\*(Aq. Using it alongside the \*(Aq\-\-fs\-events\*(Aq option is non\-sensical and not allowed.
+.TP
+\fB\-\-print\-events\fR
+Print events that trigger actions
+
+This prints the events that triggered the action when handling it (after debouncing), in a human readable form. This is useful for debugging filters.
+
+Use \*(Aq\-v\*(Aq when you need more diagnostic information.
+.TP
+\fB\-v\fR, \fB\-\-verbose\fR
+Set diagnostic log level
+
+This enables diagnostic logging, which is useful for investigating bugs or gaining more insight into faulty filters or "missing" events. Use multiple times to increase verbosity.
+
+Goes up to \*(Aq\-vvvv\*(Aq. When submitting bug reports, default to a \*(Aq\-vvv\*(Aq log level.
+
+You may want to use with \*(Aq\-\-log\-file\*(Aq to avoid polluting your terminal.
+
+Setting $RUST_LOG also works, and takes precendence, but is not recommended. However, using $RUST_LOG is the only way to get logs from before these options are parsed.
+.TP
+\fB\-\-log\-file\fR=\fIPATH\fR
+Write diagnostic logs to a file
+
+This writes diagnostic logs to a file, instead of the terminal, in JSON format. If a log level was not already specified, this will set it to \*(Aq\-vvv\*(Aq.
+
+If a path is not provided, the default is the working directory. Note that with \*(Aq\-\-ignore\-nothing\*(Aq, the write events to the log will likely get picked up by Watchexec, causing a loop; prefer setting a path outside of the watched directory.
+
+If the path provided is a directory, a file will be created in that directory. The file name will be the current date and time, in the format \*(Aqwatchexec.YYYY\-MM\-DDTHH\-MM\-SSZ.log\*(Aq.
+.TP
+\fB\-\-manpage\fR
+Show the manual page
+
+This shows the manual page for Watchexec, if the output is a terminal and the \*(Aqman\*(Aq program is available. If not, the manual page is printed to stdout in ROFF format (suitable for writing to a watchexec.1 file).
+.TP
+\fB\-\-completions\fR=\fICOMPLETIONS\fR
+Generate a shell completions script
+
+Provides a completions script or configuration for the given shell. If Watchexec is not distributed with pre\-generated completions, you can use this to generate them yourself.
+
+Supported shells: bash, elvish, fish, nu, powershell, zsh.
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+\fB\-V\fR, \fB\-\-version\fR
+Print version
+.TP
+[\fICOMMAND\fR]
+Command to run on changes
+
+It\*(Aqs run when events pass filters and the debounce period (and once at startup unless \*(Aq\-\-postpone\*(Aq is given). If you pass flags to the command, you should separate it with \-\- though that is not strictly required.
+
+Examples:
+
+$ watchexec \-w src npm run build
+
+$ watchexec \-w src \-\- rsync \-a src dest
+
+Take care when using globs or other shell expansions in the command. Your shell may expand them before ever passing them to Watchexec, and the results may not be what you expect. Compare:
+
+$ watchexec echo src/*.rs
+
+$ watchexec echo \*(Aqsrc/*.rs\*(Aq
+
+$ watchexec \-\-shell=none echo \*(Aqsrc/*.rs\*(Aq
+
+Behaviour depends on the value of \*(Aq\-\-shell\*(Aq: for all except \*(Aqnone\*(Aq, every part of the command is joined together into one string with a single ascii space character, and given to the shell as described in the help for \*(Aq\-\-shell\*(Aq. For \*(Aqnone\*(Aq, each distinct element the command is passed as per the execvp(3) convention: first argument is the program, as a path or searched for in the \*(AqPATH\*(Aq environment variable, rest are arguments.
+.SH EXTRA
+Use @argfile as first argument to load arguments from the file \*(Aqargfile\*(Aq (one argument per line) which will be inserted in place of the @argfile (further arguments on the CLI will override or add onto those in the file).
+.SH VERSION
+v1.21.1
+.SH AUTHORS
+Félix Saparelli <felix@passcod.name>, Matt Green <mattgreenrocks@gmail.com>

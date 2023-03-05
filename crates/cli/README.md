@@ -95,13 +95,13 @@ On Windows, you may prefer to use Powershell:
 
     $ watchexec --shell=powershell -- test-connection localhost
 
-## Complex Usage Examples 
+## Complex Usage Examples
 
 Turn a plain converter tool like PlantUML or Pandoc into a powerful live-editing tool, either as a script
 
     #!/usr/bin/env bash
     set -Eeuo pipefail
-    
+
     SOURCE="test.puml"            # Define source file
     TARGET="test.png"             # Define conversion target file
     CONVERT="plantuml $SOURCE"    # Define how to convert source to target
@@ -111,14 +111,13 @@ Turn a plain converter tool like PlantUML or Pandoc into a powerful live-editing
     watchexec --filter $SOURCE -- $CONVERT    # Update target file on any source file change
 
 or condensed as a single line
-   
+
     # Bash
     $ SOURCE="test.puml"; TARGET="test.png"; CONVERT="plantuml $SOURCE"; VIEW="feh $TARGET"; if [ ! -f $TARGET ]; then $CONVERT; fi; ($VIEW &); watchexec -f $SOURCE -- $CONVERT
     # Zsh
     $ SOURCE="test.puml"; TARGET="test.png"; CONVERT="plantuml $SOURCE"; VIEW="feh $TARGET"; if [ ! -f $TARGET ]; then $CONVERT; fi; ($=VIEW &); watchexec -f $SOURCE -- $CONVERT
 
-Replace [PlantUML](https://plantuml.com/) with another converter like [Pandoc](https://pandoc.org/): 
-`plantuml $SOURCE` turns into `pandoc $SOURCE --output $TARGET`, 
+Replace [PlantUML](https://plantuml.com/) with another converter like [Pandoc](https://pandoc.org/):  `plantuml $SOURCE` turns into `pandoc $SOURCE --output $TARGET`.
 Similarly, replace the [Feh](https://feh.finalrewind.org/) image viewer with another viewer for your target file like the PDF viewer [Evince](https://wiki.gnome.org/Apps/Evince): `feh $TARGET` turns into `evince $TARGET`.
 
 ## Installation
@@ -161,4 +160,18 @@ Only the latest Rust stable is supported, but older versions may work.
 
 Currently available shell completions:
 
+- bash: `completions/bash` should be installed to `/usr/share/bash-completion/completions/watchexec`
+- elvish: `completions/elvish` should be installed to `$XDG_CONFIG_HOME/elvish/completions/`
+- fish: `completions/fish` should be installed to `/usr/share/fish/vendor_completions.d/watchexec.fish`
+- nu: `completions/nu` should be installed to `$XDG_CONFIG_HOME/nu/completions/`
+- powershell: `completions/powershell` should be installed to `$PROFILE/`
 - zsh: `completions/zsh` should be installed to `/usr/share/zsh/site-functions/_watchexec`
+
+If not bundled, you can generate completions for your shell with `watchexec --completions <shell>`.
+
+## Manual
+
+There's a manual page at `doc/watchexec.1`. Install it to `/usr/share/man/man1/`.
+If not bundled, you can generate a manual page with `watchexec --manual > /path/to/watchexec.1`, or view it inline with `watchexec --manual` (requires `man`).
+
+You can also [read a text version](../../doc/watchexec.1.md) or a [PDF](../../doc/watchexec.1.pdf).
