@@ -90,7 +90,7 @@ shadow-rs = "0.21.0"
 embed-resource = "1.6.1"
 
 [build-dependencies.bosion]
-version = "0.0.0"
+version = "1.0.0"
 path = "../bosion"
 
 [features]
