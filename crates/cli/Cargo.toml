@@ -89,6 +89,10 @@ shadow-rs = "0.21.0"
 [build-dependencies]
 embed-resource = "1.6.1"
 
+[build-dependencies.bosion]
+version = "0.0.0"
+path = "../bosion"
+
 [features]
 ## For debugging only: enables the Tokio Console.
 dev-console = ["console-subscriber"]

@@ -1,0 +1,19 @@
+[package]
+name = "bosion-example-clap"
+version = "0.1.0"
+publish = false
+edition = "2021"
+
+[workspace]
+
+[features]
+default = ["foo"]
+foo = []
+
+[build-dependencies.bosion]
+version = "*"
+path = "../.."
+
+[dependencies.clap]
+version = "4.1.8"
+features = ["cargo", "derive"]

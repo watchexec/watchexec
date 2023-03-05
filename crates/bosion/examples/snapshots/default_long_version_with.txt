@@ -1,0 +1,8 @@
+0.1.0 ({git shorthash} {git date}) +foo
+commit-hash: {git hash}
+commit-date: {git date}
+build-date: {today date}
+release: 0.1.0
+features: default,foo
+extra: field
+custom: 1.2.3

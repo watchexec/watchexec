@@ -1,0 +1,22 @@
+[package]
+name = "bosion-test-no-git"
+version = "0.1.0"
+publish = false
+edition = "2021"
+
+[workspace]
+
+[features]
+default = ["foo"]
+foo = []
+
+[build-dependencies.bosion]
+version = "*"
+path = "../.."
+default-features = false
+features = ["std"]
+
+[dependencies]
+leon = { version = "0.0.1", default-features = false }
+snapbox = "0.4.8"
+time = { version = "0.3.20", features = ["formatting", "macros"] }

@@ -7,8 +7,7 @@ const OPTSET_FILTERING: &str = "Filtering";
 const OPTSET_COMMAND: &str = "Command";
 const OPTSET_DEBUGGING: &str = "Debugging";
 
-#[cfg(target_os = "linux")]
-shadow_rs::shadow!(build);
+include!(env!("BOSION_PATH"));
 
 /// Execute commands when watched files change.
 ///
@@ -45,10 +44,10 @@ shadow_rs::shadow!(build);
 	bin_name = "watchexec",
 	author,
 	version,
+	long_version = Bosion::LONG_VERSION,
 	after_help = "Use @argfile as first argument to load arguments from the file 'argfile' (one argument per line) which will be inserted in place of the @argfile (further arguments on the CLI will override or add onto those in the file).",
-	hide_possible_values = true
+	hide_possible_values = true,
 )]
-#[cfg_attr(target_os = "linux", command(long_version = build::CLAP_LONG_VERSION,))]
 #[cfg_attr(debug_assertions, command(before_help = "⚠ DEBUG BUILD ⚠"))]
 #[cfg_attr(
 	feature = "dev-console",

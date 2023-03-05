@@ -6,6 +6,7 @@ members = [
 	"crates/filterer/globset",
 	"crates/filterer/ignore",
 	"crates/filterer/tagged",
+	"crates/bosion",
 	"crates/ignore-files",
 	"crates/project-origins",
 ]
