@@ -8,3 +8,10 @@ search = "^## Next.*$"
 replace = "## Next (YYYY-MM-DD)\n\n## v{{version}} ({{date}})"
 prerelease = true
 max = 1
+
+[[pre-release-replacements]]
+file = "README.md"
+search = "^bosion = \".*\"$"
+replace = "bosion = \"{{version}}\""
+prerelease = true
+max = 1

@@ -11,7 +11,7 @@ default = ["foo"]
 foo = []
 
 [build-dependencies.bosion]
-version = "1.0.0"
+version = "*"
 path = "../.."
 default-features = false
 features = ["std"]
