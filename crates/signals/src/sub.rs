@@ -85,7 +85,7 @@ pub enum SubSignal {
 	/// ```
 	/// # #[cfg(unix)]
 	/// # {
-	/// use watchexec::signal::process::SubSignal;
+	/// use watchexec_signals::SubSignal;
 	/// use nix::sys::signal::Signal;
 	/// assert_eq!(SubSignal::Custom(6), SubSignal::from(Signal::SIGABRT as i32));
 	/// # }
@@ -97,7 +97,7 @@ pub enum SubSignal {
 	/// ```
 	/// # #[cfg(unix)]
 	/// # {
-	/// use watchexec::signal::process::SubSignal;
+	/// use watchexec_signals::SubSignal;
 	/// use nix::sys::signal::Signal;
 	/// assert_eq!(SubSignal::Custom(6), SubSignal::from_nix(Signal::SIGABRT));
 	/// # }
@@ -186,7 +186,7 @@ impl SubSignal {
 	/// falls back to a hardcoded approximation instead of looking up signal tables (via [`nix`]).
 	///
 	/// ```
-	/// # use watchexec::signal::process::SubSignal;
+	/// # use watchexec_signals::SubSignal;
 	/// assert_eq!(SubSignal::Hangup, SubSignal::from_unix_str("hup").unwrap());
 	/// assert_eq!(SubSignal::Interrupt, SubSignal::from_unix_str("SIGINT").unwrap());
 	/// assert_eq!(SubSignal::ForceStop, SubSignal::from_unix_str("Kill").unwrap());
@@ -245,7 +245,7 @@ impl SubSignal {
 	/// - `STOP`, `FORCE-STOP` for a forced stop. This is also mapped to `KILL` and `SIGKILL`.
 	///
 	/// ```
-	/// # use watchexec::signal::process::SubSignal;
+	/// # use watchexec_signals::SubSignal;
 	/// assert_eq!(SubSignal::Hangup, SubSignal::from_windows_str("ctrl+close").unwrap());
 	/// assert_eq!(SubSignal::Interrupt, SubSignal::from_windows_str("C").unwrap());
 	/// assert_eq!(SubSignal::ForceStop, SubSignal::from_windows_str("Stop").unwrap());
