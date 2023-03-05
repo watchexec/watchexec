@@ -76,6 +76,7 @@ jobs:
     - name: Run bosion integration tests
       run: ./run-tests.sh
       working-directory: crates/bosion
+      shell: bash
 
     - name: Generate manpage
       run: cargo run ${{ env.flags }} -p watchexec-cli -- --manpage > doc/watchexec.1
