@@ -9,14 +9,14 @@ on:
         options:
           - cli
           - lib
+          - bosion
           - events
+          - ignore-files
+          - project-origins
           - signals
           - filterer/globset
           - filterer/ignore
           - filterer/tagged
-          - bosion
-          - ignore-files
-          - project-origins
       version:
         description: Version to release
         required: true
