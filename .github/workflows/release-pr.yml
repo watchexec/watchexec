@@ -12,6 +12,7 @@ on:
           - filterer/globset
           - filterer/ignore
           - filterer/tagged
+          - bosion
           - ignore-files
           - project-origins
       version:
