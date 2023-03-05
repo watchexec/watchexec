@@ -2,12 +2,43 @@ use std::{env::var, path::PathBuf};
 
 use time::{format_description::FormatItem, macros::format_description, OffsetDateTime};
 
+/// Gathered build-time information
+///
+/// This struct contains all the information gathered by `bosion`. It is not meant to be used
+/// directly under normal circumstances, but is public for documentation purposes and if you wish
+/// to build your own frontend for whatever reason. In that case, note that no effort has been made
+/// to make this usable outside of the build.rs environment.
+///
+/// The `git` field is only available when the `git` feature is enabled, and if there is a git
+/// repository to read from. The repository is discovered by walking up the directory tree until one
+/// is found, which means workspaces or more complex monorepos are automatically supported. If there
+/// are any errors reading the repository, the `git` field will be `None` and a rustc warning will
+/// be printed.
 #[derive(Debug, Clone)]
 pub struct Info {
+	/// The crate version, as read from the `CARGO_PKG_VERSION` environment variable.
 	pub crate_version: String,
+
+	/// The crate features, as found by the presence of `CARGO_FEATURE_*` environment variables.
+	///
+	/// These are normalised to lowercase and have underscores replaced by hyphens.
 	pub crate_features: Vec<String>,
+
+	/// The build date, in the format `YYYY-MM-DD`, at UTC.
+	///
+	/// This is either current as of build time, or from the timestamp specified by the
+	/// `SOURCE_DATE_EPOCH` environment variable, for
+	/// [reproducible builds](https://reproducible-builds.org/).
 	pub build_date: String,
+
+	/// The build datetime, in the format `YYYY-MM-DD HH:MM:SS`, at UTC.
+	///
+	/// This is either current as of build time, or from the timestamp specified by the
+	/// `SOURCE_DATE_EPOCH` environment variable, for
+	/// [reproducible builds](https://reproducible-builds.org/).
 	pub build_datetime: String,
+
+	/// Git repository information, if available.
 	pub git: Option<GitInfo>,
 }
 
@@ -29,6 +60,11 @@ const DATETIME_FORMAT: &[FormatItem<'static>] =
 	format_description!("[year]-[month]-[day] [hour]:[minute]:[second]");
 
 impl Info {
+	/// Gathers build-time information
+	///
+	/// This is not meant to be used directly under normal circumstances, but is public if you wish
+	/// to build your own frontend for whatever reason. In that case, note that no effort has been
+	/// made to make this usable outside of the build.rs environment.
 	pub fn gather() -> Result<Self, String> {
 		let build_date = Self::build_date()?;
 
@@ -85,12 +121,29 @@ impl Info {
 	}
 }
 
+/// Git repository information
 #[derive(Debug, Clone)]
 pub struct GitInfo {
+	/// The absolute path to the git repository's data folder.
+	///
+	/// In a normal repository, this is `.git`, _not_ the index or working directory.
 	pub git_root: PathBuf,
+
+	/// The full hash of the current commit.
+	///
+	/// Note that this makes no effore to handle dirty working directories, so it may not be
+	/// representative of the current state of the code.
 	pub git_hash: String,
+
+	/// The short hash of the current commit.
+	///
+	/// This is read from git and not truncated manually, so it may be longer than 7 characters.
 	pub git_shorthash: String,
+
+	/// The date of the current commit, in the format `YYYY-MM-DD`, at UTC.
 	pub git_date: String,
+
+	/// The datetime of the current commit, in the format `YYYY-MM-DD HH:MM:SS`, at UTC.
 	pub git_datetime: String,
 }
 

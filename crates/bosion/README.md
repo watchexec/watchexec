@@ -113,4 +113,35 @@ bosion::gather_to_env_with_prefix("MYAPP_");
 - [shadow-rs](https://github.com/baoyachi/shadow-rs): uses libgit2 instead of gitoxide, doesn't rebuild on git changes.
 - [vergen](https://github.com/rustyhorde/vergen): uses the `git` CLI instead of gitoxide.
 
-Bosion also requires no dependencies outside of build.rs.
+Bosion also requires no dependencies outside of build.rs, and was specifically made for crates
+installed in a variety of ways, like with `cargo install`, from pre-built binary, from source with
+git, or from source without git (like a tarball), on a variety of platforms. Its default output with
+[clap](https://clap.rs) is almost exactly like `rustc -Vv`.
+
+## Examples
+
+The [examples](./examples) directory contains a practical and runnable [clap-based example](./examples/clap/), as well
+as several other crates which are actually used for integration testing.
+
+Here is the output for the Watchexec CLI:
+
+```plain
+watchexec 1.21.1 (5026793 2023-03-05)
+commit-hash: 5026793a12ff895edf2dafb92111e7bd1767650e
+commit-date: 2023-03-05
+build-date: 2023-03-05
+release: 1.21.1
+features:
+```
+
+For comparison, here's `rustc -Vv`:
+
+```plain
+rustc 1.67.1 (d5a82bbd2 2023-02-07)
+binary: rustc
+commit-hash: d5a82bbd26e1ad8b7401f6a718a9c57c96905483
+commit-date: 2023-02-07
+host: x86_64-unknown-linux-gnu
+release: 1.67.1
+LLVM version: 15.0.6
+```
