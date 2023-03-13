@@ -453,7 +453,7 @@ pub struct Args {
 	/// Watchexec emits event information when running a command, which can be used by the command
 	/// to target specific changed files.
 	///
-	/// One thing to take care of is assuming inherent behaviour where there is only chance.
+	/// One thing to take care with is assuming inherent behaviour where there is only chance.
 	/// Notably, it could appear as if the `RENAMED` variable contains both the original and the new
 	/// path being renamed. In previous versions, it would even appear on some platforms as if the
 	/// original always came before the new. However, none of this was true. It's impossible to
