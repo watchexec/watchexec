@@ -28,5 +28,5 @@ fn main() -> Result<()> {
 - `notify`: use Notify's file event types (default).
 
 If you disable `notify`, you'll get a leaner dependency tree that's still able to parse the entire
-events, but isn't binary compatible with Notify. In most deserialisation usecases, this is fine, but
+events, but isn't type compatible with Notify. In most deserialisation usecases, this is fine, but
 it's not the default to avoid surprises.
