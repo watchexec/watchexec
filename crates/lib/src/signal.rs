@@ -12,16 +12,25 @@ use crate::{
 
 /// Compatibility shim for the old `watchexec::signal::process` module.
 pub mod process {
-	#[deprecated(note = "use the `watchexec-signals` crate directly instead", since = "2.1.0")]
+	#[deprecated(
+		note = "use the `watchexec-signals` crate directly instead",
+		since = "2.1.0"
+	)]
 	pub use watchexec_signals::Signal as SubSignal;
 }
 
 /// Compatibility shim for the old `watchexec::signal::source` module.
 pub mod source {
-	#[deprecated(note = "use the `watchexec-signals` crate directly instead", since = "2.1.0")]
-	pub use watchexec_signals::Signal as MainSignal;
-	#[deprecated(note = "use `watchexec::signal::worker` directly instead", since = "2.1.0")]
+	#[deprecated(
+		note = "use `watchexec::signal::worker` directly instead",
+		since = "2.1.0"
+	)]
 	pub use super::worker;
+	#[deprecated(
+		note = "use the `watchexec-signals` crate directly instead",
+		since = "2.1.0"
+	)]
+	pub use watchexec_signals::Signal as MainSignal;
 }
 
 /// Launch the signal event worker.

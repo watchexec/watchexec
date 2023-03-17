@@ -1,6 +1,4 @@
-use watchexec::{
-	event::{filekind::*, ProcessEnd, Source},
-};
+use watchexec::event::{filekind::*, ProcessEnd, Source};
 use watchexec_signals::Signal;
 
 mod helpers;

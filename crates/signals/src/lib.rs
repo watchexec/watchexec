@@ -26,7 +26,13 @@ use nix::sys::signal::Signal as NixSignal;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(from = "serde_support::SerdeSignal", into = "serde_support::SerdeSignal"))]
+#[cfg_attr(
+	feature = "serde",
+	serde(
+		from = "serde_support::SerdeSignal",
+		into = "serde_support::SerdeSignal"
+	)
+)]
 pub enum Signal {
 	/// Indicate that the terminal is disconnected.
 	///

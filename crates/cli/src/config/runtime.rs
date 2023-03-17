@@ -12,7 +12,7 @@ use watchexec::{
 	handler::SyncFnHandler,
 	paths::summarise_events_to_env,
 };
-use watchexec_events::{Event, ProcessEnd, Tag, Keyboard};
+use watchexec_events::{Event, Keyboard, ProcessEnd, Tag};
 use watchexec_signals::Signal;
 
 use crate::args::{Args, ClearMode, EmitEvents, OnBusyUpdate};

@@ -7,8 +7,8 @@ use watchexec::{
 	event::{filekind::FileEventKind, Event, FileType, Priority, ProcessEnd, Source, Tag},
 	filter::Filterer,
 };
-use watchexec_signals::Signal;
 use watchexec_filterer_ignore::IgnoreFilterer;
+use watchexec_signals::Signal;
 
 pub mod ignore {
 	pub use super::ig_file as file;

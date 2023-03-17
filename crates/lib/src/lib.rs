@@ -113,7 +113,10 @@ pub mod handler;
 mod watchexec;
 
 // compatibility
-#[deprecated(note = "use the `watchexec-events` crate directly instead", since = "2.1.0")]
+#[deprecated(
+	note = "use the `watchexec-events` crate directly instead",
+	since = "2.1.0"
+)]
 pub use watchexec_events as event;
 
 #[doc(inline)]

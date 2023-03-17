@@ -35,7 +35,10 @@ fn array() {
 			metadata: Default::default(),
 		},
 		Event {
-			tags: vec![Tag::ProcessCompletion(Some(ProcessEnd::Success)), Tag::Process(123)],
+			tags: vec![
+				Tag::ProcessCompletion(Some(ProcessEnd::Success)),
+				Tag::Process(123),
+			],
 			metadata: Default::default(),
 		},
 		Event {
@@ -89,11 +92,11 @@ fn signals() {
 				Tag::Signal(Signal::Interrupt),
 				Tag::Signal(Signal::User1),
 				Tag::Signal(Signal::ForceStop),
-				],
-				metadata: Default::default(),
-			},
-			Event {
-				tags: vec![
+			],
+			metadata: Default::default(),
+		},
+		Event {
+			tags: vec![
 				Tag::Signal(Signal::Custom(66)),
 				Tag::Signal(Signal::Custom(0)),
 			],
