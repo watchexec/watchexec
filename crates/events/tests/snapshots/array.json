@@ -1,0 +1,29 @@
+[
+  {
+    "tags": [
+      {
+        "kind": "source",
+        "source": "internal"
+      }
+    ],
+    "metadata": {}
+  },
+  {
+    "tags": [
+      {
+        "kind": "completion",
+        "disposition": "success"
+      }
+    ],
+    "metadata": {}
+  },
+  {
+    "tags": [
+      {
+        "kind": "keyboard",
+        "keycode": "eof"
+      }
+    ],
+    "metadata": {}
+  }
+]
