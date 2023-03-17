@@ -53,22 +53,28 @@ fn array() {
 
 #[test]
 fn sources() {
-	let sources = &[
-		Source::Filesystem,
-		Source::Keyboard,
-		Source::Mouse,
-		Source::Os,
-		Source::Time,
-		Source::Internal,
-	]
-	.map(|source| Event {
-		tags: vec![Tag::Source(source)],
-		metadata: Default::default(),
-	});
+	let sources = vec![
+		Event {
+			tags: vec![
+				Tag::Source(Source::Filesystem),
+				Tag::Source(Source::Keyboard),
+				Tag::Source(Source::Mouse),
+			],
+			metadata: Default::default(),
+		},
+		Event {
+			tags: vec![
+				Tag::Source(Source::Os),
+				Tag::Source(Source::Time),
+				Tag::Source(Source::Internal),
+			],
+			metadata: Default::default(),
+		},
+	];
 
 	assert_eq_path(
 		"tests/snapshots/sources.json",
-		serde_json::to_string_pretty(sources).unwrap(),
+		serde_json::to_string_pretty(&sources).unwrap(),
 	);
 
 	assert_eq!(parse_file("tests/snapshots/sources.json"), sources);

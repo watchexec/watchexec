@@ -4,21 +4,11 @@
       {
         "kind": "source",
         "source": "filesystem"
-      }
-    ],
-    "metadata": {}
-  },
-  {
-    "tags": [
+      },
       {
         "kind": "source",
         "source": "keyboard"
-      }
-    ],
-    "metadata": {}
-  },
-  {
-    "tags": [
+      },
       {
         "kind": "source",
         "source": "mouse"
@@ -31,21 +21,11 @@
       {
         "kind": "source",
         "source": "os"
-      }
-    ],
-    "metadata": {}
-  },
-  {
-    "tags": [
+      },
       {
         "kind": "source",
         "source": "time"
-      }
-    ],
-    "metadata": {}
-  },
-  {
-    "tags": [
+      },
       {
         "kind": "source",
         "source": "internal"
