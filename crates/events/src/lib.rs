@@ -16,12 +16,15 @@ pub use fs::*;
 pub use keyboard::*;
 
 #[doc(inline)]
-pub use signals::*;
+pub use process::*;
 
 mod event;
 mod fs;
 mod keyboard;
-mod signals;
+mod process;
 
 #[cfg(not(feature = "notify"))]
 mod sans_notify;
+
+#[cfg(feature = "serde")]
+mod serde_formats;

@@ -535,7 +535,7 @@ pub struct Args {
 	///   * 'process', for events caused by processes:
 	///     + `pid`, the process ID.
 	///   * 'signal', for signals sent to Watchexec:
-	///     + `name`, the normalised signal name ('hangup', 'interrupt', 'quit', 'terminate', 'user1', 'user2').
+	///     + `signal`, the normalised signal name ('hangup', 'interrupt', 'quit', 'terminate', 'user1', 'user2').
 	///   * 'completion', for when a command ends:
 	///     + `disposition`, the exit disposition ('success', 'error', 'signal', 'stop', 'exception', 'continued').
 	///     + `code`, the exit, signal, stop, or exception code.

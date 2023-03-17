@@ -80,6 +80,8 @@ pub enum SubSignal {
 	///
 	/// Invalid signals on the current platform will be ignored. Does nothing on Windows.
 	///
+	/// The special value `0` is used to indicate an unknown signal.
+	///
 	/// # Examples
 	///
 	/// ```
@@ -152,6 +154,7 @@ impl From<MainSignal> for SubSignal {
 			MainSignal::Terminate => Self::Terminate,
 			MainSignal::User1 => Self::User1,
 			MainSignal::User2 => Self::User2,
+			MainSignal::Unknown => Self::Custom(0),
 		}
 	}
 }

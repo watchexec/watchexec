@@ -1,6 +1,4 @@
-use std::{
-	fmt,
-};
+use std::fmt;
 
 /// Re-export of the Notify file event types.
 #[cfg(feature = "notify")]

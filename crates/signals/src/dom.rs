@@ -1,5 +1,7 @@
 //! Notifications (signals or Windows control events) sent to the main process.
 
+use crate::SubSignal;
+
 /// A notification sent to the main (watchexec) process.
 ///
 /// On Windows, only [`Interrupt`][MainSignal::Interrupt] and [`Terminate`][MainSignal::Terminate]
@@ -58,4 +60,25 @@ pub enum MainSignal {
 	/// This signal is available because it is expected that it most likely should be passed on to a
 	/// sub process or trigger a particular action within watchexec.
 	User2,
+
+	/// Not typically a received signal, but an unknown one.
+	///
+	/// This is used to represent a signal in the context of a received signal, but which is not
+	/// known, or which has been converted from a different signal type (e.g. [`SubSignal`]), which
+	/// variant has no correspondence in this enum.
+	Unknown,
+}
+
+impl From<SubSignal> for MainSignal {
+	fn from(sub: SubSignal) -> Self {
+		match sub {
+			SubSignal::Hangup => Self::Hangup,
+			SubSignal::Interrupt => Self::Interrupt,
+			SubSignal::Quit => Self::Quit,
+			SubSignal::Terminate => Self::Terminate,
+			SubSignal::User1 => Self::User1,
+			SubSignal::User2 => Self::User2,
+			_ => Self::Unknown,
+		}
+	}
 }

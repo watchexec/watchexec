@@ -3,7 +3,7 @@ use std::{
 	process::ExitStatus,
 };
 
-use watchexec_signals::{SubSignal};
+use watchexec_signals::SubSignal;
 
 /// The end status of a process.
 ///

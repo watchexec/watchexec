@@ -4,9 +4,12 @@ use std::{
 	path::{Path, PathBuf},
 };
 
-use watchexec_signals::{MainSignal};
+use watchexec_signals::MainSignal;
 
-use crate::{FileType, filekind::FileEventKind, Keyboard, ProcessEnd};
+#[cfg(feature = "serde")]
+use crate::serde_formats::SerdeTag;
+
+use crate::{filekind::FileEventKind, FileType, Keyboard, ProcessEnd};
 
 /// An event, as far as watchexec cares about.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -22,7 +25,7 @@ pub struct Event {
 /// Something which can be used to filter or qualify an event.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(tag = "kind", rename_all = "kebab-case"))]
+#[cfg_attr(feature = "serde", serde(from = "SerdeTag", into = "SerdeTag"))]
 #[non_exhaustive]
 pub enum Tag {
 	/// The event is about a path or file in the filesystem.
@@ -35,7 +38,6 @@ pub enum Tag {
 	},
 
 	/// Kind of a filesystem event (create, remove, modify, etc).
-	#[cfg_attr(feature = "serde", serde(rename = "fs"))]
 	FileEventKind(FileEventKind),
 
 	/// The general source of the event.
@@ -52,8 +54,11 @@ pub enum Tag {
 	Signal(MainSignal),
 
 	/// The event is about the subprocess ending.
-	#[cfg_attr(feature = "serde", serde(rename = "completion"))]
 	ProcessCompletion(Option<ProcessEnd>),
+
+	#[cfg(feature = "serde")]
+	/// The event is unknown (or not yet implemented).
+	Unknown,
 }
 
 impl Tag {
@@ -68,6 +73,8 @@ impl Tag {
 			Self::Process(_) => "Process",
 			Self::Signal(_) => "Signal",
 			Self::ProcessCompletion(_) => "ProcessCompletion",
+			#[cfg(feature = "serde")]
+			Self::Unknown => "Unknown",
 		}
 	}
 }
@@ -215,6 +222,8 @@ impl fmt::Display for Event {
 				Tag::Signal(s) => write!(f, " signal={s:?}")?,
 				Tag::ProcessCompletion(None) => write!(f, " command-completed")?,
 				Tag::ProcessCompletion(Some(c)) => write!(f, " command-completed({c:?})")?,
+				#[cfg(feature = "serde")]
+				Tag::Unknown => write!(f, " unknown")?,
 			}
 		}
 
