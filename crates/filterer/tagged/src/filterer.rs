@@ -14,9 +14,9 @@ use watchexec::{
 	error::RuntimeError,
 	event::{Event, FileType, Priority, ProcessEnd, Tag},
 	filter::Filterer,
-	signal::{process::SubSignal, source::MainSignal},
 };
 use watchexec_filterer_ignore::IgnoreFilterer;
+use watchexec_signals::Signal;
 
 use crate::{swaplock::SwapLock, Filter, Matcher, Op, Pattern, TaggedFiltererError};
 
@@ -321,6 +321,21 @@ impl TaggedFilterer {
 	// Ok(None) => for some precondition, the match was not done (mismatched tag, out of context, …)
 	fn match_tag(&self, filter: &Filter, tag: &Tag) -> Result<Option<bool>, TaggedFiltererError> {
 		trace!(matcher=?filter.on, "matching filter to tag");
+
+		fn sig_match(sig: Signal) -> (&'static str, i32) {
+			match sig {
+				Signal::Hangup | Signal::Custom(1) => ("HUP", 1),
+				Signal::ForceStop | Signal::Custom(9) => ("KILL", 9),
+				Signal::Interrupt | Signal::Custom(2) => ("INT", 2),
+				Signal::Quit | Signal::Custom(3) => ("QUIT", 3),
+				Signal::Terminate | Signal::Custom(15) => ("TERM", 15),
+				Signal::User1 | Signal::Custom(10) => ("USR1", 10),
+				Signal::User2 | Signal::Custom(12) => ("USR2", 12),
+				Signal::Custom(n) => ("UNK", n),
+				_ => ("UNK", 0),
+			}
+		}
+
 		match (tag, filter.on) {
 			(tag, Matcher::Tag) => filter.matches(tag.discriminant_name()),
 			(Tag::Path { path, .. }, Matcher::Path) => {
@@ -360,15 +375,7 @@ impl TaggedFilterer {
 			(Tag::Source(src), Matcher::Source) => filter.matches(src.to_string()),
 			(Tag::Process(pid), Matcher::Process) => filter.matches(pid.to_string()),
 			(Tag::Signal(sig), Matcher::Signal) => {
-				let (text, int) = match sig {
-					MainSignal::Hangup => ("HUP", 1),
-					MainSignal::Interrupt => ("INT", 2),
-					MainSignal::Quit => ("QUIT", 3),
-					MainSignal::Terminate => ("TERM", 15),
-					MainSignal::User1 => ("USR1", 10),
-					MainSignal::User2 => ("USR2", 12),
-				};
-
+				let (text, int) = sig_match(*sig);
 				Ok(filter.matches(text)?
 					|| filter.matches(format!("SIG{text}"))?
 					|| filter.matches(int.to_string())?)
@@ -378,17 +385,7 @@ impl TaggedFilterer {
 				Some(ProcessEnd::Success) => filter.matches("success"),
 				Some(ProcessEnd::ExitError(int)) => filter.matches(format!("error({int})")),
 				Some(ProcessEnd::ExitSignal(sig)) => {
-					let (text, int) = match sig {
-						SubSignal::Hangup | SubSignal::Custom(1) => ("HUP", 1),
-						SubSignal::ForceStop | SubSignal::Custom(9) => ("KILL", 9),
-						SubSignal::Interrupt | SubSignal::Custom(2) => ("INT", 2),
-						SubSignal::Quit | SubSignal::Custom(3) => ("QUIT", 3),
-						SubSignal::Terminate | SubSignal::Custom(15) => ("TERM", 15),
-						SubSignal::User1 | SubSignal::Custom(10) => ("USR1", 10),
-						SubSignal::User2 | SubSignal::Custom(12) => ("USR2", 12),
-						SubSignal::Custom(n) => ("UNK", *n),
-					};
-
+					let (text, int) = sig_match(*sig);
 					Ok(filter.matches(format!("signal({text})"))?
 						|| filter.matches(format!("signal(SIG{text})"))?
 						|| filter.matches(format!("signal({int})"))?)

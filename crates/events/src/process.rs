@@ -3,7 +3,7 @@ use std::{
 	process::ExitStatus,
 };
 
-use watchexec_signals::SubSignal;
+use watchexec_signals::Signal;
 
 /// The end status of a process.
 ///
@@ -33,7 +33,7 @@ pub enum ProcessEnd {
 
 	/// The process exited due to a signal.
 	#[cfg_attr(feature = "serde", serde(rename = "signal"))]
-	ExitSignal(SubSignal),
+	ExitSignal(Signal),
 
 	/// The process was stopped (but not terminated) (`libc::WIFSTOPPED`).
 	#[cfg_attr(feature = "serde", serde(rename = "stop"))]

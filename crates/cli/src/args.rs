@@ -1,7 +1,8 @@
 use std::{path::PathBuf, str::FromStr, time::Duration};
 
 use clap::{ArgAction, Parser, ValueEnum, ValueHint};
-use watchexec::{paths::PATH_SEPARATOR, signal::process::SubSignal};
+use watchexec::paths::PATH_SEPARATOR;
+use watchexec_signals::Signal;
 
 const OPTSET_FILTERING: &str = "Filtering";
 const OPTSET_COMMAND: &str = "Command";
@@ -179,7 +180,7 @@ pub struct Args {
 		conflicts_with_all = ["restart", "watch_when_idle"],
 		value_name = "SIGNAL"
 	)]
-	pub signal: Option<SubSignal>,
+	pub signal: Option<Signal>,
 
 	/// Hidden legacy shorthand for '--signal=kill'.
 	#[arg(short, long, hide = true)]
@@ -202,7 +203,7 @@ pub struct Args {
 	/// events. For portability the unix signals "SIGKILL", "SIGINT", "SIGTERM", and "SIGHUP" are
 	/// respectively mapped to these.
 	#[arg(long, value_name = "SIGNAL")]
-	pub stop_signal: Option<SubSignal>,
+	pub stop_signal: Option<Signal>,
 
 	/// Time to wait for the command to exit gracefully
 	///
@@ -887,7 +888,7 @@ pub fn get_args() -> Args {
 	let mut args = Args::parse_from(args);
 
 	if args.kill {
-		args.signal = Some(SubSignal::ForceStop);
+		args.signal = Some(Signal::ForceStop);
 	}
 
 	if args.signal.is_some() {

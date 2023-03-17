@@ -10,6 +10,7 @@ use tokio::{
 	},
 };
 use tracing::{debug, debug_span, error, trace, Span};
+use watchexec_signals::Signal;
 
 use crate::{
 	action::{PostSpawn, PreSpawn},
@@ -17,7 +18,6 @@ use crate::{
 	error::RuntimeError,
 	event::{Event, Priority, Source, Tag},
 	handler::{rte, HandlerLock},
-	signal::process::SubSignal,
 };
 
 use super::Process;
@@ -25,7 +25,7 @@ use super::Process;
 #[derive(Clone, Copy, Debug)]
 enum Intervention {
 	Kill,
-	Signal(SubSignal),
+	Signal(Signal),
 }
 
 /// A task which supervises a sequence of processes.
@@ -208,13 +208,13 @@ impl Supervisor {
 
 	/// Issues a signal to the process.
 	///
-	/// On Windows, this currently only supports [`SubSignal::ForceStop`].
+	/// On Windows, this currently only supports [`Signal::ForceStop`].
 	///
 	/// While this is async, it returns once the signal intervention has been sent internally, not
 	/// when the signal has been delivered.
-	pub async fn signal(&self, signal: SubSignal) {
+	pub async fn signal(&self, signal: Signal) {
 		if cfg!(windows) {
-			if signal == SubSignal::ForceStop {
+			if signal == Signal::ForceStop {
 				self.intervene.send(Intervention::Kill).await.ok();
 			}
 		// else: https://github.com/watchexec/watchexec/issues/219

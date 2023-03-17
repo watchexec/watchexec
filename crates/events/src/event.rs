@@ -4,7 +4,7 @@ use std::{
 	path::{Path, PathBuf},
 };
 
-use watchexec_signals::MainSignal;
+use watchexec_signals::Signal;
 
 #[cfg(feature = "serde")]
 use crate::serde_formats::SerdeTag;
@@ -47,11 +47,10 @@ pub enum Tag {
 	Keyboard(Keyboard),
 
 	/// The event was caused by a particular process.
-	// TODO: {"kind":"process", "pid": 132}
 	Process(u32),
 
 	/// The event is about a signal being delivered to the main process.
-	Signal(MainSignal),
+	Signal(Signal),
 
 	/// The event is about the subprocess ending.
 	ProcessCompletion(Option<ProcessEnd>),
@@ -188,7 +187,7 @@ impl Event {
 	}
 
 	/// Return all signals in the event's tags.
-	pub fn signals(&self) -> impl Iterator<Item = MainSignal> + '_ {
+	pub fn signals(&self) -> impl Iterator<Item = Signal> + '_ {
 		self.tags.iter().filter_map(|p| match p {
 			Tag::Signal(s) => Some(*s),
 			_ => None,

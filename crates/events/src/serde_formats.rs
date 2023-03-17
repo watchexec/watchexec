@@ -15,7 +15,7 @@ use notify::event::{
 };
 
 use serde::{Deserialize, Serialize};
-use watchexec_signals::SubSignal;
+use watchexec_signals::Signal;
 
 use crate::{FileType, Keyboard, ProcessEnd, Source, Tag};
 
@@ -49,7 +49,7 @@ pub struct SerdeTag {
 
 	// signal
 	#[serde(skip_serializing_if = "Option::is_none")]
-	signal: Option<SubSignal>,
+	signal: Option<Signal>,
 
 	// completion
 	#[serde(skip_serializing_if = "Option::is_none")]

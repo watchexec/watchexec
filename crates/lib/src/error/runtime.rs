@@ -1,10 +1,10 @@
 use miette::Diagnostic;
 use thiserror::Error;
+use watchexec_signals::Signal;
 
 use crate::{
 	event::{Event, Priority},
 	fs::Watcher,
-	signal::process::SubSignal,
 };
 
 /// Errors which _may_ be recoverable, transient, or only affect a part of the operation, and should
@@ -122,13 +122,13 @@ pub enum RuntimeError {
 	#[diagnostic(code(watchexec::runtime::process_doa))]
 	ProcessDeadOnArrival,
 
-	/// Error received when a [`SubSignal`] is unsupported
+	/// Error received when a [`Signal`] is unsupported
 	///
 	/// This may happen if the signal is not supported on the current platform, or if Watchexec
 	/// doesn't support sending the signal.
 	#[error("unsupported signal: {0:?}")]
 	#[diagnostic(code(watchexec::runtime::unsupported_signal))]
-	UnsupportedSignal(SubSignal),
+	UnsupportedSignal(Signal),
 
 	/// Error received when there are no commands to run.
 	///

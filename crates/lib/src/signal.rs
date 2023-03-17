@@ -3,7 +3,7 @@
 use async_priority_channel as priority;
 use tokio::{select, sync::mpsc};
 use tracing::{debug, trace};
-use watchexec_signals::MainSignal;
+use watchexec_signals::Signal;
 
 use crate::{
 	error::{CriticalError, RuntimeError},
@@ -13,13 +13,13 @@ use crate::{
 /// Compatibility shim for the old `watchexec::signal::process` module.
 pub mod process {
 	#[deprecated(note = "use the `watchexec-signals` crate directly instead", since = "2.1.0")]
-	pub use watchexec_signals::SubSignal;
+	pub use watchexec_signals::Signal as SubSignal;
 }
 
 /// Compatibility shim for the old `watchexec::signal::source` module.
 pub mod source {
 	#[deprecated(note = "use the `watchexec-signals` crate directly instead", since = "2.1.0")]
-	pub use watchexec_signals::MainSignal;
+	pub use watchexec_signals::Signal as MainSignal;
 	#[deprecated(note = "use `watchexec::signal::worker` directly instead", since = "2.1.0")]
 	pub use super::worker;
 }
@@ -80,12 +80,12 @@ async fn imp_worker(
 
 	loop {
 		let sig = select!(
-			_ = s_hangup.recv() => MainSignal::Hangup,
-			_ = s_interrupt.recv() => MainSignal::Interrupt,
-			_ = s_quit.recv() => MainSignal::Quit,
-			_ = s_terminate.recv() => MainSignal::Terminate,
-			_ = s_user1.recv() => MainSignal::User1,
-			_ = s_user2.recv() => MainSignal::User2,
+			_ = s_hangup.recv() => Signal::Hangup,
+			_ = s_interrupt.recv() => Signal::Interrupt,
+			_ = s_quit.recv() => Signal::Quit,
+			_ = s_terminate.recv() => Signal::Terminate,
+			_ = s_user1.recv() => Signal::User1,
+			_ = s_user2.recv() => Signal::User2,
 		);
 
 		debug!(?sig, "received unix signal");
@@ -116,8 +116,8 @@ async fn imp_worker(
 
 	loop {
 		let sig = select!(
-			_ = sigint.recv() => MainSignal::Interrupt,
-			_ = sigbreak.recv() => MainSignal::Terminate,
+			_ = sigint.recv() => Signal::Interrupt,
+			_ = sigbreak.recv() => Signal::Terminate,
 		);
 
 		debug!(?sig, "received windows process notification");
@@ -128,10 +128,10 @@ async fn imp_worker(
 async fn send_event(
 	errors: mpsc::Sender<RuntimeError>,
 	events: priority::Sender<Event, Priority>,
-	sig: MainSignal,
+	sig: Signal,
 ) -> Result<(), CriticalError> {
 	let tags = vec![
-		Tag::Source(if sig == MainSignal::Interrupt {
+		Tag::Source(if sig == Signal::Interrupt {
 			Source::Keyboard
 		} else {
 			Source::Os
@@ -149,7 +149,7 @@ async fn send_event(
 		.send(
 			event,
 			match sig {
-				MainSignal::Interrupt | MainSignal::Terminate => Priority::Urgent,
+				Signal::Interrupt | Signal::Terminate => Priority::Urgent,
 				_ => Priority::High,
 			},
 		)

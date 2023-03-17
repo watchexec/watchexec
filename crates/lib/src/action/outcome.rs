@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crate::signal::process::SubSignal;
+use watchexec_signals::Signal;
 
 /// The outcome to execute when an action is triggered.
 ///
@@ -34,7 +34,7 @@ pub enum Outcome {
 	/// Send this signal to the command.
 	///
 	/// This does not wait for the command to complete.
-	Signal(SubSignal),
+	Signal(Signal),
 
 	/// Clear the (terminal) screen.
 	Clear,

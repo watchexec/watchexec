@@ -1,6 +1,6 @@
 # watchexec-signals
 
-_Watchexec's signal types._
+_Watchexec's signal type._
 
 - **[API documentation][docs]**.
 - Licensed under [Apache 2.0][license] or [MIT](https://passcod.mit-license.org).
@@ -10,10 +10,10 @@ _Watchexec's signal types._
 [license]: ../../LICENSE
 
 ```rust ,no_run
-use watchexec_signals::SubSignal;
+use watchexec_signals::Signal;
 
 fn main() {
-    assert_eq!(SubSignal::from_str("SIGINT").unwrap(), SubSignal::Interrupt);
+    assert_eq!(Signal::from_str("SIGINT").unwrap(), Signal::Interrupt);
 }
 ```
 

@@ -13,7 +13,7 @@ use watchexec::{
 	paths::summarise_events_to_env,
 };
 use watchexec_events::{Event, ProcessEnd, Tag, Keyboard};
-use watchexec_signals::{SubSignal, MainSignal};
+use watchexec_signals::Signal;
 
 use crate::args::{Args, ClearMode, EmitEvents, OnBusyUpdate};
 
@@ -70,15 +70,15 @@ pub fn runtime(args: &Args) -> Result<RuntimeConfig> {
 			return fut;
 		}
 
-		let signals: Vec<MainSignal> = action.events.iter().flat_map(Event::signals).collect();
+		let signals: Vec<Signal> = action.events.iter().flat_map(Event::signals).collect();
 		let has_paths = action.events.iter().flat_map(Event::paths).next().is_some();
 
-		if signals.contains(&MainSignal::Terminate) {
+		if signals.contains(&Signal::Terminate) {
 			action.outcome(Outcome::both(Outcome::Stop, Outcome::Exit));
 			return fut;
 		}
 
-		if signals.contains(&MainSignal::Interrupt) {
+		if signals.contains(&Signal::Interrupt) {
 			action.outcome(Outcome::both(Outcome::Stop, Outcome::Exit));
 			return fut;
 		}
@@ -168,13 +168,13 @@ pub fn runtime(args: &Args) -> Result<RuntimeConfig> {
 		let when_running = match on_busy {
 			OnBusyUpdate::Restart => Outcome::both(
 				Outcome::both(
-					Outcome::Signal(stop_signal.unwrap_or(SubSignal::Terminate)),
+					Outcome::Signal(stop_signal.unwrap_or(Signal::Terminate)),
 					Outcome::both(Outcome::Sleep(stop_timeout), Outcome::Stop),
 				),
 				start,
 			),
 			OnBusyUpdate::Signal => {
-				Outcome::Signal(stop_signal.or(signal).unwrap_or(SubSignal::Terminate))
+				Outcome::Signal(stop_signal.or(signal).unwrap_or(Signal::Terminate))
 			}
 			OnBusyUpdate::Queue => Outcome::wait(start),
 			OnBusyUpdate::DoNothing => Outcome::DoNothing,

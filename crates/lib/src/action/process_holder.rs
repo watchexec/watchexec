@@ -2,8 +2,9 @@ use std::sync::Arc;
 
 use tokio::sync::RwLock;
 use tracing::trace;
+use watchexec_signals::Signal;
 
-use crate::{command::Supervisor, error::RuntimeError, signal::process::SubSignal};
+use crate::{command::Supervisor, error::RuntimeError};
 
 #[derive(Clone, Debug, Default)]
 pub struct ProcessHolder(Arc<RwLock<Option<Supervisor>>>);
@@ -36,7 +37,7 @@ impl ProcessHolder {
 		}
 	}
 
-	pub async fn signal(&self, sig: SubSignal) {
+	pub async fn signal(&self, sig: Signal) {
 		if let Some(p) = self.0.read().await.as_ref() {
 			trace!("signaling supervisor");
 			p.signal(sig).await;
