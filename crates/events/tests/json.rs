@@ -1,5 +1,6 @@
 use snapbox::assert_eq_path;
 use watchexec_events::{Event, Keyboard, ProcessEnd, Source, Tag};
+use watchexec_signals::Signal;
 
 fn parse_file(path: &str) -> Vec<Event> {
 	serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap()
@@ -34,7 +35,7 @@ fn array() {
 			metadata: Default::default(),
 		},
 		Event {
-			tags: vec![Tag::ProcessCompletion(Some(ProcessEnd::Success))],
+			tags: vec![Tag::ProcessCompletion(Some(ProcessEnd::Success)), Tag::Process(123)],
 			metadata: Default::default(),
 		},
 		Event {
@@ -78,4 +79,32 @@ fn sources() {
 	);
 
 	assert_eq!(parse_file("tests/snapshots/sources.json"), sources);
+}
+
+#[test]
+fn signals() {
+	let signals = vec![
+		Event {
+			tags: vec![
+				Tag::Signal(Signal::Interrupt),
+				Tag::Signal(Signal::User1),
+				Tag::Signal(Signal::ForceStop),
+				],
+				metadata: Default::default(),
+			},
+			Event {
+				tags: vec![
+				Tag::Signal(Signal::Custom(66)),
+				Tag::Signal(Signal::Custom(0)),
+			],
+			metadata: Default::default(),
+		},
+	];
+
+	assert_eq_path(
+		"tests/snapshots/signals.json",
+		serde_json::to_string_pretty(&signals).unwrap(),
+	);
+
+	assert_eq!(parse_file("tests/snapshots/signals.json"), signals);
 }

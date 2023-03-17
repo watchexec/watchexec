@@ -1,0 +1,32 @@
+[
+  {
+    "tags": [
+      {
+        "kind": "signal",
+        "signal": "interrupt"
+      },
+      {
+        "kind": "signal",
+        "signal": "user1"
+      },
+      {
+        "kind": "signal",
+        "signal": "force-stop"
+      }
+    ],
+    "metadata": {}
+  },
+  {
+    "tags": [
+      {
+        "kind": "signal",
+        "signal": 66
+      },
+      {
+        "kind": "signal",
+        "signal": 0
+      }
+    ],
+    "metadata": {}
+  }
+]

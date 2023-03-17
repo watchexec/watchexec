@@ -13,6 +13,10 @@
       {
         "kind": "completion",
         "disposition": "success"
+      },
+      {
+        "kind": "process",
+        "pid": 123
       }
     ],
     "metadata": {}
