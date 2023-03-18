@@ -1,0 +1,28 @@
+[
+	{
+		"tags": [
+			{
+				"kind": "path",
+				"absolute": "/foo/bar/baz"
+			},
+			{
+				"kind": "fs",
+				"simple": "create"
+			},
+			{
+				"kind": "fs"
+			}
+		]
+	},
+	{
+		"tags": [
+			{
+				"kind": "fs",
+				"full": "Modify(Other)"
+			},
+			{
+				"kind": "completion"
+			}
+		]
+	}
+]

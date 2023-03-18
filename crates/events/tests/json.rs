@@ -80,6 +80,40 @@ fn metadata() {
 }
 
 #[test]
+fn asymmetric() {
+	// asymmetric because these have information loss or missing fields
+
+	assert_eq!(
+		parse_file("tests/snapshots/asymmetric.json"),
+		&[
+			Event {
+				tags: vec![
+					// no filetype field
+					Tag::Path {
+						path: "/foo/bar/baz".into(),
+						file_type: None
+					},
+					// fs with only simple reprensentation
+					Tag::FileEventKind(EventKind::Create(CreateKind::Any)),
+					// unparseable of a known kind
+					Tag::Unknown,
+				],
+				metadata: Default::default(),
+			},
+			Event {
+				tags: vec![
+					// no simple field
+					Tag::FileEventKind(EventKind::Modify(ModifyKind::Other)),
+					// no disposition field
+					Tag::ProcessCompletion(None)
+				],
+				metadata: Default::default(),
+			},
+		]
+	);
+}
+
+#[test]
 fn sources() {
 	let sources = vec![
 		Event {
