@@ -3,7 +3,7 @@
 	<assemblyIdentity
 		type="win32"
 		name="Watchexec.Cli.watchexec"
-		version="1.21.1.0"
+		version="1.22.0.0"
 	/>
 
 	<trustInfo>
