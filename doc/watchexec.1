@@ -125,12 +125,12 @@ or user ignore files, like \*(Aq~/.gitignore\*(Aq or \*(Aq~/.config/watchexec/ig
 
 Supported project ignore files:
 
-\- Git: .gitignore at project root and child directories, .git/info/exclude, and the file pointed to by `core.excludesFile` in .git/config.
-\- Mercurial: .hgignore at project root and child directories.
-\- Bazaar: .bzrignore at project root.
-\- Darcs: _darcs/prefs/boring
-\- Fossil: .fossil\-settings/ignore\-glob
-\- Ripgrep/Watchexec/generic: .ignore at project root and child directories.
+  \- Git: .gitignore at project root and child directories, .git/info/exclude, and the file pointed to by `core.excludesFile` in .git/config.
+  \- Mercurial: .hgignore at project root and child directories.
+  \- Bazaar: .bzrignore at project root.
+  \- Darcs: _darcs/prefs/boring
+  \- Fossil: .fossil\-settings/ignore\-glob
+  \- Ripgrep/Watchexec/generic: .ignore at project root and child directories.
 
 VCS ignore files (Git, Mercurial, Bazaar, Darcs, Fossil) are only used if the corresponding
 VCS is discovered to be in use for the project/origin. For example, a .bzrignore in a Git
@@ -148,10 +148,10 @@ This disables loading of global or user ignore files, like \*(Aq~/.gitignore\*(A
 
 Supported global ignore files
 
-\- Git (if core.excludesFile is set): the file at that path
-\- Git (otherwise): the first found of $XDG_CONFIG_HOME/git/ignore, %APPDATA%/.gitignore, %USERPROFILE%/.gitignore, $HOME/.config/git/ignore, $HOME/.gitignore.
-\- Bazaar: the first found of %APPDATA%/Bazzar/2.0/ignore, $HOME/.bazaar/ignore.
-\- Watchexec: the first found of $XDG_CONFIG_HOME/watchexec/ignore, %APPDATA%/watchexec/ignore, %USERPROFILE%/.watchexec/ignore, $HOME/.watchexec/ignore.
+  \- Git (if core.excludesFile is set): the file at that path
+  \- Git (otherwise): the first found of $XDG_CONFIG_HOME/git/ignore, %APPDATA%/.gitignore, %USERPROFILE%/.gitignore, $HOME/.config/git/ignore, $HOME/.gitignore.
+  \- Bazaar: the first found of %APPDATA%/Bazzar/2.0/ignore, $HOME/.bazaar/ignore.
+  \- Watchexec: the first found of $XDG_CONFIG_HOME/watchexec/ignore, %APPDATA%/watchexec/ignore, %USERPROFILE%/.watchexec/ignore, $HOME/.watchexec/ignore.
 
 Like for project files, Git and Bazaar global files will only be used for the corresponding
 VCS as used in the project.
@@ -250,12 +250,12 @@ sets environment variables with the paths of the affected files, for filesystem 
 $WATCHEXEC_COMMON_PATH is set to the longest common path of all of the below variables,
 and so should be prepended to each path to obtain the full/real path. Then:
 
-\- $WATCHEXEC_CREATED_PATH is set when files/folders were created
-\- $WATCHEXEC_REMOVED_PATH is set when files/folders were removed
-\- $WATCHEXEC_RENAMED_PATH is set when files/folders were renamed
-\- $WATCHEXEC_WRITTEN_PATH is set when files/folders were modified
-\- $WATCHEXEC_META_CHANGED_PATH is set when files/folders\*(Aq metadata were modified
-\- $WATCHEXEC_OTHERWISE_CHANGED_PATH is set for every other kind of pathed event
+  \- $WATCHEXEC_CREATED_PATH is set when files/folders were created
+  \- $WATCHEXEC_REMOVED_PATH is set when files/folders were removed
+  \- $WATCHEXEC_RENAMED_PATH is set when files/folders were renamed
+  \- $WATCHEXEC_WRITTEN_PATH is set when files/folders were modified
+  \- $WATCHEXEC_META_CHANGED_PATH is set when files/folders\*(Aq metadata were modified
+  \- $WATCHEXEC_OTHERWISE_CHANGED_PATH is set for every other kind of pathed event
 
 Multiple paths are separated by the system path separator, \*(Aq;\*(Aq on Windows and \*(Aq:\*(Aq on unix.
 Within each variable, paths are deduplicated and sorted in binary order (i.e. neither
@@ -275,50 +275,51 @@ There are also two JSON modes, which are based on JSON objects and can represent
 set of events Watchexec handles. Here\*(Aqs an example of a folder being created on Linux:
 
 ```json
-{
-  "tags": [
-    {
-      "kind": "path",
-      "absolute": "/home/user/your/new\-folder",
-      "filetype": "dir"
-    },
-    {
-      "kind": "fs",
-      "simple": "create",
-      "full": "Create(Folder)"
-    },
-    {
-      "kind": "source",
-      "source": "filesystem",
+  {
+    "tags": [
+      {
+        "kind": "path",
+        "absolute": "/home/user/your/new\-folder",
+        "filetype": "dir"
+      },
+      {
+        "kind": "fs",
+        "simple": "create",
+        "full": "Create(Folder)"
+      },
+      {
+        "kind": "source",
+        "source": "filesystem",
+      }
+    ],
+    "metadata": {
+      "notify\-backend": "inotify"
     }
-  ],
-  "metadata": {
-    "notify\-backend": "inotify"
   }
-}
 ```
 
 The fields are as follows:
 
-\- `tags`, structured event data.
-\- `tags[].kind`, which can be:
-  * \*(Aqpath\*(Aq, along with:
-    + `absolute`, an absolute path.
-    + `filetype`, a file type if known (\*(Aqdir\*(Aq, \*(Aqfile\*(Aq, \*(Aqsymlink\*(Aq, \*(Aqother\*(Aq).
-  * \*(Aqfs\*(Aq:
-    + `simple`, the "simple" event type (\*(Aqaccess\*(Aq, \*(Aqcreate\*(Aq, \*(Aqmodify\*(Aq, \*(Aqremove\*(Aq, or \*(Aqother\*(Aq).
-    + `full`, the "full" event type, which is too complex to fully describe here, but looks like \*(AqGeneral(Precise(Specific))\*(Aq.
-  * \*(Aqsource\*(Aq, along with:
-    + `source`, the source of the event (\*(Aqfilesystem\*(Aq, \*(Aqkeyboard\*(Aq, \*(Aqmouse\*(Aq, \*(Aqos\*(Aq, \*(Aqtime\*(Aq, \*(Aqinternal\*(Aq).
-  * \*(Aqkeyboard\*(Aq, along with:
-    + `keycode`. Currently only the value \*(Aqeof\*(Aq is supported.
-  * \*(Aqprocess\*(Aq, for events caused by processes:
-    + `pid`, the process ID.
-  * \*(Aqsignal\*(Aq, for signals sent to Watchexec:
-    + `signal`, the normalised signal name (\*(Aqhangup\*(Aq, \*(Aqinterrupt\*(Aq, \*(Aqquit\*(Aq, \*(Aqterminate\*(Aq, \*(Aquser1\*(Aq, \*(Aquser2\*(Aq).
-  * \*(Aqcompletion\*(Aq, for when a command ends:
-    + `disposition`, the exit disposition (\*(Aqsuccess\*(Aq, \*(Aqerror\*(Aq, \*(Aqsignal\*(Aq, \*(Aqstop\*(Aq, \*(Aqexception\*(Aq, \*(Aqcontinued\*(Aq).
-    + `code`, the exit, signal, stop, or exception code.
+  \- `tags`, structured event data.
+  \- `tags[].kind`, which can be:
+    * \*(Aqpath\*(Aq, along with:
+      + `absolute`, an absolute path.
+      + `filetype`, a file type if known (\*(Aqdir\*(Aq, \*(Aqfile\*(Aq, \*(Aqsymlink\*(Aq, \*(Aqother\*(Aq).
+    * \*(Aqfs\*(Aq:
+      + `simple`, the "simple" event type (\*(Aqaccess\*(Aq, \*(Aqcreate\*(Aq, \*(Aqmodify\*(Aq, \*(Aqremove\*(Aq, or \*(Aqother\*(Aq).
+      + `full`, the "full" event type, which is too complex to fully describe here, but looks like \*(AqGeneral(Precise(Specific))\*(Aq.
+    * \*(Aqsource\*(Aq, along with:
+      + `source`, the source of the event (\*(Aqfilesystem\*(Aq, \*(Aqkeyboard\*(Aq, \*(Aqmouse\*(Aq, \*(Aqos\*(Aq, \*(Aqtime\*(Aq, \*(Aqinternal\*(Aq).
+    * \*(Aqkeyboard\*(Aq, along with:
+      + `keycode`. Currently only the value \*(Aqeof\*(Aq is supported.
+    * \*(Aqprocess\*(Aq, for events caused by processes:
+      + `pid`, the process ID.
+    * \*(Aqsignal\*(Aq, for signals sent to Watchexec:
+      + `signal`, the normalised signal name (\*(Aqhangup\*(Aq, \*(Aqinterrupt\*(Aq, \*(Aqquit\*(Aq, \*(Aqterminate\*(Aq, \*(Aquser1\*(Aq, \*(Aquser2\*(Aq).
+    * \*(Aqcompletion\*(Aq, for when a command ends:
+      + `disposition`, the exit disposition (\*(Aqsuccess\*(Aq, \*(Aqerror\*(Aq, \*(Aqsignal\*(Aq, \*(Aqstop\*(Aq, \*(Aqexception\*(Aq, \*(Aqcontinued\*(Aq).
+      + `code`, the exit, signal, stop, or exception code.
+  \- `metadata`, additional information about the event.
 
 The \*(Aqjson\-stdin\*(Aq mode will emit JSON events to the standard input of the command, one per
 line, then close stdin. The \*(Aqjson\-file\*(Aq mode will create a temporary file, write the

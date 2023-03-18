@@ -275,12 +275,12 @@ pub struct Args {
 	///
 	/// Supported project ignore files:
 	///
-	/// - Git: .gitignore at project root and child directories, .git/info/exclude, and the file pointed to by `core.excludesFile` in .git/config.
-	/// - Mercurial: .hgignore at project root and child directories.
-	/// - Bazaar: .bzrignore at project root.
-	/// - Darcs: _darcs/prefs/boring
-	/// - Fossil: .fossil-settings/ignore-glob
-	/// - Ripgrep/Watchexec/generic: .ignore at project root and child directories.
+	///   - Git: .gitignore at project root and child directories, .git/info/exclude, and the file pointed to by `core.excludesFile` in .git/config.
+	///   - Mercurial: .hgignore at project root and child directories.
+	///   - Bazaar: .bzrignore at project root.
+	///   - Darcs: _darcs/prefs/boring
+	///   - Fossil: .fossil-settings/ignore-glob
+	///   - Ripgrep/Watchexec/generic: .ignore at project root and child directories.
 	///
 	/// VCS ignore files (Git, Mercurial, Bazaar, Darcs, Fossil) are only used if the corresponding
 	/// VCS is discovered to be in use for the project/origin. For example, a .bzrignore in a Git
@@ -304,10 +304,10 @@ pub struct Args {
 	///
 	/// Supported global ignore files
 	///
-	/// - Git (if core.excludesFile is set): the file at that path
-	/// - Git (otherwise): the first found of $XDG_CONFIG_HOME/git/ignore, %APPDATA%/.gitignore, %USERPROFILE%/.gitignore, $HOME/.config/git/ignore, $HOME/.gitignore.
-	/// - Bazaar: the first found of %APPDATA%/Bazzar/2.0/ignore, $HOME/.bazaar/ignore.
-	/// - Watchexec: the first found of $XDG_CONFIG_HOME/watchexec/ignore, %APPDATA%/watchexec/ignore, %USERPROFILE%/.watchexec/ignore, $HOME/.watchexec/ignore.
+	///   - Git (if core.excludesFile is set): the file at that path
+	///   - Git (otherwise): the first found of $XDG_CONFIG_HOME/git/ignore, %APPDATA%/.gitignore, %USERPROFILE%/.gitignore, $HOME/.config/git/ignore, $HOME/.gitignore.
+	///   - Bazaar: the first found of %APPDATA%/Bazzar/2.0/ignore, $HOME/.bazaar/ignore.
+	///   - Watchexec: the first found of $XDG_CONFIG_HOME/watchexec/ignore, %APPDATA%/watchexec/ignore, %USERPROFILE%/.watchexec/ignore, $HOME/.watchexec/ignore.
 	///
 	/// Like for project files, Git and Bazaar global files will only be used for the corresponding
 	/// VCS as used in the project.
@@ -469,12 +469,12 @@ pub struct Args {
 	/// $WATCHEXEC_COMMON_PATH is set to the longest common path of all of the below variables,
 	/// and so should be prepended to each path to obtain the full/real path. Then:
 	///
-	/// - $WATCHEXEC_CREATED_PATH is set when files/folders were created
-	/// - $WATCHEXEC_REMOVED_PATH is set when files/folders were removed
-	/// - $WATCHEXEC_RENAMED_PATH is set when files/folders were renamed
-	/// - $WATCHEXEC_WRITTEN_PATH is set when files/folders were modified
-	/// - $WATCHEXEC_META_CHANGED_PATH is set when files/folders' metadata were modified
-	/// - $WATCHEXEC_OTHERWISE_CHANGED_PATH is set for every other kind of pathed event
+	///   - $WATCHEXEC_CREATED_PATH is set when files/folders were created
+	///   - $WATCHEXEC_REMOVED_PATH is set when files/folders were removed
+	///   - $WATCHEXEC_RENAMED_PATH is set when files/folders were renamed
+	///   - $WATCHEXEC_WRITTEN_PATH is set when files/folders were modified
+	///   - $WATCHEXEC_META_CHANGED_PATH is set when files/folders' metadata were modified
+	///   - $WATCHEXEC_OTHERWISE_CHANGED_PATH is set for every other kind of pathed event
 	///
 	/// Multiple paths are separated by the system path separator, ';' on Windows and ':' on unix.
 	/// Within each variable, paths are deduplicated and sorted in binary order (i.e. neither
@@ -494,50 +494,51 @@ pub struct Args {
 	/// set of events Watchexec handles. Here's an example of a folder being created on Linux:
 	///
 	/// ```json
-	/// {
-	///   "tags": [
-	///     {
-	///       "kind": "path",
-	///       "absolute": "/home/user/your/new-folder",
-	///       "filetype": "dir"
-	///     },
-	///     {
-	///       "kind": "fs",
-	///       "simple": "create",
-	///       "full": "Create(Folder)"
-	///     },
-	///     {
-	///       "kind": "source",
-	///       "source": "filesystem",
+	///   {
+	///     "tags": [
+	///       {
+	///         "kind": "path",
+	///         "absolute": "/home/user/your/new-folder",
+	///         "filetype": "dir"
+	///       },
+	///       {
+	///         "kind": "fs",
+	///         "simple": "create",
+	///         "full": "Create(Folder)"
+	///       },
+	///       {
+	///         "kind": "source",
+	///         "source": "filesystem",
+	///       }
+	///     ],
+	///     "metadata": {
+	///       "notify-backend": "inotify"
 	///     }
-	///   ],
-	///   "metadata": {
-	///     "notify-backend": "inotify"
 	///   }
-	/// }
 	/// ```
 	///
 	/// The fields are as follows:
 	///
-	/// - `tags`, structured event data.
-	/// - `tags[].kind`, which can be:
-	///   * 'path', along with:
-	///     + `absolute`, an absolute path.
-	///     + `filetype`, a file type if known ('dir', 'file', 'symlink', 'other').
-	///   * 'fs':
-	///     + `simple`, the "simple" event type ('access', 'create', 'modify', 'remove', or 'other').
-	///     + `full`, the "full" event type, which is too complex to fully describe here, but looks like 'General(Precise(Specific))'.
-	///   * 'source', along with:
-	///     + `source`, the source of the event ('filesystem', 'keyboard', 'mouse', 'os', 'time', 'internal').
-	///   * 'keyboard', along with:
-	///     + `keycode`. Currently only the value 'eof' is supported.
-	///   * 'process', for events caused by processes:
-	///     + `pid`, the process ID.
-	///   * 'signal', for signals sent to Watchexec:
-	///     + `signal`, the normalised signal name ('hangup', 'interrupt', 'quit', 'terminate', 'user1', 'user2').
-	///   * 'completion', for when a command ends:
-	///     + `disposition`, the exit disposition ('success', 'error', 'signal', 'stop', 'exception', 'continued').
-	///     + `code`, the exit, signal, stop, or exception code.
+	///   - `tags`, structured event data.
+	///   - `tags[].kind`, which can be:
+	///     * 'path', along with:
+	///       + `absolute`, an absolute path.
+	///       + `filetype`, a file type if known ('dir', 'file', 'symlink', 'other').
+	///     * 'fs':
+	///       + `simple`, the "simple" event type ('access', 'create', 'modify', 'remove', or 'other').
+	///       + `full`, the "full" event type, which is too complex to fully describe here, but looks like 'General(Precise(Specific))'.
+	///     * 'source', along with:
+	///       + `source`, the source of the event ('filesystem', 'keyboard', 'mouse', 'os', 'time', 'internal').
+	///     * 'keyboard', along with:
+	///       + `keycode`. Currently only the value 'eof' is supported.
+	///     * 'process', for events caused by processes:
+	///       + `pid`, the process ID.
+	///     * 'signal', for signals sent to Watchexec:
+	///       + `signal`, the normalised signal name ('hangup', 'interrupt', 'quit', 'terminate', 'user1', 'user2').
+	///     * 'completion', for when a command ends:
+	///       + `disposition`, the exit disposition ('success', 'error', 'signal', 'stop', 'exception', 'continued').
+	///       + `code`, the exit, signal, stop, or exception code.
+	///   - `metadata`, additional information about the event.
 	///
 	/// The 'json-stdin' mode will emit JSON events to the standard input of the command, one per
 	/// line, then close stdin. The 'json-file' mode will create a temporary file, write the

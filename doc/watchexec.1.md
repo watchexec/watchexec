@@ -428,7 +428,7 @@ Watchexec: + \`signal\`, the normalised signal name (hangup, interrupt,
 quit, terminate, user1, user2). \* completion, for when a command
 ends: + \`disposition\`, the exit disposition (success, error, signal,
 stop, exception, continued). + \`code\`, the exit, signal, stop, or
-exception code.
+exception code. - \`metadata\`, additional information about the event.
 
 The json-stdin mode will emit JSON events to the standard input of the
 command, one per line, then close stdin. The json-file mode will create
