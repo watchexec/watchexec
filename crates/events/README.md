@@ -9,8 +9,14 @@ _Watchexec's event types._
 [docs]: https://docs.rs/watchexec-events
 [license]: ../../LICENSE
 
-This is particularly useful if you're building a tool that runs under Watchexec, and want to easily
-read its events (with `--emit-events-to=json-file` and `--emit-events-to=json-stdin`).
+Fundamentally, events in watchexec have three purposes:
+
+1. To trigger the launch, restart, or other interruption of a process;
+2. To be filtered upon according to whatever set of criteria is desired;
+3. To carry information about what caused the event, which may be provided to the process.
+
+Outside of Watchexec, this library is particularly useful if you're building a tool that runs under
+it, and want to easily read its events (with `--emit-events-to=json-file` and `--emit-events-to=json-stdin`).
 
 ```rust ,no_run
 use std::io::{stdin, Result};

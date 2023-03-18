@@ -1,15 +1,4 @@
-//! Notifications (signals or Windows control events) sent to a process.
-//!
-//! This signal type in Watchexec is used for any of:
-//! - signals sent to the main process by some external actor,
-//! - signals received from a sub process by the main process,
-//! - signals sent to a sub process by Watchexec.
-//!
-//! ## Features
-//!
-//! - `fromstr`: Enables parsing of signals from strings.
-//! - `serde`: Enables [`serde`][serde] support. Note that this is stricter than string parsing.
-//! - `miette`: Enables [`miette`][miette] support for [`SignalParseError`][SignalParseError].
+#![doc = include_str!("../README.md")]
 
 use std::fmt;
 
@@ -19,7 +8,12 @@ use std::str::FromStr;
 #[cfg(unix)]
 use nix::sys::signal::Signal as NixSignal;
 
-/// A notification sent to a process.
+/// A notification (signals or Windows control events) sent to a process.
+///
+/// This signal type in Watchexec is used for any of:
+/// - signals sent to the main process by some external actor,
+/// - signals received from a sub process by the main process,
+/// - signals sent to a sub process by Watchexec.
 ///
 /// On Windows, only some signals are supported, as described. Others will be ignored.
 ///
