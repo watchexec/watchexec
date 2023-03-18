@@ -59,6 +59,13 @@ pub fn emits_to_file(target: &RotatingTempFile, events: &[Event]) -> Result<Path
 
 pub fn emits_to_json_file(target: &RotatingTempFile, events: &[Event]) -> Result<PathBuf> {
 	target.rotate()?;
-	target.write(&serde_json::to_vec(events).into_diagnostic()?)?;
+	for event in events {
+		if event.is_empty() {
+			continue;
+		}
+
+		target.write(&serde_json::to_vec(event).into_diagnostic()?)?;
+		target.write(b"\n")?;
+	}
 	Ok(target.path())
 }
