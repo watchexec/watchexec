@@ -14,7 +14,7 @@ use crate::{Error, IgnoreFile};
 ///
 /// This reads and compiles ignore files, and should be used for handling ignore files. It's created
 /// with a project origin and a list of ignore files, and new ignore files can be added later
-/// (unless [`finish`](IgnoreFilterer::finish()) is called).
+/// (unless [`finish`](IgnoreFilter::finish()) is called).
 #[derive(Clone, Debug)]
 pub struct IgnoreFilter {
 	origin: PathBuf,
@@ -25,7 +25,7 @@ pub struct IgnoreFilter {
 impl IgnoreFilter {
 	/// Create a new empty filterer.
 	///
-	/// Prefer [`new()`](IgnoreFilterer::new()) if you have ignore files ready to use.
+	/// Prefer [`new()`](IgnoreFilter::new()) if you have ignore files ready to use.
 	pub fn empty(origin: impl AsRef<Path>) -> Self {
 		let origin = origin.as_ref();
 		Self {
@@ -37,7 +37,7 @@ impl IgnoreFilter {
 
 	/// Read ignore files from disk and load them for filtering.
 	///
-	/// Use [`empty()`](IgnoreFilterer::empty()) if you want an empty filterer,
+	/// Use [`empty()`](IgnoreFilter::empty()) if you want an empty filterer,
 	/// or to construct one outside an async environment.
 	pub async fn new(origin: impl AsRef<Path> + Send, files: &[IgnoreFile]) -> Result<Self, Error> {
 		let origin = origin.as_ref();
@@ -219,8 +219,8 @@ impl IgnoreFilter {
 	///
 	/// Returns `false` if the folder should be ignored.
 	///
-	/// Note that this is a slightly different implementation than the [`Filterer`] trait, as the
-	/// latter handles events with multiple associated paths.
+	/// Note that this is a slightly different implementation than watchexec's Filterer trait, as
+	/// the latter handles events with multiple associated paths.
 	pub fn check_dir(&self, path: &Path) -> bool {
 		let _span = trace_span!("check_dir", ?path).entered();
 
