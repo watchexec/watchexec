@@ -10,6 +10,7 @@ _Watchexec's signal type._
 [license]: ../../LICENSE
 
 ```rust
+use std::str::FromStr;
 use watchexec_signals::Signal;
 
 fn main() {

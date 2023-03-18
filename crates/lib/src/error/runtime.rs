@@ -16,6 +16,8 @@ use crate::{
 ///
 /// ```
 /// # use std::convert::Infallible;
+/// # use tracing::error;
+/// # use watchexec::{config::InitConfig, ErrorHook, error::RuntimeError, handler::SyncFnHandler};
 /// # let mut config = InitConfig::default();
 /// config.on_error(SyncFnHandler::from(
 ///     |err: ErrorHook| -> std::result::Result<(), Infallible> {
@@ -41,6 +43,7 @@ use crate::{
 ///
 /// ```
 /// # use std::convert::Infallible;
+/// # use watchexec::{config::InitConfig, ErrorHook, error::{RuntimeError, FsWatcherError}, handler::SyncFnHandler};
 /// # let mut config = InitConfig::default();
 /// config.on_error(SyncFnHandler::from(
 ///     |err: ErrorHook| -> std::result::Result<(), Infallible> {
