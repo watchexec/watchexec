@@ -3,15 +3,15 @@
     "tags": [
       {
         "kind": "signal",
-        "signal": "interrupt"
+        "signal": "SIGINT"
       },
       {
         "kind": "signal",
-        "signal": "user1"
+        "signal": "SIGUSR1"
       },
       {
         "kind": "signal",
-        "signal": "force-stop"
+        "signal": "SIGKILL"
       }
     ],
     "metadata": {}

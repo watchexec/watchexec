@@ -1,3 +1,5 @@
+use std::num::{NonZeroI32, NonZeroI64};
+
 use snapbox::assert_eq_path;
 use watchexec_events::{Event, Keyboard, ProcessEnd, Source, Tag};
 use watchexec_signals::Signal;
@@ -110,4 +112,34 @@ fn signals() {
 	);
 
 	assert_eq!(parse_file("tests/snapshots/signals.json"), signals);
+}
+
+#[test]
+fn completions() {
+	let completions = vec![
+		Event {
+			tags: vec![
+				Tag::ProcessCompletion(None),
+				Tag::ProcessCompletion(Some(ProcessEnd::Success)),
+				Tag::ProcessCompletion(Some(ProcessEnd::Continued)),
+			],
+			metadata: Default::default(),
+		},
+		Event {
+			tags: vec![
+				Tag::ProcessCompletion(Some(ProcessEnd::ExitError(NonZeroI64::new(12).unwrap()))),
+				Tag::ProcessCompletion(Some(ProcessEnd::ExitSignal(Signal::Interrupt))),
+				Tag::ProcessCompletion(Some(ProcessEnd::ExitSignal(Signal::Custom(34)))),
+				Tag::ProcessCompletion(Some(ProcessEnd::Exception(NonZeroI32::new(56).unwrap()))),
+			],
+			metadata: Default::default(),
+		},
+	];
+
+	assert_eq_path(
+		"tests/snapshots/completions.json",
+		serde_json::to_string_pretty(&completions).unwrap(),
+	);
+
+	assert_eq!(parse_file("tests/snapshots/completions.json"), completions);
 }

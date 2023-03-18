@@ -11,6 +11,8 @@
 //! - `serde`: Enables [`serde`][serde] support. Note that this is stricter than string parsing.
 //! - `miette`: Enables [`miette`][miette] support for [`SignalParseError`][SignalParseError].
 
+use std::fmt;
+
 #[cfg(feature = "fromstr")]
 use std::str::FromStr;
 
@@ -307,6 +309,31 @@ impl SignalParseError {
 	}
 }
 
+impl fmt::Display for Signal {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		write!(
+			f,
+			"{}",
+			match (self, cfg!(windows)) {
+				(Self::Hangup, false) => "SIGHUP",
+				(Self::Hangup, true) => "CTRL-CLOSE",
+				(Self::ForceStop, false) => "SIGKILL",
+				(Self::ForceStop, true) => "STOP",
+				(Self::Interrupt, false) => "SIGINT",
+				(Self::Interrupt, true) => "CTRL-C",
+				(Self::Quit, _) => "SIGQUIT",
+				(Self::Terminate, false) => "SIGTERM",
+				(Self::Terminate, true) => "CTRL-BREAK",
+				(Self::User1, _) => "SIGUSR1",
+				(Self::User2, _) => "SIGUSR2",
+				(Self::Custom(n), _) => {
+					return write!(f, "{}", n);
+				}
+			}
+		)
+	}
+}
+
 #[cfg(feature = "serde")]
 mod serde_support {
 	use super::*;
@@ -321,12 +348,19 @@ mod serde_support {
 	#[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize)]
 	#[serde(rename_all = "kebab-case")]
 	pub enum NamedSignal {
+		#[serde(rename = "SIGHUP")]
 		Hangup,
+		#[serde(rename = "SIGKILL")]
 		ForceStop,
+		#[serde(rename = "SIGINT")]
 		Interrupt,
+		#[serde(rename = "SIGQUIT")]
 		Quit,
+		#[serde(rename = "SIGTERM")]
 		Terminate,
+		#[serde(rename = "SIGUSR1")]
 		User1,
+		#[serde(rename = "SIGUSR2")]
 		User2,
 	}
 
