@@ -1,1 +1,3 @@
 Cargo.lock merge=binary
+doc/watchexec.* merge=binary
+completions/* merge=binary

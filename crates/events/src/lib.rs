@@ -1,10 +1,4 @@
-//! Synthetic event type, derived from inputs, triggers actions.
-//!
-//! Fundamentally, events in watchexec have three purposes:
-//!
-//! 1. To trigger the launch, restart, or other interruption of a process;
-//! 2. To be filtered upon according to whatever set of criteria is desired;
-//! 3. To carry information about what caused the event, which may be provided to the process.
+#![doc = include_str!("../README.md")]
 
 #[doc(inline)]
 pub use event::*;

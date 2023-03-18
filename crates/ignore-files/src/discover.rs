@@ -23,7 +23,7 @@ use crate::{IgnoreFile, IgnoreFilter};
 ///
 /// Importantly, this should be called from the origin of the project, not a subfolder. This
 /// function will not discover the project origin, and will not traverse parent directories. Use the
-/// [`project::origins`](crate::project::origins) function for that.
+/// `project-origins` crate for that.
 ///
 /// This function also does not distinguish between project folder types, and collects all files for
 /// all supported VCSs and other project types. Use the `applies_to` field to filter the results.

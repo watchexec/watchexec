@@ -30,7 +30,7 @@ command when a filesystem change is detected (among other event
 sources). By default, watchexec uses efficient kernel-level mechanisms
 to watch for changes.
 
-At startup, the specified \<COMMAND\> is run once, and watchexec begins
+At startup, the specified command is run once, and watchexec begins
 monitoring for changes.
 
 Examples:

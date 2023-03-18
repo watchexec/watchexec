@@ -33,7 +33,7 @@ pub enum Error {
 		// TODO: extract glob error into diagnostic
 	},
 
-	/// Multiple related [`Error`]s.
+	/// Multiple related [`Error`](enum@Error)s.
 	#[error("multiple: {0:?}")]
 	#[diagnostic(code(ignore_file::set))]
 	Multi(#[related] Vec<Error>),
