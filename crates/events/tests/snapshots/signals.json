@@ -13,8 +13,7 @@
         "kind": "signal",
         "signal": "SIGKILL"
       }
-    ],
-    "metadata": {}
+    ]
   },
   {
     "tags": [
@@ -26,7 +25,6 @@
         "kind": "signal",
         "signal": 0
       }
-    ],
-    "metadata": {}
+    ]
   }
 ]

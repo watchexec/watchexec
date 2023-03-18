@@ -5,8 +5,7 @@
         "kind": "source",
         "source": "internal"
       }
-    ],
-    "metadata": {}
+    ]
   },
   {
     "tags": [
@@ -18,8 +17,7 @@
         "kind": "process",
         "pid": 123
       }
-    ],
-    "metadata": {}
+    ]
   },
   {
     "tags": [
@@ -27,7 +25,6 @@
         "kind": "keyboard",
         "keycode": "eof"
       }
-    ],
-    "metadata": {}
+    ]
   }
 ]

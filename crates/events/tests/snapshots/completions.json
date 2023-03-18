@@ -13,8 +13,7 @@
         "kind": "completion",
         "disposition": "continued"
       }
-    ],
-    "metadata": {}
+    ]
   },
   {
     "tags": [
@@ -43,7 +42,6 @@
         "disposition": "exception",
         "code": 78
       }
-    ],
-    "metadata": {}
+    ]
   }
 ]

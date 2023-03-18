@@ -16,9 +16,11 @@ use crate::{filekind::FileEventKind, FileType, Keyboard, ProcessEnd};
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Event {
 	/// Structured, classified information which can be used to filter or classify the event.
+	#[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Vec::is_empty"))]
 	pub tags: Vec<Tag>,
 
 	/// Arbitrary other information, cannot be used for filtering.
+	#[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "HashMap::is_empty"))]
 	pub metadata: HashMap<String, Vec<String>>,
 }
 

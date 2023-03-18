@@ -13,8 +13,7 @@
         "kind": "source",
         "source": "mouse"
       }
-    ],
-    "metadata": {}
+    ]
   },
   {
     "tags": [
@@ -30,7 +29,6 @@
         "kind": "source",
         "source": "internal"
       }
-    ],
-    "metadata": {}
+    ]
   }
 ]
