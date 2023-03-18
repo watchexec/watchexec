@@ -112,7 +112,7 @@ mod watchexec;
 // compatibility
 #[deprecated(
 	note = "use the `watchexec-events` crate directly instead",
-	since = "2.1.0"
+	since = "2.2.0"
 )]
 pub use watchexec_events as event;
 

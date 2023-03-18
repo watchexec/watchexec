@@ -2,8 +2,11 @@
 
 ## Next (YYYY-MM-DD)
 
+## v2.2.0 (2023-03-18)
+
 - Ditch MSRV policy. The `rust-version` indication will remain, for the minimum estimated Rust version for the code features used in the crate's own code, but dependencies may have already moved on. From now on, only latest stable is assumed and tested for. ([#510](https://github.com/watchexec/watchexec/pull/510))
 - Split off `watchexec-events` and `watchexec-signals` crates.
+- Unify `SubSignal` and `MainSignal` into a new `Signal` type. The former types and paths exist as deprecated aliases/re-exports.
 
 ## v2.1.1 (2023-02-14)
 
