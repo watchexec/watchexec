@@ -13,12 +13,16 @@ This is particularly useful if you're building a tool that runs under Watchexec,
 read its events (with `--emit-events-to=json-file` and `--emit-events-to=json-stdin`).
 
 ```rust ,no_run
-use watchexec_events::JsonFormat;
+use std::io::{stdin, Result};
+use watchexec_events::Event;
 
 fn main() -> Result<()> {
-    // open stdin
-    // read json events from stdin
-    // print them to stdout in debug
+    for line in stdin().lines() {
+        let event: Event = serde_json::from_str(&line?)?;
+        dbg!(event);
+    }
+
+    Ok(())
 }
 ```
 
