@@ -4,6 +4,11 @@
 
 ## v1.2.0 (2023-03-18)
 
+- Deps: update git-config to gix-config.
+- Deps: update tokio to 1.24
+- Ditch MSRV policy (only latest supported now).
+- `from_environment()` no longer looks at `WATCHEXEC_IGNORE_FILES`.
+
 ## v1.1.0 (2023-01-08)
 
 - Add missing `Send` bound to async functions.
