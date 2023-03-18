@@ -87,7 +87,7 @@ pub struct Args {
 		num_args = 1..,
 		value_hint = ValueHint::CommandString,
 		value_name = "COMMAND",
-		required_unless_present_any = ["completions", "manpage"],
+		required_unless_present_any = ["completions", "manual"],
 	)]
 	pub command: Vec<String>,
 
@@ -788,7 +788,7 @@ pub struct Args {
 		help_heading = OPTSET_DEBUGGING,
 		conflicts_with_all = ["command", "completions"],
 	)]
-	pub manpage: bool,
+	pub manual: bool,
 
 	/// Generate a shell completions script
 	///
@@ -799,7 +799,7 @@ pub struct Args {
 	#[arg(
 		long,
 		help_heading = OPTSET_DEBUGGING,
-		conflicts_with_all = ["command", "manpage"],
+		conflicts_with_all = ["command", "manual"],
 	)]
 	pub completions: Option<ShellCompletion>,
 }

@@ -196,7 +196,7 @@ pub async fn run() -> Result<()> {
 	let args = init().await?;
 	debug!(?args, "arguments");
 
-	if args.manpage {
+	if args.manual {
 		run_manpage(args).await
 	} else if let Some(shell) = args.completions {
 		run_completions(shell).await

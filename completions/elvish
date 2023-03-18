@@ -72,7 +72,7 @@ set edit:completion:arg-completer[watchexec] = {|@words|
             cand --print-events 'Print events that trigger actions'
             cand -v 'Set diagnostic log level'
             cand --verbose 'Set diagnostic log level'
-            cand --manpage 'Show the manual page'
+            cand --manual 'Show the manual page'
             cand -h 'Print help (see more with ''--help'')'
             cand --help 'Print help (see more with ''--help'')'
             cand -V 'Print version'
