@@ -1,4 +1,5 @@
 use std::{
+	collections::BTreeMap,
 	num::{NonZeroI32, NonZeroI64},
 	path::PathBuf,
 };
@@ -11,7 +12,7 @@ use crate::{
 		AccessKind, AccessMode, CreateKind, DataChange, FileEventKind as EventKind, MetadataKind,
 		ModifyKind, RemoveKind, RenameMode,
 	},
-	FileType, Keyboard, ProcessEnd, Source, Tag,
+	Event, FileType, Keyboard, ProcessEnd, Source, Tag,
 };
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -327,6 +328,34 @@ impl From<SerdeTag> for Tag {
 				})))
 			}
 			_ => Self::Unknown,
+		}
+	}
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct SerdeEvent {
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	tags: Vec<Tag>,
+
+	// for a consistent serialization order
+	#[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+	metadata: BTreeMap<String, Vec<String>>,
+}
+
+impl From<Event> for SerdeEvent {
+	fn from(Event { tags, metadata }: Event) -> Self {
+		Self {
+			tags,
+			metadata: metadata.into_iter().collect(),
+		}
+	}
+}
+
+impl From<SerdeEvent> for Event {
+	fn from(SerdeEvent { tags, metadata }: SerdeEvent) -> Self {
+		Self {
+			tags,
+			metadata: metadata.into_iter().collect(),
 		}
 	}
 }

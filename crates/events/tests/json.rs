@@ -2,10 +2,7 @@ use std::num::{NonZeroI32, NonZeroI64};
 
 use snapbox::assert_eq_path;
 use watchexec_events::{
-	filekind::{
-		AccessKind, AccessMode, CreateKind, DataChange, FileEventKind as EventKind, MetadataKind,
-		ModifyKind, RemoveKind, RenameMode,
-	},
+	filekind::{CreateKind, FileEventKind as EventKind, ModifyKind, RemoveKind, RenameMode},
 	Event, FileType, Keyboard, ProcessEnd, Source, Tag,
 };
 use watchexec_signals::Signal;
@@ -61,6 +58,25 @@ fn array() {
 	);
 
 	assert_eq!(parse_file("tests/snapshots/array.json"), array);
+}
+
+#[test]
+fn metadata() {
+	let metadata = &[Event {
+		tags: vec![Tag::Source(Source::Internal)],
+		metadata: [
+			("Dafan".into(), vec!["Mountain".into()]),
+			("Lan".into(), vec!["Zhan".into()]),
+		]
+		.into(),
+	}];
+
+	assert_eq_path(
+		"tests/snapshots/metadata.json",
+		serde_json::to_string_pretty(metadata).unwrap(),
+	);
+
+	assert_eq!(parse_file("tests/snapshots/metadata.json"), metadata);
 }
 
 #[test]
