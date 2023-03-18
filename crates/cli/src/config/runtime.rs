@@ -100,7 +100,7 @@ pub fn runtime(args: &Args, state: &State) -> Result<RuntimeConfig> {
 			if !signals.is_empty() {
 				let mut out = Outcome::DoNothing;
 				for sig in signals {
-					out = Outcome::both(out, Outcome::Signal(sig.into()));
+					out = Outcome::both(out, Outcome::Signal(sig));
 				}
 
 				action.outcome(out);

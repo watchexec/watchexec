@@ -134,7 +134,7 @@ impl From<Tag> for SerdeTag {
 			},
 			Tag::Signal(signal) => Self {
 				kind: TagKind::Signal,
-				signal: Some(signal.into()),
+				signal: Some(signal),
 				..Default::default()
 			},
 			Tag::ProcessCompletion(None) => Self {
@@ -277,7 +277,7 @@ impl From<SerdeTag> for Tag {
 				kind: TagKind::Signal,
 				signal: Some(sig),
 				..
-			} => Self::Signal(sig.into()),
+			} => Self::Signal(sig),
 			SerdeTag {
 				kind: TagKind::Completion,
 				disposition: None | Some(ProcessDisposition::Unknown),
