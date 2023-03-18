@@ -27,6 +27,10 @@ path = "../../ignore-files"
 version = "2.1.1"
 path = "../../lib"
 
+[dependencies.watchexec-signals]
+version = "0.0.0"
+path = "../../signals"
+
 [dev-dependencies]
 tracing-subscriber = "0.3.6"
 
@@ -43,7 +47,3 @@ features = [
 	"rt-multi-thread",
 	"macros",
 ]
-
-[dependencies.watchexec-signals]
-version = "1.0.0"
-path = "../../signals"

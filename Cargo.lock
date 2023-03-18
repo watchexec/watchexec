@@ -3863,7 +3863,7 @@ dependencies = [
 
 [[package]]
 name = "watchexec-events"
-version = "1.0.0"
+version = "0.0.0"
 dependencies = [
  "nix",
  "notify",
@@ -3926,7 +3926,7 @@ dependencies = [
 
 [[package]]
 name = "watchexec-signals"
-version = "1.0.0"
+version = "0.0.0"
 dependencies = [
  "miette",
  "nix",
