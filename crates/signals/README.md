@@ -9,7 +9,7 @@ _Watchexec's signal type._
 [docs]: https://docs.rs/watchexec-signals
 [license]: ../../LICENSE
 
-```rust ,no_run
+```rust
 use watchexec_signals::Signal;
 
 fn main() {
