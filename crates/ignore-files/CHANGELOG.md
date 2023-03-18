@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v1.2.0 (2023-03-18)
+
 ## v1.1.0 (2023-01-08)
 
 - Add missing `Send` bound to async functions.
