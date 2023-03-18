@@ -315,7 +315,7 @@ jobs:
 
       - name: File checksums
         run: |
-          for file in watchexec-* do
+          for file in watchexec-*; do
             b3sum --no-names $file > "$file.b3"
             sha256sum $file | cut -d ' ' -f1 > "$file.sha256"
             sha512sum $file | cut -d ' ' -f1 > "$file.sha512"
