@@ -64,12 +64,12 @@ version = "2.1.1"
 path = "../lib"
 
 [dependencies.watchexec-events]
-version = "1.0.0"
+version = "0.0.0"
 path = "../events"
 features = ["serde"]
 
 [dependencies.watchexec-signals]
-version = "1.0.0"
+version = "0.0.0"
 path = "../signals"
 
 [dependencies.watchexec-filterer-globset]
