@@ -7,7 +7,7 @@ use watchexec_signals::Signal;
 
 /// The end status of a process.
 ///
-/// This is a sort-of equivalent of the [`std::process::ExitStatus`] type, which is while
+/// This is a sort-of equivalent of the [`std::process::ExitStatus`] type which, while
 /// constructable, differs on various platforms. The native type is an integer that is interpreted
 /// either through convention or via platform-dependent libc or kernel calls; our type is a more
 /// structured representation for the purpose of being clearer and transportable.
