@@ -10,14 +10,14 @@ use watchexec::{
 	error::RuntimeError,
 	fs::Watcher,
 	handler::SyncFnHandler,
-	paths::summarise_events_to_env,
 };
 use watchexec_events::{Event, Keyboard, ProcessEnd, Tag};
 use watchexec_signals::Signal;
 
 use crate::args::{Args, ClearMode, EmitEvents, OnBusyUpdate};
+use crate::state::State;
 
-pub fn runtime(args: &Args) -> Result<RuntimeConfig> {
+pub fn runtime(args: &Args, state: &State) -> Result<RuntimeConfig> {
 	let _span = debug_span!("args-runtime").entered();
 	let mut config = RuntimeConfig::default();
 
@@ -186,7 +186,7 @@ pub fn runtime(args: &Args) -> Result<RuntimeConfig> {
 	});
 
 	let mut add_envs = HashMap::new();
-	// TODO: move to args and use osstrings
+	// TODO: move to args?
 	for pair in &args.env {
 		if let Some((k, v)) = pair.split_once('=') {
 			add_envs.insert(k.to_owned(), OsString::from(v));
@@ -202,22 +202,39 @@ pub fn runtime(args: &Args) -> Result<RuntimeConfig> {
 	let workdir = args.workdir.clone();
 
 	let emit_events_to = args.emit_events_to;
+	let emit_file = state.emit_file.clone();
 	config.on_pre_spawn(move |prespawn: PreSpawn| {
+		use crate::emits::*;
+
 		let workdir = workdir.clone();
 		let mut add_envs = add_envs.clone();
 
 		match emit_events_to {
 			EmitEvents::Environment => {
-				add_envs.extend(
-					summarise_events_to_env(prespawn.events.iter())
-						.into_iter()
-						.map(|(k, v)| (format!("WATCHEXEC_{k}_PATH"), v)),
-				);
+				add_envs.extend(emits_to_environment(&prespawn.events));
 			}
 			EmitEvents::Stdin => todo!(),
-			EmitEvents::File => todo!(),
+			EmitEvents::File => match emits_to_file(&emit_file, &prespawn.events) {
+				Ok(path) => {
+					add_envs.insert("WATCHEXEC_EVENTS_FILE".into(), path.into());
+				}
+				Err(err) => {
+					eprintln!(
+						"Failed to write WATCHEXEC_EVENTS_FILE, continuing without it: {err}"
+					);
+				}
+			},
 			EmitEvents::JsonStdin => todo!(),
-			EmitEvents::JsonFile => todo!(),
+			EmitEvents::JsonFile => match emits_to_json_file(&emit_file, &prespawn.events) {
+				Ok(path) => {
+					add_envs.insert("WATCHEXEC_EVENTS_FILE".into(), path.into());
+				}
+				Err(err) => {
+					eprintln!(
+						"Failed to write WATCHEXEC_EVENTS_FILE, continuing without it: {err}"
+					);
+				}
+			},
 			EmitEvents::None => {}
 		}
 

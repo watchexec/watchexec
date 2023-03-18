@@ -19,7 +19,9 @@ use watchexec::{
 
 pub mod args;
 mod config;
+mod emits;
 mod filterer;
+mod state;
 
 async fn init() -> Result<Args> {
 	let mut log_on = false;
@@ -104,7 +106,9 @@ async fn run_watchexec(args: Args) -> Result<()> {
 	info!(version=%env!("CARGO_PKG_VERSION"), "constructing Watchexec from CLI");
 
 	let init = config::init(&args);
-	let mut runtime = config::runtime(&args)?;
+
+	let state = state::State::new()?;
+	let mut runtime = config::runtime(&args, &state)?;
 	runtime.filterer(filterer::globset(&args).await?);
 
 	info!("initialising Watchexec runtime");
