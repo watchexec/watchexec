@@ -546,7 +546,6 @@ pub struct Args {
 	///
 	/// Finally, the special 'none' mode will disable event emission entirely.
 	#[arg(
-		hide = true, // until the feature is done
 		long,
 		help_heading = OPTSET_COMMAND,
 		verbatim_doc_comment,
