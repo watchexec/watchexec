@@ -79,7 +79,7 @@ jobs:
       shell: bash
 
     - name: Generate manpage
-      run: cargo run ${{ env.flags }} -p watchexec-cli -- --manpage > doc/watchexec.1
+      run: cargo run ${{ env.flags }} -p watchexec-cli -- --manual > doc/watchexec.1
     - name: Check that manpage is up to date
       run: git diff --exit-code -- doc/
 

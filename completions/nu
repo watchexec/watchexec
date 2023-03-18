@@ -62,7 +62,7 @@ module completions {
     --print-events            # Print events that trigger actions
     --verbose(-v)             # Set diagnostic log level
     --log-file: string        # Write diagnostic logs to a file
-    --manpage                 # Show the manual page
+    --manual                  # Show the manual page
     --completions: string@"nu-complete watchexec completions" # Generate a shell completions script
     --help(-h)                # Print help (see more with '--help')
     --version(-V)             # Print version

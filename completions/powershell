@@ -75,7 +75,7 @@ Register-ArgumentCompleter -Native -CommandName 'watchexec' -ScriptBlock {
             [CompletionResult]::new('--print-events', 'print-events', [CompletionResultType]::ParameterName, 'Print events that trigger actions')
             [CompletionResult]::new('-v', 'v', [CompletionResultType]::ParameterName, 'Set diagnostic log level')
             [CompletionResult]::new('--verbose', 'verbose', [CompletionResultType]::ParameterName, 'Set diagnostic log level')
-            [CompletionResult]::new('--manpage', 'manpage', [CompletionResultType]::ParameterName, 'Show the manual page')
+            [CompletionResult]::new('--manual', 'manual', [CompletionResultType]::ParameterName, 'Show the manual page')
             [CompletionResult]::new('-h', 'h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', 'help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('-V', 'V', [CompletionResultType]::ParameterName, 'Print version')

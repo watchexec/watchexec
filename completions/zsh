@@ -44,7 +44,7 @@ _watchexec() {
 '*--ignore-file=[Files to load ignores from]:PATH:_files' \
 '*--fs-events=[Filesystem events to filter to]:EVENTS:(access create remove rename modify metadata)' \
 '--log-file=[Write diagnostic logs to a file]' \
-'(--manpage)--completions=[Generate a shell completions script]:COMPLETIONS:(bash elvish fish nu powershell zsh)' \
+'(--manual)--completions=[Generate a shell completions script]:COMPLETIONS:(bash elvish fish nu powershell zsh)' \
 '(-o --on-busy-update -r --restart)-W[Deprecated alias for '\''--on-busy-update=do-nothing'\'']' \
 '(-o --on-busy-update -r --restart)--watch-when-idle[Deprecated alias for '\''--on-busy-update=do-nothing'\'']' \
 '(-o --on-busy-update -W --watch-when-idle)-r[Restart the process if it'\''s still running]' \
@@ -69,7 +69,7 @@ _watchexec() {
 '--print-events[Print events that trigger actions]' \
 '*-v[Set diagnostic log level]' \
 '*--verbose[Set diagnostic log level]' \
-'(--completions)--manpage[Show the manual page]' \
+'(--completions)--manual[Show the manual page]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 '-V[Print version]' \

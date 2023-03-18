@@ -17,7 +17,7 @@ watchexec - Execute commands when watched files change
 \[**-e**\|**\--exts**\] \[**-f**\|**\--filter**\] \[**\--filter-file**\]
 \[**-i**\|**\--ignore**\] \[**\--ignore-file**\] \[**\--fs-events**\]
 \[**\--no-meta**\] \[**\--print-events**\]
-\[**-v**\|**\--verbose**\]\... \[**\--log-file**\] \[**\--manpage**\]
+\[**-v**\|**\--verbose**\]\... \[**\--log-file**\] \[**\--manual**\]
 \[**\--completions**\] \[**-h**\|**\--help**\]
 \[**-V**\|**\--version**\] \[*COMMAND*\]
 
@@ -601,7 +601,7 @@ If the path provided is a directory, a file will be created in that
 directory. The file name will be the current date and time, in the
 format watchexec.YYYY-MM-DDTHH-MM-SSZ.log.
 
-**\--manpage**
+**\--manual**
 
 :   Show the manual page
 
