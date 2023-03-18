@@ -3,58 +3,53 @@ use std::{
 	path::PathBuf,
 };
 
-#[cfg(not(feature = "notify"))]
-use crate::sans_notify::{
-	AccessKind, AccessMode, CreateKind, DataChange, EventKind, MetadataKind, ModifyKind,
-	RemoveKind, RenameMode,
-};
-#[cfg(feature = "notify")]
-use notify::event::{
-	AccessKind, AccessMode, CreateKind, DataChange, EventKind, MetadataKind, ModifyKind,
-	RemoveKind, RenameMode,
-};
-
 use serde::{Deserialize, Serialize};
 use watchexec_signals::Signal;
 
-use crate::{FileType, Keyboard, ProcessEnd, Source, Tag};
+use crate::{
+	fs::filekind::{
+		AccessKind, AccessMode, CreateKind, DataChange, FileEventKind as EventKind, MetadataKind,
+		ModifyKind, RemoveKind, RenameMode,
+	},
+	FileType, Keyboard, ProcessEnd, Source, Tag,
+};
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct SerdeTag {
 	kind: TagKind,
 
 	// path
-	#[serde(skip_serializing_if = "Option::is_none")]
+	#[serde(default, skip_serializing_if = "Option::is_none")]
 	absolute: Option<PathBuf>,
-	#[serde(skip_serializing_if = "Option::is_none")]
+	#[serde(default, skip_serializing_if = "Option::is_none")]
 	filetype: Option<FileType>,
 
 	// fs
-	#[serde(skip_serializing_if = "Option::is_none")]
+	#[serde(default, skip_serializing_if = "Option::is_none")]
 	simple: Option<FsEventKind>,
-	#[serde(skip_serializing_if = "Option::is_none")]
+	#[serde(default, skip_serializing_if = "Option::is_none")]
 	full: Option<String>,
 
 	// source
-	#[serde(skip_serializing_if = "Option::is_none")]
+	#[serde(default, skip_serializing_if = "Option::is_none")]
 	source: Option<Source>,
 
 	// keyboard
-	#[serde(skip_serializing_if = "Option::is_none")]
+	#[serde(default, skip_serializing_if = "Option::is_none")]
 	keycode: Option<Keyboard>,
 
 	// process
-	#[serde(skip_serializing_if = "Option::is_none")]
+	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pid: Option<u32>,
 
 	// signal
-	#[serde(skip_serializing_if = "Option::is_none")]
+	#[serde(default, skip_serializing_if = "Option::is_none")]
 	signal: Option<Signal>,
 
 	// completion
-	#[serde(skip_serializing_if = "Option::is_none")]
+	#[serde(default, skip_serializing_if = "Option::is_none")]
 	disposition: Option<ProcessDisposition>,
-	#[serde(skip_serializing_if = "Option::is_none")]
+	#[serde(default, skip_serializing_if = "Option::is_none")]
 	code: Option<i64>,
 }
 

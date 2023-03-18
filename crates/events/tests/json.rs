@@ -1,7 +1,13 @@
 use std::num::{NonZeroI32, NonZeroI64};
 
 use snapbox::assert_eq_path;
-use watchexec_events::{Event, Keyboard, ProcessEnd, Source, Tag};
+use watchexec_events::{
+	filekind::{
+		AccessKind, AccessMode, CreateKind, DataChange, FileEventKind as EventKind, MetadataKind,
+		ModifyKind, RemoveKind, RenameMode,
+	},
+	Event, FileType, Keyboard, ProcessEnd, Source, Tag,
+};
 use watchexec_signals::Signal;
 
 fn parse_file(path: &str) -> Vec<Event> {
@@ -143,4 +149,55 @@ fn completions() {
 	);
 
 	assert_eq!(parse_file("tests/snapshots/completions.json"), completions);
+}
+
+#[test]
+fn paths() {
+	let paths = vec![
+		Event {
+			tags: vec![
+				Tag::Path {
+					path: "/foo/bar/baz".into(),
+					file_type: Some(FileType::Symlink),
+				},
+				Tag::FileEventKind(EventKind::Create(CreateKind::File)),
+			],
+			metadata: Default::default(),
+		},
+		Event {
+			tags: vec![
+				Tag::Path {
+					path: "/rename/from/this".into(),
+					file_type: Some(FileType::File),
+				},
+				Tag::Path {
+					path: "/rename/into/that".into(),
+					file_type: Some(FileType::Other),
+				},
+				Tag::FileEventKind(EventKind::Modify(ModifyKind::Name(RenameMode::Both))),
+			],
+			metadata: Default::default(),
+		},
+		Event {
+			tags: vec![
+				Tag::Path {
+					path: "/delete/this".into(),
+					file_type: Some(FileType::Dir),
+				},
+				Tag::Path {
+					path: "/".into(),
+					file_type: None,
+				},
+				Tag::FileEventKind(EventKind::Remove(RemoveKind::Any)),
+			],
+			metadata: Default::default(),
+		},
+	];
+
+	assert_eq_path(
+		"tests/snapshots/paths.json",
+		serde_json::to_string_pretty(&paths).unwrap(),
+	);
+
+	assert_eq!(parse_file("tests/snapshots/paths.json"), paths);
 }
