@@ -9,6 +9,59 @@ use crate::{
 
 /// Errors which _may_ be recoverable, transient, or only affect a part of the operation, and should
 /// be reported to the user and/or acted upon programatically, but will not outright stop watchexec.
+///
+/// Some errors that are classified here are spurious and may be ignored; in general you should not
+/// use the convenience print handlers for handling these errors beyond prototyping. For example,
+/// "waiting on process" errors should not be printed to the user by default:
+///
+/// ```
+/// # use std::convert::Infallible;
+/// # let mut config = InitConfig::default();
+/// config.on_error(SyncFnHandler::from(
+///     |err: ErrorHook| -> std::result::Result<(), Infallible> {
+///         if let RuntimeError::IoError {
+///             about: "waiting on process group",
+///             ..
+///         } = err.error
+///         {
+///             error!("{}", err.error);
+///             return Ok(());
+///         }
+///
+///         // ...
+///
+///         Ok(())
+///     },
+/// ));
+/// ```
+///
+/// On the other hand, some errors may not be fatal to this library's understanding, but will be to
+/// your application. In those cases, you should "elevate" these errors, which will transform them
+/// to [`CriticalError`](super::CriticalError)s:
+///
+/// ```
+/// # use std::convert::Infallible;
+/// # let mut config = InitConfig::default();
+/// config.on_error(SyncFnHandler::from(
+///     |err: ErrorHook| -> std::result::Result<(), Infallible> {
+///         if let RuntimeError::FsWatcher {
+///             err:
+///                 FsWatcherError::Create { .. }
+///                 | FsWatcherError::TooManyWatches { .. }
+///                 | FsWatcherError::TooManyHandles { .. },
+///             ..
+///         } = err.error
+///         {
+///             err.elevate();
+///             return Ok(());
+///         }
+///
+///         // ...
+///
+///         Ok(())
+///     },
+/// ));
+/// ```
 #[derive(Debug, Diagnostic, Error)]
 #[non_exhaustive]
 #[diagnostic(url(docsrs))]
