@@ -1,0 +1,43 @@
+[package]
+name = "watchexec-events"
+version = "1.0.0"
+
+authors = ["Félix Saparelli <felix@passcod.name>"]
+license = "Apache-2.0 OR MIT"
+description = "Watchexec's event types"
+keywords = ["watchexec", "event", "format", "json"]
+
+documentation = "https://docs.rs/watchexec-events"
+repository = "https://github.com/watchexec/watchexec"
+readme = "README.md"
+
+rust-version = "1.61.0"
+edition = "2021"
+
+[dependencies.notify]
+version = "5.0.0"
+optional = true
+
+[dependencies.serde]
+version = "1.0.152"
+optional = true
+features = ["derive"]
+
+[dependencies.watchexec-signals]
+version = "1.0.0"
+path = "../signals"
+default-features = false
+
+[target.'cfg(unix)'.dependencies.nix]
+version = "0.26.2"
+features = ["signal"]
+
+[dev-dependencies]
+watchexec-events = { version = "*", features = ["serde"], path = "." }
+snapbox = "0.4.10"
+serde_json = "1.0.94"
+
+[features]
+default = ["notify"]
+notify = ["dep:notify"]
+serde = ["dep:serde", "notify?/serde", "watchexec-signals/serde"]

@@ -1,34 +1,20 @@
-//! Synthetic event type, derived from inputs, triggers actions.
-//!
-//! Fundamentally, events in watchexec have three purposes:
-//!
-//! 1. To trigger the launch, restart, or other interruption of a process;
-//! 2. To be filtered upon according to whatever set of criteria is desired;
-//! 3. To carry information about what caused the event, which may be provided to the process.
-
 use std::{
 	collections::HashMap,
 	fmt,
-	num::{NonZeroI32, NonZeroI64},
 	path::{Path, PathBuf},
-	process::ExitStatus,
 };
 
-use filekind::FileEventKind;
+use watchexec_signals::Signal;
 
-use crate::keyboard::Keyboard;
-use crate::signal::{process::SubSignal, source::MainSignal};
+#[cfg(feature = "serde")]
+use crate::serde_formats::{SerdeEvent, SerdeTag};
 
-/// Re-export of the Notify file event types.
-pub mod filekind {
-	pub use notify::event::{
-		AccessKind, AccessMode, CreateKind, DataChange, EventKind as FileEventKind, MetadataKind,
-		ModifyKind, RemoveKind, RenameMode,
-	};
-}
+use crate::{filekind::FileEventKind, FileType, Keyboard, ProcessEnd};
 
 /// An event, as far as watchexec cares about.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(from = "SerdeEvent", into = "SerdeEvent"))]
 pub struct Event {
 	/// Structured, classified information which can be used to filter or classify the event.
 	pub tags: Vec<Tag>,
@@ -39,6 +25,8 @@ pub struct Event {
 
 /// Something which can be used to filter or qualify an event.
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(from = "SerdeTag", into = "SerdeTag"))]
 #[non_exhaustive]
 pub enum Tag {
 	/// The event is about a path or file in the filesystem.
@@ -56,17 +44,21 @@ pub enum Tag {
 	/// The general source of the event.
 	Source(Source),
 
-	/// The event was caused by specific keyboard input
+	/// The event is about a keyboard input.
 	Keyboard(Keyboard),
 
 	/// The event was caused by a particular process.
 	Process(u32),
 
 	/// The event is about a signal being delivered to the main process.
-	Signal(MainSignal),
+	Signal(Signal),
 
 	/// The event is about the subprocess ending.
 	ProcessCompletion(Option<ProcessEnd>),
+
+	#[cfg(feature = "serde")]
+	/// The event is unknown (or not yet implemented).
+	Unknown,
 }
 
 impl Tag {
@@ -81,126 +73,8 @@ impl Tag {
 			Self::Process(_) => "Process",
 			Self::Signal(_) => "Signal",
 			Self::ProcessCompletion(_) => "ProcessCompletion",
-		}
-	}
-}
-
-/// The type of a file.
-///
-/// This is a simplification of the [`std::fs::FileType`] type, which is not constructable and may
-/// differ on different platforms.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum FileType {
-	/// A regular file.
-	File,
-
-	/// A directory.
-	Dir,
-
-	/// A symbolic link.
-	Symlink,
-
-	/// Something else.
-	Other,
-}
-
-impl From<std::fs::FileType> for FileType {
-	fn from(ft: std::fs::FileType) -> Self {
-		if ft.is_file() {
-			Self::File
-		} else if ft.is_dir() {
-			Self::Dir
-		} else if ft.is_symlink() {
-			Self::Symlink
-		} else {
-			Self::Other
-		}
-	}
-}
-
-impl fmt::Display for FileType {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		match self {
-			Self::File => write!(f, "file"),
-			Self::Dir => write!(f, "dir"),
-			Self::Symlink => write!(f, "symlink"),
-			Self::Other => write!(f, "other"),
-		}
-	}
-}
-
-/// The end status of a process.
-///
-/// This is a sort-of equivalent of the [`std::process::ExitStatus`] type, which is while
-/// constructable, differs on various platforms. The native type is an integer that is interpreted
-/// either through convention or via platform-dependent libc or kernel calls; our type is a more
-/// structured representation for the purpose of being clearer and transportable.
-///
-/// On Unix, one can tell whether a process dumped core from the exit status; this is not replicated
-/// in this structure; if that's desirable you can obtain it manually via `libc::WCOREDUMP` and the
-/// `ExitSignal` variant.
-///
-/// On Unix and Windows, the exit status is a 32-bit integer; on Fuchsia it's a 64-bit integer. For
-/// portability, we use `i64`. On all platforms, the "success" value is zero, so we special-case
-/// that as a variant and use `NonZeroI*` to niche the other values.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum ProcessEnd {
-	/// The process ended successfully, with exit status = 0.
-	Success,
-
-	/// The process exited with a non-zero exit status.
-	ExitError(NonZeroI64),
-
-	/// The process exited due to a signal.
-	ExitSignal(SubSignal),
-
-	/// The process was stopped (but not terminated) (`libc::WIFSTOPPED`).
-	ExitStop(NonZeroI32),
-
-	/// The process suffered an unhandled exception or warning (typically Windows only).
-	Exception(NonZeroI32),
-
-	/// The process was continued (`libc::WIFCONTINUED`).
-	Continued,
-}
-
-impl From<ExitStatus> for ProcessEnd {
-	#[cfg(unix)]
-	fn from(es: ExitStatus) -> Self {
-		use std::os::unix::process::ExitStatusExt;
-
-		match (es.code(), es.signal(), es.stopped_signal()) {
-			(Some(_), Some(_), _) => {
-				unreachable!("exitstatus cannot both be code and signal?!")
-			}
-			(Some(code), None, _) => {
-				NonZeroI64::try_from(i64::from(code)).map_or(Self::Success, Self::ExitError)
-			}
-			(None, Some(_), Some(stopsig)) => {
-				NonZeroI32::try_from(stopsig).map_or(Self::Success, Self::ExitStop)
-			}
-			#[cfg(not(target_os = "vxworks"))]
-			(None, Some(_), _) if es.continued() => Self::Continued,
-			(None, Some(signal), _) => Self::ExitSignal(signal.into()),
-			(None, None, _) => Self::Success,
-		}
-	}
-
-	#[cfg(windows)]
-	fn from(es: ExitStatus) -> Self {
-		match es.code().map(NonZeroI32::try_from) {
-			None | Some(Err(_)) => Self::Success,
-			Some(Ok(code)) if code.get() < 0 => Self::Exception(code),
-			Some(Ok(code)) => Self::ExitError(code.into()),
-		}
-	}
-
-	#[cfg(not(any(unix, windows)))]
-	fn from(es: ExitStatus) -> Self {
-		if es.success() {
-			Self::Success
-		} else {
-			Self::ExitError(NonZeroI64::new(1).unwrap())
+			#[cfg(feature = "serde")]
+			Self::Unknown => "Unknown",
 		}
 	}
 }
@@ -209,6 +83,8 @@ impl From<ExitStatus> for ProcessEnd {
 ///
 /// This is set by the event source. Note that not all of these are currently used.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "kebab-case"))]
 #[non_exhaustive]
 pub enum Source {
 	/// Event comes from a file change.
@@ -254,6 +130,8 @@ impl fmt::Display for Source {
 /// generated and relatively slow filtering, as events can become noticeably delayed, and may give
 /// the impression of stalling.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "kebab-case"))]
 pub enum Priority {
 	/// Low priority
 	///
@@ -310,7 +188,7 @@ impl Event {
 	}
 
 	/// Return all signals in the event's tags.
-	pub fn signals(&self) -> impl Iterator<Item = MainSignal> + '_ {
+	pub fn signals(&self) -> impl Iterator<Item = Signal> + '_ {
 		self.tags.iter().filter_map(|p| match p {
 			Tag::Signal(s) => Some(*s),
 			_ => None,
@@ -344,6 +222,8 @@ impl fmt::Display for Event {
 				Tag::Signal(s) => write!(f, " signal={s:?}")?,
 				Tag::ProcessCompletion(None) => write!(f, " command-completed")?,
 				Tag::ProcessCompletion(Some(c)) => write!(f, " command-completed({c:?})")?,
+				#[cfg(feature = "serde")]
+				Tag::Unknown => write!(f, " unknown")?,
 			}
 		}
 

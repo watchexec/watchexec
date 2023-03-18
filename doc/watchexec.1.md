@@ -11,10 +11,10 @@ watchexec - Execute commands when watched files change
 \[**\--no-project-ignore**\] \[**\--no-global-ignore**\]
 \[**\--no-default-ignore**\] \[**-p**\|**\--postpone**\]
 \[**\--delay-run**\] \[**\--poll**\] \[**\--shell**\] \[**-n **\]
-\[**\--no-environment**\] \[**-E**\|**\--env**\]
-\[**\--no-process-group**\] \[**-N**\|**\--notify**\]
-\[**\--project-origin**\] \[**\--workdir**\] \[**-e**\|**\--exts**\]
-\[**-f**\|**\--filter**\] \[**\--filter-file**\]
+\[**\--no-environment**\] \[**\--emit-events-to**\]
+\[**-E**\|**\--env**\] \[**\--no-process-group**\]
+\[**-N**\|**\--notify**\] \[**\--project-origin**\] \[**\--workdir**\]
+\[**-e**\|**\--exts**\] \[**-f**\|**\--filter**\] \[**\--filter-file**\]
 \[**-i**\|**\--ignore**\] \[**\--ignore-file**\] \[**\--fs-events**\]
 \[**\--no-meta**\] \[**\--print-events**\]
 \[**-v**\|**\--verbose**\]\... \[**\--log-file**\] \[**\--manpage**\]
@@ -351,6 +351,91 @@ This is a shorthand for \--shell=none.
 
 This is the old way to disable event emission into the environment. See
 \--emit-events for more.
+
+**\--emit-events-to**=*MODE*
+
+:   Configure event emission
+
+Watchexec emits event information when running a command, which can be
+used by the command to target specific changed files.
+
+One thing to take care with is assuming inherent behaviour where there
+is only chance. Notably, it could appear as if the \`RENAMED\` variable
+contains both the original and the new path being renamed. In previous
+versions, it would even appear on some platforms as if the original
+always came before the new. However, none of this was true. Its
+impossible to reliably and portably know which changed path is the old
+or new, \"half\" renames may appear (only the original, only the new),
+\"unknown\" renames may appear (change was a rename, but whether it was
+the old or new isnt known), rename events might split across two
+debouncing boundaries, and so on.
+
+This option controls where that information is emitted. It defaults to
+environment, which sets environment variables with the paths of the
+affected files, for filesystem events:
+
+\$WATCHEXEC_COMMON_PATH is set to the longest common path of all of the
+below variables, and so should be prepended to each path to obtain the
+full/real path. Then:
+
+\- \$WATCHEXEC_CREATED_PATH is set when files/folders were created -
+\$WATCHEXEC_REMOVED_PATH is set when files/folders were removed -
+\$WATCHEXEC_RENAMED_PATH is set when files/folders were renamed -
+\$WATCHEXEC_WRITTEN_PATH is set when files/folders were modified -
+\$WATCHEXEC_META_CHANGED_PATH is set when files/folders metadata were
+modified - \$WATCHEXEC_OTHERWISE_CHANGED_PATH is set for every other
+kind of pathed event
+
+Multiple paths are separated by the system path separator, ; on Windows
+and : on unix. Within each variable, paths are deduplicated and sorted
+in binary order (i.e. neither Unicode nor locale aware).
+
+This is the legacy mode and will be deprecated and removed in the
+future. The environment of a process is a very restricted space, while
+also limited in what it can usefully represent. Large numbers of files
+will either cause the environment to be truncated, or may error or crash
+the process entirely.
+
+Two new modes are available: stdin writes absolute paths to the stdin of
+the command, one per line, each prefixed with \`create:\`, \`remove:\`,
+\`rename:\`, \`modify:\`, or \`other:\`, then closes the handle; file
+writes the same thing to a temporary file, and its path is given with
+the \$WATCHEXEC_EVENTS_FILE environment variable.
+
+There are also two JSON modes, which are based on JSON objects and can
+represent the full set of events Watchexec handles. Heres an example of
+a folder being created on Linux:
+
+\`\`\`json { \"tags\": \[ { \"kind\": \"path\", \"absolute\":
+\"/home/user/your/new-folder\", \"filetype\": \"dir\" }, { \"kind\":
+\"fs\", \"simple\": \"create\", \"full\": \"Create(Folder)\" }, {
+\"kind\": \"source\", \"source\": \"filesystem\", } \], \"metadata\": {
+\"notify-backend\": \"inotify\" } } \`\`\`
+
+The fields are as follows:
+
+\- \`tags\`, structured event data. - \`tags\[\].kind\`, which can be:
+\* path, along with: + \`absolute\`, an absolute path. + \`filetype\`, a
+file type if known (dir, file, symlink, other). \* fs: + \`simple\`, the
+\"simple\" event type (access, create, modify, remove, or other). +
+\`full\`, the \"full\" event type, which is too complex to fully
+describe here, but looks like General(Precise(Specific)). \* source,
+along with: + \`source\`, the source of the event (filesystem, keyboard,
+mouse, os, time, internal). \* keyboard, along with: + \`keycode\`.
+Currently only the value eof is supported. \* process, for events caused
+by processes: + \`pid\`, the process ID. \* signal, for signals sent to
+Watchexec: + \`signal\`, the normalised signal name (hangup, interrupt,
+quit, terminate, user1, user2). \* completion, for when a command
+ends: + \`disposition\`, the exit disposition (success, error, signal,
+stop, exception, continued). + \`code\`, the exit, signal, stop, or
+exception code. - \`metadata\`, additional information about the event.
+
+The json-stdin mode will emit JSON events to the standard input of the
+command, one per line, then close stdin. The json-file mode will create
+a temporary file, write the events to it, and provide the path to the
+file with the \$WATCHEXEC_EVENTS_FILE environment variable.
+
+Finally, the special none mode will disable event emission entirely.
 
 **-E**, **\--env**=*KEY=VALUE*
 

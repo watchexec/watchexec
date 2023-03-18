@@ -1,24 +1,26 @@
-use std::{collections::HashMap, convert::Infallible, env::current_dir, ffi::OsString};
+use std::{
+	collections::HashMap, convert::Infallible, env::current_dir, ffi::OsString, fs::File,
+	process::Stdio,
+};
 
 use miette::{miette, IntoDiagnostic, Result};
 use notify_rust::Notification;
-use tracing::{debug, debug_span};
+use tracing::{debug, debug_span, error};
 use watchexec::{
 	action::{Action, Outcome, PostSpawn, PreSpawn},
 	command::{Command, Shell},
 	config::RuntimeConfig,
 	error::RuntimeError,
-	event::{Event, ProcessEnd, Tag},
 	fs::Watcher,
 	handler::SyncFnHandler,
-	keyboard::Keyboard,
-	paths::summarise_events_to_env,
-	signal::{process::SubSignal, source::MainSignal},
 };
+use watchexec_events::{Event, Keyboard, ProcessEnd, Tag};
+use watchexec_signals::Signal;
 
 use crate::args::{Args, ClearMode, EmitEvents, OnBusyUpdate};
+use crate::state::State;
 
-pub fn runtime(args: &Args) -> Result<RuntimeConfig> {
+pub fn runtime(args: &Args, state: &State) -> Result<RuntimeConfig> {
 	let _span = debug_span!("args-runtime").entered();
 	let mut config = RuntimeConfig::default();
 
@@ -71,15 +73,15 @@ pub fn runtime(args: &Args) -> Result<RuntimeConfig> {
 			return fut;
 		}
 
-		let signals: Vec<MainSignal> = action.events.iter().flat_map(Event::signals).collect();
+		let signals: Vec<Signal> = action.events.iter().flat_map(Event::signals).collect();
 		let has_paths = action.events.iter().flat_map(Event::paths).next().is_some();
 
-		if signals.contains(&MainSignal::Terminate) {
+		if signals.contains(&Signal::Terminate) {
 			action.outcome(Outcome::both(Outcome::Stop, Outcome::Exit));
 			return fut;
 		}
 
-		if signals.contains(&MainSignal::Interrupt) {
+		if signals.contains(&Signal::Interrupt) {
 			action.outcome(Outcome::both(Outcome::Stop, Outcome::Exit));
 			return fut;
 		}
@@ -98,7 +100,7 @@ pub fn runtime(args: &Args) -> Result<RuntimeConfig> {
 			if !signals.is_empty() {
 				let mut out = Outcome::DoNothing;
 				for sig in signals {
-					out = Outcome::both(out, Outcome::Signal(sig.into()));
+					out = Outcome::both(out, Outcome::Signal(sig));
 				}
 
 				action.outcome(out);
@@ -169,13 +171,13 @@ pub fn runtime(args: &Args) -> Result<RuntimeConfig> {
 		let when_running = match on_busy {
 			OnBusyUpdate::Restart => Outcome::both(
 				Outcome::both(
-					Outcome::Signal(stop_signal.unwrap_or(SubSignal::Terminate)),
+					Outcome::Signal(stop_signal.unwrap_or(Signal::Terminate)),
 					Outcome::both(Outcome::Sleep(stop_timeout), Outcome::Stop),
 				),
 				start,
 			),
 			OnBusyUpdate::Signal => {
-				Outcome::Signal(stop_signal.or(signal).unwrap_or(SubSignal::Terminate))
+				Outcome::Signal(stop_signal.or(signal).unwrap_or(Signal::Terminate))
 			}
 			OnBusyUpdate::Queue => Outcome::wait(start),
 			OnBusyUpdate::DoNothing => Outcome::DoNothing,
@@ -187,7 +189,7 @@ pub fn runtime(args: &Args) -> Result<RuntimeConfig> {
 	});
 
 	let mut add_envs = HashMap::new();
-	// TODO: move to args and use osstrings
+	// TODO: move to args?
 	for pair in &args.env {
 		if let Some((k, v)) = pair.split_once('=') {
 			add_envs.insert(k.to_owned(), OsString::from(v));
@@ -203,27 +205,59 @@ pub fn runtime(args: &Args) -> Result<RuntimeConfig> {
 	let workdir = args.workdir.clone();
 
 	let emit_events_to = args.emit_events_to;
+	let emit_file = state.emit_file.clone();
 	config.on_pre_spawn(move |prespawn: PreSpawn| {
+		use crate::emits::*;
+
 		let workdir = workdir.clone();
 		let mut add_envs = add_envs.clone();
+		let mut stdin = None;
 
 		match emit_events_to {
 			EmitEvents::Environment => {
-				add_envs.extend(
-					summarise_events_to_env(prespawn.events.iter())
-						.into_iter()
-						.map(|(k, v)| (format!("WATCHEXEC_{k}_PATH"), v)),
-				);
+				add_envs.extend(emits_to_environment(&prespawn.events));
 			}
-			EmitEvents::Stdin => todo!(),
-			EmitEvents::File => todo!(),
-			EmitEvents::JsonStdin => todo!(),
-			EmitEvents::JsonFile => todo!(),
+			EmitEvents::Stdin => match emits_to_file(&emit_file, &prespawn.events)
+				.and_then(|path| File::open(path).into_diagnostic())
+			{
+				Ok(file) => {
+					stdin.replace(Stdio::from(file));
+				}
+				Err(err) => {
+					error!("Failed to write events to stdin, continuing without it: {err}");
+				}
+			},
+			EmitEvents::File => match emits_to_file(&emit_file, &prespawn.events) {
+				Ok(path) => {
+					add_envs.insert("WATCHEXEC_EVENTS_FILE".into(), path.into());
+				}
+				Err(err) => {
+					error!("Failed to write WATCHEXEC_EVENTS_FILE, continuing without it: {err}");
+				}
+			},
+			EmitEvents::JsonStdin => match emits_to_json_file(&emit_file, &prespawn.events)
+				.and_then(|path| File::open(path).into_diagnostic())
+			{
+				Ok(file) => {
+					stdin.replace(Stdio::from(file));
+				}
+				Err(err) => {
+					error!("Failed to write events to stdin, continuing without it: {err}");
+				}
+			},
+			EmitEvents::JsonFile => match emits_to_json_file(&emit_file, &prespawn.events) {
+				Ok(path) => {
+					add_envs.insert("WATCHEXEC_EVENTS_FILE".into(), path.into());
+				}
+				Err(err) => {
+					error!("Failed to write WATCHEXEC_EVENTS_FILE, continuing without it: {err}");
+				}
+			},
 			EmitEvents::None => {}
 		}
 
 		async move {
-			if !add_envs.is_empty() || workdir.is_some() {
+			if !add_envs.is_empty() || workdir.is_some() || stdin.is_some() {
 				if let Some(mut command) = prespawn.command().await {
 					for (k, v) in add_envs {
 						debug!(?k, ?v, "inserting environment variable");
@@ -233,6 +267,11 @@ pub fn runtime(args: &Args) -> Result<RuntimeConfig> {
 					if let Some(ref workdir) = workdir {
 						debug!(?workdir, "set command workdir");
 						command.current_dir(workdir);
+					}
+
+					if let Some(stdin) = stdin {
+						debug!("set command stdin");
+						command.stdin(stdin);
 					}
 				}
 			}

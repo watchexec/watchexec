@@ -1,11 +1,8 @@
 use std::num::{NonZeroI32, NonZeroI64};
 
-use watchexec::{
-	event::{filekind::*, ProcessEnd, Source},
-	signal::{process::SubSignal, source::MainSignal},
-};
-
+use watchexec::event::{filekind::*, ProcessEnd, Source};
 use watchexec_filterer_tagged::TaggedFilterer;
+use watchexec_signals::Signal;
 
 mod helpers;
 use helpers::tagged::*;
@@ -17,7 +14,7 @@ async fn empty_filter_passes_everything() {
 	filterer.source_does_pass(Source::Keyboard);
 	filterer.fek_does_pass(FileEventKind::Create(CreateKind::File));
 	filterer.pid_does_pass(1234);
-	filterer.signal_does_pass(MainSignal::User1);
+	filterer.signal_does_pass(Signal::User1);
 	filterer.complete_does_pass(None);
 	filterer.complete_does_pass(Some(ProcessEnd::Success));
 }
@@ -183,94 +180,94 @@ async fn signal_set_single_without_sig() {
 
 	let filterer = filt(&[f]).await;
 
-	filterer.signal_does_pass(MainSignal::Interrupt);
-	filterer.signal_doesnt_pass(MainSignal::Hangup);
+	filterer.signal_does_pass(Signal::Interrupt);
+	filterer.signal_doesnt_pass(Signal::Hangup);
 }
 
 #[tokio::test]
 async fn signal_set_single_with_sig() {
 	let filterer = filt(&[filter("signal:=SIGINT")]).await;
 
-	filterer.signal_does_pass(MainSignal::Interrupt);
-	filterer.signal_doesnt_pass(MainSignal::Hangup);
+	filterer.signal_does_pass(Signal::Interrupt);
+	filterer.signal_doesnt_pass(Signal::Hangup);
 }
 
 #[tokio::test]
 async fn signal_set_multiple_without_sig() {
 	let filterer = filt(&[filter("sig:=INT,TERM")]).await;
 
-	filterer.signal_does_pass(MainSignal::Interrupt);
-	filterer.signal_does_pass(MainSignal::Terminate);
-	filterer.signal_doesnt_pass(MainSignal::Hangup);
+	filterer.signal_does_pass(Signal::Interrupt);
+	filterer.signal_does_pass(Signal::Terminate);
+	filterer.signal_doesnt_pass(Signal::Hangup);
 }
 
 #[tokio::test]
 async fn signal_set_multiple_with_sig() {
 	let filterer = filt(&[filter("signal:=SIGINT,SIGTERM")]).await;
 
-	filterer.signal_does_pass(MainSignal::Interrupt);
-	filterer.signal_does_pass(MainSignal::Terminate);
-	filterer.signal_doesnt_pass(MainSignal::Hangup);
+	filterer.signal_does_pass(Signal::Interrupt);
+	filterer.signal_does_pass(Signal::Terminate);
+	filterer.signal_doesnt_pass(Signal::Hangup);
 }
 
 #[tokio::test]
 async fn signal_set_multiple_mixed_sig() {
 	let filterer = filt(&[filter("sig:=SIGINT,TERM")]).await;
 
-	filterer.signal_does_pass(MainSignal::Interrupt);
-	filterer.signal_does_pass(MainSignal::Terminate);
-	filterer.signal_doesnt_pass(MainSignal::Hangup);
+	filterer.signal_does_pass(Signal::Interrupt);
+	filterer.signal_does_pass(Signal::Terminate);
+	filterer.signal_doesnt_pass(Signal::Hangup);
 }
 
 #[tokio::test]
 async fn signal_equals_without_sig() {
 	let filterer = filt(&[filter("sig==INT")]).await;
 
-	filterer.signal_does_pass(MainSignal::Interrupt);
-	filterer.signal_doesnt_pass(MainSignal::Hangup);
+	filterer.signal_does_pass(Signal::Interrupt);
+	filterer.signal_doesnt_pass(Signal::Hangup);
 }
 
 #[tokio::test]
 async fn signal_equals_with_sig() {
 	let filterer = filt(&[filter("signal==SIGINT")]).await;
 
-	filterer.signal_does_pass(MainSignal::Interrupt);
-	filterer.signal_doesnt_pass(MainSignal::Hangup);
+	filterer.signal_does_pass(Signal::Interrupt);
+	filterer.signal_doesnt_pass(Signal::Hangup);
 }
 
 #[tokio::test]
 async fn signal_set_single_numbers() {
 	let filterer = filt(&[filter("signal:=2")]).await;
 
-	filterer.signal_does_pass(MainSignal::Interrupt);
-	filterer.signal_doesnt_pass(MainSignal::Hangup);
+	filterer.signal_does_pass(Signal::Interrupt);
+	filterer.signal_doesnt_pass(Signal::Hangup);
 }
 
 #[tokio::test]
 async fn signal_set_multiple_numbers() {
 	let filterer = filt(&[filter("sig:=2,15")]).await;
 
-	filterer.signal_does_pass(MainSignal::Interrupt);
-	filterer.signal_does_pass(MainSignal::Terminate);
-	filterer.signal_doesnt_pass(MainSignal::Hangup);
+	filterer.signal_does_pass(Signal::Interrupt);
+	filterer.signal_does_pass(Signal::Terminate);
+	filterer.signal_doesnt_pass(Signal::Hangup);
 }
 
 #[tokio::test]
 async fn signal_equals_numbers() {
 	let filterer = filt(&[filter("sig==2")]).await;
 
-	filterer.signal_does_pass(MainSignal::Interrupt);
-	filterer.signal_doesnt_pass(MainSignal::Hangup);
+	filterer.signal_does_pass(Signal::Interrupt);
+	filterer.signal_doesnt_pass(Signal::Hangup);
 }
 
 #[tokio::test]
 async fn signal_set_all_mixed() {
 	let filterer = filt(&[filter("signal:=SIGHUP,INT,15")]).await;
 
-	filterer.signal_does_pass(MainSignal::Hangup);
-	filterer.signal_does_pass(MainSignal::Interrupt);
-	filterer.signal_does_pass(MainSignal::Terminate);
-	filterer.signal_doesnt_pass(MainSignal::User1);
+	filterer.signal_does_pass(Signal::Hangup);
+	filterer.signal_does_pass(Signal::Interrupt);
+	filterer.signal_does_pass(Signal::Terminate);
+	filterer.signal_doesnt_pass(Signal::User1);
 }
 
 #[tokio::test]
@@ -389,7 +386,7 @@ async fn complete_with_any_exception() {
 async fn complete_with_specific_signal_with_sig() {
 	let filterer = filt(&[filter("complete*=signal(SIGINT)")]).await;
 
-	filterer.complete_does_pass(Some(ProcessEnd::ExitSignal(SubSignal::Interrupt)));
+	filterer.complete_does_pass(Some(ProcessEnd::ExitSignal(Signal::Interrupt)));
 	filterer.complete_doesnt_pass(Some(ProcessEnd::ExitStop(NonZeroI32::new(19).unwrap())));
 	filterer.complete_doesnt_pass(Some(ProcessEnd::Success));
 	filterer.complete_doesnt_pass(None);
@@ -399,7 +396,7 @@ async fn complete_with_specific_signal_with_sig() {
 async fn complete_with_specific_signal_without_sig() {
 	let filterer = filt(&[filter("complete*=signal(INT)")]).await;
 
-	filterer.complete_does_pass(Some(ProcessEnd::ExitSignal(SubSignal::Interrupt)));
+	filterer.complete_does_pass(Some(ProcessEnd::ExitSignal(Signal::Interrupt)));
 	filterer.complete_doesnt_pass(Some(ProcessEnd::ExitStop(NonZeroI32::new(19).unwrap())));
 	filterer.complete_doesnt_pass(Some(ProcessEnd::Success));
 	filterer.complete_doesnt_pass(None);
@@ -409,7 +406,7 @@ async fn complete_with_specific_signal_without_sig() {
 async fn complete_with_specific_signal_number() {
 	let filterer = filt(&[filter("complete*=signal(2)")]).await;
 
-	filterer.complete_does_pass(Some(ProcessEnd::ExitSignal(SubSignal::Interrupt)));
+	filterer.complete_does_pass(Some(ProcessEnd::ExitSignal(Signal::Interrupt)));
 	filterer.complete_doesnt_pass(Some(ProcessEnd::ExitStop(NonZeroI32::new(19).unwrap())));
 	filterer.complete_doesnt_pass(Some(ProcessEnd::Success));
 	filterer.complete_doesnt_pass(None);
@@ -419,9 +416,9 @@ async fn complete_with_specific_signal_number() {
 async fn complete_with_any_signal() {
 	let filterer = filt(&[filter("complete*=signal(*)")]).await;
 
-	filterer.complete_does_pass(Some(ProcessEnd::ExitSignal(SubSignal::Interrupt)));
-	filterer.complete_does_pass(Some(ProcessEnd::ExitSignal(SubSignal::Terminate)));
-	filterer.complete_does_pass(Some(ProcessEnd::ExitSignal(SubSignal::Custom(123))));
+	filterer.complete_does_pass(Some(ProcessEnd::ExitSignal(Signal::Interrupt)));
+	filterer.complete_does_pass(Some(ProcessEnd::ExitSignal(Signal::Terminate)));
+	filterer.complete_does_pass(Some(ProcessEnd::ExitSignal(Signal::Custom(123))));
 	filterer.complete_doesnt_pass(Some(ProcessEnd::ExitStop(NonZeroI32::new(63).unwrap())));
 	filterer.complete_doesnt_pass(Some(ProcessEnd::ExitError(NonZeroI64::new(63).unwrap())));
 	filterer.complete_doesnt_pass(Some(ProcessEnd::Success));

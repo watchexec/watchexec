@@ -1,0 +1,30 @@
+[
+  {
+    "tags": [
+      {
+        "kind": "source",
+        "source": "internal"
+      }
+    ]
+  },
+  {
+    "tags": [
+      {
+        "kind": "completion",
+        "disposition": "success"
+      },
+      {
+        "kind": "process",
+        "pid": 123
+      }
+    ]
+  },
+  {
+    "tags": [
+      {
+        "kind": "keyboard",
+        "keycode": "eof"
+      }
+    ]
+  }
+]

@@ -101,7 +101,6 @@
 pub mod action;
 pub mod command;
 pub mod error;
-pub mod event;
 pub mod filter;
 pub mod fs;
 pub mod keyboard;
@@ -112,6 +111,13 @@ pub mod signal;
 pub mod config;
 pub mod handler;
 mod watchexec;
+
+// compatibility
+#[deprecated(
+	note = "use the `watchexec-events` crate directly instead",
+	since = "2.1.0"
+)]
+pub use watchexec_events as event;
 
 #[doc(inline)]
 pub use crate::watchexec::{ErrorHook, Watchexec};

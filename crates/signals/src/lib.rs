@@ -1,22 +1,41 @@
-//! Types for cross-platform and cross-purpose handling of subprocess signals.
+//! Notifications (signals or Windows control events) sent to a process.
+//!
+//! This signal type in Watchexec is used for any of:
+//! - signals sent to the main process by some external actor,
+//! - signals received from a sub process by the main process,
+//! - signals sent to a sub process by Watchexec.
+//!
+//! ## Features
+//!
+//! - `fromstr`: Enables parsing of signals from strings.
+//! - `serde`: Enables [`serde`][serde] support. Note that this is stricter than string parsing.
+//! - `miette`: Enables [`miette`][miette] support for [`SignalParseError`][SignalParseError].
 
+use std::fmt;
+
+#[cfg(feature = "fromstr")]
 use std::str::FromStr;
 
 #[cfg(unix)]
 use nix::sys::signal::Signal as NixSignal;
 
-use crate::error::SignalParseError;
-
-use super::source::MainSignal;
-
-/// A notification sent to a subprocess.
+/// A notification sent to a process.
 ///
 /// On Windows, only some signals are supported, as described. Others will be ignored.
 ///
 /// On Unix, there are several "first-class" signals which have their own variants, and a generic
-/// [`Custom`][SubSignal::Custom] variant which can be used to send arbitrary signals.
+/// [`Custom`][Signal::Custom] variant which can be used to send arbitrary signals.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum SubSignal {
+#[non_exhaustive]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+	feature = "serde",
+	serde(
+		from = "serde_support::SerdeSignal",
+		into = "serde_support::SerdeSignal"
+	)
+)]
+pub enum Signal {
 	/// Indicate that the terminal is disconnected.
 	///
 	/// On Unix, this is `SIGHUP`. On Windows, this is ignored for now but may be supported in the
@@ -79,36 +98,40 @@ pub enum SubSignal {
 	///
 	/// Invalid signals on the current platform will be ignored. Does nothing on Windows.
 	///
+	/// The special value `0` is used to indicate an unknown signal. That is, a signal was received
+	/// or parsed, but it is not known which. This is not a usual case, and should in general be
+	/// ignored rather than hard-erroring.
+	///
 	/// # Examples
 	///
 	/// ```
 	/// # #[cfg(unix)]
 	/// # {
-	/// use watchexec::signal::process::SubSignal;
-	/// use nix::sys::signal::Signal;
-	/// assert_eq!(SubSignal::Custom(6), SubSignal::from(Signal::SIGABRT as i32));
+	/// use watchexec_signals::Signal;
+	/// use nix::sys::signal::Signal as NixSignal;
+	/// assert_eq!(Signal::Custom(6), Signal::from(NixSignal::SIGABRT as i32));
 	/// # }
 	/// ```
 	///
-	/// On Unix the [`from_nix`][SubSignal::from_nix] method should be preferred if converting from
+	/// On Unix the [`from_nix`][Signal::from_nix] method should be preferred if converting from
 	/// Nix's `Signal` type:
 	///
 	/// ```
 	/// # #[cfg(unix)]
 	/// # {
-	/// use watchexec::signal::process::SubSignal;
-	/// use nix::sys::signal::Signal;
-	/// assert_eq!(SubSignal::Custom(6), SubSignal::from_nix(Signal::SIGABRT));
+	/// use watchexec_signals::Signal;
+	/// use nix::sys::signal::Signal as NixSignal;
+	/// assert_eq!(Signal::Custom(6), Signal::from_nix(NixSignal::SIGABRT));
 	/// # }
 	/// ```
 	Custom(i32),
 }
 
-impl SubSignal {
-	/// Converts to a [`nix::Signal`][command_group::Signal] if possible.
+impl Signal {
+	/// Converts to a [`nix::Signal`][NixSignal] if possible.
 	///
 	/// This will return `None` if the signal is not supported on the current platform (only for
-	/// [`Custom`][SubSignal::Custom], as the first-class ones are always supported).
+	/// [`Custom`][Signal::Custom], as the first-class ones are always supported).
 	#[cfg(unix)]
 	#[must_use]
 	pub fn to_nix(self) -> Option<NixSignal> {
@@ -124,7 +147,7 @@ impl SubSignal {
 		}
 	}
 
-	/// Converts from a [`nix::Signal`][command_group::Signal].
+	/// Converts from a [`nix::Signal`][NixSignal].
 	#[cfg(unix)]
 	#[allow(clippy::missing_const_for_fn)]
 	#[must_use]
@@ -142,20 +165,7 @@ impl SubSignal {
 	}
 }
 
-impl From<MainSignal> for SubSignal {
-	fn from(main: MainSignal) -> Self {
-		match main {
-			MainSignal::Hangup => Self::Hangup,
-			MainSignal::Interrupt => Self::Interrupt,
-			MainSignal::Quit => Self::Quit,
-			MainSignal::Terminate => Self::Terminate,
-			MainSignal::User1 => Self::User1,
-			MainSignal::User2 => Self::User2,
-		}
-	}
-}
-
-impl From<i32> for SubSignal {
+impl From<i32> for Signal {
 	/// Converts from a raw signal number.
 	///
 	/// This uses hardcoded numbers for the first-class signals.
@@ -173,7 +183,8 @@ impl From<i32> for SubSignal {
 	}
 }
 
-impl SubSignal {
+#[cfg(feature = "fromstr")]
+impl Signal {
 	/// Parse the input as a unix signal.
 	///
 	/// This parses the input as a signal name, or a signal number, in a case-insensitive manner.
@@ -184,14 +195,14 @@ impl SubSignal {
 	/// falls back to a hardcoded approximation instead of looking up signal tables (via [`nix`]).
 	///
 	/// ```
-	/// # use watchexec::signal::process::SubSignal;
-	/// assert_eq!(SubSignal::Hangup, SubSignal::from_unix_str("hup").unwrap());
-	/// assert_eq!(SubSignal::Interrupt, SubSignal::from_unix_str("SIGINT").unwrap());
-	/// assert_eq!(SubSignal::ForceStop, SubSignal::from_unix_str("Kill").unwrap());
+	/// # use watchexec_signals::Signal;
+	/// assert_eq!(Signal::Hangup, Signal::from_unix_str("hup").unwrap());
+	/// assert_eq!(Signal::Interrupt, Signal::from_unix_str("SIGINT").unwrap());
+	/// assert_eq!(Signal::ForceStop, Signal::from_unix_str("Kill").unwrap());
 	/// ```
 	///
 	/// Using [`FromStr`] is recommended for practical use, as it will also parse Windows control
-	/// events, see [`SubSignal::from_windows_str`].
+	/// events, see [`Signal::from_windows_str`].
 	pub fn from_unix_str(s: &str) -> Result<Self, SignalParseError> {
 		Self::from_unix_str_impl(s)
 	}
@@ -243,10 +254,10 @@ impl SubSignal {
 	/// - `STOP`, `FORCE-STOP` for a forced stop. This is also mapped to `KILL` and `SIGKILL`.
 	///
 	/// ```
-	/// # use watchexec::signal::process::SubSignal;
-	/// assert_eq!(SubSignal::Hangup, SubSignal::from_windows_str("ctrl+close").unwrap());
-	/// assert_eq!(SubSignal::Interrupt, SubSignal::from_windows_str("C").unwrap());
-	/// assert_eq!(SubSignal::ForceStop, SubSignal::from_windows_str("Stop").unwrap());
+	/// # use watchexec_signals::Signal;
+	/// assert_eq!(Signal::Hangup, Signal::from_windows_str("ctrl+close").unwrap());
+	/// assert_eq!(Signal::Interrupt, Signal::from_windows_str("C").unwrap());
+	/// assert_eq!(Signal::ForceStop, Signal::from_windows_str("Stop").unwrap());
 	/// ```
 	///
 	/// Using [`FromStr`] is recommended for practical use, as it will fall back to parsing as a
@@ -262,10 +273,126 @@ impl SubSignal {
 	}
 }
 
-impl FromStr for SubSignal {
+#[cfg(feature = "fromstr")]
+impl FromStr for Signal {
 	type Err = SignalParseError;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		Self::from_windows_str(s).or_else(|err| Self::from_unix_str(s).map_err(|_| err))
+	}
+}
+
+/// Error when parsing a signal from string.
+#[cfg(feature = "fromstr")]
+#[cfg_attr(feature = "miette", derive(miette::Diagnostic))]
+#[derive(Debug, thiserror::Error)]
+#[error("invalid signal `{src}`: {err}")]
+pub struct SignalParseError {
+	// The string that was parsed.
+	#[cfg_attr(feature = "miette", source_code)]
+	src: String,
+
+	// The error that occurred.
+	err: String,
+
+	// The span of the source which is in error.
+	#[cfg_attr(feature = "miette", label = "invalid signal")]
+	span: (usize, usize),
+}
+
+#[cfg(feature = "fromstr")]
+impl SignalParseError {
+	pub fn new(src: &str, err: &str) -> Self {
+		Self {
+			src: src.to_owned(),
+			err: err.to_owned(),
+			span: (0, src.len()),
+		}
+	}
+}
+
+impl fmt::Display for Signal {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		write!(
+			f,
+			"{}",
+			match (self, cfg!(windows)) {
+				(Self::Hangup, false) => "SIGHUP",
+				(Self::Hangup, true) => "CTRL-CLOSE",
+				(Self::ForceStop, false) => "SIGKILL",
+				(Self::ForceStop, true) => "STOP",
+				(Self::Interrupt, false) => "SIGINT",
+				(Self::Interrupt, true) => "CTRL-C",
+				(Self::Quit, _) => "SIGQUIT",
+				(Self::Terminate, false) => "SIGTERM",
+				(Self::Terminate, true) => "CTRL-BREAK",
+				(Self::User1, _) => "SIGUSR1",
+				(Self::User2, _) => "SIGUSR2",
+				(Self::Custom(n), _) => {
+					return write!(f, "{}", n);
+				}
+			}
+		)
+	}
+}
+
+#[cfg(feature = "serde")]
+mod serde_support {
+	use super::*;
+
+	#[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize)]
+	#[serde(untagged)]
+	pub enum SerdeSignal {
+		Named(NamedSignal),
+		Number(i32),
+	}
+
+	#[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize)]
+	#[serde(rename_all = "kebab-case")]
+	pub enum NamedSignal {
+		#[serde(rename = "SIGHUP")]
+		Hangup,
+		#[serde(rename = "SIGKILL")]
+		ForceStop,
+		#[serde(rename = "SIGINT")]
+		Interrupt,
+		#[serde(rename = "SIGQUIT")]
+		Quit,
+		#[serde(rename = "SIGTERM")]
+		Terminate,
+		#[serde(rename = "SIGUSR1")]
+		User1,
+		#[serde(rename = "SIGUSR2")]
+		User2,
+	}
+
+	impl From<Signal> for SerdeSignal {
+		fn from(signal: Signal) -> Self {
+			match signal {
+				Signal::Hangup => Self::Named(NamedSignal::Hangup),
+				Signal::Interrupt => Self::Named(NamedSignal::Interrupt),
+				Signal::Quit => Self::Named(NamedSignal::Quit),
+				Signal::Terminate => Self::Named(NamedSignal::Terminate),
+				Signal::User1 => Self::Named(NamedSignal::User1),
+				Signal::User2 => Self::Named(NamedSignal::User2),
+				Signal::ForceStop => Self::Named(NamedSignal::ForceStop),
+				Signal::Custom(number) => Self::Number(number),
+			}
+		}
+	}
+
+	impl From<SerdeSignal> for Signal {
+		fn from(signal: SerdeSignal) -> Self {
+			match signal {
+				SerdeSignal::Named(NamedSignal::Hangup) => Signal::Hangup,
+				SerdeSignal::Named(NamedSignal::ForceStop) => Signal::ForceStop,
+				SerdeSignal::Named(NamedSignal::Interrupt) => Signal::Interrupt,
+				SerdeSignal::Named(NamedSignal::Quit) => Signal::Quit,
+				SerdeSignal::Named(NamedSignal::Terminate) => Signal::Terminate,
+				SerdeSignal::Named(NamedSignal::User1) => Signal::User1,
+				SerdeSignal::Named(NamedSignal::User2) => Signal::User2,
+				SerdeSignal::Number(number) => Signal::Custom(number),
+			}
+		}
 	}
 }

@@ -1,0 +1,30 @@
+[
+  {
+    "tags": [
+      {
+        "kind": "signal",
+        "signal": "SIGINT"
+      },
+      {
+        "kind": "signal",
+        "signal": "SIGUSR1"
+      },
+      {
+        "kind": "signal",
+        "signal": "SIGKILL"
+      }
+    ]
+  },
+  {
+    "tags": [
+      {
+        "kind": "signal",
+        "signal": 66
+      },
+      {
+        "kind": "signal",
+        "signal": 0
+      }
+    ]
+  }
+]

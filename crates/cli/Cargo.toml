@@ -23,18 +23,25 @@ path = "src/main.rs"
 argfile = "0.1.5"
 chrono = "0.4.23"
 clap_complete = "4.1.4"
+clap_complete_nushell = "0.1.10"
 clap_mangen = "0.2.9"
-command-group = { version = "2.1.0", features = ["with-tokio"] }
-console-subscriber = { version = "0.1.0", optional = true }
 dirs = "4.0.0"
 futures = "0.3.17"
 humantime = "2.1.0"
 is-terminal = "0.4.4"
-miette = { version = "5.3.0", features = ["fancy"] }
 notify-rust = "4.5.2"
+serde_json = "1.0.94"
+tempfile = "3.4.0"
 tracing = "0.1.26"
 which = "4.4.0"
-clap_complete_nushell = "0.1.10"
+
+[dependencies.command-group]
+version = "2.1.0"
+features = ["with-tokio"]
+
+[dependencies.console-subscriber]
+version = "0.1.0"
+optional = true
 
 [dependencies.clap]
 version = "4.1.8"
@@ -44,6 +51,10 @@ features = ["cargo", "derive", "env", "wrap_help"]
 version = "1.1.0"
 path = "../ignore-files"
 
+[dependencies.miette]
+version = "5.3.0"
+features = ["fancy"]
+
 [dependencies.project-origins]
 version = "1.2.0"
 path = "../project-origins"
@@ -51,6 +62,15 @@ path = "../project-origins"
 [dependencies.watchexec]
 version = "2.1.1"
 path = "../lib"
+
+[dependencies.watchexec-events]
+version = "1.0.0"
+path = "../events"
+features = ["serde"]
+
+[dependencies.watchexec-signals]
+version = "1.0.0"
+path = "../signals"
 
 [dependencies.watchexec-filterer-globset]
 version = "1.1.0"

@@ -8,9 +8,9 @@ use watchexec::{
 	error::ReconfigError,
 	event::Event,
 	fs::Watcher,
-	signal::source::MainSignal,
 	ErrorHook, Watchexec,
 };
+use watchexec_signals::Signal;
 
 // Run with: `env RUST_LOG=debug cargo run --example print_out`
 #[tokio::main]
@@ -46,13 +46,13 @@ async fn main() -> Result<()> {
 				.flat_map(Event::signals)
 				.collect::<Vec<_>>();
 
-			if sigs.iter().any(|sig| sig == &MainSignal::Interrupt) {
+			if sigs.iter().any(|sig| sig == &Signal::Interrupt) {
 				action.outcome(Outcome::Exit);
-			} else if sigs.iter().any(|sig| sig == &MainSignal::User1) {
+			} else if sigs.iter().any(|sig| sig == &Signal::User1) {
 				eprintln!("Switching to native for funsies");
 				config.file_watcher(Watcher::Native);
 				w.reconfigure(config)?;
-			} else if sigs.iter().any(|sig| sig == &MainSignal::User2) {
+			} else if sigs.iter().any(|sig| sig == &Signal::User2) {
 				eprintln!("Switching to polling for funsies");
 				config.file_watcher(Watcher::Poll(Duration::from_millis(50)));
 				w.reconfigure(config)?;

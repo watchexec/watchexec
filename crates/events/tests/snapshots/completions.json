@@ -1,0 +1,47 @@
+[
+  {
+    "tags": [
+      {
+        "kind": "completion",
+        "disposition": "unknown"
+      },
+      {
+        "kind": "completion",
+        "disposition": "success"
+      },
+      {
+        "kind": "completion",
+        "disposition": "continued"
+      }
+    ]
+  },
+  {
+    "tags": [
+      {
+        "kind": "completion",
+        "disposition": "error",
+        "code": 12
+      },
+      {
+        "kind": "completion",
+        "signal": "SIGINT",
+        "disposition": "signal"
+      },
+      {
+        "kind": "completion",
+        "signal": 34,
+        "disposition": "signal"
+      },
+      {
+        "kind": "completion",
+        "disposition": "stop",
+        "code": 56
+      },
+      {
+        "kind": "completion",
+        "disposition": "exception",
+        "code": 78
+      }
+    ]
+  }
+]

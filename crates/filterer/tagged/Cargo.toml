@@ -44,6 +44,10 @@ path = "../../lib"
 version = "1.1.0"
 path = "../ignore"
 
+[dependencies.watchexec-signals]
+version = "1.0.0"
+path = "../../signals"
+
 [dev-dependencies]
 tracing-subscriber = "0.3.6"
 

@@ -89,7 +89,9 @@ make anything else you may want:
   and supervise a process while also listening for & acting on interventions such as sending signals.
 
 - **Event sources**: [Filesystem](https://docs.rs/watchexec/2/watchexec/fs/index.html),
-  [Signals](https://docs.rs/watchexec/2/watchexec/signal/source/index.html), (more to come).
+  [Signals](https://docs.rs/watchexec/2/watchexec/signal/index.html),
+  [Keyboard](https://docs.rs/watchexec/2/watchexec/keyboard/index.html),
+  (more to come).
 
 - Finding **[a common prefix](https://docs.rs/watchexec/2/watchexec/paths/fn.common_prefix.html)**
   of a set of paths.
@@ -116,6 +118,11 @@ There are also separate, standalone crates used to build Watchexec which you can
 
 - **[Command Group](https://docs.rs/command-group)** augments the std and tokio `Command` with
   support for process groups, portable between Unix and Windows.
+
+- **[Event types](https://docs.rs/watchexec-events)** contains the event types used by Watchexec,
+  including the JSON format used for passing event data to child processes.
+
+- **[Signal types](https://docs.rs/watchexec-signals)** contains the signal types used by Watchexec.
 
 - **[Ignore files](https://docs.rs/ignore-files)** finds, parses, and interprets ignore files.
 

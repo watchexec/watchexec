@@ -3,6 +3,8 @@ resolver = "2"
 members = [
 	"crates/lib",
 	"crates/cli",
+	"crates/events",
+	"crates/signals",
 	"crates/filterer/globset",
 	"crates/filterer/ignore",
 	"crates/filterer/tagged",

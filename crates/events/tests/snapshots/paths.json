@@ -1,0 +1,53 @@
+[
+  {
+    "tags": [
+      {
+        "kind": "path",
+        "absolute": "/foo/bar/baz",
+        "filetype": "symlink"
+      },
+      {
+        "kind": "fs",
+        "simple": "create",
+        "full": "Create(File)"
+      }
+    ]
+  },
+  {
+    "tags": [
+      {
+        "kind": "path",
+        "absolute": "/rename/from/this",
+        "filetype": "file"
+      },
+      {
+        "kind": "path",
+        "absolute": "/rename/into/that",
+        "filetype": "other"
+      },
+      {
+        "kind": "fs",
+        "simple": "modify",
+        "full": "Modify(Name(Both))"
+      }
+    ]
+  },
+  {
+    "tags": [
+      {
+        "kind": "path",
+        "absolute": "/delete/this",
+        "filetype": "dir"
+      },
+      {
+        "kind": "path",
+        "absolute": "/"
+      },
+      {
+        "kind": "fs",
+        "simple": "remove",
+        "full": "Remove(Any)"
+      }
+    ]
+  }
+]

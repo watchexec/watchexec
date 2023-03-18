@@ -1,0 +1,34 @@
+[
+  {
+    "tags": [
+      {
+        "kind": "source",
+        "source": "filesystem"
+      },
+      {
+        "kind": "source",
+        "source": "keyboard"
+      },
+      {
+        "kind": "source",
+        "source": "mouse"
+      }
+    ]
+  },
+  {
+    "tags": [
+      {
+        "kind": "source",
+        "source": "os"
+      },
+      {
+        "kind": "source",
+        "source": "time"
+      },
+      {
+        "kind": "source",
+        "source": "internal"
+      }
+    ]
+  }
+]

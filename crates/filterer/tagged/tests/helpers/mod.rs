@@ -13,10 +13,10 @@ use watchexec::{
 	error::RuntimeError,
 	event::{filekind::FileEventKind, Event, FileType, Priority, ProcessEnd, Source, Tag},
 	filter::Filterer,
-	signal::source::MainSignal,
 };
 use watchexec_filterer_ignore::IgnoreFilterer;
 use watchexec_filterer_tagged::{Filter, FilterFile, Matcher, Op, Pattern, TaggedFilterer};
+use watchexec_signals::Signal;
 
 pub mod tagged {
 	pub use super::ig_file as file;
@@ -163,11 +163,11 @@ pub trait TaggedHarness {
 		self.tag_pass(Tag::Process(pid), false);
 	}
 
-	fn signal_does_pass(&self, sig: MainSignal) {
+	fn signal_does_pass(&self, sig: Signal) {
 		self.tag_pass(Tag::Signal(sig), true);
 	}
 
-	fn signal_doesnt_pass(&self, sig: MainSignal) {
+	fn signal_doesnt_pass(&self, sig: Signal) {
 		self.tag_pass(Tag::Signal(sig), false);
 	}
 

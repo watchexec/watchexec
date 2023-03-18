@@ -65,8 +65,7 @@ pub fn gather_to(filename: &str, structname: &str, public: bool) {
 		.collect::<Vec<_>>()
 		.join(" ");
 
-	let crate_feature_list = crate_features
-		.join(",");
+	let crate_feature_list = crate_features.join(",");
 
 	let viz = if public { "pub" } else { "pub(crate)" };
 

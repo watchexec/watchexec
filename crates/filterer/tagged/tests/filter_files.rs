@@ -1,7 +1,5 @@
-use watchexec::{
-	event::{filekind::*, ProcessEnd, Source},
-	signal::source::MainSignal,
-};
+use watchexec::event::{filekind::*, ProcessEnd, Source};
+use watchexec_signals::Signal;
 
 mod helpers;
 use helpers::tagged_ff::*;
@@ -28,7 +26,7 @@ async fn empty_filter_passes_everything() {
 	filterer.source_does_pass(Source::Keyboard);
 	filterer.fek_does_pass(FileEventKind::Create(CreateKind::File));
 	filterer.pid_does_pass(1234);
-	filterer.signal_does_pass(MainSignal::User1);
+	filterer.signal_does_pass(Signal::User1);
 	filterer.complete_does_pass(None);
 	filterer.complete_does_pass(Some(ProcessEnd::Success));
 }
