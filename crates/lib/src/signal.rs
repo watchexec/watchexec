@@ -14,7 +14,7 @@ use crate::{
 pub mod process {
 	#[deprecated(
 		note = "use the `watchexec-signals` crate directly instead",
-		since = "2.1.0"
+		since = "2.2.0"
 	)]
 	pub use watchexec_signals::Signal as SubSignal;
 }
@@ -23,12 +23,12 @@ pub mod process {
 pub mod source {
 	#[deprecated(
 		note = "use `watchexec::signal::worker` directly instead",
-		since = "2.1.0"
+		since = "2.2.0"
 	)]
 	pub use super::worker;
 	#[deprecated(
 		note = "use the `watchexec-signals` crate directly instead",
-		since = "2.1.0"
+		since = "2.2.0"
 	)]
 	pub use watchexec_signals::Signal as MainSignal;
 }

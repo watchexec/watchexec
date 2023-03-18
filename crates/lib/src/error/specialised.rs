@@ -7,7 +7,10 @@ use tokio::sync::watch;
 use crate::{action, fs, keyboard};
 
 // compatibility re-export
-#[deprecated(note = "use the `watchexec_signals` crate directly instead")]
+#[deprecated(
+	note = "use the `watchexec_signals` crate directly instead",
+	since = "2.2.0"
+)]
 pub use watchexec_signals::SignalParseError;
 
 /// Errors occurring from reconfigs.
