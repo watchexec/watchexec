@@ -35,8 +35,13 @@
       },
       {
         "kind": "completion",
-        "disposition": "exception",
+        "disposition": "stop",
         "code": 56
+      },
+      {
+        "kind": "completion",
+        "disposition": "exception",
+        "code": 78
       }
     ],
     "metadata": {}
