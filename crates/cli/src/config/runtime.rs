@@ -1,8 +1,11 @@
-use std::{collections::HashMap, convert::Infallible, env::current_dir, ffi::OsString};
+use std::{
+	collections::HashMap, convert::Infallible, env::current_dir, ffi::OsString, fs::File,
+	process::Stdio,
+};
 
 use miette::{miette, IntoDiagnostic, Result};
 use notify_rust::Notification;
-use tracing::{debug, debug_span};
+use tracing::{debug, debug_span, error};
 use watchexec::{
 	action::{Action, Outcome, PostSpawn, PreSpawn},
 	command::{Command, Shell},
@@ -208,38 +211,53 @@ pub fn runtime(args: &Args, state: &State) -> Result<RuntimeConfig> {
 
 		let workdir = workdir.clone();
 		let mut add_envs = add_envs.clone();
+		let mut stdin = None;
 
 		match emit_events_to {
 			EmitEvents::Environment => {
 				add_envs.extend(emits_to_environment(&prespawn.events));
 			}
-			EmitEvents::Stdin => todo!(),
+			EmitEvents::Stdin => match emits_to_file(&emit_file, &prespawn.events)
+				.and_then(|path| File::open(path).into_diagnostic())
+			{
+				Ok(file) => {
+					stdin.replace(Stdio::from(file));
+				}
+				Err(err) => {
+					error!("Failed to write events to stdin, continuing without it: {err}");
+				}
+			},
 			EmitEvents::File => match emits_to_file(&emit_file, &prespawn.events) {
 				Ok(path) => {
 					add_envs.insert("WATCHEXEC_EVENTS_FILE".into(), path.into());
 				}
 				Err(err) => {
-					eprintln!(
-						"Failed to write WATCHEXEC_EVENTS_FILE, continuing without it: {err}"
-					);
+					error!("Failed to write WATCHEXEC_EVENTS_FILE, continuing without it: {err}");
 				}
 			},
-			EmitEvents::JsonStdin => todo!(),
+			EmitEvents::JsonStdin => match emits_to_json_file(&emit_file, &prespawn.events)
+				.and_then(|path| File::open(path).into_diagnostic())
+			{
+				Ok(file) => {
+					stdin.replace(Stdio::from(file));
+				}
+				Err(err) => {
+					error!("Failed to write events to stdin, continuing without it: {err}");
+				}
+			},
 			EmitEvents::JsonFile => match emits_to_json_file(&emit_file, &prespawn.events) {
 				Ok(path) => {
 					add_envs.insert("WATCHEXEC_EVENTS_FILE".into(), path.into());
 				}
 				Err(err) => {
-					eprintln!(
-						"Failed to write WATCHEXEC_EVENTS_FILE, continuing without it: {err}"
-					);
+					error!("Failed to write WATCHEXEC_EVENTS_FILE, continuing without it: {err}");
 				}
 			},
 			EmitEvents::None => {}
 		}
 
 		async move {
-			if !add_envs.is_empty() || workdir.is_some() {
+			if !add_envs.is_empty() || workdir.is_some() || stdin.is_some() {
 				if let Some(mut command) = prespawn.command().await {
 					for (k, v) in add_envs {
 						debug!(?k, ?v, "inserting environment variable");
@@ -249,6 +267,11 @@ pub fn runtime(args: &Args, state: &State) -> Result<RuntimeConfig> {
 					if let Some(ref workdir) = workdir {
 						debug!(?workdir, "set command workdir");
 						command.current_dir(workdir);
+					}
+
+					if let Some(stdin) = stdin {
+						debug!("set command stdin");
+						command.stdin(stdin);
 					}
 				}
 			}
