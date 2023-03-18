@@ -3899,6 +3899,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "watchexec",
+ "watchexec-signals",
 ]
 
 [[package]]

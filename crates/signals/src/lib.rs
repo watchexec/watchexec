@@ -98,7 +98,9 @@ pub enum Signal {
 	///
 	/// Invalid signals on the current platform will be ignored. Does nothing on Windows.
 	///
-	/// The special value `0` is used to indicate an unknown signal.
+	/// The special value `0` is used to indicate an unknown signal. That is, a signal was received
+	/// or parsed, but it is not known which. This is not a usual case, and should in general be
+	/// ignored rather than hard-erroring.
 	///
 	/// # Examples
 	///
@@ -106,8 +108,8 @@ pub enum Signal {
 	/// # #[cfg(unix)]
 	/// # {
 	/// use watchexec_signals::Signal;
-	/// use nix::sys::signal::Signal;
-	/// assert_eq!(Signal::Custom(6), Signal::from(Signal::SIGABRT as i32));
+	/// use nix::sys::signal::Signal as NixSignal;
+	/// assert_eq!(Signal::Custom(6), Signal::from(NixSignal::SIGABRT as i32));
 	/// # }
 	/// ```
 	///
@@ -118,8 +120,8 @@ pub enum Signal {
 	/// # #[cfg(unix)]
 	/// # {
 	/// use watchexec_signals::Signal;
-	/// use nix::sys::signal::Signal;
-	/// assert_eq!(Signal::Custom(6), Signal::from_nix(Signal::SIGABRT));
+	/// use nix::sys::signal::Signal as NixSignal;
+	/// assert_eq!(Signal::Custom(6), Signal::from_nix(NixSignal::SIGABRT));
 	/// # }
 	/// ```
 	Custom(i32),

@@ -43,3 +43,7 @@ features = [
 	"rt-multi-thread",
 	"macros",
 ]
+
+[dependencies.watchexec-signals]
+version = "1.0.0"
+path = "../../signals"
