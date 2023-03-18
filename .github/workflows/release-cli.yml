@@ -249,7 +249,7 @@ jobs:
           cp "$bin" "target/release/" # workaround for cargo-deb silliness with targets
 
           cp "$bin" "$dst/"
-          cp -r crates/cli/README.md LICENSE completions doc/{logo.svg,watchexec.1{,.html}} "$dst/"
+          cp -r crates/cli/README.md LICENSE completions doc/{logo.svg,watchexec.1{,.*}} "$dst/"
 
       - name: Archive (tar)
         if: '! startsWith(matrix.name, ''windows-'')'
