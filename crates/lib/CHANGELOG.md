@@ -2,6 +2,14 @@
 
 ## Next (YYYY-MM-DD)
 
+## v2.3.0 (2023-03-22)
+
+- New: `Outcome::Race` and `Outcome::race()` ([#548](https://github.com/watchexec/watchexec/pull/548))
+- New: `Outcome::wait_timeout()` ([#548](https://github.com/watchexec/watchexec/pull/548))
+- New: `Outcome::sequence()` ([#548](https://github.com/watchexec/watchexec/pull/548))
+- Fix: `kill_on_drop(true)` set for group commands as well as ungrouped ([#549](https://github.com/watchexec/watchexec/pull/549))
+- Some `debug!`s upgraded to `info!`s, based on experience reading logs ([#547](https://github.com/watchexec/watchexec/pull/547))
+
 ## v2.2.0 (2023-03-18)
 
 - Ditch MSRV policy. The `rust-version` indication will remain, for the minimum estimated Rust version for the code features used in the crate's own code, but dependencies may have already moved on. From now on, only latest stable is assumed and tested for. ([#510](https://github.com/watchexec/watchexec/pull/510))

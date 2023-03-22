@@ -3839,7 +3839,7 @@ checksum = "0046fef7e28c3804e5e38bfa31ea2a0f73905319b677e57ebe37e49358989b5d"
 
 [[package]]
 name = "watchexec"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "async-priority-channel",
  "async-recursion",
