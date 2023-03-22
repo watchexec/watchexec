@@ -56,6 +56,9 @@ pub enum Outcome {
 
 	/// Do both outcomes in order.
 	Both(Box<Outcome>, Box<Outcome>),
+
+	/// Race both outcomes: run both at once, and when one finishes, cancel the other.
+	Race(Box<Outcome>, Box<Outcome>),
 }
 
 impl Default for Outcome {
@@ -75,6 +78,12 @@ impl Outcome {
 	#[must_use]
 	pub fn both(one: Self, two: Self) -> Self {
 		Self::Both(Box::new(one), Box::new(two))
+	}
+
+	/// Convenience function to create a race of outcomes.
+	#[must_use]
+	pub fn race(one: Self, two: Self) -> Self {
+		Self::Race(Box::new(one), Box::new(two))
 	}
 
 	/// Convenience function to wait for the subprocess to complete before executing the outcome.
