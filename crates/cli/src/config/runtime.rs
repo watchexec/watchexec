@@ -169,6 +169,7 @@ pub fn runtime(args: &Args, state: &State) -> Result<RuntimeConfig> {
 
 		let when_idle = start.clone();
 		let when_running = match on_busy {
+			OnBusyUpdate::Restart if cfg!(windows) => Outcome::both(Outcome::Stop, start),
 			OnBusyUpdate::Restart => Outcome::both(
 				Outcome::both(
 					Outcome::Signal(stop_signal.unwrap_or(Signal::Terminate)),
@@ -176,6 +177,7 @@ pub fn runtime(args: &Args, state: &State) -> Result<RuntimeConfig> {
 				),
 				start,
 			),
+			OnBusyUpdate::Signal if cfg!(windows) => Outcome::Stop,
 			OnBusyUpdate::Signal => {
 				Outcome::Signal(stop_signal.or(signal).unwrap_or(Signal::Terminate))
 			}
