@@ -175,7 +175,6 @@ mod windows_norm {
 		let mut newpath = OsString::with_capacity(path.as_os_str().len());
 		let mut skip_root = false;
 		for component in path.components() {
-			dbg!(component, component.as_os_str());
 			if matches!(component, Component::Prefix(_)) {
 				if with_prefix {
 					newpath.push(component.as_os_str());
