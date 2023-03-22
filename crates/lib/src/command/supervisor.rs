@@ -280,7 +280,6 @@ async fn spawn_process(
 	let (pre_spawn, spawnable) = span.in_scope::<_, Result<_, RuntimeError>>(|| {
 		debug!(%grouped, ?command, "preparing command");
 		let mut spawnable = command.to_spawnable()?;
-		spawnable.kill_on_drop(true);
 
 		// Required from Rust 1.66:
 		// https://github.com/rust-lang/rust/pull/101077
@@ -323,7 +322,9 @@ async fn spawn_process(
 		debug!(command=?spawnable, "spawning command");
 		let (proc, id) = if grouped {
 			let proc = spawnable
-				.group_spawn()
+				.group()
+				.kill_on_drop(true)
+				.spawn()
 				.map_err(|err| RuntimeError::IoError {
 					about: "spawning process group",
 					err,
@@ -332,10 +333,14 @@ async fn spawn_process(
 			debug!(pgid=%id, "process group spawned");
 			(Process::Grouped(proc), id)
 		} else {
-			let proc = spawnable.spawn().map_err(|err| RuntimeError::IoError {
-				about: "spawning process (ungrouped)",
-				err,
-			})?;
+			let proc =
+				spawnable
+					.kill_on_drop(true)
+					.spawn()
+					.map_err(|err| RuntimeError::IoError {
+						about: "spawning process (ungrouped)",
+						err,
+					})?;
 			let id = proc.id().ok_or(RuntimeError::ProcessDeadOnArrival)?;
 			debug!(pid=%id, "process spawned");
 			(Process::Ungrouped(proc), id)
