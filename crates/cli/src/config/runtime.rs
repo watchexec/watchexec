@@ -172,10 +172,7 @@ pub fn runtime(args: &Args, state: &State) -> Result<RuntimeConfig> {
 			OnBusyUpdate::Restart => Outcome::both(
 				Outcome::both(
 					Outcome::Signal(stop_signal.unwrap_or(Signal::Terminate)),
-					Outcome::both(
-						Outcome::race(Outcome::Sleep(stop_timeout), Outcome::Wait),
-						Outcome::Stop,
-					),
+					Outcome::wait_timeout(stop_timeout, Outcome::Stop),
 				),
 				start,
 			),
