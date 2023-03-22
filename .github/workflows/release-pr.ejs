@@ -42,6 +42,7 @@ To trigger builds initially: either close and then immediately re-open this PR o
 _Edit release notes into the section below:_
 
 <!-- do not change or remove this heading -->
+<% if (crate.name == "watchexec-cli") { %>
 ### Release notes
 
 _Software development often involves running the same commands over and over. Boring! Watchexec is a simple, standalone tool that watches a path and runs a command whenever it detects modifications. Install it today with [`cargo-binstall watchexec-cli`](https://github.com/cargo-bins/cargo-binstall), from the binaries below, find it [in your favourite package manager](https://github.com/watchexec/watchexec/blob/main/doc/packages.md), or build it from source with `cargo install watchexec-cli`._
@@ -53,4 +54,8 @@ _Software development often involves running the same commands over and over. Bo
 #### Other changes:
 
 -
+<% } else { %>
+### Changelog
+-
+<% } %>
 <% } %>
