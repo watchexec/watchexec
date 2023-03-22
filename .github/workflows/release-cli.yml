@@ -34,7 +34,7 @@ jobs:
             exit 1
           fi
 
-          echo "::set-output name=cli_version::$version"
+          echo "cli_version=$version" >> $GITHUB_OUTPUT
 
       - name: Extract release notes
         id: notes
@@ -47,7 +47,7 @@ jobs:
           set -euxo pipefail
           release_pr=$(head -n1 <<< "${release_commit:-}" | grep -oP '(?<=[(]#)\d+(?=[)])')
           if [[ -z "$release_pr" ]]; then
-            echo "::set-output name=notes_json::null"
+            echo "notes_json=null" >> $GITHUB_OUTPUT
             exit
           fi
 
@@ -55,15 +55,13 @@ jobs:
             pr --repo "$GITHUB_REPO" \
             view "$release_pr" \
             --json body \
-            --jq '"::set-output name=notes_json::\((.body | split("### Release notes")[1] // "") | tojson)"'
+            --jq '"notes_json=\((.body | split("### Release notes")[1] // "") | tojson)"' \
+          >> $GITHUB_OUTPUT
 
       - name: Make a new announcement post
         id: announce
         if: endsWith(steps.version.outputs.cli_version, '.0')
-        run: echo "::set-output name=announce::Announcements"
-        # TODO: append patch release notes as comments on minor version announce discussion
-        # TODO: add link to discussion from patch release notes
-        # TODO: rename minor version announce discussion to be just CLI vX.Y (remove .0)
+        run: echo "announce=Announcements" >> $GITHUB_OUTPUT
 
   build:
     strategy:
