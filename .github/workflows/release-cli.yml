@@ -281,7 +281,7 @@ jobs:
             watchexec-*.rpm
             watchexec-*.zip
 
-  sign:
+  upload:
     needs: [build, info]
 
     name: Checksum and publish
@@ -304,7 +304,7 @@ jobs:
           jq -ncf .github/workflows/dist-manifest.jq \
             --arg version "{{ needs.info.outputs.cli_version }}" \
             --arg changelog "{{ needs.info.outputs.release_notes }}" \
-            --arg files "$(ls watchexec-*)"
+            --arg files "$(ls watchexec-*)" \
             > dist-manifest.json
 
       - name: Bulk checksums
