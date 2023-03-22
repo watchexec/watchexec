@@ -80,6 +80,16 @@ impl Outcome {
 		Self::Both(Box::new(one), Box::new(two))
 	}
 
+	/// Pattern that creates a sequence of outcomes from an iterator.
+	#[must_use]
+	pub fn sequence(mut outcomes: impl Iterator<Item = Self>) -> Self {
+		let mut seq = outcomes.next().unwrap_or(Self::DoNothing);
+		for outcome in outcomes {
+			seq = Self::both(seq, outcome);
+		}
+		seq
+	}
+
 	/// Convenience function to create a race of outcomes.
 	#[must_use]
 	pub fn race(one: Self, two: Self) -> Self {
@@ -95,7 +105,7 @@ impl Outcome {
 	/// Pattern that waits for the subprocess to complete with a timeout.
 	#[must_use]
 	pub fn wait_timeout(timeout: Duration, and_then: Self) -> Self {
-		Self::both(Self::race(Self::Sleep(duration), Self::Wait), and_then)
+		Self::both(Self::race(Self::Sleep(timeout), Self::Wait), and_then)
 	}
 
 	/// Resolves the outcome given the current state of the subprocess.
