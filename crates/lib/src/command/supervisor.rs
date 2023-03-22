@@ -9,7 +9,7 @@ use tokio::{
 		watch,
 	},
 };
-use tracing::{debug, debug_span, error, trace, Span};
+use tracing::{debug, debug_span, error, info, trace, Span};
 use watchexec_signals::Signal;
 
 use crate::{
@@ -320,7 +320,7 @@ async fn spawn_process(
 			.map_err(|_| RuntimeError::HandlerLockHeld("pre-spawn"))?
 			.into_inner();
 
-		debug!(command=?spawnable, "spawning command");
+		info!(command=?spawnable, "spawning command");
 		let (proc, id) = if grouped {
 			let proc = spawnable
 				.group_spawn()
@@ -329,7 +329,7 @@ async fn spawn_process(
 					err,
 				})?;
 			let id = proc.id().ok_or(RuntimeError::ProcessDeadOnArrival)?;
-			debug!(pgid=%id, "process group spawned");
+			info!(pgid=%id, "process group spawned");
 			(Process::Grouped(proc), id)
 		} else {
 			let proc = spawnable.spawn().map_err(|err| RuntimeError::IoError {
@@ -337,7 +337,7 @@ async fn spawn_process(
 				err,
 			})?;
 			let id = proc.id().ok_or(RuntimeError::ProcessDeadOnArrival)?;
-			debug!(pid=%id, "process spawned");
+			info!(pid=%id, "process spawned");
 			(Process::Ungrouped(proc), id)
 		};
 

@@ -11,7 +11,7 @@ use tokio::{
 	},
 	time::timeout,
 };
-use tracing::{debug, trace};
+use tracing::{debug, info, trace};
 
 use crate::{
 	error::{CriticalError, RuntimeError},
@@ -123,7 +123,7 @@ pub async fn worker(
 		#[allow(clippy::iter_with_drain)]
 		let events = Arc::from(set.drain(..).collect::<Vec<_>>().into_boxed_slice());
 		let action = Action::new(Arc::clone(&events));
-		debug!(?action, "action constructed");
+		info!(?action, "action constructed");
 
 		debug!("running action handler");
 		let action_handler = {
@@ -143,10 +143,10 @@ pub async fn worker(
 		}
 
 		let outcome = outcome.get().cloned().unwrap_or_default();
-		debug!(?outcome, "handler finished");
+		debug!(?outcome, "action handler finished");
 
 		let outcome = outcome.resolve(process.is_running().await);
-		debug!(?outcome, "outcome resolved");
+		info!(?outcome, "outcome resolved");
 
 		OutcomeWorker::spawn(
 			outcome,

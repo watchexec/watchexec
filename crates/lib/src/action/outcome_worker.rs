@@ -11,7 +11,7 @@ use tokio::{
 	sync::{mpsc, watch::Receiver},
 	time::sleep,
 };
-use tracing::{debug, error, trace, warn};
+use tracing::{debug, error, info, trace, warn};
 
 use crate::{
 	command::Supervisor,
@@ -63,7 +63,7 @@ impl OutcomeWorker {
 			match this.apply(outcome.clone()).await {
 				Err(err) => {
 					if matches!(err, RuntimeError::Exit) {
-						debug!(%gen, "propagating graceful exit");
+						info!(%gen, "propagating graceful exit");
 					} else {
 						error!(?err, %gen, "outcome applier errored");
 					}
