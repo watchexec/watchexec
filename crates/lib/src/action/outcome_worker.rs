@@ -5,7 +5,10 @@ use std::sync::{
 
 use async_priority_channel as priority;
 use clearscreen::ClearScreen;
-use futures::Future;
+use futures::{
+	future::{select, Either},
+	Future,
+};
 use tokio::{
 	spawn,
 	sync::{mpsc, watch::Receiver},
@@ -190,6 +193,14 @@ impl OutcomeWorker {
 				}
 
 				notry!(self.apply(*two))?;
+			}
+
+			(_, Outcome::Race(one, two)) => {
+				if let Either::Left((Err(err), _)) | Either::Right((Err(err), _)) =
+					select(self.apply(*one), self.apply(*two)).await
+				{
+					return Err(err);
+				}
 			}
 		}
 

@@ -56,6 +56,9 @@ pub enum Outcome {
 
 	/// Do both outcomes in order.
 	Both(Box<Outcome>, Box<Outcome>),
+
+	/// Race both outcomes: run both at once, and when one finishes, cancel the other.
+	Race(Box<Outcome>, Box<Outcome>),
 }
 
 impl Default for Outcome {
@@ -77,10 +80,32 @@ impl Outcome {
 		Self::Both(Box::new(one), Box::new(two))
 	}
 
-	/// Convenience function to wait for the subprocess to complete before executing the outcome.
+	/// Pattern that creates a sequence of outcomes from an iterator.
+	#[must_use]
+	pub fn sequence(mut outcomes: impl Iterator<Item = Self>) -> Self {
+		let mut seq = outcomes.next().unwrap_or(Self::DoNothing);
+		for outcome in outcomes {
+			seq = Self::both(seq, outcome);
+		}
+		seq
+	}
+
+	/// Convenience function to create a race of outcomes.
+	#[must_use]
+	pub fn race(one: Self, two: Self) -> Self {
+		Self::Race(Box::new(one), Box::new(two))
+	}
+
+	/// Pattern that waits for the subprocess to complete before executing the outcome.
 	#[must_use]
 	pub fn wait(and_then: Self) -> Self {
-		Self::Both(Box::new(Self::Wait), Box::new(and_then))
+		Self::both(Self::Wait, and_then)
+	}
+
+	/// Pattern that waits for the subprocess to complete with a timeout.
+	#[must_use]
+	pub fn wait_timeout(timeout: Duration, and_then: Self) -> Self {
+		Self::both(Self::race(Self::Sleep(timeout), Self::Wait), and_then)
 	}
 
 	/// Resolves the outcome given the current state of the subprocess.
