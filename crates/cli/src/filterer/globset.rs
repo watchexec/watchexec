@@ -1,6 +1,6 @@
 use std::{
 	ffi::OsString,
-	path::{Component, Path, PathBuf, MAIN_SEPARATOR},
+	path::{Path, PathBuf, MAIN_SEPARATOR},
 	sync::Arc,
 };
 
@@ -155,6 +155,12 @@ impl Filterer for WatchexecFilterer {
 
 #[cfg(windows)]
 mod windows_norm {
+	use std::{
+		ffi::OsString,
+		path::{Component, Path, PathBuf},
+	};
+	use watchexec_events::{Event, Tag};
+
 	pub fn normalise_event_to_unix(event: &Event, with_prefix: bool) -> Event {
 		let mut path_normalised_event = event.clone();
 		for mut tag in &mut path_normalised_event.tags {
@@ -167,12 +173,16 @@ mod windows_norm {
 
 	pub fn normalise_path_to_unix(path: &Path, with_prefix: bool) -> PathBuf {
 		let mut newpath = OsString::with_capacity(path.as_os_str().len());
+		let mut skip_root = false;
 		for component in path.components() {
 			dbg!(component, component.as_os_str());
 			if matches!(component, Component::Prefix(_)) {
 				if with_prefix {
 					newpath.push(component.as_os_str());
+					skip_root = true;
 				}
+			} else if matches!(component, Component::RootDir) && skip_root {
+				// skip
 			} else {
 				newpath.push("/");
 				newpath.push(component.as_os_str());
@@ -213,7 +223,7 @@ mod windows_norm {
 				Path::new("\\\\?\\E:\\_temp\\folder_to_watch\\public\\.hgignore"),
 				true
 			),
-			PathBuf::from("E:/_temp/folder_to_watch/public/.hgignore")
+			PathBuf::from("\\\\?\\E:/_temp/folder_to_watch/public/.hgignore")
 		);
 	}
 }
