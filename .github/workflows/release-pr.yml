@@ -43,7 +43,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           version: ${{ inputs.version }}
           crate-path: crates/${{ inputs.crate }}
-          pr-release-notes: ${{ inputs.crate == 'cli' }}
+          pr-release-notes: true
           pr-label: release
           pr-template-file: .github/workflows/release-pr.ejs
         env:
