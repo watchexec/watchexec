@@ -113,6 +113,9 @@ mode is restart is controlled by \--stop-signal.
 
 See the long documentation for \--stop-signal for syntax.
 
+Signals are not supported on Windows at the moment, and will always be
+overridden to kill. See \--stop-signal for more on Windows \"signals\".
+
 **\--stop-signal**=*SIGNAL*
 
 :   Signal to send to stop the command
@@ -148,6 +151,9 @@ Takes a unit-less value in seconds, or a time span value such as \"5min
 
 The default is 60 seconds. Set to 0 to immediately force-kill the
 command.
+
+This has no practical effect on Windows as the command is always
+forcefully terminated; see \--stop-signal for why.
 
 **\--debounce**=*TIMEOUT*
 

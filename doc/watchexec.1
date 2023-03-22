@@ -71,6 +71,8 @@ Send a signal to the process when it\*(Aqs still running
 Specify a signal to send to the process when it\*(Aqs still running. This implies \*(Aq\-\-on\-busy\-update=signal\*(Aq; otherwise the signal used when that mode is \*(Aqrestart\*(Aq is controlled by \*(Aq\-\-stop\-signal\*(Aq.
 
 See the long documentation for \*(Aq\-\-stop\-signal\*(Aq for syntax.
+
+Signals are not supported on Windows at the moment, and will always be overridden to \*(Aqkill\*(Aq. See \*(Aq\-\-stop\-signal\*(Aq for more on Windows "signals".
 .TP
 \fB\-\-stop\-signal\fR=\fISIGNAL\fR
 Signal to send to stop the command
@@ -91,6 +93,8 @@ This is used by the \*(Aqrestart\*(Aq mode of \*(Aq\-\-on\-busy\-update\*(Aq. Af
 Takes a unit\-less value in seconds, or a time span value such as "5min 20s".
 
 The default is 60 seconds. Set to 0 to immediately force\-kill the command.
+
+This has no practical effect on Windows as the command is always forcefully terminated; see \*(Aq\-\-stop\-signal\*(Aq for why.
 .TP
 \fB\-\-debounce\fR=\fITIMEOUT\fR
 Time to wait for new events before taking action
