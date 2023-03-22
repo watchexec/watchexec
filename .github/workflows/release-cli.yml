@@ -232,6 +232,12 @@ jobs:
         if: matrix.cross
         run: cross build --package watchexec-cli --release --locked --target ${{ matrix.target }}
 
+      - name: Make manpage
+        run: cargo run -p watchexec-cli -- --manual > doc/watchexec.1
+
+      - name: Make completions
+        run: bin/completions
+
       - name: Package
         shell: bash
         run: |
