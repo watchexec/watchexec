@@ -107,9 +107,9 @@ pub fn load_watchexec_defs(defs: &mut Definitions) -> miette::Result<()> {
 		),
 	);
 
-	trace!("jaq: add stdout filter");
+	trace!("jaq: add printout filter");
 	defs.insert_custom(
-		"stdout",
+		"printout",
 		CustomFilter::with_update(
 			0,
 			|_, (_, val)| {
@@ -123,9 +123,9 @@ pub fn load_watchexec_defs(defs: &mut Definitions) -> miette::Result<()> {
 		),
 	);
 
-	trace!("jaq: add stderr filter");
+	trace!("jaq: add printerr filter");
 	defs.insert_custom(
-		"stderr",
+		"printerr",
 		CustomFilter::with_update(
 			0,
 			|_, (_, val)| {
