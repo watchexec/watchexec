@@ -808,7 +808,7 @@ pub struct Args {
 	///     If the file is smaller than n bytes, the whole file is returned. There is no filter to
 	///     read the whole file at once to encourage limiting the amount of data read and processed.
 	///
-	///   - 'string | hash', and 'path | hashfile' return the hash of the string or file at path.
+	///   - 'string | hash', and 'path | file_hash' return the hash of the string or file at path.
 	///     No guarantee is made about the algorithm used: treat it as an opaque value.
 	///
 	///   - 'any | kv_store(key)', 'kv_fetch(key)', and 'kv_clear' provide a simple key-value store.
@@ -826,7 +826,9 @@ pub struct Args {
 	/// the path to a file containing a jaq program.
 	///
 	/// Jaq programs are run in order, after all other filters, and short-circuit: if a filter (jaq
-	/// or not) rejects an event, execution stops there, and no other filters are run.
+	/// or not) rejects an event, execution stops there, and no other filters are run. Additionally,
+	/// they stop after outputting the first value, so you'll want to use 'any' or 'all' when
+	/// iterating, otherwise only the first item will be processed, which can be quite confusing!
 	///
 	/// Examples:
 	///
