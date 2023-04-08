@@ -800,11 +800,11 @@ pub struct Args {
 	///
 	/// In addition to the jaq stdlib, watchexec adds some custom filter definitions:
 	///
-	///   - 'path | metadata' returns file metadata or null if the file does not exist.
+	///   - 'path | file_meta' returns file metadata or null if the file does not exist.
 	///
-	///   - 'path | filesize' returns the size of the file at path, or null if it does not exist.
+	///   - 'path | file_size' returns the size of the file at path, or null if it does not exist.
 	///
-	///   - 'path | read(bytes)' returns a string containing the first n bytes of the file at path.
+	///   - 'path | file_read(bytes)' returns a string with the first n bytes of the file at path.
 	///     If the file is smaller than n bytes, the whole file is returned. There is no filter to
 	///     read the whole file at once to encourage limiting the amount of data read and processed.
 	///
