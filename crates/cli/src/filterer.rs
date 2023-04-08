@@ -20,12 +20,14 @@ use watchexec_filterer_globset::GlobsetFilterer;
 use crate::args::{Args, FsEvent};
 
 mod dirs;
+mod progs;
 
 /// A custom filterer that combines the library's Globset filterer and a switch for --no-meta
 #[derive(Debug)]
 pub struct WatchexecFilterer {
 	inner: GlobsetFilterer,
 	fs_events: Vec<FsEvent>,
+	progs: Option<progs::FilterProgs>,
 }
 
 impl Filterer for WatchexecFilterer {
@@ -51,6 +53,13 @@ impl Filterer for WatchexecFilterer {
 		trace!("check against original event");
 		if !self.inner.check_event(event, priority)? {
 			return Ok(false);
+		}
+
+		if let Some(progs) = &self.progs {
+			trace!("check against program filters");
+			if !progs.check(event)? {
+				return Ok(false);
+			}
 		}
 
 		Ok(true)
@@ -116,6 +125,11 @@ impl WatchexecFilterer {
 				.await
 				.into_diagnostic()?,
 			fs_events: args.filter_fs_events.clone(),
+			progs: if args.filter_programs.is_empty() {
+				None
+			} else {
+				Some(progs::FilterProgs::new(args)?)
+			},
 		}))
 	}
 }
