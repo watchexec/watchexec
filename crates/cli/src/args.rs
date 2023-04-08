@@ -802,8 +802,11 @@ pub struct Args {
 	///
 	///   - 'path | metadata' returns file metadata or null if the file does not exist.
 	///
-	///   - 'path | read' and 'path read(bytes)' return a string containing the file at path, or
-	///     the first n bytes of it. Obviously care should be taken not to read large files.
+	///   - 'path | filesize' returns the size of the file at path, or null if it does not exist.
+	///
+	///   - 'path | read(bytes)' returns a string containing the first n bytes of the file at path.
+	///     If the file is smaller than n bytes, the whole file is returned. There is no filter to
+	///     read the whole file at once to encourage limiting the amount of data read and processed.
 	///
 	///   - 'string | hash', and 'path | hashfile' return the hash of the string or file at path.
 	///     No guarantee is made about the algorithm used: treat it as an opaque value.

@@ -1,4 +1,9 @@
-use std::{iter::once, sync::Arc};
+use std::{
+	fs::File,
+	io::{BufReader, Read},
+	iter::once,
+	sync::Arc,
+};
 
 use dashmap::DashMap;
 use jaq_core::{CustomFilter, Definitions, Error, Val};
@@ -37,6 +42,17 @@ macro_rules! string_arg {
 		match $args[$n].run(($ctx.clone(), $val.clone())).next() {
 			Some(Ok(Val::Str(v))) => Ok(v.to_string()),
 			Some(Ok(val)) => custom_err(format!("expected string but got {val:?}")),
+			Some(Err(e)) => Err(e),
+			None => custom_err("value expected but none found"),
+		}
+	};
+}
+
+macro_rules! int_arg {
+	($args:expr, $n:expr, $ctx:expr, $val:expr) => {
+		match $args[$n].run(($ctx.clone(), $val.clone())).next() {
+			Some(Ok(Val::Int(v))) => Ok(v as _),
+			Some(Ok(val)) => custom_err(format!("expected int but got {val:?}")),
 			Some(Err(e)) => Err(e),
 			None => custom_err("value expected but none found"),
 		}
@@ -166,6 +182,46 @@ pub fn load_watchexec_defs(defs: &mut Definitions) -> miette::Result<()> {
 					.get(&key)
 					.map(|val| val.clone())
 					.unwrap_or(Val::Null))))
+			}
+		}),
+	);
+
+	trace!("jaq: add read filter");
+	defs.insert_custom(
+		"read",
+		CustomFilter::new(1, {
+			move |args, (ctx, val)| {
+				let path = match &val {
+					Val::Str(v) => v.to_string(),
+					_ => return_err!(custom_err("expected string (path) but got {val:?}")),
+				};
+
+				let bytes = match int_arg!(args, 0, ctx, &val) {
+					Ok(v) => v,
+					Err(e) => return_err!(Err(e)),
+				};
+
+				Box::new(once(Ok(match File::open(&path) {
+					Ok(file) => {
+						let buf_reader = BufReader::new(file);
+						let mut limited = buf_reader.take(bytes);
+						let mut buffer = String::with_capacity(bytes as _);
+						match limited.read_to_string(&mut buffer) {
+							Ok(read) => {
+								debug!("jaq: read {read} bytes from {path:?}");
+								Val::Str(buffer.into())
+							}
+							Err(err) => {
+								error!("jaq: failed to read from {path:?}: {err:?}");
+								Val::Null
+							}
+						}
+					}
+					Err(err) => {
+						error!("jaq: failed to open file {path:?}: {err:?}");
+						Val::Null
+					}
+				})))
 			}
 		}),
 	);
