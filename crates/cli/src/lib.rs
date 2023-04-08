@@ -14,6 +14,8 @@ use tracing::{debug, info, warn};
 use watchexec::Watchexec;
 use watchexec_events::{Event, Priority};
 
+use crate::filterer::WatchexecFilterer;
+
 pub mod args;
 mod config;
 mod emits;
@@ -100,8 +102,8 @@ async fn run_watchexec(args: Args) -> Result<()> {
 	info!(version=%env!("CARGO_PKG_VERSION"), "constructing Watchexec from CLI");
 
 	let state = state::State::new()?;
-	let config = config::make_config(&args, &state)?;
-	config.filterer(filterer::globset(&args).await?);
+	let mut config = config::make_config(&args, &state)?;
+	config.filterer(WatchexecFilterer::new(&args).await?);
 
 	info!("initialising Watchexec runtime");
 	let wx = Watchexec::with_config(config)?;
