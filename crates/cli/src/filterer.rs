@@ -20,6 +20,7 @@ use watchexec_filterer_globset::GlobsetFilterer;
 use crate::args::{Args, FsEvent};
 
 mod dirs;
+mod proglib;
 mod progs;
 
 /// A custom filterer that combines the library's Globset filterer and a switch for --no-meta

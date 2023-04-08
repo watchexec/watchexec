@@ -1,4 +1,4 @@
-use std::{iter, marker::PhantomData};
+use std::{iter::once, marker::PhantomData};
 
 use jaq_core::{
 	parse::{self, filter::Filter, Def},
@@ -72,8 +72,8 @@ impl FilterProgs {
 		let (requester, mut receiver) = Requester::<Event, bool>::new(BUFFER);
 		let task =
 			spawn_blocking(move || {
-				let mut defs = load_std_defs()?;
-				load_watchexec_defs(&mut defs)?;
+				let mut defs = super::proglib::load_std_defs()?;
+				super::proglib::load_watchexec_defs(&mut defs)?;
 				load_user_progs(&mut defs, &progs)?;
 
 				'chan: while let Some((event, sender)) = receiver.blocking_recv() {
@@ -97,7 +97,7 @@ impl FilterProgs {
 							continue;
 						}
 
-						let inputs = RcIter::new(iter::once(Ok(val.clone())));
+						let inputs = RcIter::new(once(Ok(val.clone())));
 						let ctx = Ctx::new(Vec::new(), &inputs);
 						let mut results = filter.run(ctx, val.clone());
 						if let Some(res) = results.next() {
@@ -152,27 +152,6 @@ impl FilterProgs {
 
 		Ok(Self { channel: requester })
 	}
-}
-
-fn load_std_defs() -> miette::Result<Definitions> {
-	debug!("loading jaq core library");
-	let mut defs = Definitions::core();
-
-	debug!("loading jaq standard library");
-	let mut errs = Vec::new();
-	jaq_std::std()
-		.into_iter()
-		.for_each(|def| defs.insert(def, &mut errs));
-
-	if !errs.is_empty() {
-		return Err(miette!("failed to load jaq standard library: {:?}", errs));
-	}
-	Ok(defs)
-}
-
-fn load_watchexec_defs(defs: &mut Definitions) -> miette::Result<()> {
-	debug!("loading jaq watchexec library");
-	Ok(())
 }
 
 fn load_user_progs(all_defs: &mut Definitions, progs: &[String]) -> miette::Result<()> {
