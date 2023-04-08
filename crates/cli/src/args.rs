@@ -808,8 +808,8 @@ pub struct Args {
 	///   - 'string | hash', and 'path | hashfile' return the hash of the string or file at path.
 	///     No guarantee is made about the algorithm used: treat it as an opaque value.
 	///
-	///   - 'any | store(key)', 'fetch(key)', and 'clear' provide a simple persistent key-value
-	///     store. Data is kept in memory only, there is no persistence between invocations.
+	///   - 'any | kv_store(key)', 'kv_fetch(key)', and 'kv_clear' provide a simple key-value store.
+	///     Data is kept in memory only, there is no persistence. Consistency is not guaranteed.
 	///
 	///   - 'any | printout', 'any | printerr', and 'any | log(level)' will print or log any given
 	///     value to stdout, stderr, or the log (levels = error, warn, info, debug, trace), and

@@ -1,5 +1,6 @@
-use std::iter::once;
+use std::{iter::once, sync::Arc};
 
+use dashmap::DashMap;
 use jaq_core::{CustomFilter, Definitions, Error, Val};
 use miette::miette;
 use tracing::{debug, error, info, trace, warn};
@@ -118,6 +119,55 @@ pub fn load_watchexec_defs(defs: &mut Definitions) -> miette::Result<()> {
 				Box::new(once(Ok(val)))
 			},
 		),
+	);
+
+	let kv: Arc<DashMap<String, Val>> = Arc::new(DashMap::new());
+
+	trace!("jaq: add kv_clear filter");
+	defs.insert_custom(
+		"kv_clear",
+		CustomFilter::new(0, {
+			let kv = kv.clone();
+			move |_, (_, val)| {
+				kv.clear();
+				Box::new(once(Ok(val)))
+			}
+		}),
+	);
+
+	trace!("jaq: add kv_store filter");
+	defs.insert_custom(
+		"kv_store",
+		CustomFilter::new(1, {
+			let kv = kv.clone();
+			move |args, (ctx, val)| {
+				let key = match string_arg!(args, 0, ctx, val) {
+					Ok(v) => v,
+					Err(e) => return_err!(Err(e)),
+				};
+
+				kv.insert(key, val.clone());
+				Box::new(once(Ok(val)))
+			}
+		}),
+	);
+
+	trace!("jaq: add kv_fetch filter");
+	defs.insert_custom(
+		"kv_fetch",
+		CustomFilter::new(1, {
+			move |args, (ctx, val)| {
+				let key = match string_arg!(args, 0, ctx, val) {
+					Ok(v) => v,
+					Err(e) => return_err!(Err(e)),
+				};
+
+				Box::new(once(Ok(kv
+					.get(&key)
+					.map(|val| val.clone())
+					.unwrap_or(Val::Null))))
+			}
+		}),
 	);
 
 	Ok(())
