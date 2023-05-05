@@ -98,7 +98,7 @@ impl IgnoreFilter {
 			prefix(origin),
 			Ignore {
 				gitignore: Gitignore::empty(),
-				builder: Some(GitignoreBuilder::new(prefix(origin))),
+				builder: Some(GitignoreBuilder::new(origin)),
 			},
 		);
 
