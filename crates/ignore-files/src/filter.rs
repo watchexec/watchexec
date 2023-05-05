@@ -93,12 +93,12 @@ impl IgnoreFilter {
 
 		let mut ignores_trie = Trie::new();
 
-		// add builder for the origin, so that we can handle global ignores and globs
+		// add builder for the root of the file system, so that we can handle global ignores and globs
 		ignores_trie.insert(
-			origin.display().to_string(),
+			prefix(origin),
 			Ignore {
 				gitignore: Gitignore::empty(),
-				builder: Some(GitignoreBuilder::new(origin)),
+				builder: Some(GitignoreBuilder::new(prefix(origin))),
 			},
 		);
 
@@ -110,7 +110,16 @@ impl IgnoreFilter {
 
 			let applies_in = get_applies_in_path(origin, Some(&file));
 
-			let mut builder = GitignoreBuilder::new(&applies_in);
+			let parent_ignore = ignores_trie
+				.get_ancestor_value(&applies_in.display().to_string())
+				// unwrap will always succeed because we created an entry with the root of the origin
+				.unwrap();
+
+			let mut builder = parent_ignore
+				.builder
+				.clone()
+				.unwrap_or_else(|| GitignoreBuilder::new(&applies_in));
+
 			for line in content.lines() {
 				if line.is_empty() || line.starts_with('#') {
 					continue;
@@ -327,12 +336,28 @@ impl IgnoreFilter {
 }
 
 fn get_applies_in_path(origin: &Path, ignore_file: Option<&IgnoreFile>) -> PathBuf {
+	let root_path = prefix(origin).into();
 	if let Some(ignore_file) = ignore_file {
-		return ignore_file
-			.applies_in
-			.clone()
-			.unwrap_or_else(|| origin.to_path_buf());
+		ignore_file.applies_in.clone().unwrap_or(root_path)
 	} else {
-		return origin.to_path_buf();
+		root_path
+	}
+}
+
+/// Gets the root component of a given path.
+///
+/// This will be `/` on unix systems, or a Drive letter (`C:`, `D:`, etc)
+fn prefix<T: AsRef<Path>>(path: T) -> String {
+	let path = path.as_ref();
+
+	let Some(prefix) = path.components().next() else {
+		return "/".into();
+	};
+
+	match prefix {
+		std::path::Component::Prefix(prefix_component) => {
+			prefix_component.as_os_str().to_str().unwrap_or("/").into()
+		}
+		_ => "/".into(),
 	}
 }
