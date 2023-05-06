@@ -32,17 +32,73 @@ pub async fn worker(
 	events_tx: priority::Sender<Event, Priority>,
 	events: priority::Receiver<Event, Priority>,
 ) -> Result<(), CriticalError> {
-	let mut last = Instant::now();
-	let mut set = Vec::new();
 	let process = ProcessHolder::default();
 	let outcome_gen = OutcomeWorker::newgen();
 
-	loop {
-		if events.is_closed() {
-			trace!("events channel closed, stopping");
-			break;
+	while let Some(mut set) = throttle_collect(
+		events.clone(),
+		working.clone(),
+		errors.clone(),
+		Instant::now(),
+	)
+	.await?
+	{
+		#[allow(clippy::iter_with_drain)]
+		let events = Arc::from(set.drain(..).collect::<Vec<_>>().into_boxed_slice());
+		let action = Action::new(Arc::clone(&events));
+		info!(?action, "action constructed");
+
+		debug!("running action handler");
+		let action_handler = {
+			let wrk = working.borrow();
+			wrk.action_handler.clone()
+		};
+
+		let outcome = action.outcome.clone();
+		let err = action_handler
+			.call(action)
+			.await
+			.map_err(|e| rte("action worker", e.as_ref()));
+		if let Err(err) = err {
+			errors.send(err).await?;
+			debug!("action handler errored, skipping");
+			continue;
 		}
 
+		let outcome = outcome.get().cloned().unwrap_or_default();
+		debug!(?outcome, "action handler finished");
+
+		let outcome = outcome.resolve(process.is_running().await);
+		info!(?outcome, "outcome resolved");
+
+		OutcomeWorker::spawn(
+			outcome,
+			events,
+			working.clone(),
+			process.clone(),
+			outcome_gen.clone(),
+			errors.clone(),
+			events_tx.clone(),
+		);
+		debug!("action process done");
+	}
+
+	debug!("action worker finished");
+	Ok(())
+}
+
+pub async fn throttle_collect(
+	events: priority::Receiver<Event, Priority>,
+	working: watch::Receiver<WorkingData>,
+	errors: mpsc::Sender<RuntimeError>,
+	mut last: Instant,
+) -> Result<Option<Vec<Event>>, CriticalError> {
+	if events.is_closed() {
+		trace!("events channel closed, stopping");
+		return Ok(None);
+	}
+	let mut set: Vec<Event> = vec![];
+	loop {
 		let maxtime = if set.is_empty() {
 			trace!("nothing in set, waiting forever for next event");
 			Duration::from_secs(u64::MAX)
@@ -63,7 +119,7 @@ pub async fn worker(
 			let maybe_event = timeout(maxtime, events.recv()).await;
 			if events.is_closed() {
 				trace!("events channel closed during timeout, stopping");
-				break;
+				return Ok(None);
 			}
 
 			match maybe_event {
@@ -71,7 +127,7 @@ pub async fn worker(
 					trace!("timed out, cycling");
 					continue;
 				}
-				Ok(Err(_empty)) => break,
+				Ok(Err(_empty)) => return Ok(None),
 				Ok(Ok((event, priority))) => {
 					trace!(?event, ?priority, "got event");
 
@@ -116,50 +172,6 @@ pub async fn worker(
 				}
 			}
 		}
-
-		trace!("out of throttle, starting action process");
-		last = Instant::now();
-
-		#[allow(clippy::iter_with_drain)]
-		let events = Arc::from(set.drain(..).collect::<Vec<_>>().into_boxed_slice());
-		let action = Action::new(Arc::clone(&events));
-		info!(?action, "action constructed");
-
-		debug!("running action handler");
-		let action_handler = {
-			let wrk = working.borrow();
-			wrk.action_handler.clone()
-		};
-
-		let outcome = action.outcome.clone();
-		let err = action_handler
-			.call(action)
-			.await
-			.map_err(|e| rte("action worker", e.as_ref()));
-		if let Err(err) = err {
-			errors.send(err).await?;
-			debug!("action handler errored, skipping");
-			continue;
-		}
-
-		let outcome = outcome.get().cloned().unwrap_or_default();
-		debug!(?outcome, "action handler finished");
-
-		let outcome = outcome.resolve(process.is_running().await);
-		info!(?outcome, "outcome resolved");
-
-		OutcomeWorker::spawn(
-			outcome,
-			events,
-			working.clone(),
-			process.clone(),
-			outcome_gen.clone(),
-			errors.clone(),
-			events_tx.clone(),
-		);
-		debug!("action process done");
+		return Ok(Some(set));
 	}
-
-	debug!("action worker finished");
-	Ok(())
 }
