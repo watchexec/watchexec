@@ -107,7 +107,7 @@ shadow-rs = "0.21.0"
 shadow-rs = "0.21.0"
 
 [build-dependencies]
-embed-resource = "1.6.1"
+embed-resource = "2.1.1"
 
 [build-dependencies.bosion]
 version = "1.0.0"
