@@ -5,10 +5,7 @@ use std::{
 
 use async_priority_channel as priority;
 use tokio::{
-	sync::{
-		mpsc,
-		watch::{self},
-	},
+	sync::{mpsc, watch},
 	time::timeout,
 };
 use tracing::{debug, info, trace};

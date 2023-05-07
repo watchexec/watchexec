@@ -138,7 +138,7 @@ where
 	}
 }
 
-pub(crate) fn rte(ctx: &'static str, err: &dyn Error) -> RuntimeError {
+pub fn rte(ctx: &'static str, err: &dyn Error) -> RuntimeError {
 	RuntimeError::Handler {
 		ctx,
 		err: err.to_string(),

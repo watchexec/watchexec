@@ -117,7 +117,7 @@ mod watchexec;
 pub use watchexec_events as event;
 
 #[doc(inline)]
-pub use crate::watchexec::{ErrorHook, Watchexec};
+pub use crate::watchexec::{ActionWorker, ErrorHook, Watchexec};
 
 #[doc(hidden)]
 pub mod readme_doc_check {

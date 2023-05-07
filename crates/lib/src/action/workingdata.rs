@@ -120,11 +120,11 @@ impl Default for WorkingData {
 pub struct Action {
 	/// The collected events which triggered the action.
 	pub events: Arc<[Event]>,
-	pub(super) outcome: Arc<OnceCell<Outcome>>,
+	pub outcome: Arc<OnceCell<Outcome>>,
 }
 
 impl Action {
-	pub(super) fn new(events: Arc<[Event]>) -> Self {
+	pub fn new(events: Arc<[Event]>) -> Self {
 		Self {
 			events,
 			outcome: Default::default(),
