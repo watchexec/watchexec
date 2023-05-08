@@ -22,6 +22,8 @@ miette = "5.3.0"
 thiserror = "1.0.31"
 tokio = { version = "1.24.2", default-features = false, features = ["fs"] }
 tracing = "0.1.35"
+radix_trie = "0.2.1"
+dunce = "1.0.4"
 
 [dependencies.project-origins]
 version = "1.2.0"
