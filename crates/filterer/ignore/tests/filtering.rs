@@ -196,14 +196,23 @@ async fn scopes() {
 	.await;
 
 	filterer.file_doesnt_pass("global.a");
+	#[cfg(windows)]
+	filterer.file_doesnt_pass("C:\\global.b");
+	#[cfg(not(windows))]
 	filterer.file_doesnt_pass("/global.b");
 	filterer.file_doesnt_pass("tests/global.c");
 
 	filterer.file_doesnt_pass("local.a");
+	#[cfg(windows)]
+	filterer.file_does_pass("C:\\local.b");
+	#[cfg(not(windows))]
 	filterer.file_does_pass("/local.b");
 	filterer.file_doesnt_pass("tests/local.c");
 
 	filterer.file_does_pass("sublocal.a");
+	#[cfg(windows)]
+	filterer.file_does_pass("C:\\sublocal.b");
+	#[cfg(not(windows))]
 	filterer.file_does_pass("/sublocal.b");
 	filterer.file_doesnt_pass("tests/sublocal.c");
 

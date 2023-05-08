@@ -55,7 +55,7 @@ impl IgnoreFilter {
 	/// Use [`empty()`](IgnoreFilter::empty()) if you want an empty filterer,
 	/// or to construct one outside an async environment.
 	pub async fn new(origin: impl AsRef<Path> + Send, files: &[IgnoreFile]) -> Result<Self, Error> {
-		let origin = origin.as_ref();
+		let origin = dunce::simplified(origin.as_ref());
 		let _span = trace_span!("build_filterer", ?origin);
 
 		trace!(files=%files.len(), "loading file contents");
@@ -152,6 +152,7 @@ impl IgnoreFilter {
 
 		trace!(
 			files=%files.len(),
+			trie=?ignores_trie,
 			ignores=%total_num_ignores,
 			allows=%total_num_whitelists,
 			"ignore files loaded and compiled",
@@ -289,6 +290,8 @@ impl IgnoreFilter {
 
 	/// Match a particular path against the ignore set.
 	pub fn match_path(&self, path: &Path, is_dir: bool) -> Match<&Glob> {
+		let path = dunce::simplified(&path);
+
 		let Some(ignores) = self.ignores.get_ancestor_value(&path.display().to_string()) else {
 			trace!(?path, "no ignores for path");
 			return Match::None;
@@ -336,9 +339,13 @@ impl IgnoreFilter {
 }
 
 fn get_applies_in_path(origin: &Path, ignore_file: Option<&IgnoreFile>) -> PathBuf {
-	let root_path = prefix(origin).into();
+	let root_path = PathBuf::from(prefix(origin));
 	if let Some(ignore_file) = ignore_file {
-		ignore_file.applies_in.clone().unwrap_or(root_path)
+		ignore_file
+			.applies_in
+			.as_ref()
+			.map(|p| PathBuf::from(dunce::simplified(p)))
+			.unwrap_or(root_path)
 	} else {
 		root_path
 	}

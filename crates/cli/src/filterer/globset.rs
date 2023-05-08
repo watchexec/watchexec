@@ -129,21 +129,6 @@ impl Filterer for WatchexecFilterer {
 			}
 		}
 
-		#[cfg(windows)]
-		{
-			let normalised = windows_norm::normalise_event_to_unix(event, false);
-			trace!(event=?normalised, "check against unix-normalised event");
-			if !self.inner.check_event(&normalised, priority)? {
-				return Ok(false);
-			}
-
-			let prefixed_normalised = windows_norm::normalise_event_to_unix(event, true);
-			trace!(event=?prefixed_normalised, "check against prefixed unix-normalised event");
-			if !self.inner.check_event(&prefixed_normalised, priority)? {
-				return Ok(false);
-			}
-		}
-
 		trace!("check against original event");
 		if !self.inner.check_event(event, priority)? {
 			return Ok(false);
