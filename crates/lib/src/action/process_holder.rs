@@ -7,7 +7,7 @@ use watchexec_signals::Signal;
 use crate::{command::Supervisor, error::RuntimeError};
 
 #[derive(Clone, Debug, Default)]
-pub struct ProcessHolder(Arc<RwLock<Option<Supervisor>>>);
+pub struct ProcessHolder(Arc<RwLock<Option<Supervisor>>>, Arc<String>);
 impl ProcessHolder {
 	pub async fn is_running(&self) -> bool {
 		self.0
@@ -67,5 +67,9 @@ impl ProcessHolder {
 		}
 
 		Ok(())
+	}
+
+	pub async fn id(&self) -> &str {
+		&self.1
 	}
 }

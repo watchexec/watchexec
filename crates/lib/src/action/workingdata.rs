@@ -120,14 +120,27 @@ impl Default for WorkingData {
 pub struct Action {
 	/// The collected events which triggered the action.
 	pub events: Arc<[Event]>,
-	pub outcome: Arc<OnceCell<Outcome>>,
+	pub outcomes: Arc<[OnceCell<Outcome>]>,
+	pub processes: Arc<[ProcessId]>,
 }
 
 impl Action {
 	pub fn new(events: Arc<[Event]>) -> Self {
+		let processes = Arc::new([ProcessId("".to_string())]);
+		Self::with_ids(events, processes)
+	}
+
+	pub fn with_ids(events: Arc<[Event]>, processes: Arc<[ProcessId]>) -> Self {
 		Self {
 			events,
-			outcome: Default::default(),
+			outcomes: Arc::from(
+				(*processes)
+					.iter()
+					.map(|_| Default::default())
+					.collect::<Vec<_>>()
+					.into_boxed_slice(),
+			),
+			processes,
 		}
 	}
 
@@ -139,9 +152,43 @@ impl Action {
 	/// See the [`Action`] documentation about handlers to learn why it's a bad idea to clone or
 	/// send it elsewhere, and what kind of handlers you cannot use.
 	pub fn outcome(self, outcome: Outcome) {
-		self.outcome.set(outcome).ok();
+		for once in self.outcomes.iter() {
+			once.set(outcome).ok();
+		}
+	}
+
+	pub fn on_process(&mut self, process_id: ProcessId, outcome: Outcome) {
+		if let Some((i, _)) = self
+			.processes
+			.iter()
+			.enumerate()
+			.find(|(i, &id)| id == process_id)
+		{
+			self.outcomes[i].set(outcome).ok();
+		}
+	}
+
+	pub fn current_processes(&self) -> &[ProcessId] {
+		&self.processes
 	}
 }
+
+#[derive(Debug)]
+pub struct ProcessId(String);
+
+impl ProcessId {
+	pub fn id(&self) -> &str {
+		&self.0
+	}
+}
+
+impl PartialEq<ProcessId> for ProcessId {
+	fn eq(&self, other: &ProcessId) -> bool {
+		self.id().eq(other.id())
+	}
+}
+
+impl Eq for ProcessId {}
 
 /// The environment given to the pre-spawn handler.
 ///
