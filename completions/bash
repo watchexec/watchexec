@@ -19,7 +19,7 @@ _watchexec() {
 
     case "${cmd}" in
         watchexec)
-            opts="-w -c -o -W -r -s -k -p -n -E -1 -N -e -f -i -v -h -V --watch --clear --on-busy-update --watch-when-idle --restart --signal --kill --stop-signal --stop-timeout --debounce --stdin-quit --no-vcs-ignore --no-project-ignore --no-global-ignore --no-default-ignore --postpone --delay-run --poll --shell --no-shell-long --no-environment --emit-events-to --env --no-process-group --notify --project-origin --workdir --exts --filter --filter-file --ignore --ignore-file --fs-events --no-meta --print-events --verbose --log-file --manual --completions --help --version [COMMAND]..."
+            opts="-w -c -o -W -r -s -k -p -n -E -1 -N -e -f -j -i -v -h -V --watch --clear --on-busy-update --watch-when-idle --restart --signal --kill --stop-signal --stop-timeout --debounce --stdin-quit --no-vcs-ignore --no-project-ignore --no-global-ignore --no-default-ignore --postpone --delay-run --poll --shell --no-shell-long --no-environment --emit-events-to --env --no-process-group --notify --project-origin --workdir --exts --filter --filter-file --filter-prog --ignore --ignore-file --fs-events --no-meta --print-events --verbose --log-file --manual --completions --help --version [COMMAND]..."
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -118,6 +118,14 @@ _watchexec() {
                     return 0
                     ;;
                 --filter-file)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --filter-prog)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                -j)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;

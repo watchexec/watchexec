@@ -17,6 +17,8 @@ use watchexec::{
 	Watchexec,
 };
 
+use crate::filterer::WatchexecFilterer;
+
 pub mod args;
 mod config;
 mod emits;
@@ -109,7 +111,7 @@ async fn run_watchexec(args: Args) -> Result<()> {
 
 	let state = state::State::new()?;
 	let mut runtime = config::runtime(&args, &state)?;
-	runtime.filterer(filterer::globset(&args).await?);
+	runtime.filterer(WatchexecFilterer::new(&args).await?);
 
 	info!("initialising Watchexec runtime");
 	let wx = Watchexec::new(init, runtime)?;

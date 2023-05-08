@@ -29,11 +29,18 @@ dirs = "5.0.0"
 futures = "0.3.17"
 humantime = "2.1.0"
 is-terminal = "0.4.4"
+jaq-core = { version = "0.10.0", git = "https://github.com/01mf02/jaq" }
+jaq-std = { version = "0.10.0", git = "https://github.com/01mf02/jaq", features = ["bincode"] }
 notify-rust = "4.5.2"
 serde_json = "1.0.94"
 tempfile = "3.4.0"
 tracing = "0.1.26"
 which = "4.4.0"
+dashmap = "5.4.0"
+
+[dependencies.blake3]
+version = "1.3.3"
+features = ["rayon"]
 
 [dependencies.command-group]
 version = "2.1.0"

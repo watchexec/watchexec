@@ -45,6 +45,8 @@ Register-ArgumentCompleter -Native -CommandName 'watchexec' -ScriptBlock {
             [CompletionResult]::new('-f', 'f', [CompletionResultType]::ParameterName, 'Filename patterns to filter to')
             [CompletionResult]::new('--filter', 'filter', [CompletionResultType]::ParameterName, 'Filename patterns to filter to')
             [CompletionResult]::new('--filter-file', 'filter-file', [CompletionResultType]::ParameterName, 'Files to load filters from')
+            [CompletionResult]::new('-j', 'j', [CompletionResultType]::ParameterName, '[experimental] Filter programs')
+            [CompletionResult]::new('--filter-prog', 'filter-prog', [CompletionResultType]::ParameterName, '[experimental] Filter programs')
             [CompletionResult]::new('-i', 'i', [CompletionResultType]::ParameterName, 'Filename patterns to filter out')
             [CompletionResult]::new('--ignore', 'ignore', [CompletionResultType]::ParameterName, 'Filename patterns to filter out')
             [CompletionResult]::new('--ignore-file', 'ignore-file', [CompletionResultType]::ParameterName, 'Files to load ignores from')

@@ -4,7 +4,7 @@
 .SH NAME
 watchexec \- Execute commands when watched files change
 .SH SYNOPSIS
-\fBwatchexec\fR [\fB\-w\fR|\fB\-\-watch\fR] [\fB\-c\fR|\fB\-\-clear\fR] [\fB\-o\fR|\fB\-\-on\-busy\-update\fR] [\fB\-r\fR|\fB\-\-restart\fR] [\fB\-s\fR|\fB\-\-signal\fR] [\fB\-\-stop\-signal\fR] [\fB\-\-stop\-timeout\fR] [\fB\-\-debounce\fR] [\fB\-\-stdin\-quit\fR] [\fB\-\-no\-vcs\-ignore\fR] [\fB\-\-no\-project\-ignore\fR] [\fB\-\-no\-global\-ignore\fR] [\fB\-\-no\-default\-ignore\fR] [\fB\-p\fR|\fB\-\-postpone\fR] [\fB\-\-delay\-run\fR] [\fB\-\-poll\fR] [\fB\-\-shell\fR] [\fB\-n \fR] [\fB\-\-no\-environment\fR] [\fB\-\-emit\-events\-to\fR] [\fB\-E\fR|\fB\-\-env\fR] [\fB\-\-no\-process\-group\fR] [\fB\-N\fR|\fB\-\-notify\fR] [\fB\-\-project\-origin\fR] [\fB\-\-workdir\fR] [\fB\-e\fR|\fB\-\-exts\fR] [\fB\-f\fR|\fB\-\-filter\fR] [\fB\-\-filter\-file\fR] [\fB\-i\fR|\fB\-\-ignore\fR] [\fB\-\-ignore\-file\fR] [\fB\-\-fs\-events\fR] [\fB\-\-no\-meta\fR] [\fB\-\-print\-events\fR] [\fB\-v\fR|\fB\-\-verbose\fR]... [\fB\-\-log\-file\fR] [\fB\-\-manual\fR] [\fB\-\-completions\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fICOMMAND\fR] 
+\fBwatchexec\fR [\fB\-w\fR|\fB\-\-watch\fR] [\fB\-c\fR|\fB\-\-clear\fR] [\fB\-o\fR|\fB\-\-on\-busy\-update\fR] [\fB\-r\fR|\fB\-\-restart\fR] [\fB\-s\fR|\fB\-\-signal\fR] [\fB\-\-stop\-signal\fR] [\fB\-\-stop\-timeout\fR] [\fB\-\-debounce\fR] [\fB\-\-stdin\-quit\fR] [\fB\-\-no\-vcs\-ignore\fR] [\fB\-\-no\-project\-ignore\fR] [\fB\-\-no\-global\-ignore\fR] [\fB\-\-no\-default\-ignore\fR] [\fB\-p\fR|\fB\-\-postpone\fR] [\fB\-\-delay\-run\fR] [\fB\-\-poll\fR] [\fB\-\-shell\fR] [\fB\-n \fR] [\fB\-\-no\-environment\fR] [\fB\-\-emit\-events\-to\fR] [\fB\-E\fR|\fB\-\-env\fR] [\fB\-\-no\-process\-group\fR] [\fB\-N\fR|\fB\-\-notify\fR] [\fB\-\-project\-origin\fR] [\fB\-\-workdir\fR] [\fB\-e\fR|\fB\-\-exts\fR] [\fB\-f\fR|\fB\-\-filter\fR] [\fB\-\-filter\-file\fR] [\fB\-j\fR|\fB\-\-filter\-prog\fR] [\fB\-i\fR|\fB\-\-ignore\fR] [\fB\-\-ignore\-file\fR] [\fB\-\-fs\-events\fR] [\fB\-\-no\-meta\fR] [\fB\-\-print\-events\fR] [\fB\-v\fR|\fB\-\-verbose\fR]... [\fB\-\-log\-file\fR] [\fB\-\-manual\fR] [\fB\-\-completions\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fICOMMAND\fR] 
 .SH DESCRIPTION
 Execute commands when watched files change.
 .PP
@@ -379,6 +379,51 @@ Files to load filters from
 Provide a path to a file containing filters, one per line. Empty lines and lines starting with \*(Aq#\*(Aq are ignored. Uses the same pattern format as the \*(Aq\-\-filter\*(Aq option.
 
 This can also be used via the $WATCHEXEC_FILTER_FILES environment variable.
+.TP
+\fB\-j\fR, \fB\-\-filter\-prog\fR=\fIEXPRESSION\fR
+[experimental] Filter programs.
+
+/!\\ This option is EXPERIMENTAL and may change and/or vanish without notice.
+
+Provide your own custom filter programs in jaq (similar to jq) syntax. Programs are given an event in the same format as described in \*(Aq\-\-emit\-events\-to\*(Aq and must return a boolean.
+
+In addition to the jaq stdlib, watchexec adds some custom filter definitions:
+
+\- \*(Aqpath | file_meta\*(Aq returns file metadata or null if the file does not exist.
+
+\- \*(Aqpath | file_size\*(Aq returns the size of the file at path, or null if it does not exist.
+
+\- \*(Aqpath | file_read(bytes)\*(Aq returns a string with the first n bytes of the file at path. If the file is smaller than n bytes, the whole file is returned. There is no filter to read the whole file at once to encourage limiting the amount of data read and processed.
+
+\- \*(Aqstring | hash\*(Aq, and \*(Aqpath | file_hash\*(Aq return the hash of the string or file at path. No guarantee is made about the algorithm used: treat it as an opaque value.
+
+\- \*(Aqany | kv_store(key)\*(Aq, \*(Aqkv_fetch(key)\*(Aq, and \*(Aqkv_clear\*(Aq provide a simple key\-value store. Data is kept in memory only, there is no persistence. Consistency is not guaranteed.
+
+\- \*(Aqany | printout\*(Aq, \*(Aqany | printerr\*(Aq, and \*(Aqany | log(level)\*(Aq will print or log any given value to stdout, stderr, or the log (levels = error, warn, info, debug, trace), and pass the value through (so \*(Aq[1] | log("debug") | .[]\*(Aq will produce a \*(Aq1\*(Aq and log \*(Aq[1]\*(Aq).
+
+All filtering done with such programs, and especially those using kv or filesystem access, is much slower than the other filtering methods. If filtering is too slow, events will back up and stall watchexec. Take care when designing your filters.
+
+If the argument to this option starts with an \*(Aq@\*(Aq, the rest of the argument is taken to be the path to a file containing a jaq program.
+
+Jaq programs are run in order, after all other filters, and short\-circuit: if a filter (jaq or not) rejects an event, execution stops there, and no other filters are run. Additionally, they stop after outputting the first value, so you\*(Aqll want to use \*(Aqany\*(Aq or \*(Aqall\*(Aq when iterating, otherwise only the first item will be processed, which can be quite confusing!
+
+Examples:
+
+Regexp ignore filter on paths:
+
+\*(Aqall(.tags[] | select(.kind == "path"); .absolute | test("[.]test[.]js$")) | not\*(Aq
+
+Pass any event that creates a file:
+
+\*(Aqany(.tags[] | select(.kind == "fs"); .simple == "create")\*(Aq
+
+Pass events that touch executable files:
+
+\*(Aqany(.tags[] | select(.kind == "path" && .filetype == "file"); .absolute | metadata | .executable)\*(Aq
+
+Ignore files that start with shebangs:
+
+\*(Aqany(.tags[] | select(.kind == "path" && .filetype == "file"); .absolute | read(2) == "#!") | not\*(Aq
 .TP
 \fB\-i\fR, \fB\-\-ignore\fR=\fIPATTERN\fR
 Filename patterns to filter out

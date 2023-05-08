@@ -670,6 +670,70 @@ pub struct Args {
 	)]
 	pub filter_files: Vec<PathBuf>,
 
+	/// [experimental] Filter programs.
+	///
+	/// /!\ This option is EXPERIMENTAL and may change and/or vanish without notice.
+	///
+	/// Provide your own custom filter programs in jaq (similar to jq) syntax. Programs are given
+	/// an event in the same format as described in '--emit-events-to' and must return a boolean.
+	///
+	/// In addition to the jaq stdlib, watchexec adds some custom filter definitions:
+	///
+	///   - 'path | file_meta' returns file metadata or null if the file does not exist.
+	///
+	///   - 'path | file_size' returns the size of the file at path, or null if it does not exist.
+	///
+	///   - 'path | file_read(bytes)' returns a string with the first n bytes of the file at path.
+	///     If the file is smaller than n bytes, the whole file is returned. There is no filter to
+	///     read the whole file at once to encourage limiting the amount of data read and processed.
+	///
+	///   - 'string | hash', and 'path | file_hash' return the hash of the string or file at path.
+	///     No guarantee is made about the algorithm used: treat it as an opaque value.
+	///
+	///   - 'any | kv_store(key)', 'kv_fetch(key)', and 'kv_clear' provide a simple key-value store.
+	///     Data is kept in memory only, there is no persistence. Consistency is not guaranteed.
+	///
+	///   - 'any | printout', 'any | printerr', and 'any | log(level)' will print or log any given
+	///     value to stdout, stderr, or the log (levels = error, warn, info, debug, trace), and
+	///     pass the value through (so '[1] | log("debug") | .[]' will produce a '1' and log '[1]').
+	///
+	/// All filtering done with such programs, and especially those using kv or filesystem access,
+	/// is much slower than the other filtering methods. If filtering is too slow, events will back
+	/// up and stall watchexec. Take care when designing your filters.
+	///
+	/// If the argument to this option starts with an '@', the rest of the argument is taken to be
+	/// the path to a file containing a jaq program.
+	///
+	/// Jaq programs are run in order, after all other filters, and short-circuit: if a filter (jaq
+	/// or not) rejects an event, execution stops there, and no other filters are run. Additionally,
+	/// they stop after outputting the first value, so you'll want to use 'any' or 'all' when
+	/// iterating, otherwise only the first item will be processed, which can be quite confusing!
+	///
+	/// Examples:
+	///
+	/// Regexp ignore filter on paths:
+	///
+	///   'all(.tags[] | select(.kind == "path"); .absolute | test("[.]test[.]js$")) | not'
+	///
+	/// Pass any event that creates a file:
+	///
+	///   'any(.tags[] | select(.kind == "fs"); .simple == "create")'
+	///
+	/// Pass events that touch executable files:
+	///
+	///   'any(.tags[] | select(.kind == "path" && .filetype == "file"); .absolute | metadata | .executable)'
+	///
+	/// Ignore files that start with shebangs:
+	///
+	///   'any(.tags[] | select(.kind == "path" && .filetype == "file"); .absolute | read(2) == "#!") | not'
+	#[arg(
+		long = "filter-prog",
+		short = 'j',
+		help_heading = OPTSET_FILTERING,
+		value_name = "EXPRESSION",
+	)]
+	pub filter_programs: Vec<String>,
+
 	/// Filename patterns to filter out
 	///
 	/// Provide a glob-like filter pattern, and events for files matching the pattern will be

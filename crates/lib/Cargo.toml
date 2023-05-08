@@ -2,7 +2,7 @@
 name = "watchexec"
 version = "2.3.0"
 
-authors = ["Matt Green <mattgreenrocks@gmail.com>", "Félix Saparelli <felix@passcod.name>"]
+authors = ["Félix Saparelli <felix@passcod.name>", "Matt Green <mattgreenrocks@gmail.com>"]
 license = "Apache-2.0"
 description = "Library to execute commands in response to file modifications"
 keywords = ["watcher", "filesystem", "watchexec"]

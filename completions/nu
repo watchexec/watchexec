@@ -55,6 +55,7 @@ module completions {
     --exts(-e): string        # Filename extensions to filter to
     --filter(-f): string      # Filename patterns to filter to
     --filter-file: string     # Files to load filters from
+    --filter-prog(-j): string # [experimental] Filter programs
     --ignore(-i): string      # Filename patterns to filter out
     --ignore-file: string     # Files to load ignores from
     --fs-events: string@"nu-complete watchexec filter_fs_events" # Filesystem events to filter to

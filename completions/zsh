@@ -39,6 +39,8 @@ _watchexec() {
 '*-f+[Filename patterns to filter to]:PATTERN: ' \
 '*--filter=[Filename patterns to filter to]:PATTERN: ' \
 '*--filter-file=[Files to load filters from]:PATH:_files' \
+'*-j+[\[experimental\] Filter programs]:EXPRESSION: ' \
+'*--filter-prog=[\[experimental\] Filter programs]:EXPRESSION: ' \
 '*-i+[Filename patterns to filter out]:PATTERN: ' \
 '*--ignore=[Filename patterns to filter out]:PATTERN: ' \
 '*--ignore-file=[Files to load ignores from]:PATH:_files' \

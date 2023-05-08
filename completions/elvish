@@ -42,6 +42,8 @@ set edit:completion:arg-completer[watchexec] = {|@words|
             cand -f 'Filename patterns to filter to'
             cand --filter 'Filename patterns to filter to'
             cand --filter-file 'Files to load filters from'
+            cand -j '[experimental] Filter programs'
+            cand --filter-prog '[experimental] Filter programs'
             cand -i 'Filename patterns to filter out'
             cand --ignore 'Filename patterns to filter out'
             cand --ignore-file 'Files to load ignores from'
