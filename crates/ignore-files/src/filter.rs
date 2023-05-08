@@ -5,10 +5,17 @@ use ignore::{
 	gitignore::{Gitignore, GitignoreBuilder, Glob},
 	Match,
 };
+use radix_trie::{Trie, TrieCommon};
 use tokio::fs::read_to_string;
 use tracing::{trace, trace_span};
 
 use crate::{Error, IgnoreFile};
+
+#[derive(Clone, Debug)]
+struct Ignore {
+	gitignore: Gitignore,
+	builder: Option<GitignoreBuilder>,
+}
 
 /// A mutable filter dedicated to ignore files and trees of ignore files.
 ///
@@ -18,8 +25,7 @@ use crate::{Error, IgnoreFile};
 #[derive(Clone, Debug)]
 pub struct IgnoreFilter {
 	origin: PathBuf,
-	builder: Option<GitignoreBuilder>,
-	compiled: Gitignore,
+	ignores: Trie<String, Ignore>,
 }
 
 impl IgnoreFilter {
@@ -28,10 +34,19 @@ impl IgnoreFilter {
 	/// Prefer [`new()`](IgnoreFilter::new()) if you have ignore files ready to use.
 	pub fn empty(origin: impl AsRef<Path>) -> Self {
 		let origin = origin.as_ref();
+
+		let mut ignores = Trie::new();
+		ignores.insert(
+			origin.display().to_string(),
+			Ignore {
+				gitignore: Gitignore::empty(),
+				builder: Some(GitignoreBuilder::new(origin)),
+			},
+		);
+
 		Self {
-			builder: Some(GitignoreBuilder::new(origin)),
 			origin: origin.to_owned(),
-			compiled: Gitignore::empty(),
+			ignores,
 		}
 	}
 
@@ -75,9 +90,27 @@ impl IgnoreFilter {
 		// TODO: different parser/adapter for non-git-syntax ignore files?
 
 		trace!(files=%files_contents.len(), "building ignore list");
-		let mut builder = GitignoreBuilder::new(origin);
+
+		let mut ignores_trie = Trie::new();
+
+		// add builder for the origin, so that we can handle global ignores and globs
+		ignores_trie.insert(
+			origin.display().to_string(),
+			Ignore {
+				gitignore: Gitignore::empty(),
+				builder: Some(GitignoreBuilder::new(origin)),
+			},
+		);
+
+		let mut total_num_ignores = 0;
+		let mut total_num_whitelists = 0;
+
 		for (file, content) in files_contents.into_iter().flatten() {
 			let _span = trace_span!("loading ignore file", ?file).entered();
+
+			let applies_in = get_applies_in_path(origin, Some(&file));
+
+			let mut builder = GitignoreBuilder::new(&applies_in);
 			for line in content.lines() {
 				if line.is_empty() || line.starts_with('#') {
 					continue;
@@ -85,98 +118,135 @@ impl IgnoreFilter {
 
 				trace!(?line, "adding ignore line");
 				builder
-					.add_line(file.applies_in.clone(), line)
+					.add_line(Some(applies_in.clone().to_owned()), line)
 					.map_err(|err| Error::Glob {
 						file: Some(file.path.clone()),
 						err,
 					})?;
 			}
-		}
+			trace!("compiling globset");
+			let compiled_builder = builder
+				.build()
+				.map_err(|err| Error::Glob { file: None, err })?;
 
-		trace!("compiling globset");
-		let compiled = builder
-			.build()
-			.map_err(|err| Error::Glob { file: None, err })?;
+			total_num_ignores += compiled_builder.num_ignores();
+			total_num_whitelists += compiled_builder.num_whitelists();
+
+			ignores_trie.insert(
+				applies_in.display().to_string(),
+				Ignore {
+					gitignore: compiled_builder,
+					builder: Some(builder),
+				},
+			);
+		}
 
 		trace!(
 			files=%files.len(),
-			ignores=%compiled.num_ignores(),
-			allows=%compiled.num_whitelists(),
+			ignores=%total_num_ignores,
+			allows=%total_num_whitelists,
 			"ignore files loaded and compiled",
 		);
 
 		Ok(Self {
 			origin: origin.to_owned(),
-			builder: Some(builder),
-			compiled,
+			ignores: ignores_trie,
 		})
 	}
 
 	/// Returns the number of ignores and allowlists loaded.
 	#[must_use]
 	pub fn num_ignores(&self) -> (u64, u64) {
-		(self.compiled.num_ignores(), self.compiled.num_whitelists())
+		self.ignores.iter().fold((0, 0), |mut acc, (_, ignore)| {
+			acc.0 += ignore.gitignore.num_ignores();
+			acc.1 += ignore.gitignore.num_whitelists();
+			acc
+		})
 	}
 
 	/// Deletes the internal builder, to save memory.
 	///
 	/// This makes it impossible to add new ignore files without re-compiling the whole set.
 	pub fn finish(&mut self) {
-		self.builder = None;
+		let keys = self.ignores.keys().cloned().collect::<Vec<_>>();
+		for key in keys {
+			if let Some(ignore) = self.ignores.get_mut(&key) {
+				ignore.builder = None;
+			}
+		}
 	}
 
 	/// Reads and adds an ignore file, if the builder is available.
 	///
 	/// Does nothing silently otherwise.
 	pub async fn add_file(&mut self, file: &IgnoreFile) -> Result<(), Error> {
-		if let Some(ref mut builder) = self.builder {
-			trace!(?file, "reading ignore file");
-			let content = read_to_string(&file.path)
-				.await
-				.map_err(|err| Error::Read {
-					file: file.path.clone(),
-					err,
-				})?;
+		let applies_in = &get_applies_in_path(&self.origin, Some(&file))
+			.display()
+			.to_string();
 
-			let _span = trace_span!("loading ignore file", ?file).entered();
-			for line in content.lines() {
-				if line.is_empty() || line.starts_with('#') {
-					continue;
-				}
+		let Some(Ignore { builder: Some(ref mut builder), ..}) = self.ignores.get_mut(applies_in) else {
+			return Ok(());
+		};
 
-				trace!(?line, "adding ignore line");
-				builder
-					.add_line(file.applies_in.clone(), line)
-					.map_err(|err| Error::Glob {
-						file: Some(file.path.clone()),
-						err,
-					})?;
+		trace!(?file, "reading ignore file");
+		let content = read_to_string(&file.path)
+			.await
+			.map_err(|err| Error::Read {
+				file: file.path.clone(),
+				err,
+			})?;
+
+		let _span = trace_span!("loading ignore file", ?file).entered();
+		for line in content.lines() {
+			if line.is_empty() || line.starts_with('#') {
+				continue;
 			}
 
-			self.recompile(file.path.clone())?;
+			trace!(?line, "adding ignore line");
+			builder
+				.add_line(file.applies_in.clone(), line)
+				.map_err(|err| Error::Glob {
+					file: Some(file.path.clone()),
+					err,
+				})?;
 		}
+
+		self.recompile(Some(file))?;
 
 		Ok(())
 	}
 
-	fn recompile(&mut self, file: PathBuf) -> Result<(), Error> {
-		if let Some(builder) = &mut self.builder {
-			let pre_ignores = self.compiled.num_ignores();
-			let pre_allows = self.compiled.num_whitelists();
+	fn recompile(&mut self, file: Option<&IgnoreFile>) -> Result<(), Error> {
+		let applies_in = get_applies_in_path(&self.origin, file)
+			.display()
+			.to_string();
 
-			trace!("recompiling globset");
-			let recompiled = builder.build().map_err(|err| Error::Glob {
-				file: Some(file),
-				err,
-			})?;
+		let Some(Ignore { gitignore: compiled, builder: Some(builder)}) = self.ignores.get(&applies_in) else {
+			return Ok(());
+		};
 
-			trace!(
-				new_ignores=%(recompiled.num_ignores() - pre_ignores),
-				new_allows=%(recompiled.num_whitelists() - pre_allows),
-				"ignore file loaded and set recompiled",
-			);
-			self.compiled = recompiled;
-		}
+		let pre_ignores = compiled.num_ignores();
+		let pre_allows = compiled.num_whitelists();
+
+		trace!("recompiling globset");
+		let recompiled = builder.build().map_err(|err| Error::Glob {
+			file: file.map(|file| file.path.clone()),
+			err,
+		})?;
+
+		trace!(
+			new_ignores=%(recompiled.num_ignores() - pre_ignores),
+			new_allows=%(recompiled.num_whitelists() - pre_allows),
+			"ignore file loaded and set recompiled",
+		);
+
+		self.ignores.insert(
+			applies_in,
+			Ignore {
+				gitignore: recompiled,
+				builder: Some(builder.to_owned()),
+			},
+		);
 
 		Ok(())
 	}
@@ -185,33 +255,42 @@ impl IgnoreFilter {
 	///
 	/// Does nothing silently otherwise.
 	pub fn add_globs(&mut self, globs: &[&str], applies_in: Option<&PathBuf>) -> Result<(), Error> {
-		if let Some(ref mut builder) = self.builder {
-			let _span = trace_span!("loading ignore globs", ?globs).entered();
-			for line in globs {
-				if line.is_empty() || line.starts_with('#') {
-					continue;
-				}
+		let applies_in = applies_in.unwrap_or(&self.origin);
 
-				trace!(?line, "adding ignore line");
-				builder
-					.add_line(applies_in.cloned(), line)
-					.map_err(|err| Error::Glob { file: None, err })?;
+		let Some(Ignore {builder: Some(builder), ..}) = self.ignores.get_mut(&applies_in.display().to_string()) else {
+			return Ok(());
+		};
+
+		let _span = trace_span!("loading ignore globs", ?globs).entered();
+		for line in globs {
+			if line.is_empty() || line.starts_with('#') {
+				continue;
 			}
 
-			self.recompile("manual glob".into())?;
+			trace!(?line, "adding ignore line");
+			builder
+				.add_line(Some(applies_in.clone()), line)
+				.map_err(|err| Error::Glob { file: None, err })?;
 		}
+
+		self.recompile(None)?;
 
 		Ok(())
 	}
 
 	/// Match a particular path against the ignore set.
 	pub fn match_path(&self, path: &Path, is_dir: bool) -> Match<&Glob> {
+		let Some(ignores) = self.ignores.get_ancestor_value(&path.display().to_string()) else {
+			trace!(?path, "no ignores for path");
+			return Match::None;
+		};
+
 		if path.strip_prefix(&self.origin).is_ok() {
 			trace!("checking against path or parents");
-			self.compiled.matched_path_or_any_parents(path, is_dir)
+			ignores.gitignore.matched_path_or_any_parents(path, is_dir)
 		} else {
 			trace!("checking against path only");
-			self.compiled.matched(path, is_dir)
+			ignores.gitignore.matched(path, is_dir)
 		}
 	}
 
@@ -244,5 +323,16 @@ impl IgnoreFilter {
 				true
 			}
 		}
+	}
+}
+
+fn get_applies_in_path(origin: &Path, ignore_file: Option<&IgnoreFile>) -> PathBuf {
+	if let Some(ignore_file) = ignore_file {
+		return ignore_file
+			.applies_in
+			.clone()
+			.unwrap_or_else(|| origin.to_path_buf());
+	} else {
+		return origin.to_path_buf();
 	}
 }
