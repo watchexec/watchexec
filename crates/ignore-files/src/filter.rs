@@ -190,7 +190,7 @@ impl IgnoreFilter {
 	///
 	/// Does nothing silently otherwise.
 	pub async fn add_file(&mut self, file: &IgnoreFile) -> Result<(), Error> {
-		let applies_in = &get_applies_in_path(&self.origin, Some(&file))
+		let applies_in = &get_applies_in_path(&self.origin, Some(file))
 			.display()
 			.to_string();
 
@@ -290,7 +290,7 @@ impl IgnoreFilter {
 
 	/// Match a particular path against the ignore set.
 	pub fn match_path(&self, path: &Path, is_dir: bool) -> Match<&Glob> {
-		let path = dunce::simplified(&path);
+		let path = dunce::simplified(path);
 
 		let Some(ignores) = self.ignores.get_ancestor_value(&path.display().to_string()) else {
 			trace!(?path, "no ignores for path");
