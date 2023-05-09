@@ -5,10 +5,7 @@ use std::{
 
 use async_priority_channel as priority;
 use tokio::{
-	sync::{
-		mpsc,
-		watch::{self},
-	},
+	sync::{mpsc, watch},
 	time::timeout,
 };
 use tracing::{debug, info, trace};
@@ -45,7 +42,7 @@ pub async fn worker(
 	{
 		#[allow(clippy::iter_with_drain)]
 		let events = Arc::from(set.drain(..).collect::<Vec<_>>().into_boxed_slice());
-		let action = Action::new(Arc::clone(&events));
+		let action = Action::new(Arc::clone(&events), Arc::from(vec![].into_boxed_slice()));
 		info!(?action, "action constructed");
 
 		debug!("running action handler");
@@ -54,7 +51,7 @@ pub async fn worker(
 			wrk.action_handler.clone()
 		};
 
-		let outcome = action.outcome.clone();
+		let outcomes = action.outcomes.clone();
 		let err = action_handler
 			.call(action)
 			.await
@@ -65,22 +62,28 @@ pub async fn worker(
 			continue;
 		}
 
-		let outcome = outcome.get().cloned().unwrap_or_default();
-		debug!(?outcome, "action handler finished");
+		let outcomes = outcomes
+			.iter()
+			.map(|outcome| outcome.get().cloned().unwrap_or_default())
+			.collect::<Vec<_>>();
 
-		let outcome = outcome.resolve(process.is_running().await);
-		info!(?outcome, "outcome resolved");
+		debug!(?outcomes, "action handler finished");
 
-		OutcomeWorker::spawn(
-			outcome,
-			events,
-			working.clone(),
-			process.clone(),
-			outcome_gen.clone(),
-			errors.clone(),
-			events_tx.clone(),
-		);
-		debug!("action process done");
+		for outcome in outcomes {
+			let outcome = outcome.resolve(process.is_running().await);
+			info!(?outcome, "outcome resolved");
+
+			OutcomeWorker::spawn(
+				outcome,
+				events.clone(),
+				working.clone(),
+				process.clone(),
+				outcome_gen.clone(),
+				errors.clone(),
+				events_tx.clone(),
+			);
+			debug!("action process done");
+		}
 	}
 
 	debug!("action worker finished");

@@ -343,7 +343,7 @@ pub struct SerdeEvent {
 }
 
 impl From<Event> for SerdeEvent {
-	fn from(Event { tags, metadata }: Event) -> Self {
+	fn from(Event { tags, metadata, .. }: Event) -> Self {
 		Self {
 			tags,
 			metadata: metadata.into_iter().collect(),
@@ -356,6 +356,7 @@ impl From<SerdeEvent> for Event {
 		Self {
 			tags,
 			metadata: metadata.into_iter().collect(),
+			..Default::default()
 		}
 	}
 }

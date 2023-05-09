@@ -1,6 +1,7 @@
 use std::{
-	collections::HashMap,
+	collections::{hash_map::DefaultHasher, HashMap},
 	fmt,
+	hash::{self, Hash, Hasher},
 	path::{Path, PathBuf},
 };
 
@@ -21,7 +22,22 @@ pub struct Event {
 
 	/// Arbitrary other information, cannot be used for filtering.
 	pub metadata: HashMap<String, Vec<String>>,
+
+	pub id: Option<EventId>,
 }
+
+impl hash::Hash for Event {
+	fn hash<H: hash::Hasher>(&self, state: &mut H) {
+		self.tags.hash(state);
+		self.metadata.iter().for_each(|(k, v)| {
+			k.hash(state);
+			v.hash(state);
+		})
+	}
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub struct EventId(usize);
 
 /// Something which can be used to filter or qualify an event.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -61,6 +77,21 @@ pub enum Tag {
 	Unknown,
 }
 
+impl hash::Hash for Tag {
+	fn hash<H: hash::Hasher>(&self, state: &mut H) {
+		match self {
+			Self::Path { path, file_type: _ } => path.hash(state),
+			Self::FileEventKind(x) => x.hash(state),
+			Self::Source(x) => x.hash(state),
+			Self::Keyboard(x) => x.hash(state),
+			Self::Process(x) => x.hash(state),
+			Self::Signal(x) => x.hash(state),
+			Self::ProcessCompletion(x) => x.hash(state),
+			Self::Unknown => self.discriminant_name().hash(state),
+		}
+	}
+}
+
 impl Tag {
 	/// The name of the variant.
 	#[must_use]
@@ -82,7 +113,7 @@ impl Tag {
 /// The general origin of the event.
 ///
 /// This is set by the event source. Note that not all of these are currently used.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "kebab-case"))]
 #[non_exhaustive]
@@ -129,7 +160,7 @@ impl fmt::Display for Source {
 /// delivered ahead of others. This is especially important when there is a large amount of events
 /// generated and relatively slow filtering, as events can become noticeably delayed, and may give
 /// the impression of stalling.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "kebab-case"))]
 pub enum Priority {
@@ -200,6 +231,14 @@ impl Event {
 		self.tags.iter().filter_map(|p| match p {
 			Tag::ProcessCompletion(s) => Some(*s),
 			_ => None,
+		})
+	}
+
+	pub fn id(&mut self) -> EventId {
+		*self.id.get_or_insert({
+			let mut hasher = DefaultHasher::new();
+			self.hash(&mut hasher);
+			EventId(hasher.finish() as usize)
 		})
 	}
 }

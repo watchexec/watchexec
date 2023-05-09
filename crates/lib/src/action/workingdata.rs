@@ -1,4 +1,5 @@
 use std::{
+	collections::HashMap,
 	fmt,
 	sync::{Arc, Weak},
 	time::Duration,
@@ -9,6 +10,7 @@ use tokio::{
 	process::Command as TokioCommand,
 	sync::{Mutex, OwnedMutexGuard},
 };
+use watchexec_events::EventId;
 
 use crate::{command::Command, event::Event, filter::Filterer, handler::HandlerLock};
 
@@ -119,28 +121,17 @@ impl Default for WorkingData {
 #[derive(Debug)]
 pub struct Action {
 	/// The collected events which triggered the action.
-	pub events: Arc<[Event]>,
-	pub outcomes: Arc<[OnceCell<Outcome>]>,
-	pub processes: Arc<[ProcessId]>,
+	events: Arc<[Event]>,
+	processes: Arc<[ProcessId]>,
+	outcomes: Arc<Mutex<HashMap<ProcessId, (Resolution, EventSet)>>>,
 }
 
 impl Action {
-	pub fn new(events: Arc<[Event]>) -> Self {
-		let processes = Arc::new([ProcessId("".to_string())]);
-		Self::with_ids(events, processes)
-	}
-
-	pub fn with_ids(events: Arc<[Event]>, processes: Arc<[ProcessId]>) -> Self {
+	pub fn new(events: Arc<[Event]>, processes: Arc<[ProcessId]>) -> Self {
 		Self {
 			events,
-			outcomes: Arc::from(
-				(*processes)
-					.iter()
-					.map(|_| Default::default())
-					.collect::<Vec<_>>()
-					.into_boxed_slice(),
-			),
 			processes,
+			outcomes: Default::default(),
 		}
 	}
 
@@ -151,44 +142,48 @@ impl Action {
 	///
 	/// See the [`Action`] documentation about handlers to learn why it's a bad idea to clone or
 	/// send it elsewhere, and what kind of handlers you cannot use.
-	pub fn outcome(self, outcome: Outcome) {
-		for once in self.outcomes.iter() {
-			once.set(outcome).ok();
-		}
+	pub async fn outcome(self, outcome: Outcome) {
+		for process in self.processes.iter() {}
 	}
 
-	pub fn on_process(&mut self, process_id: ProcessId, outcome: Outcome) {
-		if let Some((i, _)) = self
-			.processes
-			.iter()
-			.enumerate()
-			.find(|(i, &id)| id == process_id)
-		{
-			self.outcomes[i].set(outcome).ok();
-		}
+	pub async fn on_process(&mut self, process: ProcessId, outcome: Outcome, set: EventSet) {
+		self.outcomes
+			.lock()
+			.await
+			.entry(process)
+			.insert_entry((outcome, set));
 	}
 
 	pub fn current_processes(&self) -> &[ProcessId] {
 		&self.processes
 	}
+
+	pub fn start_process(&mut self, cmd: Command, id: String) -> ProcessId {
+		self.outcomes.concat([OnceCell::default()])
+	}
 }
 
 #[derive(Debug)]
-pub struct ProcessId(String);
+pub enum Resolution {
+	Start(Command),
+	Apply(Outcome),
+}
+
+#[derive(Debug)]
+pub enum EventSet {
+	All,
+	Some(Vec<EventId>),
+	None,
+}
+
+#[derive(Debug, Hash, PartialEq, Eq)]
+pub struct ProcessId(usize);
 
 impl ProcessId {
-	pub fn id(&self) -> &str {
-		&self.0
+	pub fn id(&self) -> usize {
+		self.0
 	}
 }
-
-impl PartialEq<ProcessId> for ProcessId {
-	fn eq(&self, other: &ProcessId) -> bool {
-		self.id().eq(other.id())
-	}
-}
-
-impl Eq for ProcessId {}
 
 /// The environment given to the pre-spawn handler.
 ///
