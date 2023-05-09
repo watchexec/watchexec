@@ -3,12 +3,12 @@
 #[doc(inline)]
 pub use outcome::Outcome;
 #[doc(inline)]
-pub use worker::{throttle_collect, worker};
+pub use worker::worker;
 #[doc(inline)]
 pub use workingdata::*;
 
 mod outcome;
-pub mod outcome_worker;
-pub mod process_holder;
+mod outcome_worker;
+mod process_holder;
 mod worker;
 mod workingdata;

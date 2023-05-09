@@ -21,7 +21,7 @@ use tokio::{
 use tracing::{debug, error, trace};
 
 use crate::{
-	action::{self, WorkingData},
+	action,
 	config::{InitConfig, RuntimeConfig},
 	error::{CriticalError, ReconfigError, RuntimeError},
 	event::{Event, Priority},
@@ -70,43 +70,9 @@ impl Watchexec {
 	/// and return an [`Outcome::Exit`], otherwise hitting ctrl-c will do nothing.
 	///
 	/// [`Outcome::Exit`]: crate::action::Outcome::Exit
-	pub fn new(init: InitConfig, runtime: RuntimeConfig) -> Result<Arc<Self>, CriticalError> {
-		unsafe {
-			Self::new_with_action(
-				init,
-				runtime,
-				Box::new(move |a, b, c, d| Box::pin(action::worker(a, b, c, d))),
-			)
-		}
-	}
-
-	/// Instantiates a new `Watchexec` runtime from configuration with an action worker function.
-	///
-	/// Returns an [`Arc`] for convenience; use [`try_unwrap`][Arc::try_unwrap()] to get the value
-	/// directly if needed.
-	///
-	/// Note that `RuntimeConfig` is not a "live" or "shared" instance: if using reconfiguration,
-	/// you'll usually pass a `clone()` of your `RuntimeConfig` instance to this function; changes
-	/// made to the instance you _keep_ will not automatically be used by Watchexec, you need to
-	/// call [`reconfigure()`](Watchexec::reconfigure) with your updated config to apply the changes.
-	///
-	/// Watchexec will subscribe to most signals sent to the process it runs in and send them, as
-	/// [`Event`]s, to the action handler. At minimum, you should check for interrupt/ctrl-c events
-	/// and return an [`Outcome::Exit`], otherwise hitting ctrl-c will do nothing.
-	///
-	/// [`Outcome::Exit`]: crate::action::Outcome::Exit
-	pub unsafe fn new_with_action(
+	pub fn new(
 		mut init: InitConfig,
 		mut runtime: RuntimeConfig,
-		action_worker: Box<
-			dyn FnOnce(
-					watch::Receiver<WorkingData>,
-					mpsc::Sender<RuntimeError>,
-					priority::Sender<Event, Priority>,
-					priority::Receiver<Event, Priority>,
-				) -> Pin<Box<dyn Future<Output = Result<(), CriticalError>> + Send>>
-				+ Send,
-		>,
 	) -> Result<Arc<Self>, CriticalError> {
 		debug!(?init, ?runtime, pid=%std::process::id(), version=%env!("CARGO_PKG_VERSION"), "initialising");
 
@@ -141,7 +107,7 @@ impl Watchexec {
 
 			let action = SubTask::spawn(
 				"action",
-				action_worker(ac_r, er_s.clone(), ev_s.clone(), ev_r),
+				action::worker(ac_r, er_s.clone(), ev_s.clone(), ev_r),
 			);
 			let fs = SubTask::spawn("fs", fs::worker(fs_r, er_s.clone(), ev_s.clone()));
 			let signal =
