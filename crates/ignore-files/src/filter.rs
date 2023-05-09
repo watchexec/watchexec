@@ -190,7 +190,7 @@ impl IgnoreFilter {
 	///
 	/// Does nothing silently otherwise.
 	pub async fn add_file(&mut self, file: &IgnoreFile) -> Result<(), Error> {
-		let applies_in = get_applies_in_path(&self.origin, &file)
+		let applies_in = get_applies_in_path(&self.origin, file)
 			.display()
 			.to_string();
 
