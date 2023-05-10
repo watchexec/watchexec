@@ -2,7 +2,7 @@ use std::{
 	collections::HashMap,
 	fmt,
 	sync::{Arc, Weak},
-	time::Duration,
+	time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 use once_cell::sync::OnceCell;
@@ -12,7 +12,9 @@ use tokio::{
 };
 use watchexec_events::EventId;
 
-use crate::{command::Command, event::Event, filter::Filterer, handler::HandlerLock};
+use crate::{
+	command::Command, event::Event, filter::Filterer, handler::HandlerLock, signal::process,
+};
 
 use super::Outcome;
 
@@ -135,31 +137,48 @@ impl Action {
 		}
 	}
 
-	/// Set the action's outcome.
+	/// Set the action's outcome for all [`Process`]es.
 	///
 	/// This takes `self` and `Action` is not `Clone`, so it's only possible to call it once.
 	/// Regardless, if you _do_ manage to call it twice, it will do nothing beyond the first call.
 	///
 	/// See the [`Action`] documentation about handlers to learn why it's a bad idea to clone or
 	/// send it elsewhere, and what kind of handlers you cannot use.
-	pub async fn outcome(self, outcome: Outcome) {
-		for process in self.processes.iter() {}
+	pub async fn outcome(mut self, outcome: Outcome) {
+		for process in self.processes.iter().copied().collect::<Vec<_>>() {
+			self.on_process(process, outcome.clone(), EventSet::All);
+		}
 	}
 
+	/// Sets an [`Outcome`] for a single [`Process`].
 	pub async fn on_process(&mut self, process: ProcessId, outcome: Outcome, set: EventSet) {
 		self.outcomes
 			.lock()
 			.await
-			.entry(process)
-			.insert_entry((outcome, set));
+			.insert(process, (Resolution::Apply(outcome), set));
 	}
 
+	/// Returns a snapshot of the `ProcessId`s of the running `Process`es at creation of the
+	/// [`Action`].
 	pub fn current_processes(&self) -> &[ProcessId] {
 		&self.processes
 	}
 
-	pub fn start_process(&mut self, cmd: Command, id: String) -> ProcessId {
-		self.outcomes.concat([OnceCell::default()])
+	/// Starts a new [`Process`] with a provided [`Command`] and for a given [`EventSet`].
+	///
+	/// Returns the [`ProcessId`] of the newly created [`Process`].
+	pub async fn start_process(&mut self, cmd: Command, set: EventSet) -> ProcessId {
+		let process = ProcessId::default();
+		self.outcomes
+			.lock()
+			.await
+			.insert(process, (Resolution::Start(cmd), set));
+
+		process
+	}
+
+	pub(crate) fn get_outcomes(&self) -> Arc<Mutex<HashMap<ProcessId, (Resolution, EventSet)>>> {
+		self.outcomes
 	}
 }
 
@@ -176,12 +195,28 @@ pub enum EventSet {
 	None,
 }
 
-#[derive(Debug, Hash, PartialEq, Eq)]
+#[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
 pub struct ProcessId(usize);
 
 impl ProcessId {
 	pub fn id(&self) -> usize {
 		self.0
+	}
+}
+
+impl Default for ProcessId {
+	fn default() -> Self {
+		// generates pseudo-random u64 using [xorshift*](https://en.wikipedia.org/wiki/Xorshift#xorshift*)
+
+		let mut seed = SystemTime::now()
+			.duration_since(UNIX_EPOCH)
+			.unwrap()
+			.as_millis() as usize;
+		seed ^= seed >> 12;
+		seed ^= seed << 25;
+		seed ^= seed >> 27;
+
+		Self(seed)
 	}
 }
 
