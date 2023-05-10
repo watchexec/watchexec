@@ -1,5 +1,6 @@
 use std::{
-	sync::Arc,
+	collections::HashMap,
+	sync::{atomic::AtomicUsize, Arc},
 	time::{Duration, Instant},
 };
 
@@ -11,6 +12,7 @@ use tokio::{
 use tracing::{debug, info, trace};
 
 use crate::{
+	action::{EventSet, ProcessId, Resolution},
 	error::{CriticalError, RuntimeError},
 	event::{Event, Priority},
 	handler::rte,
@@ -29,7 +31,7 @@ pub async fn worker(
 	events_tx: priority::Sender<Event, Priority>,
 	events: priority::Receiver<Event, Priority>,
 ) -> Result<(), CriticalError> {
-	let process = ProcessHolder::default();
+	let processes: HashMap<ProcessId, (ProcessHolder, Arc<AtomicUsize>)> = HashMap::new();
 	let outcome_gen = OutcomeWorker::newgen();
 
 	while let Some(mut set) = throttle_collect(
@@ -42,7 +44,16 @@ pub async fn worker(
 	{
 		#[allow(clippy::iter_with_drain)]
 		let events = Arc::from(set.drain(..).collect::<Vec<_>>().into_boxed_slice());
-		let action = Action::new(Arc::clone(&events), Arc::from(vec![].into_boxed_slice()));
+		let action = Action::new(
+			Arc::clone(&events),
+			Arc::from(
+				processes
+					.keys()
+					.copied()
+					.collect::<Vec<_>>()
+					.into_boxed_slice(),
+			),
+		);
 		info!(?action, "action constructed");
 
 		debug!("running action handler");
@@ -51,7 +62,7 @@ pub async fn worker(
 			wrk.action_handler.clone()
 		};
 
-		let outcomes = action.outcomes.clone();
+		let outcomes = action.get_outcomes().clone();
 		let err = action_handler
 			.call(action)
 			.await
@@ -62,28 +73,45 @@ pub async fn worker(
 			continue;
 		}
 
-		let outcomes = outcomes
-			.iter()
-			.map(|outcome| outcome.get().cloned().unwrap_or_default())
-			.collect::<Vec<_>>();
+		for (pid, (resolution, set)) in outcomes.lock().await.iter() {
+			if let Some((process, outcome_gen)) = processes.get(pid) {
+				let Resolution::Apply(outcome) = resolution  else {
+					panic!("duplicate process id!");
+				};
+
+				let outcome = outcome.resolve(process.is_running().await);
+				info!(?outcome, "outcome resolved");
+				let events = match set {
+					EventSet::All => events.clone(),
+					EventSet::None => Arc::from(vec![].into_boxed_slice()),
+					EventSet::Some(ids) => Arc::from(
+						events
+							.iter()
+							.filter(|event| ids.iter().any(|id| id.eq(&event.id())))
+							.cloned()
+							.collect::<Vec<_>>()
+							.into_boxed_slice(),
+					),
+				};
+				debug!(?events, "events selected");
+
+				OutcomeWorker::spawn(
+					outcome,
+					events.clone(),
+					working.clone(),
+					process.clone(),
+					outcome_gen.clone(),
+					errors.clone(),
+					events_tx.clone(),
+				);
+				debug!("action process done");
+			} else {
+				let (_, _) =
+					processes.insert(*pid, (ProcessHolder::default(), OutcomeWorker::newgen())).;
+			}
+		}
 
 		debug!(?outcomes, "action handler finished");
-
-		for outcome in outcomes {
-			let outcome = outcome.resolve(process.is_running().await);
-			info!(?outcome, "outcome resolved");
-
-			OutcomeWorker::spawn(
-				outcome,
-				events.clone(),
-				working.clone(),
-				process.clone(),
-				outcome_gen.clone(),
-				errors.clone(),
-				events_tx.clone(),
-			);
-			debug!("action process done");
-		}
 	}
 
 	debug!("action worker finished");
