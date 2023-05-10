@@ -3,6 +3,7 @@ use std::{
 	fmt,
 	hash::{self, Hash, Hasher},
 	path::{Path, PathBuf},
+	sync::atomic::AtomicUsize,
 };
 
 use watchexec_signals::Signal;
@@ -23,7 +24,7 @@ pub struct Event {
 	/// Arbitrary other information, cannot be used for filtering.
 	pub metadata: HashMap<String, Vec<String>>,
 
-	pub id: Option<EventId>,
+	pub id: EventId,
 }
 
 impl hash::Hash for Event {
@@ -36,8 +37,38 @@ impl hash::Hash for Event {
 	}
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub struct EventId(usize);
+#[derive(Debug)]
+pub struct EventId(AtomicUsize);
+
+impl EventId {
+	pub fn id(&self) -> usize {
+		self.0.load(std::sync::atomic::Ordering::Relaxed)
+	}
+}
+
+impl PartialEq<EventId> for EventId {
+	fn eq(&self, other: &Self) -> bool {
+		self.0
+			.load(std::sync::atomic::Ordering::Relaxed)
+			.eq(&other.0.load(std::sync::atomic::Ordering::Relaxed))
+	}
+}
+
+impl Eq for EventId {}
+
+impl Clone for EventId {
+	fn clone(&self) -> Self {
+		EventId(AtomicUsize::new(
+			self.0.load(std::sync::atomic::Ordering::Relaxed),
+		))
+	}
+}
+
+impl Default for EventId {
+	fn default() -> Self {
+		Self(AtomicUsize::new(0))
+	}
+}
 
 /// Something which can be used to filter or qualify an event.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -234,12 +265,25 @@ impl Event {
 		})
 	}
 
-	pub fn id(&mut self) -> EventId {
-		*self.id.get_or_insert({
-			let mut hasher = DefaultHasher::new();
-			self.hash(&mut hasher);
-			EventId(hasher.finish() as usize)
-		})
+	/// Accessing the `[EventId]` by any other means than this method is considered undefined behavior.
+	pub fn id(&self) -> EventId {
+		// We treat 0 like an uninitialized value.
+		// Once set, this value should be treated as immutable.
+		if self.id.id() == 0 {
+			let mut s = DefaultHasher::new();
+			self.hash(&mut s);
+			// Ensures this is never set to 0 on 'initialization'.
+			let id = (s.finish() as usize).saturating_add(1);
+
+			let _ = self.id.0.compare_exchange(
+				0,
+				id,
+				std::sync::atomic::Ordering::Relaxed,
+				std::sync::atomic::Ordering::Relaxed,
+			);
+		}
+
+		self.id.clone()
 	}
 }
 
