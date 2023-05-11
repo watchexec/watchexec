@@ -1,20 +1,17 @@
 use std::{
 	collections::HashMap,
 	fmt,
+	num::NonZeroUsize,
 	sync::{Arc, Weak},
 	time::{Duration, SystemTime, UNIX_EPOCH},
 };
-
-use once_cell::sync::OnceCell;
 use tokio::{
 	process::Command as TokioCommand,
 	sync::{Mutex, OwnedMutexGuard},
 };
 use watchexec_events::EventId;
 
-use crate::{
-	command::Command, event::Event, filter::Filterer, handler::HandlerLock, signal::process,
-};
+use crate::{command::Command, event::Event, filter::Filterer, handler::HandlerLock};
 
 use super::Outcome;
 
@@ -196,11 +193,11 @@ pub enum EventSet {
 }
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
-pub struct ProcessId(usize);
+pub struct ProcessId(std::num::NonZeroUsize);
 
 impl ProcessId {
 	pub fn id(&self) -> usize {
-		self.0
+		self.0.get()
 	}
 }
 
@@ -216,7 +213,11 @@ impl Default for ProcessId {
 		seed ^= seed << 25;
 		seed ^= seed >> 27;
 
-		Self(seed)
+		let non_zero = seed.saturating_add(1);
+
+		// Safety:
+		// 1. The Saturating add ensures the value of `non_zero` is at least 1.
+		unsafe { Self(NonZeroUsize::new_unchecked(non_zero)) }
 	}
 }
 
