@@ -3836,6 +3836,7 @@ dependencies = [
  "atomic-take",
  "clearscreen",
  "command-group",
+ "crossbeam",
  "futures",
  "ignore-files",
  "miette",

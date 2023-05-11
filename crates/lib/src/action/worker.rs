@@ -12,7 +12,7 @@ use tokio::{
 use tracing::{debug, info, trace};
 
 use crate::{
-	action::{EventSet, ProcessId, Resolution},
+	action::{EventSet, Outcome, ProcessId, Resolution},
 	error::{CriticalError, RuntimeError},
 	event::{Event, Priority},
 	handler::rte,
@@ -31,8 +31,18 @@ pub async fn worker(
 	events_tx: priority::Sender<Event, Priority>,
 	events: priority::Receiver<Event, Priority>,
 ) -> Result<(), CriticalError> {
-	let processes: HashMap<ProcessId, (ProcessHolder, Arc<AtomicUsize>)> = HashMap::new();
-	let outcome_gen = OutcomeWorker::newgen();
+	let mut processes: HashMap<ProcessId, ProcessData> = HashMap::new();
+
+	// Insert the base process from the initial `WorkingData`.
+	let base_process_id = ProcessId::default();
+	processes.insert(
+		base_process_id,
+		ProcessData {
+			working: working.clone(),
+			process: ProcessHolder::default(),
+			outcome_gen: OutcomeWorker::newgen(),
+		},
+	);
 
 	while let Some(mut set) = throttle_collect(
 		events.clone(),
@@ -62,7 +72,7 @@ pub async fn worker(
 			wrk.action_handler.clone()
 		};
 
-		let outcomes = action.get_outcomes().clone();
+		let outcomes = action.outcomes.clone();
 		let err = action_handler
 			.call(action)
 			.await
@@ -73,49 +83,85 @@ pub async fn worker(
 			continue;
 		}
 
-		for (pid, (resolution, set)) in outcomes.lock().await.iter() {
-			if let Some((process, outcome_gen)) = processes.get(pid) {
-				let Resolution::Apply(outcome) = resolution  else {
-					panic!("duplicate process id!");
-				};
+		for (pid, (resolution, set)) in outcomes.take().iter() {
+			let found = match resolution {
+				Resolution::Apply(outcome) => {
+					if let Some(data) = processes.get(pid) {
+						Some((outcome.clone(), data.clone()))
+					} else {
+						None
+					}
+				}
+				Resolution::Start(cmd) => {
+					assert!(processes.get(pid).is_none());
+					let mut wrk = working.borrow().clone();
+					wrk.commands = vec![cmd.clone()];
 
-				let outcome = outcome.resolve(process.is_running().await);
-				info!(?outcome, "outcome resolved");
-				let events = match set {
-					EventSet::All => events.clone(),
-					EventSet::None => Arc::from(vec![].into_boxed_slice()),
-					EventSet::Some(ids) => Arc::from(
-						events
-							.iter()
-							.filter(|event| ids.iter().any(|id| id.eq(&event.id())))
-							.cloned()
-							.collect::<Vec<_>>()
-							.into_boxed_slice(),
-					),
-				};
-				debug!(?events, "events selected");
+					let (_, wrk_rx) = watch::channel(wrk);
 
-				OutcomeWorker::spawn(
-					outcome,
-					events.clone(),
-					working.clone(),
-					process.clone(),
-					outcome_gen.clone(),
-					errors.clone(),
-					events_tx.clone(),
-				);
-				debug!("action process done");
-			} else {
-				let (_, _) =
-					processes.insert(*pid, (ProcessHolder::default(), OutcomeWorker::newgen())).;
-			}
+					let data = ProcessData {
+						working: wrk_rx,
+						process: ProcessHolder::default(),
+						outcome_gen: OutcomeWorker::newgen(),
+					};
+
+					processes.insert(*pid, data.clone());
+
+					Some((
+						Outcome::if_running(
+							Outcome::both(Outcome::Stop, Outcome::Start),
+							Outcome::Start,
+						),
+						data,
+					))
+				}
+			};
+
+			let Some((outcome, ProcessData { working, process, outcome_gen, })) = found else {
+				continue;
+			};
+
+			let outcome = outcome.clone().resolve(process.is_running().await);
+			debug!(?outcome, "outcome resolved");
+
+			let events = match set {
+				EventSet::All => events.clone(),
+				EventSet::None => Arc::from(vec![].into_boxed_slice()),
+				EventSet::Some(ids) => Arc::from(
+					events
+						.iter()
+						.filter(|&event| ids.iter().any(|id| id.eq(&event.id())))
+						.cloned()
+						.collect::<Vec<_>>()
+						.into_boxed_slice(),
+				),
+			};
+			debug!(?events, "events selected");
+
+			OutcomeWorker::spawn(
+				outcome,
+				events.clone(),
+				working.clone(),
+				process.clone(),
+				outcome_gen.clone(),
+				errors.clone(),
+				events_tx.clone(),
+			);
+			debug!("action process done");
 		}
 
-		debug!(?outcomes, "action handler finished");
+		debug!("action handler finished");
 	}
 
 	debug!("action worker finished");
 	Ok(())
+}
+
+#[derive(Clone)]
+struct ProcessData {
+	working: watch::Receiver<WorkingData>,
+	process: ProcessHolder,
+	outcome_gen: Arc<AtomicUsize>,
 }
 
 pub async fn throttle_collect(

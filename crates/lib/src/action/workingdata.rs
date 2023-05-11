@@ -1,3 +1,4 @@
+use crossbeam::atomic::AtomicCell;
 use std::{
 	collections::HashMap,
 	fmt,
@@ -117,12 +118,20 @@ impl Default for WorkingData {
 ///
 /// The [`Action::outcome()`] method is the only way to set the outcome of the action, and it _must_
 /// be called before the handler returns.
-#[derive(Debug)]
 pub struct Action {
 	/// The collected events which triggered the action.
-	events: Arc<[Event]>,
+	pub events: Arc<[Event]>,
 	processes: Arc<[ProcessId]>,
-	outcomes: Arc<Mutex<HashMap<ProcessId, (Resolution, EventSet)>>>,
+	pub(crate) outcomes: Arc<AtomicCell<HashMap<ProcessId, (Resolution, EventSet)>>>,
+}
+
+impl std::fmt::Debug for Action {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		f.debug_struct("Action")
+			.field("events", &self.events)
+			.field("processes", &self.processes)
+			.finish()
+	}
 }
 
 impl Action {
@@ -141,18 +150,17 @@ impl Action {
 	///
 	/// See the [`Action`] documentation about handlers to learn why it's a bad idea to clone or
 	/// send it elsewhere, and what kind of handlers you cannot use.
-	pub async fn outcome(mut self, outcome: Outcome) {
+	pub fn outcome(mut self, outcome: Outcome) {
 		for process in self.processes.iter().copied().collect::<Vec<_>>() {
 			self.on_process(process, outcome.clone(), EventSet::All);
 		}
 	}
 
 	/// Sets an [`Outcome`] for a single [`Process`].
-	pub async fn on_process(&mut self, process: ProcessId, outcome: Outcome, set: EventSet) {
-		self.outcomes
-			.lock()
-			.await
-			.insert(process, (Resolution::Apply(outcome), set));
+	pub fn on_process(&mut self, process: ProcessId, outcome: Outcome, set: EventSet) {
+		let mut processes = self.outcomes.take();
+		processes.insert(process, (Resolution::Apply(outcome), set));
+		self.outcomes.store(processes);
 	}
 
 	/// Returns a snapshot of the `ProcessId`s of the running `Process`es at creation of the
@@ -164,28 +172,24 @@ impl Action {
 	/// Starts a new [`Process`] with a provided [`Command`] and for a given [`EventSet`].
 	///
 	/// Returns the [`ProcessId`] of the newly created [`Process`].
-	pub async fn start_process(&mut self, cmd: Command, set: EventSet) -> ProcessId {
+	pub fn start_process(&mut self, cmd: Command, set: EventSet) -> ProcessId {
 		let process = ProcessId::default();
-		self.outcomes
-			.lock()
-			.await
-			.insert(process, (Resolution::Start(cmd), set));
+		let mut processes = self.outcomes.take();
+		processes.insert(process, (Resolution::Start(cmd), set));
+		self.outcomes.store(processes);
 
 		process
 	}
-
-	pub(crate) fn get_outcomes(&self) -> Arc<Mutex<HashMap<ProcessId, (Resolution, EventSet)>>> {
-		self.outcomes
-	}
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Resolution {
 	Start(Command),
 	Apply(Outcome),
 }
 
-#[derive(Debug)]
+/// Specifies whether to use all events, a subset, or none at all.
+#[derive(Debug, Clone)]
 pub enum EventSet {
 	All,
 	Some(Vec<EventId>),
