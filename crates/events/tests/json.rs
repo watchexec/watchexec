@@ -3,7 +3,7 @@ use std::num::{NonZeroI32, NonZeroI64};
 use snapbox::assert_eq_path;
 use watchexec_events::{
 	filekind::{CreateKind, FileEventKind as EventKind, ModifyKind, RemoveKind, RenameMode},
-	Event, FileType, Keyboard, ProcessEnd, Source, Tag,
+	Event, EventId, FileType, Keyboard, ProcessEnd, Source, Tag,
 };
 use watchexec_signals::Signal;
 
@@ -16,6 +16,7 @@ fn single() {
 	let single = Event {
 		tags: vec![Tag::Source(Source::Internal)],
 		metadata: Default::default(),
+		id: EventId::default(),
 	};
 
 	assert_eq_path(
@@ -38,6 +39,7 @@ fn array() {
 		Event {
 			tags: vec![Tag::Source(Source::Internal)],
 			metadata: Default::default(),
+			id: EventId::default(),
 		},
 		Event {
 			tags: vec![
@@ -45,10 +47,12 @@ fn array() {
 				Tag::Process(123),
 			],
 			metadata: Default::default(),
+			id: EventId::default(),
 		},
 		Event {
 			tags: vec![Tag::Keyboard(Keyboard::Eof)],
 			metadata: Default::default(),
+			id: EventId::default(),
 		},
 	];
 
@@ -69,6 +73,7 @@ fn metadata() {
 			("Lan".into(), vec!["Zhan".into()]),
 		]
 		.into(),
+		id: EventId::default(),
 	}];
 
 	assert_eq_path(
@@ -99,6 +104,7 @@ fn asymmetric() {
 					Tag::Unknown,
 				],
 				metadata: Default::default(),
+				id: EventId::default(),
 			},
 			Event {
 				tags: vec![
@@ -108,6 +114,7 @@ fn asymmetric() {
 					Tag::ProcessCompletion(None)
 				],
 				metadata: Default::default(),
+				id: EventId::default(),
 			},
 		]
 	);
@@ -123,6 +130,7 @@ fn sources() {
 				Tag::Source(Source::Mouse),
 			],
 			metadata: Default::default(),
+			id: EventId::default(),
 		},
 		Event {
 			tags: vec![
@@ -131,6 +139,7 @@ fn sources() {
 				Tag::Source(Source::Internal),
 			],
 			metadata: Default::default(),
+			id: EventId::default(),
 		},
 	];
 
@@ -152,6 +161,7 @@ fn signals() {
 				Tag::Signal(Signal::ForceStop),
 			],
 			metadata: Default::default(),
+			id: EventId::default(),
 		},
 		Event {
 			tags: vec![
@@ -159,6 +169,7 @@ fn signals() {
 				Tag::Signal(Signal::Custom(0)),
 			],
 			metadata: Default::default(),
+			id: EventId::default(),
 		},
 	];
 
@@ -180,6 +191,7 @@ fn completions() {
 				Tag::ProcessCompletion(Some(ProcessEnd::Continued)),
 			],
 			metadata: Default::default(),
+			id: EventId::default(),
 		},
 		Event {
 			tags: vec![
@@ -190,6 +202,7 @@ fn completions() {
 				Tag::ProcessCompletion(Some(ProcessEnd::Exception(NonZeroI32::new(78).unwrap()))),
 			],
 			metadata: Default::default(),
+			id: EventId::default(),
 		},
 	];
 
@@ -213,6 +226,7 @@ fn paths() {
 				Tag::FileEventKind(EventKind::Create(CreateKind::File)),
 			],
 			metadata: Default::default(),
+			id: EventId::default(),
 		},
 		Event {
 			tags: vec![
@@ -227,6 +241,7 @@ fn paths() {
 				Tag::FileEventKind(EventKind::Modify(ModifyKind::Name(RenameMode::Both))),
 			],
 			metadata: Default::default(),
+			id: EventId::default(),
 		},
 		Event {
 			tags: vec![
@@ -241,6 +256,7 @@ fn paths() {
 				Tag::FileEventKind(EventKind::Remove(RemoveKind::Any)),
 			],
 			metadata: Default::default(),
+			id: EventId::default(),
 		},
 	];
 

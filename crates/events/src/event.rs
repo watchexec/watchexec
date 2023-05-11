@@ -118,6 +118,7 @@ impl hash::Hash for Tag {
 			Self::Process(x) => x.hash(state),
 			Self::Signal(x) => x.hash(state),
 			Self::ProcessCompletion(x) => x.hash(state),
+			#[cfg(feature = "serde")]
 			Self::Unknown => self.discriminant_name().hash(state),
 		}
 	}

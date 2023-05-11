@@ -9,7 +9,7 @@ pub use watchexec_events::Keyboard;
 
 use crate::{
 	error::{CriticalError, KeyboardWatcherError, RuntimeError},
-	event::{Event, Priority, Source, Tag},
+	event::{Event, EventId, Priority, Source, Tag},
 };
 
 /// The configuration of the [keyboard][self] worker.
@@ -109,6 +109,7 @@ async fn send_event(
 	let event = Event {
 		tags,
 		metadata: Default::default(),
+		id: EventId::default(),
 	};
 
 	trace!(?event, "processed keyboard input into event");
