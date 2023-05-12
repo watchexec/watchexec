@@ -1,9 +1,7 @@
 use std::{
-	collections::{hash_map::DefaultHasher, HashMap},
+	collections::HashMap,
 	fmt,
-	hash::{self, Hash, Hasher},
 	path::{Path, PathBuf},
-	sync::atomic::AtomicUsize,
 };
 
 use watchexec_signals::Signal;
@@ -23,51 +21,6 @@ pub struct Event {
 
 	/// Arbitrary other information, cannot be used for filtering.
 	pub metadata: HashMap<String, Vec<String>>,
-
-	pub id: EventId,
-}
-
-impl hash::Hash for Event {
-	fn hash<H: hash::Hasher>(&self, state: &mut H) {
-		self.tags.hash(state);
-		self.metadata.iter().for_each(|(k, v)| {
-			k.hash(state);
-			v.hash(state);
-		})
-	}
-}
-
-#[derive(Debug)]
-pub struct EventId(AtomicUsize);
-
-impl EventId {
-	pub fn id(&self) -> usize {
-		self.0.load(std::sync::atomic::Ordering::Relaxed)
-	}
-}
-
-impl PartialEq<EventId> for EventId {
-	fn eq(&self, other: &Self) -> bool {
-		self.0
-			.load(std::sync::atomic::Ordering::Relaxed)
-			.eq(&other.0.load(std::sync::atomic::Ordering::Relaxed))
-	}
-}
-
-impl Eq for EventId {}
-
-impl Clone for EventId {
-	fn clone(&self) -> Self {
-		EventId(AtomicUsize::new(
-			self.0.load(std::sync::atomic::Ordering::Relaxed),
-		))
-	}
-}
-
-impl Default for EventId {
-	fn default() -> Self {
-		Self(AtomicUsize::new(0))
-	}
 }
 
 /// Something which can be used to filter or qualify an event.
@@ -108,22 +61,6 @@ pub enum Tag {
 	Unknown,
 }
 
-impl hash::Hash for Tag {
-	fn hash<H: hash::Hasher>(&self, state: &mut H) {
-		match self {
-			Self::Path { path, file_type: _ } => path.hash(state),
-			Self::FileEventKind(x) => x.hash(state),
-			Self::Source(x) => x.hash(state),
-			Self::Keyboard(x) => x.hash(state),
-			Self::Process(x) => x.hash(state),
-			Self::Signal(x) => x.hash(state),
-			Self::ProcessCompletion(x) => x.hash(state),
-			#[cfg(feature = "serde")]
-			Self::Unknown => self.discriminant_name().hash(state),
-		}
-	}
-}
-
 impl Tag {
 	/// The name of the variant.
 	#[must_use]
@@ -145,7 +82,7 @@ impl Tag {
 /// The general origin of the event.
 ///
 /// This is set by the event source. Note that not all of these are currently used.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "kebab-case"))]
 #[non_exhaustive]
@@ -192,7 +129,7 @@ impl fmt::Display for Source {
 /// delivered ahead of others. This is especially important when there is a large amount of events
 /// generated and relatively slow filtering, as events can become noticeably delayed, and may give
 /// the impression of stalling.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "kebab-case"))]
 pub enum Priority {
@@ -264,27 +201,6 @@ impl Event {
 			Tag::ProcessCompletion(s) => Some(*s),
 			_ => None,
 		})
-	}
-
-	/// Accessing the `[EventId]` by any other means than this method is considered undefined behavior.
-	pub fn id(&self) -> EventId {
-		// We treat 0 like an uninitialized value.
-		// Once set, this value should be treated as immutable.
-		if self.id.id() == 0 {
-			let mut s = DefaultHasher::new();
-			self.hash(&mut s);
-			// Ensures this is never set to 0 on 'initialization'.
-			let id = (s.finish() as usize).saturating_add(1);
-
-			let _ = self.id.0.compare_exchange(
-				0,
-				id,
-				std::sync::atomic::Ordering::Relaxed,
-				std::sync::atomic::Ordering::Relaxed,
-			);
-		}
-
-		self.id.clone()
 	}
 }
 

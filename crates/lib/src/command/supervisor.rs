@@ -10,7 +10,6 @@ use tokio::{
 	},
 };
 use tracing::{debug, debug_span, error, info, trace, Span};
-use watchexec_events::EventId;
 use watchexec_signals::Signal;
 
 use crate::{
@@ -164,7 +163,6 @@ impl Supervisor {
 									Tag::ProcessCompletion(status.map(Into::into)),
 								],
 								metadata: Default::default(),
-								id: EventId::default(),
 							};
 
 							debug!(?event, "creating synthetic process completion event");

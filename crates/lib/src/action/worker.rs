@@ -127,14 +127,7 @@ pub async fn worker(
 			let events = match set {
 				EventSet::All => events.clone(),
 				EventSet::None => Arc::from(vec![].into_boxed_slice()),
-				EventSet::Some(ids) => Arc::from(
-					events
-						.iter()
-						.filter(|&event| ids.iter().any(|id| id.eq(&event.id())))
-						.cloned()
-						.collect::<Vec<_>>()
-						.into_boxed_slice(),
-				),
+				EventSet::Some(selected) => Arc::from(selected.clone().into_boxed_slice()),
 			};
 			debug!(?events, "events selected");
 

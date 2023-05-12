@@ -7,7 +7,7 @@ use watchexec_signals::Signal;
 
 use crate::{
 	error::{CriticalError, RuntimeError},
-	event::{Event, EventId, Priority, Source, Tag},
+	event::{Event, Priority, Source, Tag},
 };
 
 /// Compatibility shim for the old `watchexec::signal::process` module.
@@ -151,7 +151,6 @@ async fn send_event(
 	let event = Event {
 		tags,
 		metadata: Default::default(),
-		id: EventId::default(),
 	};
 
 	trace!(?event, "processed signal into event");
