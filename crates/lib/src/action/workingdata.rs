@@ -1,4 +1,3 @@
-use crossbeam::atomic::AtomicCell;
 use std::{
 	collections::HashMap,
 	fmt,
@@ -8,9 +7,8 @@ use std::{
 };
 use tokio::{
 	process::Command as TokioCommand,
-	sync::{Mutex, OwnedMutexGuard},
+	sync::{Mutex, MutexGuard, OwnedMutexGuard},
 };
-use watchexec_events::EventId;
 
 use crate::{command::Command, event::Event, filter::Filterer, handler::HandlerLock};
 
@@ -122,7 +120,7 @@ pub struct Action {
 	/// The collected events which triggered the action.
 	pub events: Arc<[Event]>,
 	processes: Arc<[ProcessId]>,
-	pub(crate) outcomes: Arc<AtomicCell<HashMap<ProcessId, (Resolution, EventSet)>>>,
+	pub(crate) outcomes: Arc<Mutex<HashMap<ProcessId, (Resolution, EventSet)>>>,
 }
 
 impl std::fmt::Debug for Action {
@@ -150,17 +148,28 @@ impl Action {
 	///
 	/// See the [`Action`] documentation about handlers to learn why it's a bad idea to clone or
 	/// send it elsewhere, and what kind of handlers you cannot use.
-	pub fn outcome(mut self, outcome: Outcome) {
+	pub fn outcome(self, outcome: Outcome) {
+		let mut outcomes = tokio::task::block_in_place(|| self.outcomes.blocking_lock());
 		for process in self.processes.iter().copied().collect::<Vec<_>>() {
-			self.on_process(process, outcome.clone(), EventSet::All);
+			self.on_process_with_lock(&mut outcomes, process, outcome.clone(), EventSet::All);
 		}
 	}
 
 	/// Sets an [`Outcome`] for a single [`Process`].
-	pub fn on_process(&mut self, process: ProcessId, outcome: Outcome, set: EventSet) {
-		let mut processes = self.outcomes.take();
-		processes.insert(process, (Resolution::Apply(outcome), set));
-		self.outcomes.store(processes);
+	pub async fn on_process(&self, process: ProcessId, outcome: Outcome, set: EventSet) {
+		let mut guard = self.outcomes.lock().await;
+		self.on_process_with_lock(&mut guard, process, outcome, set);
+	}
+
+	// Used internally by on_process and outcome to insert into `outcomes`.
+	fn on_process_with_lock(
+		&self,
+		guard: &mut MutexGuard<'_, HashMap<ProcessId, (Resolution, EventSet)>>,
+		process: ProcessId,
+		outcome: Outcome,
+		set: EventSet,
+	) {
+		guard.insert(process, (Resolution::Apply(outcome), set));
 	}
 
 	/// Returns a snapshot of the `ProcessId`s of the running `Process`es at creation of the
@@ -172,11 +181,10 @@ impl Action {
 	/// Starts a new [`Process`] with a provided [`Command`] and for a given [`EventSet`].
 	///
 	/// Returns the [`ProcessId`] of the newly created [`Process`].
-	pub fn start_process(&mut self, cmd: Command, set: EventSet) -> ProcessId {
+	pub async fn start_process(&self, cmd: Command, set: EventSet) -> ProcessId {
 		let process = ProcessId::default();
-		let mut processes = self.outcomes.take();
+		let mut processes = self.outcomes.lock().await;
 		processes.insert(process, (Resolution::Start(cmd), set));
-		self.outcomes.store(processes);
 
 		process
 	}
@@ -192,7 +200,7 @@ pub enum Resolution {
 #[derive(Debug, Clone)]
 pub enum EventSet {
 	All,
-	Some(Vec<EventId>),
+	Some(Vec<Event>),
 	None,
 }
 

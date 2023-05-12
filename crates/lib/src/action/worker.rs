@@ -83,7 +83,7 @@ pub async fn worker(
 			continue;
 		}
 
-		for (pid, (resolution, set)) in outcomes.take().iter() {
+		for (pid, (resolution, event_set)) in outcomes.lock().await.iter() {
 			let found = match resolution {
 				Resolution::Apply(outcome) => {
 					if let Some(data) = processes.get(pid) {
@@ -124,7 +124,7 @@ pub async fn worker(
 			let outcome = outcome.clone().resolve(process.is_running().await);
 			debug!(?outcome, "outcome resolved");
 
-			let events = match set {
+			let events = match event_set {
 				EventSet::All => events.clone(),
 				EventSet::None => Arc::from(vec![].into_boxed_slice()),
 				EventSet::Some(selected) => Arc::from(selected.clone().into_boxed_slice()),
