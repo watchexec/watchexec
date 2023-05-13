@@ -1,7 +1,7 @@
 use std::{
 	collections::HashMap,
 	fmt,
-	num::NonZeroUsize,
+	num::NonZeroU64,
 	sync::{Arc, Weak},
 	time::{Duration, SystemTime, UNIX_EPOCH},
 };
@@ -181,6 +181,7 @@ impl Action {
 	/// Starts a new [`Process`] with a provided [`Command`] and for a given [`EventSet`].
 	///
 	/// Returns the [`ProcessId`] of the newly created [`Process`].
+	#[must_use]
 	pub async fn start_process(&self, cmd: Command, set: EventSet) -> ProcessId {
 		let process = ProcessId::default();
 		let mut processes = self.outcomes.lock().await;
@@ -205,10 +206,10 @@ pub enum EventSet {
 }
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
-pub struct ProcessId(std::num::NonZeroUsize);
+pub struct ProcessId(NonZeroU64);
 
 impl ProcessId {
-	pub fn id(&self) -> usize {
+	pub fn id(&self) -> u64 {
 		self.0.get()
 	}
 }
@@ -220,7 +221,7 @@ impl Default for ProcessId {
 		let mut seed = SystemTime::now()
 			.duration_since(UNIX_EPOCH)
 			.unwrap()
-			.as_millis() as usize;
+			.as_millis() as u64;
 		seed ^= seed >> 12;
 		seed ^= seed << 25;
 		seed ^= seed >> 27;
@@ -229,7 +230,7 @@ impl Default for ProcessId {
 
 		// Safety:
 		// 1. The Saturating add ensures the value of `non_zero` is at least 1.
-		unsafe { Self(NonZeroUsize::new_unchecked(non_zero)) }
+		unsafe { Self(NonZeroU64::new_unchecked(non_zero)) }
 	}
 }
 
@@ -248,6 +249,8 @@ pub struct PreSpawn {
 
 	/// The collected events which triggered the action this command issues from.
 	pub events: Arc<[Event]>,
+
+	process_id: ProcessId,
 
 	to_spawn_w: Weak<Mutex<TokioCommand>>,
 }
