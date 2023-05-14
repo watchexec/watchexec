@@ -105,13 +105,7 @@ pub async fn worker(
 
 					processes.insert(*pid, data.clone());
 
-					Some((
-						Outcome::if_running(
-							Outcome::both(Outcome::Stop, Outcome::Start),
-							Outcome::Start,
-						),
-						data,
-					))
+					Some((Outcome::Start, data))
 				}
 			};
 
