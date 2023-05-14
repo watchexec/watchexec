@@ -125,7 +125,7 @@ impl FilterProgs {
 									continue;
 								}
 								Err(err) => {
-									error!(?n, ?err, "filter program failed, so trying next");
+									error!(?n, error=%err, "filter program failed, so trying next");
 									continue;
 								}
 							}
