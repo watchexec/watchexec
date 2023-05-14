@@ -3874,7 +3874,7 @@ dependencies = [
 
 [[package]]
 name = "watchexec-cli"
-version = "1.22.2"
+version = "1.22.3"
 dependencies = [
  "argfile",
  "bosion",
