@@ -9,7 +9,7 @@ use tokio::{
 	sync::{mpsc, watch},
 	time::timeout,
 };
-use tracing::{debug, info, trace};
+use tracing::{debug, trace};
 
 use crate::{
 	action::{EventSet, Outcome, ProcessId, Resolution},
@@ -64,8 +64,6 @@ pub async fn worker(
 					.into_boxed_slice(),
 			),
 		);
-		info!(?action, "action constructed");
-
 		debug!("running action handler");
 		let action_handler = {
 			let wrk = working.borrow();
