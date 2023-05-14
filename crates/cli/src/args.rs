@@ -830,7 +830,10 @@ pub struct Args {
 	/// they stop after outputting the first value, so you'll want to use 'any' or 'all' when
 	/// iterating, otherwise only the first item will be processed, which can be quite confusing!
 	///
-	/// Examples:
+	/// Find user-contributed programs or submit your own useful ones at
+	/// <https://github.com/watchexec/watchexec/discussions/592>.
+	///
+	/// ## Examples:
 	///
 	/// Regexp ignore filter on paths:
 	///
