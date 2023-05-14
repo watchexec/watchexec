@@ -109,11 +109,11 @@ pub async fn worker(
 				}
 			};
 
-			let Some((outcome, ProcessData { working, process, outcome_gen, })) = found else {
+			let Some((outcome, ProcessData { working, process, outcome_gen })) = found else {
 				continue;
 			};
 
-			let outcome = outcome.clone().resolve(process.is_running().await);
+			let outcome = outcome.resolve(process.is_running().await);
 			debug!(?outcome, "outcome resolved");
 
 			let events = match event_set {
