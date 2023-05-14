@@ -1,6 +1,6 @@
 [package]
 name = "watchexec-filterer-ignore"
-version = "1.2.0"
+version = "1.2.1"
 
 authors = ["Félix Saparelli <felix@passcod.name>"]
 license = "Apache-2.0"

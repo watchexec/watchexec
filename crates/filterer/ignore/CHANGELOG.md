@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v1.2.1 (2023-05-14)
+
 - Use IO-free dunce::simplify to normalise paths on Windows.
 - Known regression: some filtering patterns misbehave slightly on Windows with paths outside the project root.
   - As filters were previously completely broken on Windows, this is still considered an improvement.
