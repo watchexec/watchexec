@@ -7,7 +7,6 @@ on:
       - opened
       - reopened
       - synchronize
-      - auto_merge_enabled
   push:
     branches:
       - main
@@ -125,6 +124,7 @@ jobs:
 
   # Dummy job to have a stable name for the "all tests pass" requirement
   tests-pass:
+    if: always() # always run even if dependencies fail
     name: Tests pass
     needs:
     - test
