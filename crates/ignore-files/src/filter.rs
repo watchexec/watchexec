@@ -108,7 +108,7 @@ impl IgnoreFilter {
 		for (file, content) in files_contents.into_iter().flatten() {
 			let _span = trace_span!("loading ignore file", ?file).entered();
 
-			let applies_in = get_applies_in_path(origin, Some(&file));
+			let applies_in = get_applies_in_path(origin, &file);
 
 			let parent_ignore = ignores_trie
 				.get_ancestor_value(&applies_in.display().to_string())
@@ -190,11 +190,11 @@ impl IgnoreFilter {
 	///
 	/// Does nothing silently otherwise.
 	pub async fn add_file(&mut self, file: &IgnoreFile) -> Result<(), Error> {
-		let applies_in = &get_applies_in_path(&self.origin, Some(file))
+		let applies_in = get_applies_in_path(&self.origin, file)
 			.display()
 			.to_string();
 
-		let Some(Ignore { builder: Some(ref mut builder), ..}) = self.ignores.get_mut(applies_in) else {
+		let Some(Ignore { builder: Some(ref mut builder), ..}) = self.ignores.get_mut(&applies_in) else {
 			return Ok(());
 		};
 
@@ -221,12 +221,12 @@ impl IgnoreFilter {
 				})?;
 		}
 
-		self.recompile(Some(file))?;
+		self.recompile(file)?;
 
 		Ok(())
 	}
 
-	fn recompile(&mut self, file: Option<&IgnoreFile>) -> Result<(), Error> {
+	fn recompile(&mut self, file: &IgnoreFile) -> Result<(), Error> {
 		let applies_in = get_applies_in_path(&self.origin, file)
 			.display()
 			.to_string();
@@ -240,7 +240,7 @@ impl IgnoreFilter {
 
 		trace!("recompiling globset");
 		let recompiled = builder.build().map_err(|err| Error::Glob {
-			file: file.map(|file| file.path.clone()),
+			file: Some(file.path.clone()),
 			err,
 		})?;
 
@@ -283,7 +283,11 @@ impl IgnoreFilter {
 				.map_err(|err| Error::Glob { file: None, err })?;
 		}
 
-		self.recompile(None)?;
+		self.recompile(&IgnoreFile {
+			path: "manual glob".into(),
+			applies_in: Some(applies_in.clone()),
+			applies_to: None,
+		})?;
 
 		Ok(())
 	}
@@ -338,17 +342,13 @@ impl IgnoreFilter {
 	}
 }
 
-fn get_applies_in_path(origin: &Path, ignore_file: Option<&IgnoreFile>) -> PathBuf {
+fn get_applies_in_path(origin: &Path, ignore_file: &IgnoreFile) -> PathBuf {
 	let root_path = PathBuf::from(prefix(origin));
-	if let Some(ignore_file) = ignore_file {
-		ignore_file
-			.applies_in
-			.as_ref()
-			.map(|p| PathBuf::from(dunce::simplified(p)))
-			.unwrap_or(root_path)
-	} else {
-		root_path
-	}
+	ignore_file
+		.applies_in
+		.as_ref()
+		.map(|p| PathBuf::from(dunce::simplified(p)))
+		.unwrap_or(root_path)
 }
 
 /// Gets the root component of a given path.
