@@ -2,25 +2,27 @@ use std::{
 	fs::{metadata, File, FileType, Metadata},
 	io::{BufReader, Read},
 	iter::once,
+	rc::Rc,
 	sync::Arc,
 	time::{SystemTime, UNIX_EPOCH},
 };
 
 use dashmap::DashMap;
-use jaq_core::{CustomFilter, Definitions, Error, Val};
+use indexmap::IndexMap;
+use jaq_core::{Definitions, Error, Native, Val};
 use miette::miette;
+use once_cell::sync::OnceCell;
 use serde_json::{json, Value};
 use tracing::{debug, error, info, trace, warn};
 
 pub fn load_std_defs() -> miette::Result<Definitions> {
 	debug!("loading jaq core library");
-	let mut defs = Definitions::core();
+	let mut defs = Definitions::default();
+	defs.insert_core();
 
 	debug!("loading jaq standard library");
 	let mut errs = Vec::new();
-	jaq_std::std()
-		.into_iter()
-		.for_each(|def| defs.insert(def, &mut errs));
+	defs.insert_defs(jaq_std::std(), &mut errs);
 
 	if !errs.is_empty() {
 		return Err(miette!("failed to load jaq standard library: {:?}", errs));
@@ -74,14 +76,86 @@ macro_rules! log_action {
 	};
 }
 
+#[derive(Clone, Debug)]
+enum SyncVal {
+	Null,
+	Bool(bool),
+	Int(isize),
+	Float(f64),
+	Num(Arc<str>),
+	Str(Arc<str>),
+	Arr(Arc<[SyncVal]>),
+	Obj(Arc<IndexMap<Arc<str>, SyncVal>>),
+}
+
+impl From<&Val> for SyncVal {
+	fn from(val: &Val) -> Self {
+		match val {
+			Val::Null => Self::Null,
+			Val::Bool(b) => Self::Bool(*b),
+			Val::Int(i) => Self::Int(*i),
+			Val::Float(f) => Self::Float(*f),
+			Val::Num(s) => Self::Num(s.to_string().into()),
+			Val::Str(s) => Self::Str(s.to_string().into()),
+			Val::Arr(a) => Self::Arr({
+				let mut arr = Vec::with_capacity(a.len());
+				for v in a.iter() {
+					arr.push(v.into());
+				}
+				arr.into()
+			}),
+			Val::Obj(m) => Self::Obj(Arc::new({
+				let mut map = IndexMap::new();
+				for (k, v) in m.iter() {
+					map.insert(k.to_string().into(), v.into());
+				}
+				map
+			})),
+		}
+	}
+}
+
+impl From<&SyncVal> for Val {
+	fn from(val: &SyncVal) -> Self {
+		match val {
+			SyncVal::Null => Self::Null,
+			SyncVal::Bool(b) => Self::Bool(*b),
+			SyncVal::Int(i) => Self::Int(*i),
+			SyncVal::Float(f) => Self::Float(*f),
+			SyncVal::Num(s) => Self::Num(s.to_string().into()),
+			SyncVal::Str(s) => Self::Str(s.to_string().into()),
+			SyncVal::Arr(a) => Self::Arr({
+				let mut arr = Vec::with_capacity(a.len());
+				for v in a.iter() {
+					arr.push(v.into());
+				}
+				arr.into()
+			}),
+			SyncVal::Obj(m) => Self::Obj(Rc::new({
+				let mut map: IndexMap<_, _, ahash::RandomState> = Default::default();
+				for (k, v) in m.iter() {
+					map.insert(k.to_string().into(), v.into());
+				}
+				map
+			})),
+		}
+	}
+}
+
+type KvStore = Arc<DashMap<String, SyncVal>>;
+fn kv_store() -> KvStore {
+	static KV_STORE: OnceCell<KvStore> = OnceCell::new();
+	KV_STORE.get_or_init(|| KvStore::default()).clone()
+}
+
 pub fn load_watchexec_defs(defs: &mut Definitions) -> miette::Result<()> {
 	debug!("loading jaq watchexec library");
 
 	trace!("jaq: add log filter");
 	defs.insert_custom(
 		"log",
-		CustomFilter::with_update(
-			1,
+		1,
+		Native::with_update(
 			|args, (ctx, val)| {
 				let level = match string_arg!(args, 0, ctx, val) {
 					Ok(v) => v,
@@ -110,8 +184,8 @@ pub fn load_watchexec_defs(defs: &mut Definitions) -> miette::Result<()> {
 	trace!("jaq: add printout filter");
 	defs.insert_custom(
 		"printout",
-		CustomFilter::with_update(
-			0,
+		0,
+		Native::with_update(
 			|_, (_, val)| {
 				println!("{}", val);
 				Box::new(once(Ok(val)))
@@ -126,8 +200,8 @@ pub fn load_watchexec_defs(defs: &mut Definitions) -> miette::Result<()> {
 	trace!("jaq: add printerr filter");
 	defs.insert_custom(
 		"printerr",
-		CustomFilter::with_update(
-			0,
+		0,
+		Native::with_update(
 			|_, (_, val)| {
 				eprintln!("{}", val);
 				Box::new(once(Ok(val)))
@@ -139,14 +213,13 @@ pub fn load_watchexec_defs(defs: &mut Definitions) -> miette::Result<()> {
 		),
 	);
 
-	let kv: Arc<DashMap<String, Val>> = Arc::new(DashMap::new());
-
 	trace!("jaq: add kv_clear filter");
 	defs.insert_custom(
 		"kv_clear",
-		CustomFilter::new(0, {
-			let kv = kv.clone();
+		0,
+		Native::new({
 			move |_, (_, val)| {
+				let kv = kv_store();
 				kv.clear();
 				Box::new(once(Ok(val)))
 			}
@@ -156,15 +229,16 @@ pub fn load_watchexec_defs(defs: &mut Definitions) -> miette::Result<()> {
 	trace!("jaq: add kv_store filter");
 	defs.insert_custom(
 		"kv_store",
-		CustomFilter::new(1, {
-			let kv = kv.clone();
+		1,
+		Native::new({
 			move |args, (ctx, val)| {
+				let kv = kv_store();
 				let key = match string_arg!(args, 0, ctx, val) {
 					Ok(v) => v,
 					Err(e) => return_err!(Err(e)),
 				};
 
-				kv.insert(key, val.clone());
+				kv.insert(key, (&val).into());
 				Box::new(once(Ok(val)))
 			}
 		}),
@@ -173,8 +247,10 @@ pub fn load_watchexec_defs(defs: &mut Definitions) -> miette::Result<()> {
 	trace!("jaq: add kv_fetch filter");
 	defs.insert_custom(
 		"kv_fetch",
-		CustomFilter::new(1, {
+		1,
+		Native::new({
 			move |args, (ctx, val)| {
+				let kv = kv_store();
 				let key = match string_arg!(args, 0, ctx, val) {
 					Ok(v) => v,
 					Err(e) => return_err!(Err(e)),
@@ -182,7 +258,7 @@ pub fn load_watchexec_defs(defs: &mut Definitions) -> miette::Result<()> {
 
 				Box::new(once(Ok(kv
 					.get(&key)
-					.map(|val| val.clone())
+					.map(|val| val.value().into())
 					.unwrap_or(Val::Null))))
 			}
 		}),
@@ -191,7 +267,8 @@ pub fn load_watchexec_defs(defs: &mut Definitions) -> miette::Result<()> {
 	trace!("jaq: add file_read filter");
 	defs.insert_custom(
 		"file_read",
-		CustomFilter::new(1, {
+		1,
+		Native::new({
 			move |args, (ctx, val)| {
 				let path = match &val {
 					Val::Str(v) => v.to_string(),
@@ -231,7 +308,8 @@ pub fn load_watchexec_defs(defs: &mut Definitions) -> miette::Result<()> {
 	trace!("jaq: add file_meta filter");
 	defs.insert_custom(
 		"file_meta",
-		CustomFilter::new(0, {
+		0,
+		Native::new({
 			move |_, (_, val)| {
 				let path = match &val {
 					Val::Str(v) => v.to_string(),
@@ -252,7 +330,8 @@ pub fn load_watchexec_defs(defs: &mut Definitions) -> miette::Result<()> {
 	trace!("jaq: add file_size filter");
 	defs.insert_custom(
 		"file_size",
-		CustomFilter::new(0, {
+		0,
+		Native::new({
 			move |_, (_, val)| {
 				let path = match &val {
 					Val::Str(v) => v.to_string(),
@@ -273,7 +352,8 @@ pub fn load_watchexec_defs(defs: &mut Definitions) -> miette::Result<()> {
 	trace!("jaq: add hash filter");
 	defs.insert_custom(
 		"hash",
-		CustomFilter::new(0, {
+		0,
+		Native::new({
 			move |_, (_, val)| {
 				let string = match &val {
 					Val::Str(v) => v.to_string(),
@@ -290,7 +370,8 @@ pub fn load_watchexec_defs(defs: &mut Definitions) -> miette::Result<()> {
 	trace!("jaq: add file_hash filter");
 	defs.insert_custom(
 		"file_hash",
-		CustomFilter::new(0, {
+		0,
+		Native::new({
 			move |_, (_, val)| {
 				let path = match &val {
 					Val::Str(v) => v.to_string(),

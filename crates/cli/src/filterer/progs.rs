@@ -89,7 +89,6 @@ impl FilterProgs {
 						let mut errs = Vec::new();
 						let filter = defs.clone().finish(
 							(Vec::new(), (filter, 0..0)),
-							Vec::new(),
 							&mut errs,
 						);
 						if !errs.is_empty() {
@@ -163,13 +162,13 @@ fn load_user_progs(all_defs: &mut Definitions, progs: &[String]) -> miette::Resu
 		if let Some((defs, filter)) = main {
 			let name = format!("__watchexec_filter_{}", n);
 			trace!(?filter, ?name, "loading filter program into global as def");
-			all_defs.insert(
-				Def {
+			all_defs.insert_defs(
+				vec![Def {
 					name,
 					args: Vec::new(),
 					body: filter,
 					defs,
-				},
+				}],
 				&mut errs,
 			);
 		}
