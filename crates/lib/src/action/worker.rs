@@ -12,7 +12,7 @@ use tokio::{
 use tracing::{debug, trace};
 
 use crate::{
-	action::{EventSet, Outcome, ProcessId, Resolution},
+	action::{EventSet, Outcome, Resolution, SupervisorId},
 	error::{CriticalError, RuntimeError},
 	event::{Event, Priority},
 	handler::rte,
@@ -31,10 +31,10 @@ pub async fn worker(
 	events_tx: priority::Sender<Event, Priority>,
 	events: priority::Receiver<Event, Priority>,
 ) -> Result<(), CriticalError> {
-	let mut processes: HashMap<ProcessId, ProcessData> = HashMap::new();
+	let mut processes: HashMap<SupervisorId, ProcessData> = HashMap::new();
 
 	// Insert the base process from the initial `WorkingData`.
-	let base_process_id = ProcessId::default();
+	let base_process_id = SupervisorId::default();
 	processes.insert(
 		base_process_id,
 		ProcessData {
@@ -122,12 +122,12 @@ pub async fn worker(
 				EventSet::Some(selected) => Arc::from(selected.clone().into_boxed_slice()),
 			};
 			debug!(?events, "events selected");
-
 			OutcomeWorker::spawn(
 				outcome,
 				events.clone(),
 				working.clone(),
 				process.clone(),
+				*pid,
 				outcome_gen.clone(),
 				errors.clone(),
 				events_tx.clone(),

@@ -17,18 +17,19 @@ use tokio::{
 use tracing::{debug, error, info, trace, warn};
 
 use crate::{
-	command::Supervisor,
+	command::SupervisorBuilder,
 	error::RuntimeError,
 	event::{Event, Priority},
 };
 
-use super::{process_holder::ProcessHolder, Outcome, WorkingData};
+use super::{process_holder::ProcessHolder, Outcome, SupervisorId, WorkingData};
 
 #[derive(Clone)]
 pub struct OutcomeWorker {
 	events: Arc<[Event]>,
 	working: Receiver<WorkingData>,
 	process: ProcessHolder,
+	process_id: SupervisorId,
 	gen: usize,
 	gencheck: Arc<AtomicUsize>,
 	errors_c: mpsc::Sender<RuntimeError>,
@@ -45,6 +46,7 @@ impl OutcomeWorker {
 		events: Arc<[Event]>,
 		working: Receiver<WorkingData>,
 		process: ProcessHolder,
+		process_id: SupervisorId,
 		gencheck: Arc<AtomicUsize>,
 		errors_c: mpsc::Sender<RuntimeError>,
 		events_c: priority::Sender<Event, Priority>,
@@ -53,6 +55,7 @@ impl OutcomeWorker {
 		let this = Self {
 			events,
 			working,
+			process_id,
 			process,
 			gen,
 			gencheck,
@@ -134,15 +137,17 @@ impl OutcomeWorker {
 					warn!("tried to start commands without anything to run");
 				} else {
 					trace!("spawning supervisor for command");
-					let sup = Supervisor::spawn(
-						self.errors_c.clone(),
-						self.events_c.clone(),
-						cmds,
+					let sup = SupervisorBuilder {
+						errors: self.errors_c.clone(),
+						events: self.events_c.clone(),
+						commands: cmds,
+						process_id: self.process_id,
 						grouped,
-						self.events.clone(),
+						actioned_events: self.events.clone(),
 						pre_spawn_handler,
 						post_spawn_handler,
-					)?;
+					}
+					.build()?;
 					notry!(self.process.replace(sup));
 				}
 			}

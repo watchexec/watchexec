@@ -11,7 +11,7 @@ use crate::error::RuntimeError;
 pub use process::Process;
 
 #[doc(inline)]
-pub use supervisor::Supervisor;
+pub use supervisor::{Supervisor, SupervisorBuilder};
 
 mod process;
 mod supervisor;

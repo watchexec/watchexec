@@ -119,8 +119,8 @@ impl Default for WorkingData {
 pub struct Action {
 	/// The collected events which triggered the action.
 	pub events: Arc<[Event]>,
-	processes: Arc<[ProcessId]>,
-	pub(crate) outcomes: Arc<Mutex<HashMap<ProcessId, (Resolution, EventSet)>>>,
+	processes: Arc<[SupervisorId]>,
+	pub(crate) outcomes: Arc<Mutex<HashMap<SupervisorId, (Resolution, EventSet)>>>,
 }
 
 impl std::fmt::Debug for Action {
@@ -133,7 +133,7 @@ impl std::fmt::Debug for Action {
 }
 
 impl Action {
-	pub fn new(events: Arc<[Event]>, processes: Arc<[ProcessId]>) -> Self {
+	pub fn new(events: Arc<[Event]>, processes: Arc<[SupervisorId]>) -> Self {
 		Self {
 			events,
 			processes,
@@ -156,7 +156,7 @@ impl Action {
 	}
 
 	/// Sets an [`Outcome`] for a single [`Process`].
-	pub async fn on_process(&self, process: ProcessId, outcome: Outcome, set: EventSet) {
+	pub async fn on_process(&self, process: SupervisorId, outcome: Outcome, set: EventSet) {
 		let mut guard = self.outcomes.lock().await;
 		self.on_process_with_lock(&mut guard, process, outcome, set);
 	}
@@ -164,26 +164,26 @@ impl Action {
 	// Used internally by on_process and outcome to insert into `outcomes`.
 	fn on_process_with_lock(
 		&self,
-		guard: &mut MutexGuard<'_, HashMap<ProcessId, (Resolution, EventSet)>>,
-		process: ProcessId,
+		guard: &mut MutexGuard<'_, HashMap<SupervisorId, (Resolution, EventSet)>>,
+		process: SupervisorId,
 		outcome: Outcome,
 		set: EventSet,
 	) {
 		guard.insert(process, (Resolution::Apply(outcome), set));
 	}
 
-	/// Returns a snapshot of the `ProcessId`s of the running `Process`es at creation of the
+	/// Returns a snapshot of the `SupervisorId`s of the running `Process`es at creation of the
 	/// [`Action`].
-	pub fn current_processes(&self) -> &[ProcessId] {
+	pub fn current_processes(&self) -> &[SupervisorId] {
 		&self.processes
 	}
 
 	/// Starts a new [`Process`] with a provided [`Command`] and for a given [`EventSet`].
 	///
-	/// Returns the [`ProcessId`] of the newly created [`Process`].
+	/// Returns the [`SupervisorId`] of the newly created [`Process`].
 	#[must_use]
-	pub async fn start_process(&self, cmd: Command, set: EventSet) -> ProcessId {
-		let process = ProcessId::default();
+	pub async fn start_process(&self, cmd: Command, set: EventSet) -> SupervisorId {
+		let process = SupervisorId::default();
 		let mut processes = self.outcomes.lock().await;
 		processes.insert(process, (Resolution::Start(cmd), set));
 
@@ -191,30 +191,38 @@ impl Action {
 	}
 }
 
+/// Indicates how a `Process` should be resolved.
 #[derive(Debug, Clone)]
 pub enum Resolution {
+	/// Used to start a new `Process` with a `Command`.
 	Start(Command),
+	/// Apply an `Outcome` to an existing `Process`.
 	Apply(Outcome),
 }
 
-/// Specifies whether to use all events, a subset, or none at all.
+/// Specifies whether to use all `Event`s, a subset, or none at all.
 #[derive(Debug, Clone)]
 pub enum EventSet {
+	/// All `Event`s associated with an action.
 	All,
+	/// A select subset of `Event`s
 	Some(Vec<Event>),
+	/// No `Event`s at all.
 	None,
 }
 
+/// Used to identify command registered with a Supervisor.
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
-pub struct ProcessId(NonZeroU64);
+pub struct SupervisorId(NonZeroU64);
 
-impl ProcessId {
+impl SupervisorId {
+	/// Returns the id of the SupervisorId. This is guaranteed to not be 0.
 	pub fn id(&self) -> u64 {
 		self.0.get()
 	}
 }
 
-impl Default for ProcessId {
+impl Default for SupervisorId {
 	fn default() -> Self {
 		// generates pseudo-random u64 using [xorshift*](https://en.wikipedia.org/wiki/Xorshift#xorshift*)
 
@@ -250,7 +258,7 @@ pub struct PreSpawn {
 	/// The collected events which triggered the action this command issues from.
 	pub events: Arc<[Event]>,
 
-	process_id: ProcessId,
+	process_id: SupervisorId,
 
 	to_spawn_w: Weak<Mutex<TokioCommand>>,
 }
@@ -260,12 +268,14 @@ impl PreSpawn {
 		command: Command,
 		to_spawn: TokioCommand,
 		events: Arc<[Event]>,
+		process_id: SupervisorId,
 	) -> (Self, Arc<Mutex<TokioCommand>>) {
 		let arc = Arc::new(Mutex::new(to_spawn));
 		(
 			Self {
 				command,
 				events,
+				process_id,
 				to_spawn_w: Arc::downgrade(&arc),
 			},
 			arc.clone(),
@@ -285,6 +295,10 @@ impl PreSpawn {
 		} else {
 			None
 		}
+	}
+
+	pub fn process(&self) -> SupervisorId {
+		self.process_id
 	}
 }
 

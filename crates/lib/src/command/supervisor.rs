@@ -13,7 +13,7 @@ use tracing::{debug, debug_span, error, info, trace, Span};
 use watchexec_signals::Signal;
 
 use crate::{
-	action::{PostSpawn, PreSpawn},
+	action::{PostSpawn, PreSpawn, SupervisorId},
 	command::Command,
 	error::RuntimeError,
 	event::{Event, Priority, Source, Tag},
@@ -39,12 +39,72 @@ pub struct Supervisor {
 	ongoing: watch::Receiver<bool>,
 }
 
+#[non_exhaustive]
+pub struct SupervisorBuilder {
+	pub errors: Sender<RuntimeError>,
+	pub events: priority::Sender<Event, Priority>,
+	pub commands: Vec<Command>,
+	pub process_id: SupervisorId,
+	pub grouped: bool,
+	pub actioned_events: Arc<[Event]>,
+	pub pre_spawn_handler: HandlerLock<PreSpawn>,
+	pub post_spawn_handler: HandlerLock<PostSpawn>,
+}
+
+impl SupervisorBuilder {
+	pub fn build(self) -> Result<Supervisor, RuntimeError> {
+		let SupervisorBuilder {
+			errors,
+			events,
+			commands,
+			process_id,
+			grouped,
+			actioned_events,
+			pre_spawn_handler,
+			post_spawn_handler,
+		} = self;
+
+		Supervisor::spawn_with_id(
+			errors,
+			events,
+			commands,
+			process_id,
+			grouped,
+			actioned_events,
+			pre_spawn_handler,
+			post_spawn_handler,
+		)
+	}
+}
+
 impl Supervisor {
-	/// Spawns the command set, the supervision task, and returns a new control object.
+	/// Spawns the command set, the supervision task with a random SupervisorId and returns a new control object.
 	pub fn spawn(
 		errors: Sender<RuntimeError>,
 		events: priority::Sender<Event, Priority>,
+		commands: Vec<Command>,
+		grouped: bool,
+		actioned_events: Arc<[Event]>,
+		pre_spawn_handler: HandlerLock<PreSpawn>,
+		post_spawn_handler: HandlerLock<PostSpawn>,
+	) -> Result<Self, RuntimeError> {
+		Self::spawn_with_id(
+			errors,
+			events,
+			commands,
+			SupervisorId::default(),
+			grouped,
+			actioned_events,
+			pre_spawn_handler,
+			post_spawn_handler,
+		)
+	}
+
+	fn spawn_with_id(
+		errors: Sender<RuntimeError>,
+		events: priority::Sender<Event, Priority>,
 		mut commands: Vec<Command>,
+		process_id: SupervisorId,
 		grouped: bool,
 		actioned_events: Arc<[Event]>,
 		pre_spawn_handler: HandlerLock<PreSpawn>,
@@ -68,6 +128,7 @@ impl Supervisor {
 				let (mut process, pid) = match spawn_process(
 					span.clone(),
 					next,
+					process_id,
 					grouped,
 					actioned_events.clone(),
 					pre_spawn_handler.clone(),
@@ -272,6 +333,7 @@ impl Supervisor {
 async fn spawn_process(
 	span: Span,
 	command: Command,
+	process_id: SupervisorId,
 	grouped: bool,
 	actioned_events: Arc<[Event]>,
 	pre_spawn_handler: HandlerLock<PreSpawn>,
@@ -306,6 +368,7 @@ async fn spawn_process(
 			command.clone(),
 			spawnable,
 			actioned_events.clone(),
+			process_id,
 		))
 	})?;
 
