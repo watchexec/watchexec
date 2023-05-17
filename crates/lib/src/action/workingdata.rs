@@ -258,7 +258,8 @@ pub struct PreSpawn {
 	/// The collected events which triggered the action this command issues from.
 	pub events: Arc<[Event]>,
 
-	process_id: SupervisorId,
+	/// The
+	supervisor_id: SupervisorId,
 
 	to_spawn_w: Weak<Mutex<TokioCommand>>,
 }
@@ -268,14 +269,14 @@ impl PreSpawn {
 		command: Command,
 		to_spawn: TokioCommand,
 		events: Arc<[Event]>,
-		process_id: SupervisorId,
+		supervisor_id: SupervisorId,
 	) -> (Self, Arc<Mutex<TokioCommand>>) {
 		let arc = Arc::new(Mutex::new(to_spawn));
 		(
 			Self {
 				command,
 				events,
-				process_id,
+				supervisor_id,
 				to_spawn_w: Arc::downgrade(&arc),
 			},
 			arc.clone(),
@@ -297,8 +298,9 @@ impl PreSpawn {
 		}
 	}
 
+	/// Returns the `SupervisorId` associated with the `Supervisor` and `Command`.
 	pub fn process(&self) -> SupervisorId {
-		self.process_id
+		self.supervisor_id
 	}
 }
 
@@ -321,4 +323,14 @@ pub struct PostSpawn {
 
 	/// Whether the command was run in a process group.
 	pub grouped: bool,
+
+	/// The `SupervisorId` associated with the process' `Supervisor`.
+	pub(crate) supervisor_id: SupervisorId,
+}
+
+impl PostSpawn {
+	/// Returns the `SupervisorId` associated with the `Supervisor` and the `Command` that was run.
+	pub fn process(&self) -> SupervisorId {
+		self.supervisor_id
+	}
 }

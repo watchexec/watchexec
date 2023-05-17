@@ -44,7 +44,7 @@ pub struct SupervisorBuilder {
 	pub errors: Sender<RuntimeError>,
 	pub events: priority::Sender<Event, Priority>,
 	pub commands: Vec<Command>,
-	pub process_id: SupervisorId,
+	pub supervisor_id: SupervisorId,
 	pub grouped: bool,
 	pub actioned_events: Arc<[Event]>,
 	pub pre_spawn_handler: HandlerLock<PreSpawn>,
@@ -57,7 +57,7 @@ impl SupervisorBuilder {
 			errors,
 			events,
 			commands,
-			process_id,
+			supervisor_id,
 			grouped,
 			actioned_events,
 			pre_spawn_handler,
@@ -68,7 +68,7 @@ impl SupervisorBuilder {
 			errors,
 			events,
 			commands,
-			process_id,
+			supervisor_id,
 			grouped,
 			actioned_events,
 			pre_spawn_handler,
@@ -104,7 +104,7 @@ impl Supervisor {
 		errors: Sender<RuntimeError>,
 		events: priority::Sender<Event, Priority>,
 		mut commands: Vec<Command>,
-		process_id: SupervisorId,
+		supervisor_id: SupervisorId,
 		grouped: bool,
 		actioned_events: Arc<[Event]>,
 		pre_spawn_handler: HandlerLock<PreSpawn>,
@@ -128,7 +128,7 @@ impl Supervisor {
 				let (mut process, pid) = match spawn_process(
 					span.clone(),
 					next,
-					process_id,
+					supervisor_id,
 					grouped,
 					actioned_events.clone(),
 					pre_spawn_handler.clone(),
@@ -333,7 +333,7 @@ impl Supervisor {
 async fn spawn_process(
 	span: Span,
 	command: Command,
-	process_id: SupervisorId,
+	supervisor_id: SupervisorId,
 	grouped: bool,
 	actioned_events: Arc<[Event]>,
 	pre_spawn_handler: HandlerLock<PreSpawn>,
@@ -368,7 +368,7 @@ async fn spawn_process(
 			command.clone(),
 			spawnable,
 			actioned_events.clone(),
-			process_id,
+			supervisor_id,
 		))
 	})?;
 
@@ -418,6 +418,7 @@ async fn spawn_process(
 				events: actioned_events.clone(),
 				id,
 				grouped,
+				supervisor_id,
 			},
 		))
 	})?;
