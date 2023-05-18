@@ -19,7 +19,7 @@ use nix::sys::signal::Signal as NixSignal;
 ///
 /// On Unix, there are several "first-class" signals which have their own variants, and a generic
 /// [`Custom`][Signal::Custom] variant which can be used to send arbitrary signals.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(

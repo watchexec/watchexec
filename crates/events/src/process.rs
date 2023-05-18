@@ -19,7 +19,7 @@ use watchexec_signals::Signal;
 /// On Unix and Windows, the exit status is a 32-bit integer; on Fuchsia it's a 64-bit integer. For
 /// portability, we use `i64`. On all platforms, the "success" value is zero, so we special-case
 /// that as a variant and use `NonZeroI*` to limit the other values.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(tag = "disposition", content = "code"))]
 pub enum ProcessEnd {
