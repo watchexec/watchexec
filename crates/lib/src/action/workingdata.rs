@@ -133,7 +133,7 @@ impl std::fmt::Debug for Action {
 }
 
 impl Action {
-	pub fn new(events: Arc<[Event]>, processes: Arc<[SupervisorId]>) -> Self {
+	pub(crate) fn new(events: Arc<[Event]>, processes: Arc<[SupervisorId]>) -> Self {
 		Self {
 			events,
 			processes,
