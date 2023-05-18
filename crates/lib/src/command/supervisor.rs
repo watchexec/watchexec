@@ -341,6 +341,7 @@ async fn spawn_process(
 ) -> Result<(Process, u32), RuntimeError> {
 	let (pre_spawn, spawnable) = span.in_scope::<_, Result<_, RuntimeError>>(|| {
 		debug!(%grouped, ?command, "preparing command");
+		#[cfg_attr(windows, allow(unused_mut))]
 		let mut spawnable = command.to_spawnable()?;
 
 		// Required from Rust 1.66:

@@ -35,6 +35,7 @@ impl Filterer for IgnoreFilterer {
 		let mut pass = true;
 
 		for (path, file_type) in event.paths() {
+			let path = dunce::simplified(path);
 			let _span = trace_span!("checking_against_compiled", ?path, ?file_type).entered();
 			let is_dir = file_type.map_or(false, |t| matches!(t, FileType::Dir));
 

@@ -1,6 +1,6 @@
 [package]
 name = "watchexec-cli"
-version = "1.22.2"
+version = "1.22.3"
 
 authors = ["Félix Saparelli <felix@passcod.name>", "Matt Green <mattgreenrocks@gmail.com>"]
 license = "Apache-2.0"
@@ -48,7 +48,7 @@ version = "4.1.8"
 features = ["cargo", "derive", "env", "wrap_help"]
 
 [dependencies.ignore-files]
-version = "1.2.0"
+version = "1.3.0"
 path = "../ignore-files"
 
 [dependencies.miette]
@@ -107,7 +107,7 @@ shadow-rs = "0.21.0"
 shadow-rs = "0.21.0"
 
 [build-dependencies]
-embed-resource = "1.6.1"
+embed-resource = "2.1.1"
 
 [build-dependencies.bosion]
 version = "1.0.0"
