@@ -17,12 +17,12 @@ use tokio::{
 use tracing::{debug, error, info, trace, warn};
 
 use crate::{
-	command::SupervisorBuilder,
+	command::{SupervisorBuilder, SupervisorId},
 	error::RuntimeError,
 	event::{Event, Priority},
 };
 
-use super::{process_holder::ProcessHolder, Outcome, SupervisorId, WorkingData};
+use super::{process_holder::ProcessHolder, Outcome, WorkingData};
 
 #[derive(Clone)]
 pub struct OutcomeWorker {
@@ -41,6 +41,7 @@ impl OutcomeWorker {
 		Default::default()
 	}
 
+	#[allow(clippy::too_many_arguments)]
 	pub fn spawn(
 		outcome: Outcome,
 		events: Arc<[Event]>,

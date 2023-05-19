@@ -1,4 +1,8 @@
-use std::sync::Arc;
+use std::{
+	num::NonZeroU64,
+	sync::Arc,
+	time::{SystemTime, UNIX_EPOCH},
+};
 
 use async_priority_channel as priority;
 use command_group::AsyncCommandGroup;
@@ -13,7 +17,7 @@ use tracing::{debug, debug_span, error, info, trace, Span};
 use watchexec_signals::Signal;
 
 use crate::{
-	action::{PostSpawn, PreSpawn, SupervisorId},
+	action::{PostSpawn, PreSpawn},
 	command::Command,
 	error::RuntimeError,
 	event::{Event, Priority, Source, Tag},
@@ -41,7 +45,9 @@ pub struct Supervisor {
 
 #[non_exhaustive]
 pub struct SupervisorBuilder {
+	/// The error channel.
 	pub errors: Sender<RuntimeError>,
+	///
 	pub events: priority::Sender<Event, Priority>,
 	pub commands: Vec<Command>,
 	pub supervisor_id: SupervisorId,
@@ -53,7 +59,7 @@ pub struct SupervisorBuilder {
 
 impl SupervisorBuilder {
 	pub fn build(self) -> Result<Supervisor, RuntimeError> {
-		let SupervisorBuilder {
+		let Self {
 			errors,
 			events,
 			commands,
@@ -100,6 +106,7 @@ impl Supervisor {
 		)
 	}
 
+	#[allow(clippy::too_many_arguments)]
 	fn spawn_with_id(
 		errors: Sender<RuntimeError>,
 		events: priority::Sender<Event, Priority>,
@@ -430,4 +437,36 @@ async fn spawn_process(
 		.map_err(|e| rte("action post-spawn", e.as_ref()))?;
 
 	Ok((proc, id))
+}
+
+/// Used to identify command registered with a Supervisor.
+#[must_use]
+#[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
+pub struct SupervisorId(NonZeroU64);
+
+impl SupervisorId {
+	/// Returns the id of the SupervisorId. This is guaranteed to not be 0.
+	pub fn id(&self) -> u64 {
+		self.0.get()
+	}
+}
+
+impl Default for SupervisorId {
+	fn default() -> Self {
+		// generates pseudo-random u64 using [xorshift*](https://en.wikipedia.org/wiki/Xorshift#xorshift*)
+
+		let mut seed = SystemTime::now()
+			.duration_since(UNIX_EPOCH)
+			.unwrap()
+			.as_millis() as u64;
+		seed ^= seed >> 12;
+		seed ^= seed << 25;
+		seed ^= seed >> 27;
+
+		let non_zero = seed.saturating_add(1);
+
+		// Safety:
+		// 1. The Saturating add ensures the value of `non_zero` is at least 1.
+		unsafe { Self(NonZeroU64::new_unchecked(non_zero)) }
+	}
 }

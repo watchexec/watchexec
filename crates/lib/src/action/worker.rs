@@ -12,7 +12,8 @@ use tokio::{
 use tracing::{debug, trace};
 
 use crate::{
-	action::{EventSet, Outcome, Resolution, SupervisorId},
+	action::{EventSet, Outcome, Resolution},
+	command::SupervisorId,
 	error::{CriticalError, RuntimeError},
 	event::{Event, Priority},
 	handler::rte,
@@ -83,13 +84,9 @@ pub async fn worker(
 
 		for (pid, (resolution, event_set)) in outcomes.lock().await.iter() {
 			let found = match resolution {
-				Resolution::Apply(outcome) => {
-					if let Some(data) = processes.get(pid) {
-						Some((outcome.clone(), data.clone()))
-					} else {
-						None
-					}
-				}
+				Resolution::Apply(outcome) => processes
+					.get(pid)
+					.map(|data| (outcome.clone(), data.clone())),
 				Resolution::Start(cmd) => {
 					assert!(processes.get(pid).is_none());
 					let mut wrk = working.borrow().clone();

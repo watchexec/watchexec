@@ -1,16 +1,20 @@
 use std::{
 	collections::HashMap,
 	fmt,
-	num::NonZeroU64,
 	sync::{Arc, Weak},
-	time::{Duration, SystemTime, UNIX_EPOCH},
+	time::Duration,
 };
 use tokio::{
 	process::Command as TokioCommand,
 	sync::{Mutex, MutexGuard, OwnedMutexGuard},
 };
 
-use crate::{command::Command, event::Event, filter::Filterer, handler::HandlerLock};
+use crate::{
+	command::{Command, SupervisorId},
+	event::Event,
+	filter::Filterer,
+	handler::HandlerLock,
+};
 
 use super::Outcome;
 
@@ -181,7 +185,6 @@ impl Action {
 	/// Starts a new [`Process`] with a provided [`Command`] and for a given [`EventSet`].
 	///
 	/// Returns the [`SupervisorId`] of the newly created [`Process`].
-	#[must_use]
 	pub async fn start_process(&self, cmd: Command, set: EventSet) -> SupervisorId {
 		let process = SupervisorId::default();
 		let mut processes = self.outcomes.lock().await;
@@ -209,37 +212,6 @@ pub enum EventSet {
 	Some(Vec<Event>),
 	/// No `Event`s at all.
 	None,
-}
-
-/// Used to identify command registered with a Supervisor.
-#[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
-pub struct SupervisorId(NonZeroU64);
-
-impl SupervisorId {
-	/// Returns the id of the SupervisorId. This is guaranteed to not be 0.
-	pub fn id(&self) -> u64 {
-		self.0.get()
-	}
-}
-
-impl Default for SupervisorId {
-	fn default() -> Self {
-		// generates pseudo-random u64 using [xorshift*](https://en.wikipedia.org/wiki/Xorshift#xorshift*)
-
-		let mut seed = SystemTime::now()
-			.duration_since(UNIX_EPOCH)
-			.unwrap()
-			.as_millis() as u64;
-		seed ^= seed >> 12;
-		seed ^= seed << 25;
-		seed ^= seed >> 27;
-
-		let non_zero = seed.saturating_add(1);
-
-		// Safety:
-		// 1. The Saturating add ensures the value of `non_zero` is at least 1.
-		unsafe { Self(NonZeroU64::new_unchecked(non_zero)) }
-	}
 }
 
 /// The environment given to the pre-spawn handler.
