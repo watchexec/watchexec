@@ -44,7 +44,7 @@ pub struct Supervisor {
 }
 
 #[non_exhaustive]
-pub struct SupervisorBuilder {
+pub struct SupervisorArgs {
 	/// The error channel.
 	pub errors: Sender<RuntimeError>,
 	///
@@ -57,9 +57,9 @@ pub struct SupervisorBuilder {
 	pub post_spawn_handler: HandlerLock<PostSpawn>,
 }
 
-impl SupervisorBuilder {
-	pub fn build(self) -> Result<Supervisor, RuntimeError> {
-		let Self {
+impl Supervisor {
+	pub fn new(args: SupervisorArgs) -> Result<Supervisor, RuntimeError> {
+		let SupervisorArgs {
 			errors,
 			events,
 			commands,
@@ -68,7 +68,7 @@ impl SupervisorBuilder {
 			actioned_events,
 			pre_spawn_handler,
 			post_spawn_handler,
-		} = self;
+		} = args;
 
 		Supervisor::spawn_with_id(
 			errors,
@@ -81,9 +81,6 @@ impl SupervisorBuilder {
 			post_spawn_handler,
 		)
 	}
-}
-
-impl Supervisor {
 	/// Spawns the command set, the supervision task with a random SupervisorId and returns a new control object.
 	pub fn spawn(
 		errors: Sender<RuntimeError>,
@@ -443,13 +440,6 @@ async fn spawn_process(
 #[must_use]
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
 pub struct SupervisorId(NonZeroU64);
-
-impl SupervisorId {
-	/// Returns the id of the SupervisorId. This is guaranteed to not be 0.
-	pub fn id(&self) -> u64 {
-		self.0.get()
-	}
-}
 
 impl Default for SupervisorId {
 	fn default() -> Self {

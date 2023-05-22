@@ -145,7 +145,7 @@ impl Action {
 		}
 	}
 
-	/// Set the action's outcome for all [`Process`]es.
+	/// Set the action's outcome for all [`Command`]es.
 	///
 	/// This takes `self` and `Action` is not `Clone`, so it's only possible to call it once.
 	/// Regardless, if you _do_ manage to call it twice, it will do nothing beyond the first call.
@@ -155,18 +155,21 @@ impl Action {
 	pub fn outcome(self, outcome: Outcome) {
 		let mut outcomes = tokio::task::block_in_place(|| self.outcomes.blocking_lock());
 		for process in self.processes.iter().copied().collect::<Vec<_>>() {
-			self.on_process_with_lock(&mut outcomes, process, outcome.clone(), EventSet::All);
+			self.on_command_with_lock(&mut outcomes, process, outcome.clone(), EventSet::All);
 		}
 	}
 
-	/// Sets an [`Outcome`] for a single [`Process`].
-	pub async fn on_process(&self, process: SupervisorId, outcome: Outcome, set: EventSet) {
+	/// Sets an [`Outcome`] for a single [`Command`].
+	///
+	/// The [`EventSet`] provides the specific set of [`Event`]s associated with the [`Command`]
+	/// and [`Outcome`].
+	pub async fn on_command(&self, process: SupervisorId, outcome: Outcome, set: EventSet) {
 		let mut guard = self.outcomes.lock().await;
-		self.on_process_with_lock(&mut guard, process, outcome, set);
+		self.on_command_with_lock(&mut guard, process, outcome, set);
 	}
 
-	// Used internally by on_process and outcome to insert into `outcomes`.
-	fn on_process_with_lock(
+	// Used internally by on_command and outcome to insert into `outcomes`.
+	fn on_command_with_lock(
 		&self,
 		guard: &mut MutexGuard<'_, HashMap<SupervisorId, (Resolution, EventSet)>>,
 		process: SupervisorId,
@@ -176,15 +179,26 @@ impl Action {
 		guard.insert(process, (Resolution::Apply(outcome), set));
 	}
 
-	/// Returns a snapshot of the `SupervisorId`s of the running `Process`es at creation of the
+	/// Returns a snapshot of the [`SupervisorId`]s of the running [`Command`]s at creation of the
 	/// [`Action`].
 	pub fn current_processes(&self) -> &[SupervisorId] {
 		&self.processes
 	}
 
-	/// Starts a new [`Process`] with a provided [`Command`] and for a given [`EventSet`].
+	/// Starts a new supervised [`Command`].
 	///
-	/// Returns the [`SupervisorId`] of the newly created [`Process`].
+	/// This instantiates a new command supervisor, which manages the lifecycle
+	/// of a command within the watchexec instance, including stopping, starting
+	/// again, sending signals, and monitoring its aliveness.
+	///
+	/// You can control it by calling `command_outcome()` with the [`SupervisorId`]
+	/// this method returns. To destroy a supervisor, use `Outcome::End`.
+	///
+	/// For details on the `events` argument, see the documentation for
+	/// `command_outcome`.
+	///
+	/// Note that as this is async, your action handler must also be async. Calling
+	/// this method in a sync handler without `await`ing it will do nothing.
 	pub async fn start_process(&self, cmd: Command, set: EventSet) -> SupervisorId {
 		let process = SupervisorId::default();
 		let mut processes = self.outcomes.lock().await;
@@ -194,12 +208,12 @@ impl Action {
 	}
 }
 
-/// Indicates how a `Process` should be resolved.
+/// Indicates how a `Command` should be resolved.
 #[derive(Debug, Clone)]
 pub enum Resolution {
-	/// Used to start a new `Process` with a `Command`.
+	/// Used to start a new `Command` with a `Command`.
 	Start(Command),
-	/// Apply an `Outcome` to an existing `Process`.
+	/// Apply an `Outcome` to an existing `Command`.
 	Apply(Outcome),
 }
 
