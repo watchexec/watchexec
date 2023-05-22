@@ -43,11 +43,19 @@ pub struct Supervisor {
 	ongoing: watch::Receiver<bool>,
 }
 
-#[non_exhaustive]
-pub struct SupervisorArgs {
-	/// The error channel.
+pub struct Args {
+	errors: Sender<RuntimeError>,
+	events: priority::Sender<Event, Priority>,
+	commands: Vec<Command>,
+	supervisor_id: SupervisorId,
+	grouped: bool,
+	actioned_events: Arc<[Event]>,
+	pre_spawn_handler: HandlerLock<PreSpawn>,
+	post_spawn_handler: HandlerLock<PostSpawn>,
+}
+
+pub struct RequiredArgs {
 	pub errors: Sender<RuntimeError>,
-	///
 	pub events: priority::Sender<Event, Priority>,
 	pub commands: Vec<Command>,
 	pub supervisor_id: SupervisorId,
@@ -57,9 +65,9 @@ pub struct SupervisorArgs {
 	pub post_spawn_handler: HandlerLock<PostSpawn>,
 }
 
-impl Supervisor {
-	pub fn new(args: SupervisorArgs) -> Result<Supervisor, RuntimeError> {
-		let SupervisorArgs {
+impl Into<Args> for RequiredArgs {
+	fn into(self) -> Args {
+		let Self {
 			errors,
 			events,
 			commands,
@@ -68,20 +76,39 @@ impl Supervisor {
 			actioned_events,
 			pre_spawn_handler,
 			post_spawn_handler,
-		} = args;
+		} = self;
+
+		Args {
+			errors,
+			events,
+			commands,
+			supervisor_id,
+			grouped,
+			actioned_events,
+			pre_spawn_handler,
+			post_spawn_handler,
+		}
+	}
+}
+
+impl Supervisor {
+	/// Spawns the command set, the supervisor task from the provided arguments and returns a new
+	/// control object.
+	pub fn new(args: impl Into<Args>) -> Result<Supervisor, RuntimeError> {
+		let args: Args = args.into();
 
 		Supervisor::spawn_with_id(
-			errors,
-			events,
-			commands,
-			supervisor_id,
-			grouped,
-			actioned_events,
-			pre_spawn_handler,
-			post_spawn_handler,
+			args.errors,
+			args.events,
+			args.commands,
+			args.supervisor_id,
+			args.grouped,
+			args.actioned_events,
+			args.pre_spawn_handler,
+			args.post_spawn_handler,
 		)
 	}
-	/// Spawns the command set, the supervision task with a random SupervisorId and returns a new control object.
+	/// Spawns the command set, the supervision task with a random [`SupervisorId`] and returns a new control object.
 	pub fn spawn(
 		errors: Sender<RuntimeError>,
 		events: priority::Sender<Event, Priority>,
