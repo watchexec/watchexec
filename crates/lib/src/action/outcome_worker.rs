@@ -17,7 +17,7 @@ use tokio::{
 use tracing::{debug, error, info, trace, warn};
 
 use crate::{
-	command::{RequiredArgs, Supervisor, SupervisorId},
+	command::{Command, RequiredArgs, Supervisor, SupervisorId},
 	error::RuntimeError,
 	event::{Event, Priority},
 };
@@ -27,6 +27,7 @@ use super::{process_holder::ProcessHolder, Outcome, WorkingData};
 #[derive(Clone)]
 pub struct OutcomeWorker {
 	events: Arc<[Event]>,
+	commands: Vec<Command>,
 	working: Receiver<WorkingData>,
 	process: ProcessHolder,
 	supervisor_id: SupervisorId,
@@ -52,9 +53,36 @@ impl OutcomeWorker {
 		errors_c: mpsc::Sender<RuntimeError>,
 		events_c: priority::Sender<Event, Priority>,
 	) {
+		let commands = working.borrow().commands.clone();
+		Self::spawn_with_commands(
+			outcome,
+			events,
+			commands,
+			working,
+			process,
+			supervisor_id,
+			gencheck,
+			errors_c,
+			events_c,
+		)
+	}
+
+	#[allow(clippy::too_many_arguments)]
+	pub fn spawn_with_commands(
+		outcome: Outcome,
+		events: Arc<[Event]>,
+		commands: Vec<Command>,
+		working: Receiver<WorkingData>,
+		process: ProcessHolder,
+		supervisor_id: SupervisorId,
+		gencheck: Arc<AtomicUsize>,
+		errors_c: mpsc::Sender<RuntimeError>,
+		events_c: priority::Sender<Event, Priority>,
+	) {
 		let gen = gencheck.fetch_add(1, Ordering::SeqCst).wrapping_add(1);
 		let this = Self {
 			events,
+			commands,
 			working,
 			supervisor_id,
 			process,
@@ -127,7 +155,7 @@ impl OutcomeWorker {
 				let (cmds, grouped, pre_spawn_handler, post_spawn_handler) = {
 					let wrk = self.working.borrow();
 					(
-						wrk.commands.clone(),
+						self.commands.clone(),
 						wrk.grouped,
 						wrk.pre_spawn_handler.clone(),
 						wrk.post_spawn_handler.clone(),

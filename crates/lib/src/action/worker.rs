@@ -13,7 +13,7 @@ use tracing::{debug, trace};
 
 use crate::{
 	action::{EventSet, Outcome, Resolution},
-	command::SupervisorId,
+	command::{Command, SupervisorId},
 	error::{CriticalError, RuntimeError},
 	event::{Event, Priority},
 	handler::rte,
@@ -40,6 +40,7 @@ pub async fn worker(
 		base_process_id,
 		ProcessData {
 			working: working.clone(),
+			commands: working.borrow().commands.clone(),
 			process: ProcessHolder::default(),
 			outcome_gen: OutcomeWorker::newgen(),
 		},
@@ -90,13 +91,9 @@ pub async fn worker(
 				Resolution::Start(cmd) => {
 					assert!(processes.get(pid).is_none());
 					// due to borrow semantics, lock is only held for this line
-					let mut wrk = working.borrow().clone();
-					wrk.commands = vec![cmd.clone()];
-
-					let (_, wrk_rx) = watch::channel(wrk);
-
 					let data = ProcessData {
-						working: wrk_rx,
+						working: working.clone(),
+						commands: vec![cmd.clone()],
 						process: ProcessHolder::default(),
 						outcome_gen: OutcomeWorker::newgen(),
 					};
@@ -107,7 +104,7 @@ pub async fn worker(
 				}
 			};
 
-			let Some((outcome, ProcessData { working, process, outcome_gen })) = found else {
+			let Some((outcome, ProcessData { working, commands, process, outcome_gen })) = found else {
 				continue;
 			};
 
@@ -120,9 +117,10 @@ pub async fn worker(
 				EventSet::Some(selected) => Arc::from(selected.clone().into_boxed_slice()),
 			};
 			debug!(?events, "events selected");
-			OutcomeWorker::spawn(
+			OutcomeWorker::spawn_with_commands(
 				outcome,
 				events.clone(),
+				commands,
 				working.clone(),
 				process.clone(),
 				*pid,
@@ -143,6 +141,7 @@ pub async fn worker(
 #[derive(Clone)]
 struct ProcessData {
 	working: watch::Receiver<WorkingData>,
+	commands: Vec<Command>,
 	process: ProcessHolder,
 	outcome_gen: Arc<AtomicUsize>,
 }
