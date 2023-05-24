@@ -89,6 +89,7 @@ pub async fn worker(
 					.map(|data| (outcome.clone(), data.clone())),
 				Resolution::Start(cmd) => {
 					assert!(processes.get(pid).is_none());
+					// due to borrow semantics, lock is only held for this line
 					let mut wrk = working.borrow().clone();
 					wrk.commands = vec![cmd.clone()];
 

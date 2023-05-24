@@ -148,7 +148,6 @@ impl Action {
 	/// Set the action's outcome for all [`Command`]es.
 	///
 	/// This takes `self` and `Action` is not `Clone`, so it's only possible to call it once.
-	/// Regardless, if you _do_ manage to call it twice, it will do nothing beyond the first call.
 	///
 	/// See the [`Action`] documentation about handlers to learn why it's a bad idea to clone or
 	/// send it elsewhere, and what kind of handlers you cannot use.
