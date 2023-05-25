@@ -1,8 +1,4 @@
-use std::{
-	num::NonZeroU64,
-	sync::Arc,
-	time::{SystemTime, UNIX_EPOCH},
-};
+use std::{num::NonZeroU64, sync::Arc};
 
 use async_priority_channel as priority;
 use command_group::AsyncCommandGroup;
@@ -457,12 +453,13 @@ pub struct SupervisorId(NonZeroU64);
 
 impl Default for SupervisorId {
 	fn default() -> Self {
+		use std::{
+			collections::hash_map::RandomState,
+			hash::{BuildHasher, Hasher},
+		};
 		// generates pseudo-random u64 using [xorshift*](https://en.wikipedia.org/wiki/Xorshift#xorshift*)
+		let mut seed = RandomState::new().build_hasher().finish();
 
-		let mut seed = SystemTime::now()
-			.duration_since(UNIX_EPOCH)
-			.unwrap()
-			.as_millis() as u64;
 		seed ^= seed >> 12;
 		seed ^= seed << 25;
 		seed ^= seed >> 27;
