@@ -95,52 +95,17 @@ impl Supervisor {
 	/// Spawns the command set, the supervisor task from the provided arguments and returns a new
 	/// control object.
 	pub fn new(args: impl Into<Args>) -> Result<Supervisor, RuntimeError> {
-		let args: Args = args.into();
-
-		Supervisor::spawn_with_id(
-			args.errors,
-			args.events,
-			args.commands,
-			args.supervisor_id,
-			args.grouped,
-			args.actioned_events,
-			args.pre_spawn_handler,
-			args.post_spawn_handler,
-		)
-	}
-	/// Spawns the command set, the supervision task with a random [`SupervisorId`] and returns a new control object.
-	pub fn spawn(
-		errors: Sender<RuntimeError>,
-		events: priority::Sender<Event, Priority>,
-		commands: Vec<Command>,
-		grouped: bool,
-		actioned_events: Arc<[Event]>,
-		pre_spawn_handler: HandlerLock<PreSpawn>,
-		post_spawn_handler: HandlerLock<PostSpawn>,
-	) -> Result<Self, RuntimeError> {
-		Self::spawn_with_id(
+		let Args {
 			errors,
 			events,
-			commands,
-			SupervisorId::default(),
+			mut commands,
+			supervisor_id,
 			grouped,
 			actioned_events,
 			pre_spawn_handler,
 			post_spawn_handler,
-		)
-	}
+		} = args.into();
 
-	#[allow(clippy::too_many_arguments)]
-	fn spawn_with_id(
-		errors: Sender<RuntimeError>,
-		events: priority::Sender<Event, Priority>,
-		mut commands: Vec<Command>,
-		supervisor_id: SupervisorId,
-		grouped: bool,
-		actioned_events: Arc<[Event]>,
-		pre_spawn_handler: HandlerLock<PreSpawn>,
-		post_spawn_handler: HandlerLock<PostSpawn>,
-	) -> Result<Self, RuntimeError> {
 		// get commands in reverse order so pop() returns the next to run
 		commands.reverse();
 		let next = commands.pop().ok_or(RuntimeError::NoCommands)?;
@@ -295,6 +260,28 @@ impl Supervisor {
 		Ok(Self {
 			ongoing: waiter,
 			intervene: int_s,
+		})
+	}
+
+	/// Spawns the command set, the supervision task with a random [`SupervisorId`] and returns a new control object.
+	pub fn spawn(
+		errors: Sender<RuntimeError>,
+		events: priority::Sender<Event, Priority>,
+		commands: Vec<Command>,
+		grouped: bool,
+		actioned_events: Arc<[Event]>,
+		pre_spawn_handler: HandlerLock<PreSpawn>,
+		post_spawn_handler: HandlerLock<PostSpawn>,
+	) -> Result<Self, RuntimeError> {
+		Self::new(RequiredArgs {
+			errors,
+			events,
+			commands,
+			supervisor_id: SupervisorId::default(),
+			grouped,
+			actioned_events,
+			pre_spawn_handler,
+			post_spawn_handler,
 		})
 	}
 
