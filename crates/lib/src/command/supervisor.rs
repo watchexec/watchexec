@@ -65,9 +65,9 @@ pub struct RequiredArgs {
 	pub post_spawn_handler: HandlerLock<PostSpawn>,
 }
 
-impl Into<Args> for RequiredArgs {
-	fn into(self) -> Args {
-		let Self {
+impl From<RequiredArgs> for Args {
+	fn from(value: RequiredArgs) -> Self {
+		let RequiredArgs {
 			errors,
 			events,
 			commands,
@@ -76,9 +76,9 @@ impl Into<Args> for RequiredArgs {
 			actioned_events,
 			pre_spawn_handler,
 			post_spawn_handler,
-		} = self;
+		} = value;
 
-		Args {
+		Self {
 			errors,
 			events,
 			commands,
