@@ -46,31 +46,6 @@ impl OutcomeWorker {
 	pub fn spawn(
 		outcome: Outcome,
 		events: Arc<[Event]>,
-		working: Receiver<WorkingData>,
-		process: ProcessHolder,
-		supervisor_id: SupervisorId,
-		gencheck: Arc<AtomicUsize>,
-		errors_c: mpsc::Sender<RuntimeError>,
-		events_c: priority::Sender<Event, Priority>,
-	) {
-		let commands = working.borrow().commands.clone();
-		Self::spawn_with_commands(
-			outcome,
-			events,
-			commands,
-			working,
-			process,
-			supervisor_id,
-			gencheck,
-			errors_c,
-			events_c,
-		)
-	}
-
-	#[allow(clippy::too_many_arguments)]
-	pub fn spawn_with_commands(
-		outcome: Outcome,
-		events: Arc<[Event]>,
 		commands: Vec<Command>,
 		working: Receiver<WorkingData>,
 		process: ProcessHolder,

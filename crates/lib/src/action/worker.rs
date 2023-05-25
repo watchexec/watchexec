@@ -117,7 +117,7 @@ pub async fn worker(
 				EventSet::Some(selected) => Arc::from(selected.clone().into_boxed_slice()),
 			};
 			debug!(?events, "events selected");
-			OutcomeWorker::spawn_with_commands(
+			OutcomeWorker::spawn(
 				outcome,
 				events.clone(),
 				commands,
