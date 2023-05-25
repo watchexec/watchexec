@@ -178,9 +178,9 @@ impl Action {
 		guard.insert(process, (Resolution::Apply(outcome), set));
 	}
 
-	/// Returns a snapshot of the [`SupervisorId`]s of the running [`Command`]s at creation of the
+	/// Returns a snapshot of the [`SupervisorId`]s of the alive [`Command`]s at creation time of the
 	/// [`Action`].
-	pub fn current_processes(&self) -> &[SupervisorId] {
+	pub fn current_commands(&self) -> &[SupervisorId] {
 		&self.processes
 	}
 
@@ -198,7 +198,7 @@ impl Action {
 	///
 	/// Note that as this is async, your action handler must also be async. Calling
 	/// this method in a sync handler without `await`ing it will do nothing.
-	pub async fn start_process(&self, cmd: Command, set: EventSet) -> SupervisorId {
+	pub async fn start_command(&self, cmd: Command, set: EventSet) -> SupervisorId {
 		let process = SupervisorId::default();
 		let mut processes = self.outcomes.lock().await;
 		processes.insert(process, (Resolution::Start(cmd), set));
@@ -284,7 +284,7 @@ impl PreSpawn {
 	}
 
 	/// Returns the `SupervisorId` associated with the `Supervisor` and `Command`.
-	pub fn process(&self) -> SupervisorId {
+	pub fn supervisor(&self) -> SupervisorId {
 		self.supervisor_id
 	}
 }
@@ -315,7 +315,7 @@ pub struct PostSpawn {
 
 impl PostSpawn {
 	/// Returns the `SupervisorId` associated with the `Supervisor` and the `Command` that was run.
-	pub fn process(&self) -> SupervisorId {
+	pub fn supervisor(&self) -> SupervisorId {
 		self.supervisor_id
 	}
 }
