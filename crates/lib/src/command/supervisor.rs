@@ -436,7 +436,7 @@ impl Default for SupervisorId {
 			hash::{BuildHasher, Hasher},
 		};
 		// generates pseudo-random u64 using `std`'s
-		// [`RandmState`](https://doc.rust-lang.org/std/collections/hash_map/struct.RandomState.html)
+		// [`RandomState`](https://doc.rust-lang.org/std/collections/hash_map/struct.RandomState.html)
 		let seed = RandomState::new().build_hasher().finish();
 
 		let non_zero = seed.saturating_add(1);
