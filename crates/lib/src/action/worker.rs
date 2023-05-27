@@ -85,15 +85,19 @@ pub async fn worker(
 
 		for (pid, (resolution, event_set)) in outcomes.lock().await.iter() {
 			let found = match resolution {
-				Resolution::Apply(outcome) => processes
-					.get(pid)
-					.map(|data| (outcome.clone(), data.clone())),
-				Resolution::Start(cmd) => {
+				Resolution::Apply(outcome) => {
+					debug!(pid=?pid, outocome=?outcome, "apply outcome to alive command");
+					processes
+						.get(pid)
+						.map(|data| (outcome.clone(), data.clone()))
+				}
+				Resolution::Start(cmds) => {
 					assert!(processes.get(pid).is_none());
+					debug!(pid=?pid, cmds=?cmds, "starting new command");
 					// due to borrow semantics, lock is only held for this line
 					let data = ProcessData {
 						working: working.clone(),
-						commands: vec![cmd.clone()],
+						commands: cmds.clone(),
 						process: ProcessHolder::default(),
 						outcome_gen: OutcomeWorker::newgen(),
 					};

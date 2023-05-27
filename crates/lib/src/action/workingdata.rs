@@ -198,7 +198,7 @@ impl Action {
 	///
 	/// Note that as this is async, your action handler must also be async. Calling
 	/// this method in a sync handler without `await`ing it will do nothing.
-	pub async fn start_command(&self, cmd: Command, set: EventSet) -> SupervisorId {
+	pub async fn start_command(&self, cmd: Vec<Command>, set: EventSet) -> SupervisorId {
 		let command = SupervisorId::default();
 		let mut commands = self.outcomes.lock().await;
 		commands.insert(command, (Resolution::Start(cmd), set));
@@ -216,7 +216,7 @@ impl Action {
 #[derive(Debug, Clone)]
 pub enum Resolution {
 	/// Used to start a new `Command` with a `Command`.
-	Start(Command),
+	Start(Vec<Command>),
 	/// Apply an `Outcome` to an existing `Command`.
 	Apply(Outcome),
 	/// Remove's an alive `Command`.
