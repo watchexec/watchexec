@@ -435,12 +435,9 @@ impl Default for SupervisorId {
 			collections::hash_map::RandomState,
 			hash::{BuildHasher, Hasher},
 		};
-		// generates pseudo-random u64 using [xorshift*](https://en.wikipedia.org/wiki/Xorshift#xorshift*)
-		let mut seed = RandomState::new().build_hasher().finish();
-
-		seed ^= seed >> 12;
-		seed ^= seed << 25;
-		seed ^= seed >> 27;
+		// generates pseudo-random u64 using `std`'s
+		// [`RandmState`](https://doc.rust-lang.org/std/collections/hash_map/struct.RandomState.html)
+		let seed = RandomState::new().build_hasher().finish();
 
 		let non_zero = seed.saturating_add(1);
 
