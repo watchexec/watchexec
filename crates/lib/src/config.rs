@@ -85,22 +85,6 @@ impl RuntimeConfig {
 		self
 	}
 
-	/// Set a single command to run on action.
-	///
-	/// This is a convenience for `.commands(vec![Command...])`.
-	pub fn command(&mut self, command: Command) -> &mut Self {
-		debug!(?command, "RuntimeConfig: command");
-		self.action.commands = vec![command];
-		self
-	}
-
-	/// Set the commands to run on action.
-	pub fn commands(&mut self, commands: impl Into<Vec<Command>>) -> &mut Self {
-		self.action.commands = commands.into();
-		debug!(commands=?self.action.commands, "RuntimeConfig: commands");
-		self
-	}
-
 	/// Set the filterer implementation to use.
 	pub fn filterer(&mut self, filterer: Arc<dyn Filterer>) -> &mut Self {
 		debug!(?filterer, "RuntimeConfig: filterer");
