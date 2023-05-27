@@ -199,6 +199,15 @@ impl Action {
 		command
 	}
 
+	/// Removes an alive [`Command`] for this and all the following [`Action`]s.
+	///
+	/// This stops the [`Command`], which is equivalent to setting the [`Outcome`] to
+	/// [`Outcome::Stop`], and also removes it from the set of alive [`Command`]s. This means later
+	/// call's to [`current_commands`] for all following [`Action`]s will no longer include this
+	/// [`Command`]. The set returned when calling [`current_commands`] from the current [`Action`]
+	/// will include this [`Command`].
+	///
+	/// **Caution**: Keep in mind that a call to [`outcome`] from the same action handler will undo
 	pub async fn remove_command(&self, command: SupervisorId, set: EventSet) {
 		let mut commands = self.outcomes.lock().await;
 		commands.insert(command, (Resolution::Remove, set));
