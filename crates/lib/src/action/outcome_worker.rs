@@ -141,7 +141,7 @@ impl OutcomeWorker {
 					warn!("tried to start commands without anything to run");
 				} else {
 					trace!("spawning supervisor for command");
-					let sup = Supervisor::new(RequiredArgs {
+					let sup = Supervisor::spawn(RequiredArgs {
 						errors: self.errors_c.clone(),
 						events: self.events_c.clone(),
 						commands: cmds,
