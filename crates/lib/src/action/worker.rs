@@ -34,18 +34,6 @@ pub async fn worker(
 ) -> Result<(), CriticalError> {
 	let mut processes: HashMap<SupervisorId, ProcessData> = HashMap::new();
 
-	// Insert the base process from the initial `WorkingData`.
-	let base_process_id = SupervisorId::default();
-	processes.insert(
-		base_process_id,
-		ProcessData {
-			working: working.clone(),
-			commands: working.borrow().commands.clone(),
-			process: ProcessHolder::default(),
-			outcome_gen: OutcomeWorker::newgen(),
-		},
-	);
-
 	while let Some(mut set) = throttle_collect(
 		events.clone(),
 		working.clone(),

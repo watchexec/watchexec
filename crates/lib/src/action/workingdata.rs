@@ -68,11 +68,6 @@ pub struct WorkingData {
 	/// issue a [`RuntimeError`][crate::error::RuntimeError] to the error channel.
 	pub post_spawn_handler: HandlerLock<PostSpawn>,
 
-	/// Commands to execute.
-	///
-	/// These will be run in order, and an error will stop early.
-	pub commands: Vec<Command>,
-
 	/// Whether to use process groups (on Unix) or job control (on Windows) to run the command.
 	///
 	/// This makes use of [command_group] under the hood.
@@ -92,7 +87,6 @@ impl fmt::Debug for WorkingData {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		f.debug_struct("WorkingData")
 			.field("throttle", &self.throttle)
-			.field("commands", &self.commands)
 			.field("grouped", &self.grouped)
 			.field("filterer", &self.filterer)
 			.finish_non_exhaustive()
@@ -106,7 +100,6 @@ impl Default for WorkingData {
 			action_handler: Default::default(),
 			pre_spawn_handler: Default::default(),
 			post_spawn_handler: Default::default(),
-			commands: Vec::new(),
 			grouped: true,
 			filterer: Arc::new(()),
 		}
