@@ -162,9 +162,9 @@ impl Action {
 	///
 	/// The [`EventSet`] provides the specific set of [`Event`]s associated with the [`Command`]
 	/// and [`Outcome`].
-	pub async fn on_command(&self, process: SupervisorId, outcome: Outcome, set: EventSet) {
+	pub async fn on_command(&self, command: SupervisorId, outcome: Outcome, set: EventSet) {
 		let mut guard = self.outcomes.lock().await;
-		self.on_command_with_lock(&mut guard, process, outcome, set);
+		self.on_command_with_lock(&mut guard, command, outcome, set);
 	}
 
 	// Used internally by on_command and outcome to insert into `outcomes`.
@@ -199,11 +199,16 @@ impl Action {
 	/// Note that as this is async, your action handler must also be async. Calling
 	/// this method in a sync handler without `await`ing it will do nothing.
 	pub async fn start_command(&self, cmd: Command, set: EventSet) -> SupervisorId {
-		let process = SupervisorId::default();
-		let mut processes = self.outcomes.lock().await;
-		processes.insert(process, (Resolution::Start(cmd), set));
+		let command = SupervisorId::default();
+		let mut commands = self.outcomes.lock().await;
+		commands.insert(command, (Resolution::Start(cmd), set));
 
-		process
+		command
+	}
+
+	pub async fn remove_command(&self, command: SupervisorId, set: EventSet) {
+		let mut commands = self.outcomes.lock().await;
+		commands.insert(command, (Resolution::Remove, set));
 	}
 }
 
@@ -214,6 +219,8 @@ pub enum Resolution {
 	Start(Command),
 	/// Apply an `Outcome` to an existing `Command`.
 	Apply(Outcome),
+	/// Remove's an alive `Command`.
+	Remove,
 }
 
 /// Specifies whether to use all `Event`s, a subset, or none at all.

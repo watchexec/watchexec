@@ -102,6 +102,14 @@ pub async fn worker(
 
 					Some((Outcome::Start, data))
 				}
+				Resolution::Remove => {
+					// command only stopped if it exists
+					if let Some(data) = processes.remove(pid) {
+						Some((Outcome::Stop, data))
+					} else {
+						None
+					}
+				}
 			};
 
 			let Some((outcome, ProcessData { working, commands, process, outcome_gen })) = found else {
