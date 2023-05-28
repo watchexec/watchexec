@@ -146,8 +146,9 @@ impl Action {
 	/// send it elsewhere, and what kind of handlers you cannot use.
 	pub fn outcome(self, outcome: Outcome) {
 		let mut outcomes = tokio::task::block_in_place(|| self.outcomes.blocking_lock());
+
 		for process in self.processes.iter().copied().collect::<Vec<_>>() {
-			self.on_command_with_lock(&mut outcomes, process, outcome.clone(), EventSet::All);
+			outcomes.insert(process, (Resolution::Apply(outcome.clone()), EventSet::All));
 		}
 	}
 
@@ -156,19 +157,9 @@ impl Action {
 	/// The [`EventSet`] provides the specific set of [`Event`]s associated with the [`Command`]
 	/// and [`Outcome`].
 	pub async fn on_command(&self, command: SupervisorId, outcome: Outcome, set: EventSet) {
-		let mut guard = self.outcomes.lock().await;
-		self.on_command_with_lock(&mut guard, command, outcome, set);
-	}
+		let mut outcomes = self.outcomes.lock().await;
 
-	// Used internally by on_command and outcome to insert into `outcomes`.
-	fn on_command_with_lock(
-		&self,
-		guard: &mut MutexGuard<'_, HashMap<SupervisorId, (Resolution, EventSet)>>,
-		process: SupervisorId,
-		outcome: Outcome,
-		set: EventSet,
-	) {
-		guard.insert(process, (Resolution::Apply(outcome), set));
+		outcomes.insert(command, (Resolution::Apply(outcome.clone()), set));
 	}
 
 	/// Returns a snapshot of the [`SupervisorId`]s of the alive [`Command`]s at creation time of the
@@ -195,6 +186,28 @@ impl Action {
 		let command = SupervisorId::default();
 		let mut commands = self.outcomes.lock().await;
 		commands.insert(command, (Resolution::Start(cmd), set));
+
+		command
+	}
+
+	/// Starts a new supervised [`Command`] in a blocking manner.
+	///
+	/// This methods primarily serves the purpose of backwards compatibility and
+	/// it is suggested to use `start_command`, the `async` equivalent, instead.
+	///
+	/// This instantiates a new command supervisor, which manages the lifecycle
+	/// of a command within the watchexec instance, including stopping, starting
+	/// again, sending signals, and monitoring its aliveness.
+	///
+	/// You can control it by calling `command_outcome()` with the [`SupervisorId`]
+	/// this method returns. To destroy a supervisor, use `Outcome::End`.
+	///
+	/// For details on the `events` argument, see the documentation for
+	/// `command_outcome`.
+	pub fn blocking_start_command(&self, cmd: Vec<Command>, set: EventSet) -> SupervisorId {
+		let command = SupervisorId::default();
+		let mut outcomes = tokio::task::block_in_place(|| self.outcomes.blocking_lock());
+		outcomes.insert(command, (Resolution::Start(cmd), set));
 
 		command
 	}
