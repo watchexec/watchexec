@@ -24,7 +24,7 @@ pub fn runtime(args: &Args, state: &State) -> Result<RuntimeConfig> {
 	let _span = debug_span!("args-runtime").entered();
 	let mut config = RuntimeConfig::default();
 
-	config.command(interpret_command_args(args)?);
+	let mut command = Some(interpret_command_args(args)?);
 
 	config.pathset(if args.paths.is_empty() {
 		vec![current_dir().into_diagnostic()?]
@@ -33,6 +33,7 @@ pub fn runtime(args: &Args, state: &State) -> Result<RuntimeConfig> {
 	});
 
 	config.action_throttle(args.debounce.0);
+	// TODO how are grouped commands now handled by the `lib` crate?
 	config.command_grouped(!args.no_process_group);
 	config.keyboard_emit_eof(args.stdin_quit);
 
@@ -54,6 +55,14 @@ pub fn runtime(args: &Args, state: &State) -> Result<RuntimeConfig> {
 
 	config.on_action(move |action: Action| {
 		let fut = async { Ok::<(), Infallible>(()) };
+
+		// starts the command for the first time.
+		// TODO(Félix) is this a valid way of spawning the command?
+		// i think this means, if the command is spawned for the first time it will be started even
+		// if there is a Terminate signal in the events of the Action!
+		if let Some(command) = command.take() {
+			_ = action.blocking_start_command(vec![command], watchexec::action::EventSet::All);
+		}
 
 		if print_events {
 			for (n, event) in action.events.iter().enumerate() {
