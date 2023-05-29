@@ -138,33 +138,19 @@ impl Action {
 		}
 	}
 
-	/// Set the action's outcome for all [`Command`]es.
-	///
-	/// This takes `self` and `Action` is not `Clone`, so it's only possible to call it once.
-	///
-	/// See the [`Action`] documentation about handlers to learn why it's a bad idea to clone or
-	/// send it elsewhere, and what kind of handlers you cannot use.
-	pub fn outcome(self, outcome: Outcome) {
-		let mut outcomes = tokio::task::block_in_place(|| self.outcomes.blocking_lock());
-
-		for process in self.processes.iter().copied().collect::<Vec<_>>() {
-			outcomes.insert(process, (Resolution::Apply(outcome.clone()), EventSet::All));
-		}
-	}
-
 	/// Sets an [`Outcome`] for a single [`Command`].
 	///
 	/// The [`EventSet`] provides the specific set of [`Event`]s associated with the [`Command`]
 	/// and [`Outcome`].
-	pub async fn on_command(&self, command: SupervisorId, outcome: Outcome, set: EventSet) {
+	pub async fn apply(&self, outcome: Outcome, to: SupervisorId, because_of: EventSet) {
 		let mut outcomes = self.outcomes.lock().await;
 
-		outcomes.insert(command, (Resolution::Apply(outcome.clone()), set));
+		outcomes.insert(to, (Resolution::Apply(outcome.clone()), because_of));
 	}
 
 	/// Returns a snapshot of the [`SupervisorId`]s of the alive [`Command`]s at creation time of the
 	/// [`Action`].
-	pub fn current_commands(&self) -> &[SupervisorId] {
+	pub fn list(&self) -> &[SupervisorId] {
 		&self.processes
 	}
 
@@ -182,32 +168,10 @@ impl Action {
 	///
 	/// Note that as this is async, your action handler must also be async. Calling
 	/// this method in a sync handler without `await`ing it will do nothing.
-	pub async fn start_command(&self, cmd: Vec<Command>, set: EventSet) -> SupervisorId {
+	pub async fn create(&self, commands: Vec<Command>, because_of: EventSet) -> SupervisorId {
 		let command = SupervisorId::default();
-		let mut commands = self.outcomes.lock().await;
-		commands.insert(command, (Resolution::Start(cmd), set));
-
-		command
-	}
-
-	/// Starts a new supervised [`Command`] in a blocking manner.
-	///
-	/// This methods primarily serves the purpose of backwards compatibility and
-	/// it is suggested to use `start_command`, the `async` equivalent, instead.
-	///
-	/// This instantiates a new command supervisor, which manages the lifecycle
-	/// of a command within the watchexec instance, including stopping, starting
-	/// again, sending signals, and monitoring its aliveness.
-	///
-	/// You can control it by calling `command_outcome()` with the [`SupervisorId`]
-	/// this method returns. To destroy a supervisor, use `Outcome::End`.
-	///
-	/// For details on the `events` argument, see the documentation for
-	/// `command_outcome`.
-	pub fn blocking_start_command(&self, cmd: Vec<Command>, set: EventSet) -> SupervisorId {
-		let command = SupervisorId::default();
-		let mut outcomes = tokio::task::block_in_place(|| self.outcomes.blocking_lock());
-		outcomes.insert(command, (Resolution::Start(cmd), set));
+		let mut outcomes = self.outcomes.lock().await;
+		outcomes.insert(command, (Resolution::Start(commands), because_of));
 
 		command
 	}
@@ -216,12 +180,10 @@ impl Action {
 	///
 	/// This stops the [`Command`], which is equivalent to setting the [`Outcome`] to
 	/// [`Outcome::Stop`], and also removes it from the set of alive [`Command`]s. This means later
-	/// call's to [`current_commands`] for all following [`Action`]s will no longer include this
-	/// [`Command`]. The set returned when calling [`current_commands`] from the current [`Action`]
+	/// call's to [`list`] for all following [`Action`]s will no longer include this
+	/// [`Command`]. The set returned when calling [`list`] from the current [`Action`]
 	/// will include this [`Command`].
-	///
-	/// **Caution**: Keep in mind that a call to [`outcome`] from the same action handler will undo
-	pub async fn remove_command(&self, command: SupervisorId, set: EventSet) {
+	pub async fn delete(&self, command: SupervisorId, set: EventSet) {
 		let mut commands = self.outcomes.lock().await;
 		commands.insert(command, (Resolution::Remove, set));
 	}
