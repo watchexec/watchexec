@@ -7,24 +7,28 @@ use miette::{miette, IntoDiagnostic, Result};
 use notify_rust::Notification;
 use tracing::{debug, debug_span, error};
 use watchexec::{
-	action::{Action, Outcome, PostSpawn, PreSpawn},
+	action::{Action, /*Outcome,*/ PostSpawn, PreSpawn},
 	command::{Command, Shell},
 	config::RuntimeConfig,
 	error::RuntimeError,
 	fs::Watcher,
 	handler::SyncFnHandler,
 };
+/*
 use watchexec_events::{Event, Keyboard, ProcessEnd, Tag};
 use watchexec_signals::Signal;
+*/
 
-use crate::args::{Args, ClearMode, EmitEvents, OnBusyUpdate};
+use crate::args::{Args, /*ClearMode,*/ EmitEvents /*OnBusyUpdate*/};
 use crate::state::State;
 
 pub fn runtime(args: &Args, state: &State) -> Result<RuntimeConfig> {
 	let _span = debug_span!("args-runtime").entered();
 	let mut config = RuntimeConfig::default();
 
+	/*
 	let mut command = Some(interpret_command_args(args)?);
+	*/
 
 	config.pathset(if args.paths.is_empty() {
 		vec![current_dir().into_diagnostic()?]
@@ -41,8 +45,9 @@ pub fn runtime(args: &Args, state: &State) -> Result<RuntimeConfig> {
 		config.file_watcher(Watcher::Poll(interval.0));
 	}
 
-	let clear = args.screen_clear;
 	let notif = args.notify;
+	/*
+	let clear = args.screen_clear;
 	let on_busy = args.on_busy_update;
 
 	let signal = args.signal;
@@ -52,10 +57,12 @@ pub fn runtime(args: &Args, state: &State) -> Result<RuntimeConfig> {
 	let print_events = args.print_events;
 	let once = args.once;
 	let delay_run = args.delay_run.map(|ts| ts.0);
+	*/
 
-	config.on_action(move |action: Action| {
+	config.on_action(move |_action: Action| {
 		let fut = async { Ok::<(), Infallible>(()) };
 
+		/*
 		// starts the command for the first time.
 		// TODO(Félix) is this a valid way of spawning the command?
 		// i think this means, if the command is spawned for the first time it will be started even
@@ -196,6 +203,7 @@ pub fn runtime(args: &Args, state: &State) -> Result<RuntimeConfig> {
 
 		action.outcome(Outcome::if_running(when_running, when_idle));
 
+		*/
 		fut
 	});
 
