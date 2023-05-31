@@ -54,149 +54,192 @@ pub fn runtime(args: &Args, state: &State) -> Result<RuntimeConfig> {
 	let delay_run = args.delay_run.map(|ts| ts.0);
 
 	config.on_action(move |action: Action| {
-		let fut = async { Ok::<(), Infallible>(()) };
+		let mut command = command.take();
+		async move {
+			let ret = Ok::<(), Infallible>(());
 
-		// starts the command for the first time.
-		// TODO(Félix) is this a valid way of spawning the command?
-		// i think this means, if the command is spawned for the first time it will be started even
-		// if there is a Terminate signal in the events of the Action!
-		if let Some(command) = command.take() {
-			_ = action.blocking_start_command(vec![command], watchexec::action::EventSet::All);
-		}
+			// starts the command for the first time.
+			// TODO(Félix) is this a valid way of spawning the command?
+			// i think this means, if the command is spawned for the first time it will be started even
+			// if there is a Terminate signal in the events of the Action!
+			// additionally, this seems like a pretty cluncky fix in general, and may not be
+			// ideal...
+			let sup_id = if let Some(command) = command.take() {
+				action
+					.create(vec![command], watchexec::action::EventSet::All)
+					.await
+			} else {
+				action.list()[0]
+			};
 
-		if print_events {
-			for (n, event) in action.events.iter().enumerate() {
-				eprintln!("[EVENT {n}] {event}");
-			}
-		}
-
-		if once {
-			action.outcome(Outcome::both(
-				if let Some(delay) = &delay_run {
-					Outcome::both(Outcome::Sleep(*delay), Outcome::Start)
-				} else {
-					Outcome::Start
-				},
-				Outcome::wait(Outcome::Exit),
-			));
-			return fut;
-		}
-
-		let signals: Vec<Signal> = action.events.iter().flat_map(Event::signals).collect();
-		let has_paths = action.events.iter().flat_map(Event::paths).next().is_some();
-
-		if signals.contains(&Signal::Terminate) {
-			action.outcome(Outcome::both(Outcome::Stop, Outcome::Exit));
-			return fut;
-		}
-
-		if signals.contains(&Signal::Interrupt) {
-			action.outcome(Outcome::both(Outcome::Stop, Outcome::Exit));
-			return fut;
-		}
-
-		let is_keyboard_eof = action
-			.events
-			.iter()
-			.any(|e| e.tags.contains(&Tag::Keyboard(Keyboard::Eof)));
-
-		if is_keyboard_eof {
-			action.outcome(Outcome::both(Outcome::Stop, Outcome::Exit));
-			return fut;
-		}
-
-		if !has_paths {
-			if !signals.is_empty() {
-				let mut out = Outcome::DoNothing;
-				for sig in signals {
-					out = Outcome::both(out, Outcome::Signal(sig));
+			if print_events {
+				for (n, event) in action.events.iter().enumerate() {
+					eprintln!("[EVENT {n}] {event}");
 				}
-
-				action.outcome(out);
-				return fut;
 			}
 
-			let completion = action.events.iter().flat_map(Event::completions).next();
-			if let Some(status) = completion {
-				let (msg, printit) = match status {
-					Some(ProcessEnd::ExitError(code)) => {
-						(format!("Command exited with {code}"), true)
-					}
-					Some(ProcessEnd::ExitSignal(sig)) => {
-						(format!("Command killed by {sig:?}"), true)
-					}
-					Some(ProcessEnd::ExitStop(sig)) => {
-						(format!("Command stopped by {sig:?}"), true)
-					}
-					Some(ProcessEnd::Continued) => ("Command continued".to_string(), true),
-					Some(ProcessEnd::Exception(ex)) => {
-						(format!("Command ended by exception {ex:#x}"), true)
-					}
-					Some(ProcessEnd::Success) => ("Command was successful".to_string(), false),
-					None => ("Command completed".to_string(), false),
-				};
-
-				if printit {
-					eprintln!("[[{msg}]]");
-				}
-
-				if notif {
-					Notification::new()
-						.summary("Watchexec: command ended")
-						.body(&msg)
-						.show()
-						.map_or_else(
-							|err| {
-								eprintln!("[[Failed to send desktop notification: {err}]]");
+			if once {
+				action
+					.apply(
+						Outcome::both(
+							if let Some(delay) = &delay_run {
+								Outcome::both(Outcome::Sleep(*delay), Outcome::Start)
+							} else {
+								Outcome::Start
 							},
-							drop,
-						);
+							Outcome::wait(Outcome::Exit),
+						),
+						sup_id,
+						watchexec::action::EventSet::All,
+					)
+					.await;
+				return ret;
+			}
+
+			let signals: Vec<Signal> = action.events.iter().flat_map(Event::signals).collect();
+			let has_paths = action.events.iter().flat_map(Event::paths).next().is_some();
+
+			if signals.contains(&Signal::Terminate) {
+				action
+					.apply(
+						Outcome::both(Outcome::Stop, Outcome::Exit),
+						sup_id,
+						watchexec::action::EventSet::All,
+					)
+					.await;
+				return ret;
+			}
+
+			if signals.contains(&Signal::Interrupt) {
+				action
+					.apply(
+						Outcome::both(Outcome::Stop, Outcome::Exit),
+						sup_id,
+						watchexec::action::EventSet::All,
+					)
+					.await;
+				return ret;
+			}
+
+			let is_keyboard_eof = action
+				.events
+				.iter()
+				.any(|e| e.tags.contains(&Tag::Keyboard(Keyboard::Eof)));
+
+			if is_keyboard_eof {
+				action
+					.apply(
+						Outcome::both(Outcome::Stop, Outcome::Exit),
+						sup_id,
+						watchexec::action::EventSet::All,
+					)
+					.await;
+				return ret;
+			}
+
+			if !has_paths {
+				if !signals.is_empty() {
+					let mut out = Outcome::DoNothing;
+					for sig in signals {
+						out = Outcome::both(out, Outcome::Signal(sig));
+					}
+
+					action
+						.apply(out, sup_id, watchexec::action::EventSet::All)
+						.await;
+					return ret;
 				}
 
-				action.outcome(Outcome::DoNothing);
-				return fut;
+				let completion = action.events.iter().flat_map(Event::completions).next();
+				if let Some(status) = completion {
+					let (msg, printit) = match status {
+						Some(ProcessEnd::ExitError(code)) => {
+							(format!("Command exited with {code}"), true)
+						}
+						Some(ProcessEnd::ExitSignal(sig)) => {
+							(format!("Command killed by {sig:?}"), true)
+						}
+						Some(ProcessEnd::ExitStop(sig)) => {
+							(format!("Command stopped by {sig:?}"), true)
+						}
+						Some(ProcessEnd::Continued) => ("Command continued".to_string(), true),
+						Some(ProcessEnd::Exception(ex)) => {
+							(format!("Command ended by exception {ex:#x}"), true)
+						}
+						Some(ProcessEnd::Success) => ("Command was successful".to_string(), false),
+						None => ("Command completed".to_string(), false),
+					};
+
+					if printit {
+						eprintln!("[[{msg}]]");
+					}
+
+					if notif {
+						Notification::new()
+							.summary("Watchexec: command ended")
+							.body(&msg)
+							.show()
+							.map_or_else(
+								|err| {
+									eprintln!("[[Failed to send desktop notification: {err}]]");
+								},
+								drop,
+							);
+					}
+
+					action
+						.apply(Outcome::DoNothing, sup_id, watchexec::action::EventSet::All)
+						.await;
+					return ret;
+				}
 			}
-		}
 
-		let start = if let Some(mode) = clear {
-			Outcome::both(
-				match mode {
-					ClearMode::Clear => Outcome::Clear,
-					ClearMode::Reset => Outcome::Reset,
-				},
-				Outcome::Start,
-			)
-		} else {
-			Outcome::Start
-		};
-
-		let start = if let Some(delay) = &delay_run {
-			Outcome::both(Outcome::Sleep(*delay), start)
-		} else {
-			start
-		};
-
-		let when_idle = start.clone();
-		let when_running = match on_busy {
-			OnBusyUpdate::Restart if cfg!(windows) => Outcome::both(Outcome::Stop, start),
-			OnBusyUpdate::Restart => Outcome::both(
+			let start = if let Some(mode) = clear {
 				Outcome::both(
-					Outcome::Signal(stop_signal.unwrap_or(Signal::Terminate)),
-					Outcome::wait_timeout(stop_timeout, Outcome::Stop),
+					match mode {
+						ClearMode::Clear => Outcome::Clear,
+						ClearMode::Reset => Outcome::Reset,
+					},
+					Outcome::Start,
+				)
+			} else {
+				Outcome::Start
+			};
+
+			let start = if let Some(delay) = &delay_run {
+				Outcome::both(Outcome::Sleep(*delay), start)
+			} else {
+				start
+			};
+
+			let when_idle = start.clone();
+			let when_running = match on_busy {
+				OnBusyUpdate::Restart if cfg!(windows) => Outcome::both(Outcome::Stop, start),
+				OnBusyUpdate::Restart => Outcome::both(
+					Outcome::both(
+						Outcome::Signal(stop_signal.unwrap_or(Signal::Terminate)),
+						Outcome::wait_timeout(stop_timeout, Outcome::Stop),
+					),
+					start,
 				),
-				start,
-			),
-			OnBusyUpdate::Signal if cfg!(windows) => Outcome::Stop,
-			OnBusyUpdate::Signal => {
-				Outcome::Signal(stop_signal.or(signal).unwrap_or(Signal::Terminate))
-			}
-			OnBusyUpdate::Queue => Outcome::wait(start),
-			OnBusyUpdate::DoNothing => Outcome::DoNothing,
-		};
+				OnBusyUpdate::Signal if cfg!(windows) => Outcome::Stop,
+				OnBusyUpdate::Signal => {
+					Outcome::Signal(stop_signal.or(signal).unwrap_or(Signal::Terminate))
+				}
+				OnBusyUpdate::Queue => Outcome::wait(start),
+				OnBusyUpdate::DoNothing => Outcome::DoNothing,
+			};
 
-		action.outcome(Outcome::if_running(when_running, when_idle));
+			action
+				.apply(
+					Outcome::if_running(when_running, when_idle),
+					sup_id,
+					watchexec::action::EventSet::All,
+				)
+				.await;
 
-		fut
+			ret
+		}
 	});
 
 	let mut add_envs = HashMap::new();
