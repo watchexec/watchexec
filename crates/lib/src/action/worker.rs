@@ -71,6 +71,9 @@ pub async fn worker(
 			continue;
 		}
 
+		// TODO(Felix) would you prefer this to be handled differently to avoid the potential
+		// misbehavior suggested in this lint?
+		#[allow(clippy::nursery)]
 		for (pid, (resolution, event_set)) in outcomes.lock().await.iter() {
 			let found = match resolution {
 				Resolution::Apply(outcome) => {

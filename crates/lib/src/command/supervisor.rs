@@ -39,58 +39,32 @@ pub struct Supervisor {
 	ongoing: watch::Receiver<bool>,
 }
 
+/// Defines the arguments needed to spawn a [`Supervisor`].
+///
+/// Used to gather all nc
 pub struct Args {
-	errors: Sender<RuntimeError>,
-	events: priority::Sender<Event, Priority>,
-	commands: Vec<Command>,
-	supervisor_id: SupervisorId,
-	grouped: bool,
-	actioned_events: Arc<[Event]>,
-	pre_spawn_handler: HandlerLock<PreSpawn>,
-	post_spawn_handler: HandlerLock<PostSpawn>,
-}
-
-pub struct RequiredArgs {
+	/// Error channel used to send and receive errors from the [`Supervisor`] and it's [`Command`]s.
 	pub errors: Sender<RuntimeError>,
+	/// Events channel used to send and receive events to and from the [`Supervisor`] and it's [`Command`]s.
 	pub events: priority::Sender<Event, Priority>,
+	/// The set of [`Command`]s run by the [`Supervisor`].
 	pub commands: Vec<Command>,
+	/// The [`SupervisorId`] associated with the [`Supervisor`] that is being spawned.
 	pub supervisor_id: SupervisorId,
+	/// Dictates whether or not to use **grouped** [`Command`]s.
 	pub grouped: bool,
+	/// The [`Event`]s associated with the [`Supervisor`].
 	pub actioned_events: Arc<[Event]>,
+	/// The [`PreSpawn`] handler is executed before the [`Supervisor`] is spawned.
 	pub pre_spawn_handler: HandlerLock<PreSpawn>,
+	/// The [`PostSpawn`] handler is executed after the [`Supervisor`] finishes execution.
 	pub post_spawn_handler: HandlerLock<PostSpawn>,
-}
-
-impl From<RequiredArgs> for Args {
-	fn from(value: RequiredArgs) -> Self {
-		let RequiredArgs {
-			errors,
-			events,
-			commands,
-			supervisor_id,
-			grouped,
-			actioned_events,
-			pre_spawn_handler,
-			post_spawn_handler,
-		} = value;
-
-		Self {
-			errors,
-			events,
-			commands,
-			supervisor_id,
-			grouped,
-			actioned_events,
-			pre_spawn_handler,
-			post_spawn_handler,
-		}
-	}
 }
 
 impl Supervisor {
 	/// Spawns the command set, the supervisor task from the provided arguments and returns a new
 	/// control object.
-	pub fn spawn(args: impl Into<Args>) -> Result<Supervisor, RuntimeError> {
+	pub fn spawn(args: Args) -> Result<Self, RuntimeError> {
 		let Args {
 			errors,
 			events,
@@ -100,7 +74,7 @@ impl Supervisor {
 			actioned_events,
 			pre_spawn_handler,
 			post_spawn_handler,
-		} = args.into();
+		} = args;
 
 		// get commands in reverse order so pop() returns the next to run
 		commands.reverse();

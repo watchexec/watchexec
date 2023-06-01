@@ -17,7 +17,7 @@ use tokio::{
 use tracing::{debug, error, info, trace, warn};
 
 use crate::{
-	command::{Command, RequiredArgs, Supervisor, SupervisorId},
+	command::{Args, Command, Supervisor, SupervisorId},
 	error::RuntimeError,
 	event::{Event, Priority},
 };
@@ -59,8 +59,8 @@ impl OutcomeWorker {
 			events,
 			commands,
 			working,
-			supervisor_id,
 			process,
+			supervisor_id,
 			gen,
 			gencheck,
 			errors_c,
@@ -141,7 +141,7 @@ impl OutcomeWorker {
 					warn!("tried to start commands without anything to run");
 				} else {
 					trace!("spawning supervisor for command");
-					let sup = Supervisor::spawn(RequiredArgs {
+					let sup = Supervisor::spawn(Args {
 						errors: self.errors_c.clone(),
 						events: self.events_c.clone(),
 						commands: cmds,

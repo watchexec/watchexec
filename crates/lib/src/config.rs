@@ -6,7 +6,6 @@ use tracing::debug;
 
 use crate::{
 	action::{Action, PostSpawn, PreSpawn},
-	command::Command,
 	filter::Filterer,
 	fs::Watcher,
 	handler::{Handler, HandlerLock},

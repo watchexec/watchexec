@@ -6,7 +6,7 @@ use std::{
 };
 use tokio::{
 	process::Command as TokioCommand,
-	sync::{Mutex, MutexGuard, OwnedMutexGuard},
+	sync::{Mutex, OwnedMutexGuard},
 };
 
 use crate::{
@@ -268,7 +268,7 @@ impl PreSpawn {
 	}
 
 	/// Returns the `SupervisorId` associated with the `Supervisor` and `Command`.
-	pub fn supervisor(&self) -> SupervisorId {
+	pub const fn supervisor(&self) -> SupervisorId {
 		self.supervisor_id
 	}
 }
@@ -299,7 +299,7 @@ pub struct PostSpawn {
 
 impl PostSpawn {
 	/// Returns the `SupervisorId` associated with the `Supervisor` and the `Command` that was run.
-	pub fn supervisor(&self) -> SupervisorId {
+	pub const fn supervisor(&self) -> SupervisorId {
 		self.supervisor_id
 	}
 }
