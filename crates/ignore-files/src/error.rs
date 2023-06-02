@@ -37,4 +37,15 @@ pub enum Error {
 	#[error("multiple: {0:?}")]
 	#[diagnostic(code(ignore_file::set))]
 	Multi(#[related] Vec<Error>),
+
+	/// Error received when trying to canonicalize a path
+	#[error("cannot canonicalize '{path:?}'")]
+	Canonicalize {
+		/// the path that cannot be canonicalized
+		path: PathBuf,
+
+		/// the underlying error
+		#[source]
+		err: std::io::Error,
+	},
 }
