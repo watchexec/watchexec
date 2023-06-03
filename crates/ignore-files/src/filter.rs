@@ -6,7 +6,7 @@ use ignore::{
 	Match,
 };
 use radix_trie::{Trie, TrieCommon};
-use tokio::fs::read_to_string;
+use tokio::fs::{canonicalize, read_to_string};
 use tracing::{trace, trace_span};
 
 use crate::{Error, IgnoreFile};
@@ -55,7 +55,12 @@ impl IgnoreFilter {
 	/// Use [`empty()`](IgnoreFilter::empty()) if you want an empty filterer,
 	/// or to construct one outside an async environment.
 	pub async fn new(origin: impl AsRef<Path> + Send, files: &[IgnoreFile]) -> Result<Self, Error> {
-		let origin = dunce::simplified(origin.as_ref());
+		let origin = origin.as_ref().to_owned();
+		let origin = canonicalize(&origin)
+			.await
+			.map_err(move |err| Error::Canonicalize { path: origin, err })?;
+
+		let origin = dunce::simplified(&origin);
 		let _span = trace_span!("build_filterer", ?origin);
 
 		trace!(files=%files.len(), "loading file contents");
@@ -366,5 +371,16 @@ fn prefix<T: AsRef<Path>>(path: T) -> String {
 			prefix_component.as_os_str().to_str().unwrap_or("/").into()
 		}
 		_ => "/".into(),
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::IgnoreFilter;
+
+	#[tokio::test]
+	async fn handle_relative_paths() {
+		let ignore = IgnoreFilter::new(".", &[]).await.unwrap();
+		assert!(ignore.origin.is_absolute());
 	}
 }
