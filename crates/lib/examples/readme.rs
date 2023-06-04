@@ -1,6 +1,7 @@
 use miette::{IntoDiagnostic, Result};
 use watchexec::{
-	action::{Action, Outcome},
+	action::{Action, EventSet, Outcome},
+	command::Command,
 	config::{InitConfig, RuntimeConfig},
 	handler::PrintDebug,
 	Watchexec,
@@ -19,6 +20,8 @@ async fn main() -> Result<()> {
 		.into_diagnostic()?;
 	conf.apply(&mut runtime);
 
+	let mut commands = conf.commands();
+
 	let we = Watchexec::new(init, runtime.clone())?;
 	let w = we.clone();
 
@@ -26,25 +29,50 @@ async fn main() -> Result<()> {
 	runtime.on_action(move |action: Action| {
 		let mut c = c.clone();
 		let w = w.clone();
+		let commands: Vec<_> = commands.drain(..).collect();
 		async move {
-			for event in action.events.iter() {
-				if event.paths().any(|(p, _)| p.ends_with("/watchexec.conf")) {
-					let conf = YourConfigFormat::load_from_file("watchexec.conf").await?;
-
-					conf.apply(&mut c);
-					let _ = w.reconfigure(c.clone());
-					// tada! self-reconfiguring watchexec on config file change!
-
-					break;
-				}
+			for commands in commands {
+				_ = action.create(commands, EventSet::All).await;
 			}
 
-			action.outcome(Outcome::if_running(
-				Outcome::DoNothing,
-				Outcome::both(Outcome::Clear, Outcome::Start),
-			));
+			'fut: {
+				for event in action.events.iter() {
+					if event.paths().any(|(p, _)| p.ends_with("/watchexec.conf")) {
+						let conf = YourConfigFormat::load_from_file("watchexec.conf").await?;
 
-			Ok::<(), std::io::Error>(())
+						conf.apply(&mut c);
+						let _ = w.reconfigure(c.clone());
+						for &sup in action.list() {
+							action
+								.delete(sup, EventSet::Some(vec![event.clone()]))
+								.await;
+						}
+						for commands in conf.commands() {
+							_ = action
+								.create(commands, EventSet::Some(vec![event.clone()]))
+								.await;
+						}
+						// tada! self-reconfiguring watchexec on config file change!
+
+						break 'fut Ok::<(), std::io::Error>(());
+					}
+				}
+
+				for &sup in action.list() {
+					action
+						.apply(
+							Outcome::if_running(
+								Outcome::DoNothing,
+								Outcome::both(Outcome::Clear, Outcome::Start),
+							),
+							sup,
+							EventSet::All,
+						)
+						.await;
+				}
+
+				Ok::<(), std::io::Error>(())
+			}
 		}
 	});
 
@@ -60,5 +88,12 @@ impl YourConfigFormat {
 
 	fn apply(&self, _config: &mut RuntimeConfig) {
 		// ...
+	}
+
+	fn commands(&self) -> Vec<Vec<Command>> {
+		#[allow(unused_mut)]
+		let mut commands = vec![];
+		// ...
+		commands
 	}
 }
