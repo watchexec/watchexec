@@ -9,7 +9,7 @@ use clap_complete::{Generator, Shell};
 use clap_mangen::Man;
 use command_group::AsyncCommandGroup;
 use is_terminal::IsTerminal;
-use miette::{Context, IntoDiagnostic, Result};
+use miette::{IntoDiagnostic, Result};
 use tokio::{fs::metadata, io::AsyncWriteExt, process::Command};
 use tracing::{debug, info, warn};
 use watchexec::{
@@ -54,11 +54,8 @@ async fn init() -> Result<Args> {
 		warn!("ignoring logging options from args");
 	} else if verbosity > 0 {
 		let log_file = if let Some(file) = &args.log_file {
-			let info = metadata(&file)
-				.await
-				.into_diagnostic()
-				.wrap_err("Opening log file failed")?;
-			let path = if info.is_dir() {
+			let is_dir = metadata(&file).await.map_or(false, |info| info.is_dir());
+			let path = if is_dir {
 				let filename = format!(
 					"watchexec.{}.log",
 					chrono::Utc::now().format("%Y-%m-%dT%H-%M-%SZ")
