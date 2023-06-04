@@ -178,12 +178,12 @@ pub async fn worker(
 			if data.pathset.is_empty() {
 				trace!("no more watched paths, dropping watcher");
 				watcher.take();
-				pathset.drain();
+				pathset.clear();
 				continue;
 			}
 
 			if watcher.is_none() || watcher_type != data.watcher {
-				pathset.drain();
+				pathset.clear();
 
 				(Some(data.watcher), data.pathset.clone(), Vec::new())
 			} else {

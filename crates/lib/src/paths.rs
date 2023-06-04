@@ -102,7 +102,7 @@ pub fn summarise_events_to_env<'events>(
 		// usually there's only one but just in case
 		for kind in event.tags.iter().filter_map(|t| {
 			if let Tag::FileEventKind(kind) = t {
-				Some(kind.clone())
+				Some(kind)
 			} else {
 				None
 			}
