@@ -64,6 +64,9 @@ async fn main() -> Result<()> {
 				config.file_watcher(Watcher::Poll(Duration::from_millis(50)));
 				w.reconfigure(config)?;
 			} else if action.events.iter().flat_map(Event::paths).next().is_some() {
+				// TODO(Felix) Is having this pattern (a for loop over every 'alive' supervisor on
+				// action creation) one you find appropriate, or would you prefer a different
+				// patter?
 				for &sup in action.list() {
 					action
 						.apply(

@@ -90,6 +90,8 @@ impl YourConfigFormat {
 		// ...
 	}
 
+	// TODO(Felix) this was added to deal with the new api for creating commands/supervisors.
+	// Is this along the lines of what you would like this to be, or is it too clunky?
 	fn commands(&self) -> Vec<Vec<Command>> {
 		#[allow(unused_mut)]
 		let mut commands = vec![];
