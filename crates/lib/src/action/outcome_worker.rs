@@ -17,7 +17,7 @@ use tokio::{
 use tracing::{debug, error, info, trace, warn};
 
 use crate::{
-	command::Supervisor,
+	command::{Args, Command, Supervisor, SupervisorId},
 	error::RuntimeError,
 	event::{Event, Priority},
 };
@@ -27,8 +27,10 @@ use super::{process_holder::ProcessHolder, Outcome, WorkingData};
 #[derive(Clone)]
 pub struct OutcomeWorker {
 	events: Arc<[Event]>,
+	commands: Vec<Command>,
 	working: Receiver<WorkingData>,
 	process: ProcessHolder,
+	supervisor_id: SupervisorId,
 	gen: usize,
 	gencheck: Arc<AtomicUsize>,
 	errors_c: mpsc::Sender<RuntimeError>,
@@ -40,11 +42,14 @@ impl OutcomeWorker {
 		Default::default()
 	}
 
+	#[allow(clippy::too_many_arguments)]
 	pub fn spawn(
 		outcome: Outcome,
 		events: Arc<[Event]>,
+		commands: Vec<Command>,
 		working: Receiver<WorkingData>,
 		process: ProcessHolder,
+		supervisor_id: SupervisorId,
 		gencheck: Arc<AtomicUsize>,
 		errors_c: mpsc::Sender<RuntimeError>,
 		events_c: priority::Sender<Event, Priority>,
@@ -52,8 +57,10 @@ impl OutcomeWorker {
 		let gen = gencheck.fetch_add(1, Ordering::SeqCst).wrapping_add(1);
 		let this = Self {
 			events,
+			commands,
 			working,
 			process,
+			supervisor_id,
 			gen,
 			gencheck,
 			errors_c,
@@ -123,7 +130,7 @@ impl OutcomeWorker {
 				let (cmds, grouped, pre_spawn_handler, post_spawn_handler) = {
 					let wrk = self.working.borrow();
 					(
-						wrk.commands.clone(),
+						self.commands.clone(),
 						wrk.grouped,
 						wrk.pre_spawn_handler.clone(),
 						wrk.post_spawn_handler.clone(),
@@ -134,15 +141,16 @@ impl OutcomeWorker {
 					warn!("tried to start commands without anything to run");
 				} else {
 					trace!("spawning supervisor for command");
-					let sup = Supervisor::spawn(
-						self.errors_c.clone(),
-						self.events_c.clone(),
-						cmds,
+					let sup = Supervisor::spawn(Args {
+						errors: self.errors_c.clone(),
+						events: self.events_c.clone(),
+						commands: cmds,
+						supervisor_id: self.supervisor_id,
 						grouped,
-						self.events.clone(),
+						actioned_events: self.events.clone(),
 						pre_spawn_handler,
 						post_spawn_handler,
-					)?;
+					})?;
 					notry!(self.process.replace(sup));
 				}
 			}

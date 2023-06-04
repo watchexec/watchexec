@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{num::NonZeroU64, sync::Arc};
 
 use async_priority_channel as priority;
 use command_group::AsyncCommandGroup;
@@ -39,17 +39,43 @@ pub struct Supervisor {
 	ongoing: watch::Receiver<bool>,
 }
 
+/// Defines the arguments needed to spawn a [`Supervisor`].
+///
+/// Used to gather all nc
+pub struct Args {
+	/// Error channel used to send and receive errors from the [`Supervisor`] and it's [`Command`]s.
+	pub errors: Sender<RuntimeError>,
+	/// Events channel used to send and receive events to and from the [`Supervisor`] and it's [`Command`]s.
+	pub events: priority::Sender<Event, Priority>,
+	/// The set of [`Command`]s run by the [`Supervisor`].
+	pub commands: Vec<Command>,
+	/// The [`SupervisorId`] associated with the [`Supervisor`] that is being spawned.
+	pub supervisor_id: SupervisorId,
+	/// Dictates whether or not to use **grouped** [`Command`]s.
+	pub grouped: bool,
+	/// The [`Event`]s associated with the [`Supervisor`].
+	pub actioned_events: Arc<[Event]>,
+	/// The [`PreSpawn`] handler is executed before the [`Supervisor`] is spawned.
+	pub pre_spawn_handler: HandlerLock<PreSpawn>,
+	/// The [`PostSpawn`] handler is executed after the [`Supervisor`] finishes execution.
+	pub post_spawn_handler: HandlerLock<PostSpawn>,
+}
+
 impl Supervisor {
-	/// Spawns the command set, the supervision task, and returns a new control object.
-	pub fn spawn(
-		errors: Sender<RuntimeError>,
-		events: priority::Sender<Event, Priority>,
-		mut commands: Vec<Command>,
-		grouped: bool,
-		actioned_events: Arc<[Event]>,
-		pre_spawn_handler: HandlerLock<PreSpawn>,
-		post_spawn_handler: HandlerLock<PostSpawn>,
-	) -> Result<Self, RuntimeError> {
+	/// Spawns the command set, the supervisor task from the provided arguments and returns a new
+	/// control object.
+	pub fn spawn(args: Args) -> Result<Self, RuntimeError> {
+		let Args {
+			errors,
+			events,
+			mut commands,
+			supervisor_id,
+			grouped,
+			actioned_events,
+			pre_spawn_handler,
+			post_spawn_handler,
+		} = args;
+
 		// get commands in reverse order so pop() returns the next to run
 		commands.reverse();
 		let next = commands.pop().ok_or(RuntimeError::NoCommands)?;
@@ -68,6 +94,7 @@ impl Supervisor {
 				let (mut process, pid) = match spawn_process(
 					span.clone(),
 					next,
+					supervisor_id,
 					grouped,
 					actioned_events.clone(),
 					pre_spawn_handler.clone(),
@@ -272,6 +299,7 @@ impl Supervisor {
 async fn spawn_process(
 	span: Span,
 	command: Command,
+	supervisor_id: SupervisorId,
 	grouped: bool,
 	actioned_events: Arc<[Event]>,
 	pre_spawn_handler: HandlerLock<PreSpawn>,
@@ -307,6 +335,7 @@ async fn spawn_process(
 			command.clone(),
 			spawnable,
 			actioned_events.clone(),
+			supervisor_id,
 		))
 	})?;
 
@@ -356,6 +385,7 @@ async fn spawn_process(
 				events: actioned_events.clone(),
 				id,
 				grouped,
+				supervisor_id,
 			},
 		))
 	})?;
@@ -366,4 +396,27 @@ async fn spawn_process(
 		.map_err(|e| rte("action post-spawn", e.as_ref()))?;
 
 	Ok((proc, id))
+}
+
+/// Used to identify command registered with a Supervisor.
+#[must_use]
+#[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
+pub struct SupervisorId(NonZeroU64);
+
+impl Default for SupervisorId {
+	fn default() -> Self {
+		use std::{
+			collections::hash_map::RandomState,
+			hash::{BuildHasher, Hasher},
+		};
+		// generates pseudo-random u64 using `std`'s
+		// [`RandomState`](https://doc.rust-lang.org/std/collections/hash_map/struct.RandomState.html)
+		let seed = RandomState::new().build_hasher().finish();
+
+		let non_zero = seed.saturating_add(1);
+
+		// Safety:
+		// 1. The Saturating add ensures the value of `non_zero` is at least 1.
+		unsafe { Self(NonZeroU64::new_unchecked(non_zero)) }
+	}
 }

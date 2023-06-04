@@ -6,7 +6,6 @@ use tracing::debug;
 
 use crate::{
 	action::{Action, PostSpawn, PreSpawn},
-	command::Command,
 	filter::Filterer,
 	fs::Watcher,
 	handler::{Handler, HandlerLock},
@@ -82,22 +81,6 @@ impl RuntimeConfig {
 	pub fn command_grouped(&mut self, grouped: bool) -> &mut Self {
 		debug!(?grouped, "RuntimeConfig: command_grouped");
 		self.action.grouped = grouped;
-		self
-	}
-
-	/// Set a single command to run on action.
-	///
-	/// This is a convenience for `.commands(vec![Command...])`.
-	pub fn command(&mut self, command: Command) -> &mut Self {
-		debug!(?command, "RuntimeConfig: command");
-		self.action.commands = vec![command];
-		self
-	}
-
-	/// Set the commands to run on action.
-	pub fn commands(&mut self, commands: impl Into<Vec<Command>>) -> &mut Self {
-		self.action.commands = commands.into();
-		debug!(commands=?self.action.commands, "RuntimeConfig: commands");
 		self
 	}
 
