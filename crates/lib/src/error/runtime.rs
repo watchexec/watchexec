@@ -8,7 +8,7 @@ use crate::{
 };
 
 /// Errors which _may_ be recoverable, transient, or only affect a part of the operation, and should
-/// be reported to the user and/or acted upon programatically, but will not outright stop watchexec.
+/// be reported to the user and/or acted upon programmatically, but will not outright stop watchexec.
 ///
 /// Some errors that are classified here are spurious and may be ignored; in general you should not
 /// use the convenience print handlers for handling these errors beyond prototyping. For example,
