@@ -154,8 +154,7 @@ impl GitInfo {
 		let repo = gix::discover(path).err_string()?;
 		let head = repo.head_commit().err_string()?;
 		let time = head.time().err_string()?;
-		let timestamp =
-			OffsetDateTime::from_unix_timestamp(time.seconds_since_unix_epoch as _).err_string()?;
+		let timestamp = OffsetDateTime::from_unix_timestamp(time.seconds as _).err_string()?;
 
 		Ok(Self {
 			git_root: repo.path().canonicalize().err_string()?,
