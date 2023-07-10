@@ -1,0 +1,18 @@
+[package]
+name = "audace"
+version = "0.1.0"
+
+authors = ["Félix Saparelli <felix@passcod.name>"]
+license = "Apache-2.0 OR MIT"
+description = "Handle PID1 duties"
+keywords = ["init", "pid1", "containers", "zombies"]
+
+documentation = "https://docs.rs/audace"
+repository = "https://github.com/watchexec/watchexec"
+readme = "README.md"
+
+rust-version = "1.58.0"
+edition = "2021"
+
+[dependencies]
+
