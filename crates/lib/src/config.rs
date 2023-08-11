@@ -77,13 +77,6 @@ impl RuntimeConfig {
 		self
 	}
 
-	/// Toggle whether to use process groups or not.
-	pub fn command_grouped(&mut self, grouped: bool) -> &mut Self {
-		debug!(?grouped, "RuntimeConfig: command_grouped");
-		self.action.grouped = grouped;
-		self
-	}
-
 	/// Set the filterer implementation to use.
 	pub fn filterer(&mut self, filterer: Arc<dyn Filterer>) -> &mut Self {
 		debug!(?filterer, "RuntimeConfig: filterer");

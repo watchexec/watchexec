@@ -14,7 +14,7 @@ use watchexec_signals::Signal;
 
 use crate::{
 	action::{PostSpawn, PreSpawn},
-	command::Command,
+	command::{Command, Isolation, Program},
 	error::RuntimeError,
 	event::{Event, Priority, Source, Tag},
 	handler::{rte, HandlerLock},
@@ -47,12 +47,10 @@ pub struct Args {
 	pub errors: Sender<RuntimeError>,
 	/// Events channel used to send and receive events to and from the [`Supervisor`] and it's [`Command`]s.
 	pub events: priority::Sender<Event, Priority>,
-	/// The set of [`Command`]s run by the [`Supervisor`].
-	pub commands: Vec<Command>,
+	/// The [`Command`] run by the [`Supervisor`].
+	pub command: Command,
 	/// The [`SupervisorId`] associated with the [`Supervisor`] that is being spawned.
 	pub supervisor_id: SupervisorId,
-	/// Dictates whether or not to use **grouped** [`Command`]s.
-	pub grouped: bool,
 	/// The [`Event`]s associated with the [`Supervisor`].
 	pub actioned_events: Arc<[Event]>,
 	/// The [`PreSpawn`] handler is executed before the [`Supervisor`] is spawned.
@@ -68,17 +66,17 @@ impl Supervisor {
 		let Args {
 			errors,
 			events,
-			mut commands,
+			mut command,
 			supervisor_id,
-			grouped,
 			actioned_events,
 			pre_spawn_handler,
 			post_spawn_handler,
 		} = args;
 
-		// get commands in reverse order so pop() returns the next to run
-		commands.reverse();
-		let next = commands.pop().ok_or(RuntimeError::NoCommands)?;
+		let program = command
+			.sequence
+			.pop_front()
+			.ok_or(RuntimeError::NoCommands)?;
 
 		let (notify, waiter) = watch::channel(true);
 		let (int_s, int_r) = mpsc::channel(8);
@@ -86,16 +84,16 @@ impl Supervisor {
 		spawn(async move {
 			let span = debug_span!("supervisor");
 
-			let mut next = next;
-			let mut commands = commands;
+			let mut program = program;
+			let mut command = command;
 			let mut int = int_r;
 
 			loop {
 				let (mut process, pid) = match spawn_process(
 					span.clone(),
-					next,
+					program,
 					supervisor_id,
-					grouped,
+					command.isolation,
 					actioned_events.clone(),
 					pre_spawn_handler.clone(),
 					post_spawn_handler.clone(),
@@ -209,12 +207,13 @@ impl Supervisor {
 					}
 				}
 
+				// TODO: handle continue_on_error
 				let _enter = span.enter();
-				if let Some(cmd) = commands.pop() {
-					debug!(?cmd, "queuing up next command");
-					next = cmd;
+				if let Some(prog) = command.sequence.pop_front() {
+					debug!(?prog, "queuing up next program");
+					program = prog;
 				} else {
-					debug!("no more commands to supervise");
+					debug!("no more programs to supervise");
 					break;
 				}
 			}
@@ -298,17 +297,17 @@ impl Supervisor {
 
 async fn spawn_process(
 	span: Span,
-	command: Command,
+	program: Program,
 	supervisor_id: SupervisorId,
-	grouped: bool,
+	isolation: Isolation,
 	actioned_events: Arc<[Event]>,
 	pre_spawn_handler: HandlerLock<PreSpawn>,
 	post_spawn_handler: HandlerLock<PostSpawn>,
 ) -> Result<(Process, u32), RuntimeError> {
 	let (pre_spawn, spawnable) = span.in_scope::<_, Result<_, RuntimeError>>(|| {
-		debug!(%grouped, ?command, "preparing command");
+		debug!(?isolation, ?program, "preparing program");
 		#[cfg_attr(windows, allow(unused_mut))]
-		let mut spawnable = command.to_spawnable()?;
+		let mut spawnable = program.to_spawnable()?;
 
 		// Required from Rust 1.66:
 		// https://github.com/rust-lang/rust/pull/101077
@@ -332,7 +331,8 @@ async fn spawn_process(
 
 		debug!("running pre-spawn handler");
 		Ok(PreSpawn::new(
-			command.clone(),
+			program.clone(),
+			isolation,
 			spawnable,
 			actioned_events.clone(),
 			supervisor_id,
@@ -350,41 +350,43 @@ async fn spawn_process(
 			.into_inner();
 
 		info!(command=?spawnable, "spawning command");
-		let (proc, id) = if grouped {
-			let proc = spawnable
-				.group()
-				.kill_on_drop(true)
-				.spawn()
-				.map_err(|err| RuntimeError::IoError {
-					about: "spawning process group",
-					err,
-				})?;
-			let id = proc.id().ok_or(RuntimeError::ProcessDeadOnArrival)?;
-			info!(pgid=%id, "process group spawned");
-			(Process::Grouped(proc), id)
-		} else {
-			let proc =
-				spawnable
-					.kill_on_drop(true)
-					.spawn()
-					.map_err(|err| RuntimeError::IoError {
-						about: "spawning process (ungrouped)",
-						err,
+		let (proc, id) =
+			match isolation {
+				Isolation::Grouped => {
+					let proc = spawnable
+						.group()
+						.kill_on_drop(true)
+						.spawn()
+						.map_err(|err| RuntimeError::IoError {
+							about: "spawning process group",
+							err,
+						})?;
+					let id = proc.id().ok_or(RuntimeError::ProcessDeadOnArrival)?;
+					info!(pgid=%id, "process group spawned");
+					(Process::Grouped(proc), id)
+				}
+				Isolation::None => {
+					let proc = spawnable.kill_on_drop(true).spawn().map_err(|err| {
+						RuntimeError::IoError {
+							about: "spawning process (ungrouped)",
+							err,
+						}
 					})?;
-			let id = proc.id().ok_or(RuntimeError::ProcessDeadOnArrival)?;
-			info!(pid=%id, "process spawned");
-			(Process::Ungrouped(proc), id)
-		};
+					let id = proc.id().ok_or(RuntimeError::ProcessDeadOnArrival)?;
+					info!(pid=%id, "process spawned");
+					(Process::Ungrouped(proc), id)
+				}
+			};
 
 		debug!("running post-spawn handler");
 		Ok((
 			proc,
 			id,
 			PostSpawn {
-				command: command.clone(),
+				program: program.clone(),
+				isolation,
 				events: actioned_events.clone(),
 				id,
-				grouped,
 				supervisor_id,
 			},
 		))

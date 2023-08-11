@@ -1,5 +1,6 @@
 use std::{
 	collections::HashMap,
+	mem::take,
 	sync::{atomic::AtomicUsize, Arc},
 	time::{Duration, Instant},
 };
@@ -12,14 +13,15 @@ use tokio::{
 use tracing::{debug, trace};
 
 use crate::{
-	action::{EventSet, Outcome, Resolution},
+	action::{
+		outcome_worker::OutcomeWorker, process_holder::ProcessHolder, Action, EventSet, Outcome,
+		SupervisionOrder, WorkingData,
+	},
 	command::{Command, SupervisorId},
 	error::{CriticalError, RuntimeError},
 	event::{Event, Priority},
 	handler::rte,
 };
-
-use super::{outcome_worker::OutcomeWorker, process_holder::ProcessHolder, Action, WorkingData};
 
 /// The main worker of a Watchexec process.
 ///
@@ -44,6 +46,8 @@ pub async fn worker(
 	{
 		#[allow(clippy::iter_with_drain)]
 		let events = Arc::from(set.drain(..).collect::<Vec<_>>().into_boxed_slice());
+
+		trace!("preparing action handler");
 		let action = Action::new(
 			Arc::clone(&events),
 			Arc::from(
@@ -54,13 +58,16 @@ pub async fn worker(
 					.into_boxed_slice(),
 			),
 		);
-		debug!("running action handler");
 		let action_handler = {
 			let wrk = working.borrow();
 			wrk.action_handler.clone()
 		};
 
-		let outcomes = action.outcomes.clone();
+		// grab order arcs before running handler
+		let supervision_orders = action.supervision.clone();
+		let _instance_orders = action.instance.clone(); // TODO
+
+		debug!("running action handler");
 		let err = action_handler
 			.call(action)
 			.await
@@ -71,64 +78,71 @@ pub async fn worker(
 			continue;
 		}
 
-		// TODO(Felix) would you prefer this to be handled differently to avoid the potential
-		// misbehavior suggested in this lint?
-		#[allow(clippy::nursery)]
-		for (pid, (resolution, event_set)) in outcomes.lock().await.iter() {
-			let found = match resolution {
-				Resolution::Apply(outcome) => {
-					debug!(pid=?pid, outocome=?outcome, "apply outcome to alive command");
-					processes
-						.get(pid)
-						.map(|data| (outcome.clone(), data.clone()))
-				}
-				Resolution::Start(cmds) => {
-					assert!(processes.get(pid).is_none());
-					debug!(pid=?pid, cmds=?cmds, "starting new command");
-					// due to borrow semantics, lock is only held for this line
-					let data = ProcessData {
-						working: working.clone(),
-						commands: cmds.clone(),
-						process: ProcessHolder::default(),
-						outcome_gen: OutcomeWorker::newgen(),
-					};
+		// FIXME: process instance orders
 
-					processes.insert(*pid, data.clone());
+		debug!("apply orders to supervisors");
+		let supervision_orders = take(&mut *supervision_orders.lock().expect("lock poisoned"));
+		for (id, orders) in supervision_orders {
+			// TODO process each process in parallel, but each order in series
+			for (order, event_set) in orders {
+				let found = match order {
+					SupervisionOrder::Apply(outcome) => {
+						debug!(?id, ?outcome, "apply outcome to supervisor");
+						processes
+							.get(&id)
+							.map(|data| (outcome.clone(), data.clone()))
+					}
+					SupervisionOrder::Create(command) => {
+						debug_assert!(!processes.contains_key(&id));
+						debug!(?id, ?command, "creating new supervisor");
+						processes.insert(
+							id,
+							ProcessData {
+								// due to borrow semantics, workingdata lock is only held for this line
+								working: working.clone(),
+								command: command.clone(),
+								process: ProcessHolder::default(),
+								outcome_gen: OutcomeWorker::newgen(),
+							},
+						);
+						None
+					}
+					SupervisionOrder::Remove => {
+						debug!(?id, "removing supervisor");
+						processes.remove(&id).map(|data| {
+							(Outcome::if_running(Outcome::Stop, Outcome::DoNothing), data)
+						})
+					}
+				};
 
-					Some((Outcome::Start, data))
-				}
-				Resolution::Remove => {
-					// command only stopped if it exists
-					debug!(pid=?pid, "removing command");
-					processes.remove(pid).map(|data| (Outcome::Stop, data))
-				}
-			};
+				// FIXME: need to collect entire Outcome from all orders for a process
 
-			let Some((outcome, ProcessData { working, commands, process, outcome_gen })) = found else {
+				let Some((outcome, ProcessData { working, command, process, outcome_gen })) = found else {
 				continue;
 			};
 
-			let outcome = outcome.resolve(process.is_running().await);
-			debug!(?outcome, "outcome resolved");
+				let outcome = outcome.resolve(process.is_running().await);
+				debug!(?outcome, "outcome resolved");
 
-			let events = match event_set {
-				EventSet::All => events.clone(),
-				EventSet::None => Arc::from(vec![].into_boxed_slice()),
-				EventSet::Some(selected) => Arc::from(selected.clone().into_boxed_slice()),
-			};
-			debug!(?events, "events selected");
-			OutcomeWorker::spawn(
-				outcome,
-				events.clone(),
-				commands,
-				working.clone(),
-				process.clone(),
-				*pid,
-				outcome_gen.clone(),
-				errors.clone(),
-				events_tx.clone(),
-			);
-			debug!("action process done");
+				let events = match event_set {
+					EventSet::All => events.clone(),
+					EventSet::None => Arc::from(Vec::new().into_boxed_slice()),
+					EventSet::Some(selected) => Arc::from(selected.clone().into_boxed_slice()),
+				};
+				debug!(?events, "events selected");
+				OutcomeWorker::spawn(
+					outcome,
+					events.clone(),
+					command,
+					working.clone(),
+					process.clone(),
+					id,
+					outcome_gen.clone(),
+					errors.clone(),
+					events_tx.clone(),
+				);
+				debug!("action process done");
+			}
 		}
 
 		debug!("action handler finished");
@@ -138,10 +152,11 @@ pub async fn worker(
 	Ok(())
 }
 
-#[derive(Clone)]
+// FIXME: dedicated file/struct for supervisorset
+#[derive(Clone, Debug)]
 struct ProcessData {
 	working: watch::Receiver<WorkingData>,
-	commands: Vec<Command>,
+	command: Command,
 	process: ProcessHolder,
 	outcome_gen: Arc<AtomicUsize>,
 }

@@ -1,16 +1,17 @@
 use std::{
 	collections::HashMap,
 	fmt,
+	sync::Mutex,
 	sync::{Arc, Weak},
 	time::Duration,
 };
 use tokio::{
 	process::Command as TokioCommand,
-	sync::{Mutex, OwnedMutexGuard},
+	sync::{Mutex as TokioMutex, OwnedMutexGuard},
 };
 
 use crate::{
-	command::{Command, SupervisorId},
+	command::{Command, Isolation, Program, SupervisorId},
 	event::Event,
 	filter::Filterer,
 	handler::HandlerLock,
@@ -33,7 +34,7 @@ pub struct WorkingData {
 
 	/// The main handler to define: what to do when an action is triggered.
 	///
-	/// This handler is called with the [`Action`] environment, which has a certain way of returning
+	/// This handler is called with the [`Action`] environment, which controls the outcome of the
 	/// the desired outcome, check out the [`Action::outcome()`] method. The handler checks for the
 	/// outcome as soon as the handler returns, which means that if the handler returns before the
 	/// outcome is set, you'll get unexpected results. For this reason, it's a bad idea to use ex. a
@@ -68,15 +69,6 @@ pub struct WorkingData {
 	/// issue a [`RuntimeError`][crate::error::RuntimeError] to the error channel.
 	pub post_spawn_handler: HandlerLock<PostSpawn>,
 
-	/// Whether to use process groups (on Unix) or job control (on Windows) to run the command.
-	///
-	/// This makes use of [command_group] under the hood.
-	///
-	/// If you want to known whether a spawned command was run in a process group, you should use
-	/// the value in [`PostSpawn`] instead of reading this one, as it may have changed in the
-	/// meantime.
-	pub grouped: bool,
-
 	/// The filterer implementation to use when filtering events.
 	///
 	/// The default is a no-op, which will always pass every event.
@@ -87,7 +79,6 @@ impl fmt::Debug for WorkingData {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		f.debug_struct("WorkingData")
 			.field("throttle", &self.throttle)
-			.field("grouped", &self.grouped)
 			.field("filterer", &self.filterer)
 			.finish_non_exhaustive()
 	}
@@ -100,7 +91,6 @@ impl Default for WorkingData {
 			action_handler: Default::default(),
 			pre_spawn_handler: Default::default(),
 			post_spawn_handler: Default::default(),
-			grouped: true,
 			filterer: Arc::new(()),
 		}
 	}
@@ -111,99 +101,139 @@ impl Default for WorkingData {
 /// This deliberately does not implement Clone to make it hard to move it out of the handler, which
 /// you should not do.
 ///
-/// The [`Action::outcome()`] method is the only way to set the outcome of the action, and it _must_
-/// be called before the handler returns.
+/// The action handler is the heart of a Watchexec program. Within, you decide what happens when an
+/// event successfully passes all filters. Watchexec maintains a set of Supervised Commands, which
+/// are assigned a SupervisorId for lightweight reference. In this action handler, you should
+/// add commands to be supervised with `create()`, apply [`Outcome`]s to them when they need to
+/// change with `apply()`, and `delete()` them when they're not longer needed. While you're
+/// encouraged to keep track of the Supervised Commands yourself, the `list()` method also lets you
+/// query what commands are currently known to Watchexec.
+///
+/// Each method that handles supervised commands takes an [`EventSet`] argument, which is used to
+/// describe which events led to an action being taken on which command. `EventSet::All` should be
+/// the default if you're not sure what to do. This set of events is passed to the `PreSpawn` and
+/// `PostSpawn` handlers if they are called in response to an action.
+///
+/// It is important to note that methods called in this handler do not act immediately: rather they
+/// build up a list of desired effects which will be applied when the handler returns.
 pub struct Action {
 	/// The collected events which triggered the action.
 	pub events: Arc<[Event]>,
-	processes: Arc<[SupervisorId]>,
-	pub(crate) outcomes: Arc<Mutex<HashMap<SupervisorId, (Resolution, EventSet)>>>,
+	snapshot: Arc<[SupervisorId]>,
+	pub(crate) supervision: Arc<Mutex<HashMap<SupervisorId, Vec<(SupervisionOrder, EventSet)>>>>,
+	pub(crate) instance: Arc<Mutex<Vec<InstanceOrder>>>,
 }
 
 impl std::fmt::Debug for Action {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		f.debug_struct("Action")
 			.field("events", &self.events)
-			.field("processes", &self.processes)
-			.finish()
+			.field("snapshot", &self.snapshot)
+			.finish_non_exhaustive()
 	}
 }
 
 impl Action {
-	pub(crate) fn new(events: Arc<[Event]>, processes: Arc<[SupervisorId]>) -> Self {
+	pub(crate) fn new(events: Arc<[Event]>, snapshot: Arc<[SupervisorId]>) -> Self {
 		Self {
 			events,
-			processes,
-			outcomes: Default::default(),
+			snapshot,
+			supervision: Default::default(),
+			instance: Default::default(),
 		}
 	}
 
-	/// Sets an [`Outcome`] for a single [`Command`].
-	///
-	/// The [`EventSet`] provides the specific set of [`Event`]s associated with the [`Command`]
-	/// and [`Outcome`].
-	pub async fn apply(&self, outcome: Outcome, to: SupervisorId, because_of: EventSet) {
-		let mut outcomes = self.outcomes.lock().await;
-
-		outcomes.insert(to, (Resolution::Apply(outcome.clone()), because_of));
+	/// Sets an [`Outcome`] for a single Supervised [`Command`].
+	pub fn apply(&self, outcome: Outcome, to: SupervisorId, because_of: EventSet) {
+		let mut orders = self.supervision.lock().expect("lock poisoned");
+		orders
+			.entry(to)
+			.or_default()
+			.push((SupervisionOrder::Apply(outcome.clone()), because_of));
 	}
 
-	/// Returns a snapshot of the [`SupervisorId`]s of the alive [`Command`]s at creation time of the
-	/// [`Action`].
+	/// Returns a snapshot of the [`SupervisorId`]s of the Supervised [`Command`]s.
+	///
+	/// This is not a live list: if the actual set of supervised commands changes during the
+	/// execution of this action, this will not be reflected here. However, that is not generally a
+	/// problem: if an effect is queued through an action handler to apply to a supervised command
+	/// that no longer exists when the handler returns, it is silently ignored.
+	///
+	/// Note also that calling `delete()` does not affect this list for the duration of the action.
 	pub fn list(&self) -> &[SupervisorId] {
-		&self.processes
+		&self.snapshot
 	}
 
-	/// Starts a new supervised [`Command`].
+	/// Creates a new Supervised [`Command`].
 	///
-	/// This instantiates a new command supervisor, which manages the lifecycle
-	/// of a command within the watchexec instance, including stopping, starting
-	/// again, sending signals, and monitoring its aliveness.
+	/// This does not _start_ the command. To do so, call `apply()` immediately after this with an
+	/// `Outcome::Start`.
 	///
-	/// You can control it by calling `command_outcome()` with the [`SupervisorId`]
-	/// this method returns. To destroy a supervisor, use `Outcome::End`.
-	///
-	/// For details on the `events` argument, see the documentation for
-	/// `command_outcome`.
-	///
-	/// Note that as this is async, your action handler must also be async. Calling
-	/// this method in a sync handler without `await`ing it will do nothing.
-	pub async fn create(&self, commands: Vec<Command>, because_of: EventSet) -> SupervisorId {
-		let command = SupervisorId::default();
-		let mut outcomes = self.outcomes.lock().await;
-		outcomes.insert(command, (Resolution::Start(commands), because_of));
-
-		command
+	/// Returns an opaque ID to use to later `apply()` outcomes to this supervised command.
+	pub fn create(&self, command: Command, because_of: EventSet) -> SupervisorId {
+		let id = SupervisorId::default();
+		let mut orders = self.supervision.lock().expect("lock poisoned");
+		orders
+			.entry(id)
+			.or_default()
+			.push((SupervisionOrder::Create(command), because_of));
+		id
 	}
 
 	/// Removes an alive [`Command`] for this and all the following [`Action`]s.
 	///
-	/// This stops the [`Command`], which is equivalent to setting the [`Outcome`] to
-	/// [`Outcome::Stop`], and also removes it from the set of alive [`Command`]s. This means later
-	/// call's to [`list`] for all following [`Action`]s will no longer include this
-	/// [`Command`]. The set returned when calling [`list`] from the current [`Action`]
-	/// will include this [`Command`].
-	pub async fn delete(&self, command: SupervisorId, set: EventSet) {
-		let mut commands = self.outcomes.lock().await;
-		commands.insert(command, (Resolution::Remove, set));
+	/// This implies applying an [`Outcome::Stop`]. The supervised command is killed if it was alive,
+	/// then removed from the Watchexec instance. To start the command again, `create()` must be
+	/// called again.
+	///
+	/// To gracefully stop a supervised command instead, call `apply()` with the relevant `Outcome`
+	/// _before_ calling this.
+	pub fn remove(&self, id: SupervisorId, because_of: EventSet) {
+		let mut orders = self.supervision.lock().expect("lock poisoned");
+		orders
+			.entry(id)
+			.or_default()
+			.push((SupervisionOrder::Remove, because_of));
+	}
+
+	/// Stops all supervised commands and then shuts down the Watchexec instance.
+	///
+	/// If a graceful stop is required, use `apply()` beforehand on all commands.
+	pub fn quit(&self) {
+		self.instance
+			.lock()
+			.expect("lock poisoned")
+			.push(InstanceOrder::Quit);
 	}
 }
 
-/// Indicates how a `Command` should be resolved.
+/// Orders a Watchexec instance applies to the supervision set.
 #[derive(Debug, Clone)]
-pub enum Resolution {
-	/// Used to start a new `Command` with a `Command`.
-	Start(Vec<Command>),
-	/// Apply an `Outcome` to an existing `Command`.
+#[non_exhaustive]
+pub enum SupervisionOrder {
+	/// Create a new supervised command.
+	Create(Command),
+
+	/// Apply an [`Outcome`] to an existing supervised command.
 	Apply(Outcome),
-	/// Remove's an alive `Command`.
+
+	/// Stop and remove a supervised command.
 	Remove,
 }
 
+/// Orders a Watchexec instance applies to itself.
+#[derive(Clone, Copy, Debug)]
+#[non_exhaustive]
+pub enum InstanceOrder {
+	/// Stop all supervised commands and then quit.
+	Quit,
+}
+
 /// Specifies whether to use all `Event`s, a subset, or none at all.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub enum EventSet {
 	/// All `Event`s associated with an action.
+	#[default]
 	All,
 	/// A select subset of `Event`s
 	Some(Vec<Event>),
@@ -221,29 +251,33 @@ pub enum EventSet {
 #[derive(Debug)]
 #[non_exhaustive]
 pub struct PreSpawn {
-	/// The command which is about to be spawned.
-	pub command: Command,
+	/// The program which is about to be spawned.
+	pub program: Program,
+
+	/// Isolation method the program is run in.
+	pub isolation: Isolation,
 
 	/// The collected events which triggered the action this command issues from.
 	pub events: Arc<[Event]>,
 
-	/// The
 	supervisor_id: SupervisorId,
 
-	to_spawn_w: Weak<Mutex<TokioCommand>>,
+	to_spawn_w: Weak<TokioMutex<TokioCommand>>,
 }
 
 impl PreSpawn {
 	pub(crate) fn new(
-		command: Command,
+		program: Program,
+		isolation: Isolation,
 		to_spawn: TokioCommand,
 		events: Arc<[Event]>,
 		supervisor_id: SupervisorId,
-	) -> (Self, Arc<Mutex<TokioCommand>>) {
-		let arc = Arc::new(Mutex::new(to_spawn));
+	) -> (Self, Arc<TokioMutex<TokioCommand>>) {
+		let arc = Arc::new(TokioMutex::new(to_spawn));
 		(
 			Self {
-				command,
+				program,
+				isolation,
 				events,
 				supervisor_id,
 				to_spawn_w: Arc::downgrade(&arc),
@@ -281,8 +315,8 @@ impl PreSpawn {
 #[derive(Clone, Debug)]
 #[non_exhaustive]
 pub struct PostSpawn {
-	/// The command the process was spawned with.
-	pub command: Command,
+	/// The program the process was spawned with.
+	pub program: Program,
 
 	/// The collected events which triggered the action the command issues from.
 	pub events: Arc<[Event]>,
@@ -290,8 +324,8 @@ pub struct PostSpawn {
 	/// The process ID or the process group ID.
 	pub id: u32,
 
-	/// Whether the command was run in a process group.
-	pub grouped: bool,
+	/// Isolation method the program is run in.
+	pub isolation: Isolation,
 
 	/// The `SupervisorId` associated with the process' `Supervisor`.
 	pub(crate) supervisor_id: SupervisorId,

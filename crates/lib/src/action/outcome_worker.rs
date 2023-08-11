@@ -27,7 +27,7 @@ use super::{process_holder::ProcessHolder, Outcome, WorkingData};
 #[derive(Clone)]
 pub struct OutcomeWorker {
 	events: Arc<[Event]>,
-	commands: Vec<Command>,
+	command: Command,
 	working: Receiver<WorkingData>,
 	process: ProcessHolder,
 	supervisor_id: SupervisorId,
@@ -46,7 +46,7 @@ impl OutcomeWorker {
 	pub fn spawn(
 		outcome: Outcome,
 		events: Arc<[Event]>,
-		commands: Vec<Command>,
+		command: Command,
 		working: Receiver<WorkingData>,
 		process: ProcessHolder,
 		supervisor_id: SupervisorId,
@@ -57,7 +57,7 @@ impl OutcomeWorker {
 		let gen = gencheck.fetch_add(1, Ordering::SeqCst).wrapping_add(1);
 		let this = Self {
 			events,
-			commands,
+			command,
 			working,
 			process,
 			supervisor_id,
@@ -127,32 +127,25 @@ impl OutcomeWorker {
 				debug!(outcome=?o, "meaningless without a process, not doing anything");
 			}
 			(_, Outcome::Start) => {
-				let (cmds, grouped, pre_spawn_handler, post_spawn_handler) = {
+				let (pre_spawn_handler, post_spawn_handler) = {
 					let wrk = self.working.borrow();
 					(
-						self.commands.clone(),
-						wrk.grouped,
 						wrk.pre_spawn_handler.clone(),
 						wrk.post_spawn_handler.clone(),
 					)
 				};
 
-				if cmds.is_empty() {
-					warn!("tried to start commands without anything to run");
-				} else {
-					trace!("spawning supervisor for command");
-					let sup = Supervisor::spawn(Args {
-						errors: self.errors_c.clone(),
-						events: self.events_c.clone(),
-						commands: cmds,
-						supervisor_id: self.supervisor_id,
-						grouped,
-						actioned_events: self.events.clone(),
-						pre_spawn_handler,
-						post_spawn_handler,
-					})?;
-					notry!(self.process.replace(sup));
-				}
+				trace!("spawning supervisor for command");
+				let sup = Supervisor::spawn(Args {
+					errors: self.errors_c.clone(),
+					events: self.events_c.clone(),
+					command: self.command.clone(),
+					supervisor_id: self.supervisor_id,
+					actioned_events: self.events.clone(),
+					pre_spawn_handler,
+					post_spawn_handler,
+				})?;
+				notry!(self.process.replace(sup));
 			}
 
 			(true, Outcome::Signal(sig)) => {
