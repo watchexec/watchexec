@@ -88,6 +88,7 @@ impl FromIterator<Program> for Command {
 	}
 }
 
+/// A single program call.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Program {
 	/// A raw program call: the path or name of a program and its argument list.

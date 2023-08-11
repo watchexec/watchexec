@@ -1,5 +1,10 @@
 use std::{
-	collections::HashMap, convert::Infallible, env::current_dir, ffi::OsString, fs::File,
+	borrow::Cow,
+	collections::HashMap,
+	convert::Infallible,
+	env::current_dir,
+	ffi::{OsStr, OsString},
+	fs::File,
 	process::Stdio,
 };
 
@@ -8,16 +13,15 @@ use notify_rust::Notification;
 use tracing::{debug, debug_span, error};
 use watchexec::{
 	action::{Action, /*Outcome,*/ PostSpawn, PreSpawn},
-	command::{Command, Shell},
+	command::{Command, Isolation, Program, Shell},
 	config::RuntimeConfig,
 	error::RuntimeError,
 	fs::Watcher,
 	handler::SyncFnHandler,
 };
-/*
+
 use watchexec_events::{Event, Keyboard, ProcessEnd, Tag};
 use watchexec_signals::Signal;
-*/
 
 use crate::args::{Args, /*ClearMode,*/ EmitEvents /*OnBusyUpdate*/};
 use crate::state::State;
@@ -26,9 +30,7 @@ pub fn runtime(args: &Args, state: &State) -> Result<RuntimeConfig> {
 	let _span = debug_span!("args-runtime").entered();
 	let mut config = RuntimeConfig::default();
 
-	/*
 	let mut command = Some(interpret_command_args(args)?);
-	*/
 
 	config.pathset(if args.paths.is_empty() {
 		vec![current_dir().into_diagnostic()?]
@@ -37,8 +39,6 @@ pub fn runtime(args: &Args, state: &State) -> Result<RuntimeConfig> {
 	});
 
 	config.action_throttle(args.debounce.0);
-	// TODO how are grouped commands now handled by the `lib` crate?
-	config.command_grouped(!args.no_process_group);
 	config.keyboard_emit_eof(args.stdin_quit);
 
 	if let Some(interval) = args.poll {
@@ -303,7 +303,7 @@ pub fn runtime(args: &Args, state: &State) -> Result<RuntimeConfig> {
 		if notif {
 			Notification::new()
 				.summary("Watchexec: change detected")
-				.body(&format!("Running {}", postspawn.command))
+				.body(&format!("Running {}", postspawn.program))
 				.show()
 				.map_or_else(
 					|err| {
@@ -325,66 +325,62 @@ fn interpret_command_args(args: &Args) -> Result<Command> {
 		panic!("(clap) Bug: command is not present");
 	}
 
-	Ok(if args.no_shell || args.no_shell_long {
-		Command::Exec {
-			prog: cmd.remove(0),
-			args: cmd,
+	let shell = match if args.no_shell || args.no_shell_long {
+		None
+	} else {
+		args.shell.as_deref().or(Some("default"))
+	} {
+		Some("") => return Err(RuntimeError::CommandShellEmptyShell).into_diagnostic(),
+
+		Some("none") | None => None,
+
+		#[cfg(windows)]
+		Some("default") | Some("cmd") | Some("cmd.exe") | Some("CMD") | Some("CMD.EXE") => {
+			Some(Shell::cmd())
+		}
+
+		#[cfg(not(windows))]
+		Some("default") => Some(Shell::new("sh")),
+
+		#[cfg(windows)]
+		Some("powershell") => Some(Shell::new(available_powershell())),
+
+		Some(other) => {
+			let sh = other.split_ascii_whitespace().collect::<Vec<_>>();
+
+			// UNWRAP: checked by Some("")
+			#[allow(clippy::unwrap_used)]
+			let (shprog, shopts) = sh.split_first().unwrap();
+
+			Some(Shell {
+				prog: shprog.into(),
+				options: shopts.iter().map(|s| (*s).to_string()).collect(),
+				program_option: Some(Cow::Borrowed(OsStr::new("-c"))),
+			})
+		}
+	};
+
+	let program = if let Some(shell) = shell {
+		Program::Shell {
+			shell,
+			command: cmd.join(" "),
+			args: Vec::new(),
 		}
 	} else {
-		let (shell, shopts) = if let Some(s) = &args.shell {
-			if s.is_empty() {
-				return Err(RuntimeError::CommandShellEmptyShell).into_diagnostic();
-			} else if s.eq_ignore_ascii_case("powershell") {
-				(Shell::Powershell, Vec::new())
-			} else if s.eq_ignore_ascii_case("none") {
-				return Ok(Command::Exec {
-					prog: cmd.remove(0),
-					args: cmd,
-				});
-			} else if s.eq_ignore_ascii_case("cmd") {
-				(cmd_shell(s.into()), Vec::new())
-			} else {
-				let sh = s.split_ascii_whitespace().collect::<Vec<_>>();
-
-				// UNWRAP: checked by first if branch
-				#[allow(clippy::unwrap_used)]
-				let (shprog, shopts) = sh.split_first().unwrap();
-
-				(
-					Shell::Unix((*shprog).to_string()),
-					shopts.iter().map(|s| (*s).to_string()).collect(),
-				)
-			}
-		} else {
-			(default_shell(), Vec::new())
-		};
-
-		Command::Shell {
-			shell,
-			args: shopts,
-			command: cmd.join(" "),
+		Program::Exec {
+			prog: cmd.remove(0).into(),
+			args: cmd,
 		}
-	})
+	};
+
+	let mut command = Command::from(program);
+	if !args.no_process_group {
+		command.isolation = Isolation::Grouped;
+	}
+	Ok(command)
 }
 
-// until 2.0, then Powershell
 #[cfg(windows)]
-fn default_shell() -> Shell {
-	Shell::Cmd
-}
-
-#[cfg(not(windows))]
-fn default_shell() -> Shell {
-	Shell::Unix("sh".to_string())
-}
-
-// because Shell::Cmd is only on windows
-#[cfg(windows)]
-fn cmd_shell(_: String) -> Shell {
-	Shell::Cmd
-}
-
-#[cfg(not(windows))]
-fn cmd_shell(s: String) -> Shell {
-	Shell::Unix(s)
+fn available_powershell() -> String {
+	todo!("figure out if powershell.exe is available, and use that, otherwise use pwsh.exe")
 }
