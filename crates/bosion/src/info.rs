@@ -77,7 +77,7 @@ impl Info {
 			#[cfg(feature = "git")]
 			git: GitInfo::gather()
 				.map_err(|e| {
-					println!("cargo:warning=git info gathering failed: {}", e);
+					println!("cargo:warning=git info gathering failed: {e}");
 				})
 				.ok(),
 			#[cfg(not(feature = "git"))]
