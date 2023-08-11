@@ -67,7 +67,9 @@ impl FilterProgs {
 	pub fn new(args: &Args) -> miette::Result<Self> {
 		let n_filters = args.filter_programs.len();
 		let progs = args.filter_programs.clone();
-		warn!("EXPERIMENTAL: filter programs are unstable and may change/vanish without notice");
+		eprintln!(
+			"EXPERIMENTAL: filter programs are unstable and may change/vanish without notice"
+		);
 
 		let (requester, mut receiver) = Requester::<Event, bool>::new(BUFFER);
 		let task =
@@ -87,10 +89,7 @@ impl FilterProgs {
 						let name = format!("__watchexec_filter_{n}");
 						let filter = Filter::Call(name, Vec::new());
 						let mut errs = Vec::new();
-						let filter = defs.clone().finish(
-							(Vec::new(), (filter, 0..0)),
-							&mut errs,
-						);
+						let filter = defs.clone().finish((Vec::new(), (filter, 0..0)), &mut errs);
 						if !errs.is_empty() {
 							error!(?errs, "failed to load filter program #{}", n);
 							continue;

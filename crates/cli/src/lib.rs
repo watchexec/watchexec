@@ -46,7 +46,7 @@ async fn init() -> Result<Args> {
 		}
 	}
 
-	let args = args::get_args();
+	let args = args::get_args().await?;
 	let verbosity = args.verbose.unwrap_or(0);
 
 	if log_on {

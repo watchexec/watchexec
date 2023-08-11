@@ -1,0 +1,15 @@
+# vim: ft=jq
+
+def has_changed:
+	. as $file |
+	file_hash |
+	{ prev: kv_fetch($file), cur: (. | kv_store($file)) } |
+	.prev != .cur
+;
+
+if any(.tags[]; .kind == "path") then
+	any(
+		.tags[] | select((.kind == "path") and (.filetype == "file"));
+		.absolute | has_changed
+	)
+else true end

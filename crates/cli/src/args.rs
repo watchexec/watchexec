@@ -9,6 +9,8 @@ use clap::{
 	builder::TypedValueParser, error::ErrorKind, Arg, ArgAction, Command, CommandFactory, Parser,
 	ValueEnum, ValueHint,
 };
+use miette::{IntoDiagnostic, Result};
+use tokio::{fs::File, io::AsyncReadExt};
 use watchexec::paths::PATH_SEPARATOR;
 use watchexec_signals::Signal;
 
@@ -1153,8 +1155,8 @@ fn expand_args_up_to_doubledash() -> Result<Vec<OsString>, std::io::Error> {
 }
 
 #[inline]
-pub fn get_args() -> Args {
-	use tracing::{debug, warn};
+pub async fn get_args() -> Result<Args> {
+	use tracing::{debug, trace, warn};
 
 	if std::env::var("RUST_LOG").is_ok() {
 		warn!("⚠ RUST_LOG environment variable set, logging options have no effect");
@@ -1224,6 +1226,18 @@ pub fn get_args() -> Args {
 			.exit();
 	}
 
+	for (n, prog) in args.filter_programs.iter_mut().enumerate() {
+		if let Some(progpath) = prog.strip_prefix('@') {
+			trace!(?n, path=?progpath, "reading filter program from file");
+			let mut progfile = File::open(&progpath).await.into_diagnostic()?;
+			let mut buf =
+				String::with_capacity(progfile.metadata().await.into_diagnostic()?.len() as _);
+			let bytes_read = progfile.read_to_string(&mut buf).await.into_diagnostic()?;
+			debug!(?n, path=?progpath, %bytes_read, "read filter program from file");
+			*prog = buf;
+		}
+	}
+
 	debug!(?args, "got arguments");
-	args
+	Ok(args)
 }
