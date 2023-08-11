@@ -99,9 +99,21 @@ impl Command {
 				args,
 				command,
 			} => {
+				if command.is_empty() {
+					return Err(RuntimeError::CommandShellEmptyCommand);
+				}
+
 				let (shcmd, shcliopt) = match shell {
 					#[cfg(windows)]
-					Shell::Cmd => ("cmd.exe", "/C"),
+					Shell::Cmd => {
+						use std::os::windows::process::CommandExt as _;
+						use std::process::Command as StdCommand;
+
+						// TODO this is a workaround until TokioCommand has a raw_arg method. See tokio-rs/tokio#5810.
+						let mut std_command = StdCommand::new("cmd.exe");
+						std_command.args(args).arg("/C").raw_arg(command);
+						return Ok(TokioCommand::from(std_command));
+					}
 
 					#[cfg(windows)]
 					Shell::Powershell => ("powershell.exe", "-Command"),
@@ -116,10 +128,6 @@ impl Command {
 						(cmd.as_str(), "-c")
 					}
 				};
-
-				if command.is_empty() {
-					return Err(RuntimeError::CommandShellEmptyCommand);
-				}
 
 				let mut c = TokioCommand::new(shcmd);
 				c.args(args);

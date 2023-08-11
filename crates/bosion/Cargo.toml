@@ -1,6 +1,6 @@
 [package]
 name = "bosion"
-version = "1.0.0"
+version = "1.0.1"
 
 authors = ["Félix Saparelli <felix@passcod.name>"]
 license = "Apache-2.0 OR MIT"
@@ -19,8 +19,9 @@ version = "0.3.20"
 features = ["macros", "formatting"]
 
 [dependencies.gix]
-version = "0.44.1"
+version = "0.48"
 optional = true
+default-features = false
 
 [features]
 default = ["git", "reproducible", "std"]

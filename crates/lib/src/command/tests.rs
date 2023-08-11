@@ -85,7 +85,7 @@ async fn windows_shell_cmd() -> Result<(), std::io::Error> {
 	assert!(Command::Shell {
 		shell: Shell::Cmd,
 		args: Vec::new(),
-		command: "echo hi".into()
+		command: r#""echo" hi"#.into()
 	}
 	.to_spawnable()
 	.unwrap()

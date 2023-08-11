@@ -93,9 +93,9 @@ fn asymmetric() {
 						path: "/foo/bar/baz".into(),
 						file_type: None
 					},
-					// fs with only simple reprensentation
+					// fs with only simple representation
 					Tag::FileEventKind(EventKind::Create(CreateKind::Any)),
-					// unparseable of a known kind
+					// unparsable of a known kind
 					Tag::Unknown,
 				],
 				metadata: Default::default(),
