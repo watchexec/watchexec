@@ -102,14 +102,12 @@ async fn init() -> Result<Args> {
 async fn run_watchexec(args: Args) -> Result<()> {
 	info!(version=%env!("CARGO_PKG_VERSION"), "constructing Watchexec from CLI");
 
-	let init = config::init(&args);
-
 	let state = state::State::new()?;
-	let mut runtime = config::runtime(&args, &state)?;
-	runtime.filterer(filterer::globset(&args).await?);
+	let mut config = config::make_config(&args, &state)?;
+	config.filterer(filterer::globset(&args).await?);
 
 	info!("initialising Watchexec runtime");
-	let wx = Watchexec::new(init, runtime)?;
+	let wx = Watchexec::new(config)?;
 
 	if !args.postpone {
 		debug!("kicking off with empty event");

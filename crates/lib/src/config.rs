@@ -1,6 +1,6 @@
 //! Configuration and builders for [`crate::Watchexec`].
 
-use std::{fmt, path::Path, sync::Arc, time::Duration};
+use std::{path::Path, sync::Arc, time::Duration};
 
 use tracing::debug;
 
@@ -8,16 +8,16 @@ use crate::{
 	action::{Action, PostSpawn, PreSpawn},
 	filter::Filterer,
 	fs::Watcher,
-	handler::{Handler, HandlerLock},
+	handler::HandlerLock,
 	ErrorHook,
 };
 
-/// Runtime configuration for [`Watchexec`][crate::Watchexec].
+/// Configuration for [`Watchexec`][crate::Watchexec].
 ///
 /// This is used both when constructing the instance (as initial configuration) and to reconfigure
 /// it at runtime via [`Watchexec::reconfigure()`][crate::Watchexec::reconfigure()].
 ///
-/// Use [`RuntimeConfig::default()`] to build a new one, or modify an existing one. This struct is
+/// Use [`Config::default()`] to build a new one, or modify an existing one. This struct is
 /// marked non-exhaustive such that new options may be added without breaking change. You can make
 /// changes through the fields directly, or use the convenience (chainable!) methods instead.
 ///
@@ -29,7 +29,53 @@ use crate::{
 /// about each field, especially the handlers.
 #[derive(Clone, Debug, Default)]
 #[non_exhaustive]
-pub struct RuntimeConfig {
+pub struct Config {
+	/// Runtime error handler.
+	///
+	/// This is run on every runtime error that occurs within Watchexec. The default handler
+	/// is a no-op.
+	///
+	/// # Examples
+	///
+	/// Set the error handler:
+	///
+	/// ```
+	/// # use watchexec::{config::Config, ErrorHook};
+	/// let mut config = Config::default();
+	/// config.on_error(|err: ErrorHook| {
+	///     tracing::error!("{}", err.error);
+	/// });
+	/// ```
+	///
+	/// Output a critical error (which will terminate Watchexec):
+	///
+	/// ```
+	/// # use watchexec::{config::Config, ErrorHook, error::{CriticalError, RuntimeError}};
+	/// let mut config = Config::default();
+	/// config.on_error(|err: ErrorHook| {
+	///     tracing::error!("{}", err.error);
+	///
+	///     if matches!(err.error, RuntimeError::FsWatcher) {
+	///            err.critical(CriticalError::External("fs watcher failed"));
+	///     }
+	/// });
+	/// ```
+	///
+	/// Elevate a runtime error to critical (will preserve the error information):
+	///
+	/// ```
+	/// # use watchexec::{config::Config, ErrorHook, error::RuntimeError};
+	/// let mut config = Config::default();
+	/// config.on_error(|err: ErrorHook| {
+	///     tracing::error!("{}", err.error);
+	///
+	///     if matches!(err.error, RuntimeError::FsWatcher) {
+	///            err.elevate();
+	///     }
+	/// });
+	/// ```
+	pub error_handler: HandlerLock<ErrorHook>,
+
 	/// Working data for the filesystem event source.
 	///
 	/// This notably includes the path set to be watched.
@@ -45,7 +91,7 @@ pub struct RuntimeConfig {
 	pub action: crate::action::WorkingData,
 }
 
-impl RuntimeConfig {
+impl Config {
 	/// Set the pathset to be watched.
 	pub fn pathset<I, P>(&mut self, pathset: I) -> &mut Self
 	where
@@ -53,19 +99,20 @@ impl RuntimeConfig {
 		P: AsRef<Path>,
 	{
 		self.fs.pathset = pathset.into_iter().map(|p| p.as_ref().into()).collect();
-		debug!(pathset=?self.fs.pathset, "RuntimeConfig: pathset");
+		debug!(pathset=?self.fs.pathset, "Config: pathset");
 		self
 	}
 
 	/// Set the file watcher type to use.
 	pub fn file_watcher(&mut self, watcher: Watcher) -> &mut Self {
-		debug!(?watcher, "RuntimeConfig: watcher");
+		debug!(?watcher, "Config: watcher");
 		self.fs.watcher = watcher;
 		self
 	}
 
 	/// Enable monitoring of 'end of file' from stdin
 	pub fn keyboard_emit_eof(&mut self, enable: bool) -> &mut Self {
+		debug!(?enable, "Config: keyboard");
 		self.keyboard.eof = enable;
 		self
 	}
@@ -73,130 +120,93 @@ impl RuntimeConfig {
 	/// Set the action throttle.
 	pub fn action_throttle(&mut self, throttle: impl Into<Duration>) -> &mut Self {
 		self.action.throttle = throttle.into();
-		debug!(throttle=?self.action.throttle, "RuntimeConfig: throttle");
+		debug!(throttle=?self.action.throttle, "Config: throttle");
 		self
 	}
 
 	/// Set the filterer implementation to use.
 	pub fn filterer(&mut self, filterer: Arc<dyn Filterer>) -> &mut Self {
-		debug!(?filterer, "RuntimeConfig: filterer");
+		debug!(?filterer, "Config: filterer");
 		self.action.filterer = filterer;
 		self
 	}
 
+	/// Set the runtime error handler.
+	pub fn on_error(&mut self, handler: impl FnMut(ErrorHook) + Send + 'static) -> &mut Self {
+		debug!("Config: on_error");
+		self.error_handler.replace(Box::new(handler));
+		self
+	}
+
 	/// Set the action handler.
-	pub fn on_action(&mut self, handler: impl Handler<Action> + Send + 'static) -> &mut Self {
-		debug!("RuntimeConfig: on_action");
-		self.action.action_handler = HandlerLock::new(Box::new(handler));
+	pub fn on_action(&mut self, handler: impl FnMut(Action) + Send + 'static) -> &mut Self {
+		debug!("Config: on_action");
+		self.action.action_handler.replace(Box::new(handler));
 		self
 	}
 
 	/// Set the pre-spawn handler.
-	pub fn on_pre_spawn(&mut self, handler: impl Handler<PreSpawn> + Send + 'static) -> &mut Self {
-		debug!("RuntimeConfig: on_pre_spawn");
-		self.action.pre_spawn_handler = HandlerLock::new(Box::new(handler));
+	pub fn on_pre_spawn(&mut self, handler: impl FnMut(PreSpawn) + Send + 'static) -> &mut Self {
+		debug!("Config: on_pre_spawn");
+		self.action.pre_spawn_handler.replace(Box::new(handler));
 		self
 	}
 
 	/// Set the post-spawn handler.
-	pub fn on_post_spawn(
-		&mut self,
-		handler: impl Handler<PostSpawn> + Send + 'static,
-	) -> &mut Self {
-		debug!("RuntimeConfig: on_post_spawn");
-		self.action.post_spawn_handler = HandlerLock::new(Box::new(handler));
+	pub fn on_post_spawn(&mut self, handler: impl FnMut(PostSpawn) + Send + 'static) -> &mut Self {
+		debug!("Config: on_post_spawn");
+		self.action.post_spawn_handler.replace(Box::new(handler));
 		self
 	}
 }
 
-/// Initialisation configuration for [`Watchexec`][crate::Watchexec].
+/// Internal configuration for [`Watchexec`][crate::Watchexec].
 ///
-/// This is used only for constructing the instance.
+/// These are internal details that you may want to tune in some situations.
 ///
 /// Use [`InitConfig::default()`] to build a new one, and the inherent methods to change values.
 /// This struct is marked non-exhaustive such that new options may be added without breaking change.
+#[derive(Clone, Debug)]
 #[non_exhaustive]
-pub struct InitConfig {
-	/// Runtime error handler.
-	///
-	/// This is run on every runtime error that occurs within watchexec. By default the placeholder
-	/// `()` handler is used, which discards all errors.
-	///
-	/// If the handler errors, [_that_ error][crate::error::RuntimeError::Handler] is immediately
-	/// given to the handler. If this second handler call errors as well, its error is ignored.
-	///
-	/// Also see the [`ErrorHook`] documentation for returning critical errors from this handler.
-	///
-	/// # Examples
-	///
-	/// ```
-	/// # use std::convert::Infallible;
-	/// # use watchexec::{config::InitConfig, ErrorHook};
-	/// let mut init = InitConfig::default();
-	/// init.on_error(|err: ErrorHook| async move {
-	///     tracing::error!("{}", err.error);
-	///     Ok::<(), Infallible>(())
-	/// });
-	/// ```
-	pub error_handler: Box<dyn Handler<ErrorHook> + Send>,
-
-	/// Internal: the buffer size of the channel which carries runtime errors.
+pub struct InternalConfig {
+	/// The buffer size of the channel which carries runtime errors.
 	///
 	/// The default (64) is usually fine. If you expect a much larger throughput of runtime errors,
 	/// or if your `error_handler` is slow, adjusting this value may help.
 	pub error_channel_size: usize,
 
-	/// Internal: the buffer size of the channel which carries events.
+	/// The buffer size of the channel which carries events.
 	///
-	/// The default (1024) is usually fine. If you expect a much larger throughput of events,
+	/// The default (4096) is usually fine. If you expect a much larger throughput of events,
 	/// adjusting this value may help.
 	pub event_channel_size: usize,
 }
 
-impl Default for InitConfig {
+impl Default for InternalConfig {
 	fn default() -> Self {
 		Self {
-			error_handler: Box::new(()) as _,
 			error_channel_size: 64,
-			event_channel_size: 1024,
+			event_channel_size: 4096,
 		}
 	}
 }
 
-impl InitConfig {
-	/// Set the runtime error handler.
-	///
-	/// See the [documentation on the field](InitConfig#structfield.error_handler) for more details.
-	pub fn on_error(&mut self, handler: impl Handler<ErrorHook> + Send + 'static) -> &mut Self {
-		debug!("InitConfig: on_error");
-		self.error_handler = Box::new(handler) as _;
-		self
-	}
-
+impl InternalConfig {
 	/// Set the buffer size of the channel which carries runtime errors.
 	///
-	/// See the [documentation on the field](InitConfig#structfield.error_channel_size) for more details.
+	/// See the [documentation on the field](InternalConfig#structfield.error_channel_size) for more details.
 	pub fn error_channel_size(&mut self, size: usize) -> &mut Self {
-		debug!(?size, "InitConfig: error_channel_size");
+		debug!(?size, "InternalConfig: error_channel_size");
 		self.error_channel_size = size;
 		self
 	}
 
 	/// Set the buffer size of the channel which carries events.
 	///
-	/// See the [documentation on the field](InitConfig#structfield.event_channel_size) for more details.
+	/// See the [documentation on the field](InternalConfig#structfield.event_channel_size) for more details.
 	pub fn event_channel_size(&mut self, size: usize) -> &mut Self {
-		debug!(?size, "InitConfig: event_channel_size");
+		debug!(?size, "InternalConfig: event_channel_size");
 		self.event_channel_size = size;
 		self
-	}
-}
-
-impl fmt::Debug for InitConfig {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		f.debug_struct("InitConfig")
-			.field("error_channel_size", &self.error_channel_size)
-			.field("event_channel_size", &self.event_channel_size)
-			.finish_non_exhaustive()
 	}
 }

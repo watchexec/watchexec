@@ -2,14 +2,10 @@ use std::{
 	collections::HashMap,
 	fmt,
 	path::Path,
-	sync::Mutex,
-	sync::{Arc, Weak},
+	sync::{Arc, Mutex, MutexGuard},
 	time::Duration,
 };
-use tokio::{
-	process::Command as TokioCommand,
-	sync::{Mutex as TokioMutex, OwnedMutexGuard},
-};
+use tokio::process::Command as TokioCommand;
 use watchexec_events::{FileType, ProcessEnd};
 use watchexec_signals::Signal;
 
@@ -162,7 +158,7 @@ impl Action {
 		orders
 			.entry(to)
 			.or_default()
-			.push(SupervisionOrder::Apply(outcome.clone(), because_of));
+			.push(SupervisionOrder::Apply(outcome, because_of));
 	}
 
 	/// Creates a new Supervised [`Command`].
@@ -280,43 +276,38 @@ pub struct PreSpawn {
 
 	supervisor_id: SupervisorId,
 
-	to_spawn_w: Weak<TokioMutex<TokioCommand>>,
+	command: Arc<Mutex<TokioCommand>>,
 }
 
 impl PreSpawn {
 	pub(crate) fn new(
 		program: Program,
 		isolation: Isolation,
-		to_spawn: TokioCommand,
+		command: TokioCommand,
 		events: Arc<[Event]>,
 		supervisor_id: SupervisorId,
-	) -> (Self, Arc<TokioMutex<TokioCommand>>) {
-		let arc = Arc::new(TokioMutex::new(to_spawn));
+	) -> (Self, Arc<Mutex<TokioCommand>>) {
+		let command = Arc::new(Mutex::new(command));
 		(
 			Self {
 				program,
 				isolation,
 				events,
 				supervisor_id,
-				to_spawn_w: Arc::downgrade(&arc),
+				command: command.clone(),
 			},
-			arc.clone(),
+			command,
 		)
 	}
 
 	/// Get write access to the command that will be spawned.
 	///
-	/// Keeping the lock alive beyond the end of the handler may cause the command to be cancelled,
-	/// but note no guarantees are made on this behaviour. Just don't do it. See the [`Action`]
-	/// documentation about handlers for more.
+	/// Keeping the lock alive beyond the end of the handler will cause a panic.
 	///
-	/// This will always return `Some()` under normal circumstances.
-	pub async fn command(&self) -> Option<OwnedMutexGuard<TokioCommand>> {
-		if let Some(arc) = self.to_spawn_w.upgrade() {
-			Some(arc.lock_owned().await)
-		} else {
-			None
-		}
+	/// # Panics
+	/// Panics if the inner lock is poisoned or the command is not available.
+	pub fn command(&self) -> MutexGuard<'_, TokioCommand> {
+		self.command.lock().expect("prespawn lock poisoned")
 	}
 
 	/// Returns the `SupervisorId` associated with the `Supervisor` and `Command`.

@@ -1,125 +1,82 @@
-//! Trait and implementations for hook handlers.
+//! Hook handlers in Watchexec
 //!
-//! You can implement the trait yourself, or use any of the provided implementations:
-//! - for closures,
-//! - for std and tokio channels,
-//! - for printing to writers, in `Debug` and `Display` (where supported) modes (generally used for
-//!   debugging and testing, as they don't allow any other output customisation),
-//! - for `()`, as placeholder.
+//! Hook handlers are things that implement `FnMut(T) + Send + 'static`.
 //!
-//! The implementation for [`FnMut`] only supports fns that return a [`Future`]. Unfortunately
-//! it's not possible to provide an implementation for fns that don't return a `Future` as well,
-//! so to call sync code you must either provide an async handler, or use the [`SyncFnHandler`]
-//! wrapper.
+//! All hooks in Watchexec expect to run quickly and do no I/O, so async handlers are not
+//! appropriate. If you want to do I/O or use async methods, you should architect in such a way
+//! that you're not blocking a handler, such as using shared datastructures mutated from a thread
+//! that you pass requests to (via channels).
+//!
+//! Filters are not hooks and can do I/O, see the filtering docs for those.
+//!
+//! Additionally, hooks in Watchexec don't have error handling: if you need to return errors, use a
+//! channel; if you need to crash, then panic. As such all handlers expect to return `()`.
+//!
+//! # HandlerLock
+//!
+//! The [`HandlerLock`] structure makes it possible to pass a handler around as a value and most
+//! importantly replace it at runtime. Watchexec is based around the idea of being a runtime that
+//! is reconfigurable and not static, and this is one part of that puzzle.
 //!
 //! # Examples
 //!
-//! In each example `on_data` is the following function:
+//! Reconfiguring a handler held by a lock:
 //!
 //! ```
-//! # use watchexec::handler::Handler;
-//! fn on_data<T: Handler<Vec<u8>>>(_: T) {}
-//! ```
+//! # let _ = async || {
+//! use watchexec::handler::HandlerLock;
 //!
-//! Async closure:
+//! let lock = HandlerLock::default();
 //!
-//! ```
-//! use tokio::io::{AsyncWriteExt, stdout};
-//! # use watchexec::handler::Handler;
-//! # fn on_data<T: Handler<Vec<u8>>>(_: T) {}
-//! on_data(|data: Vec<u8>| async move {
-//!     stdout().write_all(&data).await
-//! });
-//! ```
+//! lock.replace(|changed: bool| {
+//!        if changed {
+//!            println!("something changed!");
+//!        }
+//! }).await;
 //!
-//! Sync code in async closure:
+//! lock.call(true).await;
+//! lock.call(false).await;
 //!
-//! ```
-//! use std::io::{Write, stdout};
-//! # use watchexec::handler::Handler;
-//! # fn on_data<T: Handler<Vec<u8>>>(_: T) {}
-//! on_data(|data: Vec<u8>| async move {
-//!     stdout().write_all(&data)
-//! });
-//! ```
+//! lock.replace(|changed: bool| {
+//!     if !changed {
+//!         println!("nothing to see here");
+//!     }
+//! }).await;
 //!
-//! Sync closure with wrapper:
-//!
-//! ```
-//! use std::io::{Write, stdout};
-//! # use watchexec::handler::{Handler, SyncFnHandler};
-//! # fn on_data<T: Handler<Vec<u8>>>(_: T) {}
-//! on_data(SyncFnHandler::from(|data: Vec<u8>| {
-//!     stdout().write_all(&data)
-//! }));
-//! ```
-//!
-//! Std channel:
-//!
-//! ```
-//! use std::sync::mpsc;
-//! # use watchexec::handler::Handler;
-//! # fn on_data<T: Handler<Vec<u8>>>(_: T) {}
-//! let (s, r) = mpsc::channel();
-//! on_data(s);
-//! ```
-//!
-//! Tokio channel:
-//!
-//! ```
-//! use tokio::sync::mpsc;
-//! # use watchexec::handler::Handler;
-//! # fn on_data<T: Handler<Vec<u8>>>(_: T) {}
-//! let (s, r) = mpsc::channel(123);
-//! on_data(s);
-//! ```
-//!
-//! Printing to console:
-//!
-//! ```
-//! use std::io::{Write, stderr, stdout};
-//! # use watchexec::handler::{Handler, PrintDebug, PrintDisplay};
-//! # fn on_data<T: Handler<String>>(_: T) {}
-//! on_data(PrintDebug(stdout()));
-//! on_data(PrintDisplay(stderr()));
+//! lock.call(true).await;
+//! lock.call(false).await;
+//! # };
 //! ```
 
-use std::{error::Error, future::Future, io::Write, marker::PhantomData, sync::Arc};
+use std::{
+	any::type_name,
+	fmt,
+	sync::{Arc, Mutex},
+};
 
-use tokio::{runtime::Handle, sync::Mutex, task::block_in_place};
-
-use crate::error::RuntimeError;
-
-/// A callable that can be used to hook into watchexec.
-pub trait Handler<T> {
-	/// Call the handler with the given data.
-	fn handle(&mut self, _data: T) -> Result<(), Box<dyn Error>>;
-}
-
-/// A shareable wrapper for a [`Handler`].
+/// A shareable inner-replaceable wrapper for an FnMut.
 ///
-/// Internally this is a Tokio [`Mutex`].
-pub struct HandlerLock<T>(Arc<Mutex<Box<dyn Handler<T> + Send>>>);
+/// Initialise with `::default()`.
+#[allow(clippy::type_complexity)]
+pub struct HandlerLock<T>(Arc<Mutex<Box<dyn FnMut(T) + Send>>>);
 impl<T> HandlerLock<T>
 where
 	T: Send,
 {
-	/// Wrap a [`Handler`] into a lock.
-	#[must_use]
-	pub fn new(handler: Box<dyn Handler<T> + Send>) -> Self {
-		Self(Arc::new(Mutex::new(handler)))
-	}
-
 	/// Replace the handler with a new one.
-	pub async fn replace(&self, new: Box<dyn Handler<T> + Send>) {
-		let mut handler = self.0.lock().await;
-		*handler = new;
+	///
+	/// Panics if the lock was poisoned.
+	pub fn replace(&self, new: impl FnMut(T) + Send + 'static) {
+		let mut handler = self.0.lock().expect("handler lock poisoned");
+		*handler = Box::new(new);
 	}
 
 	/// Call the handler.
-	pub async fn call(&self, data: T) -> Result<(), Box<dyn Error>> {
-		let mut handler = self.0.lock().await;
-		handler.handle(data)
+	///
+	/// Panics if the lock was poisoned.
+	pub fn call(&self, data: T) {
+		let mut handler = self.0.lock().expect("handler lock poisoned");
+		(handler)(data);
 	}
 }
 
@@ -134,148 +91,14 @@ where
 	T: Send,
 {
 	fn default() -> Self {
-		Self::new(Box::new(()))
+		Self(Arc::new(Mutex::new(Box::new(|_| {}))))
 	}
 }
 
-pub(crate) fn rte(ctx: &'static str, err: &dyn Error) -> RuntimeError {
-	RuntimeError::Handler {
-		ctx,
-		err: err.to_string(),
-	}
-}
-
-/// Wrapper for [`Handler`]s that are non-future [`FnMut`]s.
-///
-/// Construct using [`Into::into`]:
-///
-/// ```
-/// # use watchexec::handler::{Handler as _, SyncFnHandler};
-/// # let f: SyncFnHandler<(), std::io::Error, _> =
-/// (|data| { dbg!(data); Ok(()) }).into()
-/// # ;
-/// ```
-///
-/// or [`From::from`]:
-///
-/// ```
-/// # use watchexec::handler::{Handler as _, SyncFnHandler};
-/// # let f: SyncFnHandler<(), std::io::Error, _> =
-/// SyncFnHandler::from(|data| { dbg!(data); Ok(()) });
-/// ```
-///
-/// or the convenience [`sync()`] function:
-///
-/// ```
-/// # use watchexec::handler::{SyncFnHandler, Handler as _, sync};
-/// # let f: SyncFnHandler<(), std::io::Error, _> =
-/// sync(|data| { dbg!(data); Ok(()) });
-/// ```
-pub struct SyncFnHandler<T, E, F>
-where
-	E: Error + 'static,
-	F: FnMut(T) -> Result<(), E> + Send + 'static,
-{
-	inner: F,
-	_t: PhantomData<T>,
-	_e: PhantomData<E>,
-}
-
-impl<T, E, F> From<F> for SyncFnHandler<T, E, F>
-where
-	E: Error + 'static,
-	F: FnMut(T) -> Result<(), E> + Send + 'static,
-{
-	fn from(inner: F) -> Self {
-		Self {
-			inner,
-			_t: PhantomData,
-			_e: PhantomData,
-		}
-	}
-}
-
-impl<T, E, F> Handler<T> for SyncFnHandler<T, E, F>
-where
-	E: Error + 'static,
-	F: FnMut(T) -> Result<(), E> + Send + 'static,
-{
-	fn handle(&mut self, data: T) -> Result<(), Box<dyn Error>> {
-		(self.inner)(data).map_err(|e| Box::new(e) as _)
-	}
-}
-
-/// Terse convenience for [`SyncFnHandler`]
-pub fn sync<T, E, F>(f: F) -> SyncFnHandler<T, E, F>
-where
-	E: Error + 'static,
-	F: FnMut(T) -> Result<(), E> + Send + 'static,
-{
-	SyncFnHandler::from(f)
-}
-
-impl<F, U, T, E> Handler<T> for F
-where
-	E: Error + 'static,
-	F: FnMut(T) -> U + Send + 'static,
-	U: Future<Output = Result<(), E>>,
-{
-	fn handle(&mut self, data: T) -> Result<(), Box<dyn Error>> {
-		// this will always be called within watchexec context, which runs within tokio
-		block_in_place(|| {
-			Handle::current()
-				.block_on((self)(data))
-				.map_err(|e| Box::new(e) as _)
-		})
-	}
-}
-
-impl<T> Handler<T> for () {
-	fn handle(&mut self, _data: T) -> Result<(), Box<dyn Error>> {
-		Ok::<(), std::convert::Infallible>(()).map_err(|e| Box::new(e) as _)
-	}
-}
-
-impl<T> Handler<T> for std::sync::mpsc::Sender<T>
-where
-	T: Send + 'static,
-{
-	fn handle(&mut self, data: T) -> Result<(), Box<dyn Error>> {
-		self.send(data).map_err(|e| Box::new(e) as _)
-	}
-}
-
-impl<T> Handler<T> for tokio::sync::mpsc::Sender<T>
-where
-	T: std::fmt::Debug + 'static,
-{
-	fn handle(&mut self, data: T) -> Result<(), Box<dyn Error>> {
-		self.try_send(data).map_err(|e| Box::new(e) as _)
-	}
-}
-
-/// A handler implementation to print to any [`Write`]r (e.g. stdout) in `Debug` format.
-pub struct PrintDebug<W: Write>(pub W);
-
-impl<T, W> Handler<T> for PrintDebug<W>
-where
-	T: std::fmt::Debug,
-	W: Write,
-{
-	fn handle(&mut self, data: T) -> Result<(), Box<dyn Error>> {
-		writeln!(self.0, "{data:?}").map_err(|e| Box::new(e) as _)
-	}
-}
-
-/// A handler implementation to print to any [`Write`]r (e.g. stdout) in `Display` format.
-pub struct PrintDisplay<W: Write>(pub W);
-
-impl<T, W> Handler<T> for PrintDisplay<W>
-where
-	T: std::fmt::Display,
-	W: Write,
-{
-	fn handle(&mut self, data: T) -> Result<(), Box<dyn Error>> {
-		writeln!(self.0, "{data}").map_err(|e| Box::new(e) as _)
+impl<T> fmt::Debug for HandlerLock<T> {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		f.debug_struct("HandlerLock")
+			.field("payload type", &type_name::<T>())
+			.finish_non_exhaustive()
 	}
 }

@@ -34,23 +34,23 @@
 //!     // watch the current directory
 //!     runtime.pathset(["."]);
 //!     runtime.on_action(sync(|action: Action| -> Result<(), Infallible> {
-//!			// print any events
-//!			for event in action.events.iter() {
-//!				eprintln!("EVENT: {event:?}");
-//!			}
+//!            // print any events
+//!            for event in action.events.iter() {
+//!                eprintln!("EVENT: {event:?}");
+//!            }
 //!
-//!			// if Ctrl-C is received, quit
-//!			if action.signals().any(|sig| sig == Signal::Interrupt) {
-//!				action.quit();
-//!			}
+//!            // if Ctrl-C is received, quit
+//!            if action.signals().any(|sig| sig == Signal::Interrupt) {
+//!                action.quit();
+//!            }
 //!
-//!			Ok(())
+//!            Ok(())
 //!     }));
 //!
 //!     Watchexec::new(Default::default(), runtime)?
-//!			.main()
-//!			.await
-//!			.into_diagnostic()?;
+//!            .main()
+//!            .await
+//!            .into_diagnostic()?;
 //!
 //!     Ok(())
 //! }

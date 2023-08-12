@@ -1,7 +1,7 @@
 use std::{
 	fmt,
 	future::Future,
-	mem::{replace, take},
+	mem::take,
 	ops::{Deref, DerefMut},
 	pin::Pin,
 	sync::Arc,
@@ -22,11 +22,11 @@ use tracing::{debug, error, trace};
 
 use crate::{
 	action,
-	config::{InitConfig, RuntimeConfig},
+	config::{Config, InternalConfig},
 	error::{CriticalError, ReconfigError, RuntimeError},
 	event::{Event, Priority},
 	fs,
-	handler::{rte, Handler},
+	handler::HandlerLock,
 	keyboard, signal,
 };
 
@@ -60,8 +60,8 @@ impl Watchexec {
 	/// Returns an [`Arc`] for convenience; use [`try_unwrap`][Arc::try_unwrap()] to get the value
 	/// directly if needed.
 	///
-	/// Note that `RuntimeConfig` is not a "live" or "shared" instance: if using reconfiguration,
-	/// you'll usually pass a `clone()` of your `RuntimeConfig` instance to this function; changes
+	/// Note that `Config` is not a "live" or "shared" instance: if using reconfiguration,
+	/// you'll usually pass a `clone()` of your `Config` instance to this function; changes
 	/// made to the instance you _keep_ will not automatically be used by Watchexec, you need to
 	/// call [`reconfigure()`](Watchexec::reconfigure) with your updated config to apply the changes.
 	///
@@ -69,15 +69,21 @@ impl Watchexec {
 	/// [`Event`]s, to the action handler. At minimum, you should check for interrupt/ctrl-c events
 	/// and return an [`Outcome::Exit`], otherwise hitting ctrl-c will do nothing.
 	///
+	/// If you need to adjust internal details, use `new_with_internals()`.
+	///
 	/// [`Outcome::Exit`]: crate::action::Outcome::Exit
-	pub fn new(
-		mut init: InitConfig,
-		mut runtime: RuntimeConfig,
-	) -> Result<Arc<Self>, CriticalError> {
-		debug!(?init, ?runtime, pid=%std::process::id(), version=%env!("CARGO_PKG_VERSION"), "initialising");
+	pub fn new(config: Config) -> Result<Arc<Self>, CriticalError> {
+		Self::new_with_internals(config, Default::default())
+	}
 
-		let (ev_s, ev_r) = priority::bounded(init.event_channel_size);
-		let (ac_s, ac_r) = watch::channel(take(&mut runtime.action));
+	pub fn new_with_internals(
+		mut config: Config,
+		internals: InternalConfig,
+	) -> Result<Arc<Self>, CriticalError> {
+		debug!(?internals, ?config, pid=%std::process::id(), version=%env!("CARGO_PKG_VERSION"), "initialising");
+
+		let (ev_s, ev_r) = priority::bounded(internals.event_channel_size);
+		let (ac_s, ac_r) = watch::channel(take(&mut config.action));
 		let (fs_s, fs_r) = watch::channel(fs::WorkingData::default());
 		let (keyboard_s, keyboard_r) = watch::channel(keyboard::WorkingData::default());
 
@@ -85,12 +91,12 @@ impl Watchexec {
 
 		// TODO: figure out how to do this (aka start the fs work) after the main task start lock
 		trace!("sending initial config to fs worker");
-		fs_s.send(take(&mut runtime.fs))
+		fs_s.send(take(&mut config.fs))
 			.expect("cannot send to just-created fs watch (bug)");
 
 		trace!("sending initial config to keyboard worker");
 		keyboard_s
-			.send(take(&mut runtime.keyboard))
+			.send(take(&mut config.keyboard))
 			.expect("cannot send to just-created keyboard watch (bug)");
 
 		trace!("creating main task");
@@ -101,9 +107,7 @@ impl Watchexec {
 			notify.notified().await;
 			debug!("starting main task");
 
-			let (er_s, er_r) = mpsc::channel(init.error_channel_size);
-
-			let eh = replace(&mut init.error_handler, Box::new(()) as _);
+			let (er_s, er_r) = mpsc::channel(internals.error_channel_size);
 
 			let action = SubTask::spawn(
 				"action",
@@ -117,7 +121,8 @@ impl Watchexec {
 				keyboard::worker(keyboard_r, er_s.clone(), ev_s.clone()),
 			);
 
-			let error_hook = SubTask::spawn("error_hook", error_hook(er_r, eh));
+			let error_hook =
+				SubTask::spawn("error_hook", error_hook(er_r, config.error_handler.clone()));
 
 			// Use Tokio TaskSet when that lands
 			try_join!(action, error_hook, fs, signal, keyboard)
@@ -151,8 +156,9 @@ impl Watchexec {
 		}))
 	}
 
-	/// Applies a new [`RuntimeConfig`] to the runtime.
-	pub fn reconfigure(&self, config: RuntimeConfig) -> Result<(), ReconfigError> {
+	// TODO: Config *should* be live actually
+	/// Applies a new [`Config`] to the runtime.
+	pub fn reconfigure(&self, config: Config) -> Result<(), ReconfigError> {
 		debug!(?config, "reconfiguring");
 		self.action_watch.send(config.action)?;
 		self.fs_watch.send(config.fs)?;
@@ -190,7 +196,7 @@ impl Watchexec {
 
 async fn error_hook(
 	mut errors: mpsc::Receiver<RuntimeError>,
-	mut handler: Box<dyn Handler<ErrorHook> + Send>,
+	handler: HandlerLock<ErrorHook>,
 ) -> Result<(), CriticalError> {
 	while let Some(err) = errors.recv().await {
 		if matches!(err, RuntimeError::Exit) {
@@ -199,20 +205,10 @@ async fn error_hook(
 		}
 
 		error!(%err, "runtime error");
-
-		let hook = ErrorHook::new(err);
-		let crit = hook.critical.clone();
-		if let Err(err) = handler.handle(hook) {
-			error!(%err, "error while handling error");
-			let rehook = ErrorHook::new(rte("error hook", err.as_ref()));
-			let recrit = rehook.critical.clone();
-			handler.handle(rehook).unwrap_or_else(|err| {
-				error!(%err, "error while handling error of handling error");
-			});
-			ErrorHook::handle_crit(recrit, "error handler error handler")?;
-		} else {
-			ErrorHook::handle_crit(crit, "error handler")?;
-		}
+		let payload = ErrorHook::new(err);
+		let crit = payload.critical.clone();
+		handler.call(payload);
+		ErrorHook::handle_crit(crit)?;
 	}
 
 	Ok(())
@@ -242,19 +238,16 @@ impl ErrorHook {
 		}
 	}
 
-	fn handle_crit(
-		crit: Arc<OnceCell<CriticalError>>,
-		name: &'static str,
-	) -> Result<(), CriticalError> {
+	fn handle_crit(crit: Arc<OnceCell<CriticalError>>) -> Result<(), CriticalError> {
 		match Arc::try_unwrap(crit) {
 			Err(err) => {
-				error!(?err, "{name} hook has an outstanding ref");
+				error!(?err, "error handler hook has an outstanding ref");
 				Ok(())
 			}
 			Ok(crit) => crit.into_inner().map_or_else(
 				|| Ok(()),
 				|crit| {
-					debug!(%crit, "{name} output a critical error");
+					debug!(%crit, "error handler output a critical error");
 					Err(crit)
 				},
 			),

@@ -9,7 +9,7 @@ use tokio::{
 		watch,
 	},
 };
-use tracing::{debug, debug_span, error, info, trace, Span};
+use tracing::{debug, debug_span, error, info, trace};
 use watchexec_signals::Signal;
 
 use crate::{
@@ -17,7 +17,7 @@ use crate::{
 	command::{Command, Isolation, Program},
 	error::RuntimeError,
 	event::{Event, Priority, Source, Tag},
-	handler::{rte, HandlerLock},
+	handler::HandlerLock,
 };
 
 use super::Process;
@@ -89,17 +89,16 @@ impl Supervisor {
 			let mut int = int_r;
 
 			loop {
-				let (mut process, pid) = match spawn_process(
-					span.clone(),
-					program,
-					supervisor_id,
-					command.isolation,
-					actioned_events.clone(),
-					pre_spawn_handler.clone(),
-					post_spawn_handler.clone(),
-				)
-				.await
-				{
+				let (mut process, pid) = match span.in_scope(|| {
+					spawn_process(
+						program,
+						supervisor_id,
+						command.isolation,
+						actioned_events.clone(),
+						pre_spawn_handler.clone(),
+						post_spawn_handler.clone(),
+					)
+				}) {
 					Ok(pp) => pp,
 					Err(err) => {
 						let _enter = span.enter();
@@ -295,8 +294,7 @@ impl Supervisor {
 	}
 }
 
-async fn spawn_process(
-	span: Span,
+fn spawn_process(
 	program: Program,
 	supervisor_id: SupervisorId,
 	isolation: Isolation,
@@ -304,98 +302,84 @@ async fn spawn_process(
 	pre_spawn_handler: HandlerLock<PreSpawn>,
 	post_spawn_handler: HandlerLock<PostSpawn>,
 ) -> Result<(Process, u32), RuntimeError> {
-	let (pre_spawn, spawnable) = span.in_scope::<_, Result<_, RuntimeError>>(|| {
-		debug!(?isolation, ?program, "preparing program");
-		#[cfg_attr(windows, allow(unused_mut))]
-		let mut spawnable = program.to_spawnable()?;
+	debug!(?isolation, ?program, "preparing program");
+	#[cfg_attr(windows, allow(unused_mut))]
+	let mut spawnable = program.to_spawnable();
 
-		// Required from Rust 1.66:
-		// https://github.com/rust-lang/rust/pull/101077
-		//
-		// We do that before the pre-spawn so that hook can be used to set a different mask if wanted.
-		#[cfg(unix)]
-		{
-			use nix::sys::signal::{sigprocmask, SigSet, SigmaskHow, Signal};
-			unsafe {
-				spawnable.pre_exec(|| {
-					let mut oldset = SigSet::empty();
-					let mut newset = SigSet::all();
-					newset.remove(Signal::SIGHUP); // leave SIGHUP alone so nohup works
-					debug!(unblocking=?newset, "resetting process sigmask");
-					sigprocmask(SigmaskHow::SIG_UNBLOCK, Some(&newset), Some(&mut oldset))?;
-					debug!(?oldset, "sigmask reset");
-					Ok(())
-				});
-			}
+	// Required from Rust 1.66:
+	// https://github.com/rust-lang/rust/pull/101077
+	//
+	// We do that before the pre-spawn so that hook can be used to set a different mask if wanted.
+	#[cfg(unix)]
+	{
+		use nix::sys::signal::{sigprocmask, SigSet, SigmaskHow, Signal};
+		unsafe {
+			spawnable.pre_exec(|| {
+				let mut oldset = SigSet::empty();
+				let mut newset = SigSet::all();
+				newset.remove(Signal::SIGHUP); // leave SIGHUP alone so nohup works
+				debug!(unblocking=?newset, "resetting process sigmask");
+				sigprocmask(SigmaskHow::SIG_UNBLOCK, Some(&newset), Some(&mut oldset))?;
+				debug!(?oldset, "sigmask reset");
+				Ok(())
+			});
 		}
+	}
 
-		debug!("running pre-spawn handler");
-		Ok(PreSpawn::new(
-			program.clone(),
-			isolation,
-			spawnable,
-			actioned_events.clone(),
-			supervisor_id,
-		))
-	})?;
+	debug!("running pre-spawn handler");
+	let (payload, command) = PreSpawn::new(
+		program.clone(),
+		isolation,
+		spawnable,
+		actioned_events.clone(),
+		supervisor_id,
+	);
+	pre_spawn_handler.call(payload);
 
-	pre_spawn_handler
-		.call(pre_spawn)
-		.await
-		.map_err(|e| rte("action pre-spawn", e.as_ref()))?;
+	debug!("pre-spawn handler done, obtaining command");
+	let mut spawnable = Arc::into_inner(command)
+		.and_then(|mutex| mutex.into_inner().ok())
+		.expect("prespawn handler lock held after prespawn handler done");
 
-	let (proc, id, post_spawn) = span.in_scope::<_, Result<_, RuntimeError>>(|| {
-		let mut spawnable = Arc::try_unwrap(spawnable)
-			.map_err(|_| RuntimeError::HandlerLockHeld("pre-spawn"))?
-			.into_inner();
-
-		info!(command=?spawnable, "spawning command");
-		let (proc, id) =
-			match isolation {
-				Isolation::Grouped => {
-					let proc = spawnable
-						.group()
-						.kill_on_drop(true)
-						.spawn()
-						.map_err(|err| RuntimeError::IoError {
-							about: "spawning process group",
-							err,
-						})?;
-					let id = proc.id().ok_or(RuntimeError::ProcessDeadOnArrival)?;
-					info!(pgid=%id, "process group spawned");
-					(Process::Grouped(proc), id)
-				}
-				Isolation::None => {
-					let proc = spawnable.kill_on_drop(true).spawn().map_err(|err| {
-						RuntimeError::IoError {
-							about: "spawning process (ungrouped)",
-							err,
-						}
+	info!(command=?spawnable, "spawning command");
+	let (proc, id) = match isolation {
+		Isolation::Grouped => {
+			let proc = spawnable
+				.group()
+				.kill_on_drop(true)
+				.spawn()
+				.map_err(|err| RuntimeError::IoError {
+					about: "spawning process group",
+					err,
+				})?;
+			let id = proc.id().ok_or(RuntimeError::ProcessDeadOnArrival)?;
+			info!(pgid=%id, "process group spawned");
+			(Process::Grouped(proc), id)
+		}
+		Isolation::None => {
+			let proc =
+				spawnable
+					.kill_on_drop(true)
+					.spawn()
+					.map_err(|err| RuntimeError::IoError {
+						about: "spawning process (ungrouped)",
+						err,
 					})?;
-					let id = proc.id().ok_or(RuntimeError::ProcessDeadOnArrival)?;
-					info!(pid=%id, "process spawned");
-					(Process::Ungrouped(proc), id)
-				}
-			};
+			let id = proc.id().ok_or(RuntimeError::ProcessDeadOnArrival)?;
+			info!(pid=%id, "process spawned");
+			(Process::Ungrouped(proc), id)
+		}
+	};
 
-		debug!("running post-spawn handler");
-		Ok((
-			proc,
-			id,
-			PostSpawn {
-				program: program.clone(),
-				isolation,
-				events: actioned_events.clone(),
-				id,
-				supervisor_id,
-			},
-		))
-	})?;
-
-	post_spawn_handler
-		.call(post_spawn)
-		.await
-		.map_err(|e| rte("action post-spawn", e.as_ref()))?;
+	debug!("running post-spawn handler");
+	post_spawn_handler.call(PostSpawn {
+		program,
+		isolation,
+		events: actioned_events,
+		id,
+		supervisor_id,
+	});
+	debug!("done with post-spawn handler");
 
 	Ok((proc, id))
 }

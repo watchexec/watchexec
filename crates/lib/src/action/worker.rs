@@ -20,7 +20,6 @@ use crate::{
 	command::{Command, SupervisorId},
 	error::{CriticalError, RuntimeError},
 	event::{Event, Priority},
-	handler::rte,
 };
 
 /// The main worker of a Watchexec process.
@@ -68,15 +67,7 @@ pub async fn worker(
 		let _instance_orders = action.instance.clone(); // TODO
 
 		debug!("running action handler");
-		let err = action_handler
-			.call(action)
-			.await
-			.map_err(|e| rte("action worker", e.as_ref()));
-		if let Err(err) = err {
-			errors.send(err).await?;
-			debug!("action handler errored, skipping");
-			continue;
-		}
+		action_handler.call(action);
 
 		// FIXME: process instance orders
 

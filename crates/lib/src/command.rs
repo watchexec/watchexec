@@ -5,8 +5,6 @@ use std::{borrow::Cow, collections::VecDeque, ffi::OsStr, fmt, path::PathBuf};
 use tokio::process::Command as TokioCommand;
 use tracing::trace;
 
-use crate::error::RuntimeError;
-
 #[doc(inline)]
 pub use process::Process;
 
@@ -25,24 +23,24 @@ mod tests;
 ///
 /// ```
 /// Command::from(Program::Exec {
-///		prog: "ping".into(),
-///		args: vec!["-c", "4"],
+///        prog: "ping".into(),
+///        args: vec!["-c", "4"],
 /// });
 /// ```
 ///
 /// ```
 /// Command::from_iter(vec![
-///		Program::Exec {
-///			prog: "nslookup".into(),
-///			args: vec!["google.com"],
-///		},
-///		Program::Shell {
-///			shell: Shell::new("bash"),
-///			command: "curl -L google.com >/dev/null",
-///			args: Vec::new(),
-///		},
-///	]);
-///	```
+///        Program::Exec {
+///            prog: "nslookup".into(),
+///            args: vec!["google.com"],
+///        },
+///        Program::Shell {
+///            shell: Shell::new("bash"),
+///            command: "curl -L google.com >/dev/null",
+///         args: Vec::new(),
+///        },
+///    ]);
+///    ```
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Command {
 	/// Programs to execute in sequence as part of this command.
@@ -189,19 +187,14 @@ impl Program {
 	/// Obtain a [`tokio::process::Command`] from a [`Command`].
 	///
 	/// Behaves as described in the [`Command`] and [`Shell`] documentation.
-	///
-	/// # Errors
-	///
-	/// - Errors if the `command` of a `Command::Shell` is empty.
-	/// - Errors if the `shell` of a `Shell::Unix(shell)` is empty.
-	pub fn to_spawnable(&self) -> Result<TokioCommand, RuntimeError> {
+	pub fn to_spawnable(&self) -> TokioCommand {
 		trace!(prog=?self, "constructing command");
 
 		match self {
 			Self::Exec { prog, args } => {
 				let mut c = TokioCommand::new(prog);
 				c.args(args);
-				Ok(c)
+				c
 			}
 
 			Self::Shell {
@@ -209,10 +202,6 @@ impl Program {
 				args,
 				command,
 			} => {
-				if command.is_empty() {
-					return Err(RuntimeError::CommandShellEmptyCommand);
-				}
-
 				let mut c = TokioCommand::new(shell.prog.clone());
 
 				// Avoid quoting issues on Windows by using raw_arg everywhere
@@ -242,7 +231,7 @@ impl Program {
 					}
 				}
 
-				Ok(c)
+				c
 			}
 		}
 	}
