@@ -77,7 +77,7 @@ version = "1.2.0"
 path = "../filterer/globset"
 
 [dependencies.tokio]
-version = "1.24.2"
+version = "1.30.0"
 features = [
 	"fs",
 	"io-std",
