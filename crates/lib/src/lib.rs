@@ -14,12 +14,14 @@
 //! [`std::error::Error`] so your favourite error handling library can of course be used.
 //!
 //! ```no_run
+//! use std::convert::Infallible;
 //! use miette::{IntoDiagnostic, Result};
+//! use watchexec_signals::Signal;
 //! use watchexec::{
 //!     Watchexec,
 //!     action::{Action, Outcome},
 //!     config::{InitConfig, RuntimeConfig},
-//!     handler::{Handler as _, PrintDebug},
+//!     handler::{Handler as _, sync, PrintDebug},
 //! };
 //!
 //! #[tokio::main]
@@ -28,55 +30,30 @@
 //!     init.on_error(PrintDebug(std::io::stderr()));
 //!
 //!     let mut runtime = RuntimeConfig::default();
-//!     runtime.pathset(["watchexec.conf"]);
 //!
-//!     let conf = YourConfigFormat::load_from_file("watchexec.conf").await?;
-//!     conf.apply(&mut runtime);
+//!     // watch the current directory
+//!     runtime.pathset(["."]);
+//!     runtime.on_action(sync(|action: Action| -> Result<(), Infallible> {
+//!			// print any events
+//!			for event in action.events.iter() {
+//!				eprintln!("EVENT: {event:?}");
+//!			}
 //!
-//!     let we = Watchexec::new(init, runtime.clone())?;
-//!     let w = we.clone();
+//!			// if Ctrl-C is received, quit
+//!			if action.signals().any(|sig| sig == Signal::Interrupt) {
+//!				action.quit();
+//!			}
 //!
-//!     let c = runtime.clone();
-//!     runtime.on_action(move |action: Action| {
-//!         let mut c = c.clone();
-//!         let w = w.clone();
-//!         async move {
-//!             for event in action.events.iter() {
-//!                 if event.paths().any(|(p, _)| p.ends_with("/watchexec.conf")) {
-//!                     let conf = YourConfigFormat::load_from_file("watchexec.conf").await?;
+//!			Ok(())
+//!     }));
 //!
-//!                     conf.apply(&mut c);
-//!                     w.reconfigure(c.clone());
-//!                     // tada! self-reconfiguring watchexec on config file change!
+//!     Watchexec::new(Default::default(), runtime)?
+//!			.main()
+//!			.await
+//!			.into_diagnostic()?;
 //!
-//!                     break;
-//!                 }
-//!             }
-//!
-//!             action.outcome(Outcome::if_running(
-//!                 Outcome::DoNothing,
-//!                 Outcome::both(Outcome::Clear, Outcome::Start),
-//!             ));
-//!
-//!             Ok(())
-//! #           as std::result::Result<_, MietteStub>
-//!         }
-//!     });
-//!
-//!     we.reconfigure(runtime);
-//!     we.main().await.into_diagnostic()?;
 //!     Ok(())
 //! }
-//! # struct YourConfigFormat;
-//! # impl YourConfigFormat {
-//! # async fn load_from_file(_: &str) -> std::result::Result<Self, MietteStub> { Ok(Self) }
-//! # fn apply(&self, _: &mut RuntimeConfig) { }
-//! # }
-//! # use miette::Diagnostic;
-//! # use thiserror::Error;
-//! # #[derive(Debug, Error, Diagnostic)]
-//! # #[error("stub")]
-//! # struct MietteStub;
 //! ```
 //!
 //! Alternatively, one can use the modules exposed by the crate and the external crates such as

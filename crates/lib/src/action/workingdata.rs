@@ -1,6 +1,7 @@
 use std::{
 	collections::HashMap,
 	fmt,
+	path::Path,
 	sync::Mutex,
 	sync::{Arc, Weak},
 	time::Duration,
@@ -9,15 +10,16 @@ use tokio::{
 	process::Command as TokioCommand,
 	sync::{Mutex as TokioMutex, OwnedMutexGuard},
 };
+use watchexec_events::{FileType, ProcessEnd};
+use watchexec_signals::Signal;
 
 use crate::{
+	action::Outcome,
 	command::{Command, Isolation, Program, SupervisorId},
 	event::Event,
 	filter::Filterer,
 	handler::HandlerLock,
 };
-
-use super::Outcome;
 
 /// The configuration of the [action][crate::action] worker.
 ///
@@ -34,13 +36,15 @@ pub struct WorkingData {
 
 	/// The main handler to define: what to do when an action is triggered.
 	///
-	/// This handler is called with the [`Action`] environment, which controls the outcome of the
-	/// the desired outcome, check out the [`Action::outcome()`] method. The handler checks for the
-	/// outcome as soon as the handler returns, which means that if the handler returns before the
-	/// outcome is set, you'll get unexpected results. For this reason, it's a bad idea to use ex. a
-	/// channel as the handler.
+	/// This handler is called with the [`Action`] environment, look at its doc for more detail.
 	///
-	/// If this handler is not provided, it defaults to a no-op, which does absolutely nothing, not
+	/// Watchexec waits until the handler is done, and then performs any actions the handler
+	/// told it to. "Doneness" is determined by the handler returning, or resolving in case of
+	/// an async handler. You'll get unexpected results using eg a channel as the handler, as
+	/// the handler implementation will immediately return after sending to the channel, and
+	/// act as a no-op.
+	///
+	/// If this handler is not provided, or does nothing, Watchexec in turn will do nothing, not
 	/// even quit. Hence, you really need to provide a handler.
 	///
 	/// It is possible to change the handler or any other configuration inside the previous handler.
@@ -49,6 +53,7 @@ pub struct WorkingData {
 	/// will not affect the running action.
 	pub action_handler: HandlerLock<Action>,
 
+	// TODO: spawn handlers should really go inside Outcome or Create, not be defined here
 	/// A handler triggered before a command is spawned.
 	///
 	/// This handler is called with the [`PreSpawn`] environment, which provides mutable access to
@@ -119,8 +124,16 @@ impl Default for WorkingData {
 pub struct Action {
 	/// The collected events which triggered the action.
 	pub events: Arc<[Event]>,
-	snapshot: Arc<[SupervisorId]>,
-	pub(crate) supervision: Arc<Mutex<HashMap<SupervisorId, Vec<(SupervisionOrder, EventSet)>>>>,
+
+	/// A snapshot of the available set of Supervised Command IDs.
+	///
+	/// This is not a live list: if the actual set of supervised commands changes during the
+	/// execution of this action, this will not be reflected here. However, that is not generally a
+	/// problem: if an effect is queued through an action handler to apply to a supervised command
+	/// that no longer exists when the handler returns, it is silently ignored.
+	pub supervisors: Arc<[SupervisorId]>,
+	// TODO: provide more info in the snapshot ie "is it running" etc
+	pub(crate) supervision: Arc<Mutex<HashMap<SupervisorId, Vec<SupervisionOrder>>>>,
 	pub(crate) instance: Arc<Mutex<Vec<InstanceOrder>>>,
 }
 
@@ -128,40 +141,28 @@ impl std::fmt::Debug for Action {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		f.debug_struct("Action")
 			.field("events", &self.events)
-			.field("snapshot", &self.snapshot)
+			.field("supervisors", &self.supervisors)
 			.finish_non_exhaustive()
 	}
 }
 
 impl Action {
-	pub(crate) fn new(events: Arc<[Event]>, snapshot: Arc<[SupervisorId]>) -> Self {
+	pub(crate) fn new(events: Arc<[Event]>, supervisors: Arc<[SupervisorId]>) -> Self {
 		Self {
 			events,
-			snapshot,
+			supervisors,
 			supervision: Default::default(),
 			instance: Default::default(),
 		}
 	}
 
 	/// Sets an [`Outcome`] for a single Supervised [`Command`].
-	pub fn apply(&self, outcome: Outcome, to: SupervisorId, because_of: EventSet) {
+	pub fn apply(&self, to: SupervisorId, outcome: Outcome, because_of: EventSet) {
 		let mut orders = self.supervision.lock().expect("lock poisoned");
 		orders
 			.entry(to)
 			.or_default()
-			.push((SupervisionOrder::Apply(outcome.clone()), because_of));
-	}
-
-	/// Returns a snapshot of the [`SupervisorId`]s of the Supervised [`Command`]s.
-	///
-	/// This is not a live list: if the actual set of supervised commands changes during the
-	/// execution of this action, this will not be reflected here. However, that is not generally a
-	/// problem: if an effect is queued through an action handler to apply to a supervised command
-	/// that no longer exists when the handler returns, it is silently ignored.
-	///
-	/// Note also that calling `delete()` does not affect this list for the duration of the action.
-	pub fn list(&self) -> &[SupervisorId] {
-		&self.snapshot
+			.push(SupervisionOrder::Apply(outcome.clone(), because_of));
 	}
 
 	/// Creates a new Supervised [`Command`].
@@ -170,13 +171,13 @@ impl Action {
 	/// `Outcome::Start`.
 	///
 	/// Returns an opaque ID to use to later `apply()` outcomes to this supervised command.
-	pub fn create(&self, command: Command, because_of: EventSet) -> SupervisorId {
+	pub fn create(&self, command: Command) -> SupervisorId {
 		let id = SupervisorId::default();
 		let mut orders = self.supervision.lock().expect("lock poisoned");
 		orders
 			.entry(id)
 			.or_default()
-			.push((SupervisionOrder::Create(command), because_of));
+			.push(SupervisionOrder::Create(command));
 		id
 	}
 
@@ -188,12 +189,9 @@ impl Action {
 	///
 	/// To gracefully stop a supervised command instead, call `apply()` with the relevant `Outcome`
 	/// _before_ calling this.
-	pub fn remove(&self, id: SupervisorId, because_of: EventSet) {
+	pub fn remove(&self, id: SupervisorId) {
 		let mut orders = self.supervision.lock().expect("lock poisoned");
-		orders
-			.entry(id)
-			.or_default()
-			.push((SupervisionOrder::Remove, because_of));
+		orders.entry(id).or_default().push(SupervisionOrder::Remove);
 	}
 
 	/// Stops all supervised commands and then shuts down the Watchexec instance.
@@ -205,6 +203,26 @@ impl Action {
 			.expect("lock poisoned")
 			.push(InstanceOrder::Quit);
 	}
+
+	/// Convenience to get all signals in the event set.
+	pub fn signals(&self) -> impl Iterator<Item = Signal> + '_ {
+		self.events.iter().flat_map(Event::signals)
+	}
+
+	/// TODO: proper doc
+	///
+	/// an action contains a set of events, and some of those events might relate to watched
+	/// files, and each of *those* events may have one or more paths that were affected.
+	/// to hide this complexity this method just provides any and all paths in the event,
+	/// along with the type of file at that path, if watchexec knows that
+	pub fn paths(&self) -> impl Iterator<Item = (&Path, Option<&FileType>)> + '_ {
+		self.events.iter().flat_map(Event::paths)
+	}
+
+	/// Convenience to get all process completions in the event set.
+	pub fn completions(&self) -> impl Iterator<Item = Option<ProcessEnd>> + '_ {
+		self.events.iter().flat_map(Event::completions)
+	}
 }
 
 /// Orders a Watchexec instance applies to the supervision set.
@@ -214,8 +232,8 @@ pub enum SupervisionOrder {
 	/// Create a new supervised command.
 	Create(Command),
 
-	/// Apply an [`Outcome`] to an existing supervised command.
-	Apply(Outcome),
+	/// Apply an [`Outcome`] to an existing supervised command in response to some events.
+	Apply(Outcome, EventSet),
 
 	/// Stop and remove a supervised command.
 	Remove,

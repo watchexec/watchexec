@@ -163,6 +163,14 @@ pub(crate) fn rte(ctx: &'static str, err: &dyn Error) -> RuntimeError {
 /// # let f: SyncFnHandler<(), std::io::Error, _> =
 /// SyncFnHandler::from(|data| { dbg!(data); Ok(()) });
 /// ```
+///
+/// or the convenience [`sync()`] function:
+///
+/// ```
+/// # use watchexec::handler::{SyncFnHandler, Handler as _, sync};
+/// # let f: SyncFnHandler<(), std::io::Error, _> =
+/// sync(|data| { dbg!(data); Ok(()) });
+/// ```
 pub struct SyncFnHandler<T, E, F>
 where
 	E: Error + 'static,
@@ -195,6 +203,15 @@ where
 	fn handle(&mut self, data: T) -> Result<(), Box<dyn Error>> {
 		(self.inner)(data).map_err(|e| Box::new(e) as _)
 	}
+}
+
+/// Terse convenience for [`SyncFnHandler`]
+pub fn sync<T, E, F>(f: F) -> SyncFnHandler<T, E, F>
+where
+	E: Error + 'static,
+	F: FnMut(T) -> Result<(), E> + Send + 'static,
+{
+	SyncFnHandler::from(f)
 }
 
 impl<F, U, T, E> Handler<T> for F

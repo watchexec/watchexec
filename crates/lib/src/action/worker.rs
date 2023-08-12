@@ -84,13 +84,16 @@ pub async fn worker(
 		let supervision_orders = take(&mut *supervision_orders.lock().expect("lock poisoned"));
 		for (id, orders) in supervision_orders {
 			// TODO process each process in parallel, but each order in series
-			for (order, event_set) in orders {
-				let found = match order {
-					SupervisionOrder::Apply(outcome) => {
+			for order in orders {
+				let (found, event_set) = match order {
+					SupervisionOrder::Apply(outcome, event_set) => {
 						debug!(?id, ?outcome, "apply outcome to supervisor");
-						processes
-							.get(&id)
-							.map(|data| (outcome.clone(), data.clone()))
+						(
+							processes
+								.get(&id)
+								.map(|data| (outcome.clone(), data.clone())),
+							Some(event_set),
+						)
 					}
 					SupervisionOrder::Create(command) => {
 						debug_assert!(!processes.contains_key(&id));
@@ -105,13 +108,16 @@ pub async fn worker(
 								outcome_gen: OutcomeWorker::newgen(),
 							},
 						);
-						None
+						(None, None)
 					}
 					SupervisionOrder::Remove => {
 						debug!(?id, "removing supervisor");
-						processes.remove(&id).map(|data| {
-							(Outcome::if_running(Outcome::Stop, Outcome::DoNothing), data)
-						})
+						(
+							processes.remove(&id).map(|data| {
+								(Outcome::if_running(Outcome::Stop, Outcome::DoNothing), data)
+							}),
+							None,
+						)
 					}
 				};
 
@@ -125,9 +131,11 @@ pub async fn worker(
 				debug!(?outcome, "outcome resolved");
 
 				let events = match event_set {
-					EventSet::All => events.clone(),
-					EventSet::None => Arc::from(Vec::new().into_boxed_slice()),
-					EventSet::Some(selected) => Arc::from(selected.clone().into_boxed_slice()),
+					Some(EventSet::All) => events.clone(),
+					None | Some(EventSet::None) => Arc::from(Vec::new().into_boxed_slice()),
+					Some(EventSet::Some(selected)) => {
+						Arc::from(selected.clone().into_boxed_slice())
+					}
 				};
 				debug!(?events, "events selected");
 				OutcomeWorker::spawn(
