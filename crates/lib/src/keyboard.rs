@@ -5,12 +5,9 @@ use tokio::{
 	sync::{mpsc, oneshot, watch},
 };
 use tracing::trace;
-pub use watchexec_events::Keyboard;
+use watchexec_events::{Event, Keyboard, Priority, Source, Tag};
 
-use crate::{
-	error::{CriticalError, KeyboardWatcherError, RuntimeError},
-	event::{Event, Priority, Source, Tag},
-};
+use crate::error::{CriticalError, KeyboardWatcherError, RuntimeError};
 
 /// The configuration of the [keyboard][self] worker.
 ///

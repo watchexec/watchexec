@@ -3,35 +3,10 @@
 use async_priority_channel as priority;
 use tokio::{select, sync::mpsc};
 use tracing::{debug, trace};
+use watchexec_events::{Event, Priority, Source, Tag};
 use watchexec_signals::Signal;
 
-use crate::{
-	error::{CriticalError, RuntimeError},
-	event::{Event, Priority, Source, Tag},
-};
-
-/// Compatibility shim for the old `watchexec::signal::process` module.
-pub mod process {
-	#[deprecated(
-		note = "use the `watchexec-signals` crate directly instead",
-		since = "2.2.0"
-	)]
-	pub use watchexec_signals::Signal as SubSignal;
-}
-
-/// Compatibility shim for the old `watchexec::signal::source` module.
-pub mod source {
-	#[deprecated(
-		note = "use `watchexec::signal::worker` directly instead",
-		since = "2.2.0"
-	)]
-	pub use super::worker;
-	#[deprecated(
-		note = "use the `watchexec-signals` crate directly instead",
-		since = "2.2.0"
-	)]
-	pub use watchexec_signals::Signal as MainSignal;
-}
+use crate::error::{CriticalError, RuntimeError};
 
 /// Launch the signal event worker.
 ///
@@ -44,7 +19,7 @@ pub mod source {
 /// ```no_run
 /// use tokio::sync::mpsc;
 /// use async_priority_channel as priority;
-/// use watchexec::signal::source::worker;
+/// use watchexec::signal::worker;
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {

@@ -12,10 +12,8 @@ use is_terminal::IsTerminal;
 use miette::{IntoDiagnostic, Result};
 use tokio::{fs::metadata, io::AsyncWriteExt, process::Command};
 use tracing::{debug, info, warn};
-use watchexec::{
-	event::{Event, Priority},
-	Watchexec,
-};
+use watchexec::Watchexec;
+use watchexec_events::{Event, Priority};
 
 pub mod args;
 mod config;

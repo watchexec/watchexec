@@ -1,10 +1,8 @@
 use std::{collections::HashMap, ffi::OsString, path::MAIN_SEPARATOR};
 
 use notify::event::CreateKind;
-use watchexec::{
-	event::{filekind::*, Event, Tag},
-	paths::summarise_events_to_env,
-};
+use watchexec::paths::summarise_events_to_env;
+use watchexec_events::{filekind::*, Event, Tag};
 
 #[cfg(unix)]
 const ENV_SEP: &str = ":";

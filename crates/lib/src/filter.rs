@@ -2,10 +2,9 @@
 
 use std::sync::Arc;
 
-use crate::{
-	error::RuntimeError,
-	event::{Event, Priority},
-};
+use watchexec_events::{Event, Priority};
+
+use crate::error::RuntimeError;
 
 /// An interface for filtering events.
 pub trait Filterer: std::fmt::Debug + Send + Sync {

@@ -11,6 +11,7 @@ use tokio::{
 	time::timeout,
 };
 use tracing::{debug, trace};
+use watchexec_events::{Event, Priority};
 
 use crate::{
 	action::{
@@ -19,7 +20,6 @@ use crate::{
 	},
 	command::{Command, SupervisorId},
 	error::{CriticalError, RuntimeError},
-	event::{Event, Priority},
 };
 
 /// The main worker of a Watchexec process.

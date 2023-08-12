@@ -2,10 +2,9 @@ use std::path::{Path, PathBuf};
 
 use ignore_files::{IgnoreFile, IgnoreFilter};
 use project_origins::ProjectType;
-use watchexec::{
-	error::RuntimeError,
-	event::{filekind::FileEventKind, Event, FileType, Priority, ProcessEnd, Source, Tag},
-	filter::Filterer,
+use watchexec::{error::RuntimeError, filter::Filterer};
+use watchexec_events::{
+	filekind::FileEventKind, Event, FileType, Priority, ProcessEnd, Source, Tag,
 };
 use watchexec_filterer_ignore::IgnoreFilterer;
 use watchexec_signals::Signal;
@@ -15,7 +14,7 @@ pub mod ignore {
 	pub use super::ignore_filt as filt;
 	pub use super::Applies;
 	pub use super::PathHarness;
-	pub use watchexec::event::Priority;
+	pub use watchexec_events::Priority;
 }
 
 pub trait PathHarness: Filterer {

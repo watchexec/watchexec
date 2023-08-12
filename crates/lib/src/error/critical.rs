@@ -1,8 +1,7 @@
 use miette::Diagnostic;
 use thiserror::Error;
 use tokio::{sync::mpsc, task::JoinError};
-
-use crate::event::{Event, Priority};
+use watchexec_events::{Event, Priority};
 
 use super::RuntimeError;
 

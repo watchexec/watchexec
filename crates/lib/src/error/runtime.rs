@@ -1,40 +1,32 @@
 use miette::Diagnostic;
 use thiserror::Error;
+use watchexec_events::{Event, Priority};
 use watchexec_signals::Signal;
 
-use crate::{
-	event::{Event, Priority},
-	fs::Watcher,
-};
+use crate::fs::Watcher;
 
 /// Errors which _may_ be recoverable, transient, or only affect a part of the operation, and should
 /// be reported to the user and/or acted upon programmatically, but will not outright stop watchexec.
 ///
-/// Some errors that are classified here are spurious and may be ignored; in general you should not
-/// use the convenience print handlers for handling these errors beyond prototyping. For example,
+/// Some errors that are classified here are spurious and may be ignored. For example,
 /// "waiting on process" errors should not be printed to the user by default:
 ///
 /// ```
-/// # use std::convert::Infallible;
 /// # use tracing::error;
-/// # use watchexec::{config::InitConfig, ErrorHook, error::RuntimeError, handler::SyncFnHandler};
-/// # let mut config = InitConfig::default();
-/// config.on_error(SyncFnHandler::from(
-///     |err: ErrorHook| -> std::result::Result<(), Infallible> {
-///         if let RuntimeError::IoError {
-///             about: "waiting on process group",
-///             ..
-///         } = err.error
-///         {
-///             error!("{}", err.error);
-///             return Ok(());
-///         }
+/// # use watchexec::{Config, ErrorHook, error::RuntimeError};
+/// # let mut config = Config::default();
+/// config.on_error(|err: ErrorHook| {
+///     if let RuntimeError::IoError {
+///         about: "waiting on process group",
+///         ..
+///     } = err.error
+///     {
+///         error!("{}", err.error);
+///         return;
+///     }
 ///
-///         // ...
-///
-///         Ok(())
-///     },
-/// ));
+///     // ...
+/// });
 /// ```
 ///
 /// On the other hand, some errors may not be fatal to this library's understanding, but will be to
@@ -42,28 +34,22 @@ use crate::{
 /// to [`CriticalError`](super::CriticalError)s:
 ///
 /// ```
-/// # use std::convert::Infallible;
-/// # use watchexec::{config::InitConfig, ErrorHook, error::{RuntimeError, FsWatcherError}, handler::SyncFnHandler};
-/// # let mut config = InitConfig::default();
-/// config.on_error(SyncFnHandler::from(
-///     |err: ErrorHook| -> std::result::Result<(), Infallible> {
-///         if let RuntimeError::FsWatcher {
-///             err:
-///                 FsWatcherError::Create { .. }
-///                 | FsWatcherError::TooManyWatches { .. }
-///                 | FsWatcherError::TooManyHandles { .. },
-///             ..
-///         } = err.error
-///         {
-///             err.elevate();
-///             return Ok(());
-///         }
+/// # use watchexec::{Config, ErrorHook, error::{RuntimeError, FsWatcherError}};
+/// # let mut config = Config::default();
+/// config.on_error(|err: ErrorHook| {
+///     if let RuntimeError::FsWatcher {
+///         err:
+///             FsWatcherError::Create { .. }
+///             | FsWatcherError::TooManyWatches { .. }
+///             | FsWatcherError::TooManyHandles { .. },
+///         ..
+///     } = err.error {
+///         err.elevate();
+///         return;
+///     }
 ///
-///         // ...
-///
-///         Ok(())
-///     },
-/// ));
+///     // ...
+/// });
 /// ```
 #[derive(Debug, Diagnostic, Error)]
 #[non_exhaustive]

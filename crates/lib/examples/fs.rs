@@ -6,10 +6,8 @@ use tokio::{
 	sync::{mpsc, watch},
 	time::sleep,
 };
-use watchexec::{
-	event::{Event, Priority},
-	fs,
-};
+use watchexec::fs;
+use watchexec_events::{Event, Priority};
 
 // Run with: `env RUST_LOG=debug cargo run --example fs`,
 // then touch some files within the first 15 seconds, and afterwards.

@@ -13,11 +13,9 @@ use normalize_path::NormalizePath;
 use notify::{Config, Watcher as _};
 use tokio::sync::{mpsc, watch};
 use tracing::{debug, error, trace};
+use watchexec_events::{Event, Priority, Source, Tag};
 
-use crate::{
-	error::{CriticalError, FsWatcherError, RuntimeError},
-	event::{Event, Priority, Source, Tag},
-};
+use crate::error::{CriticalError, FsWatcherError, RuntimeError};
 
 /// What kind of filesystem watcher to use.
 ///

@@ -15,11 +15,11 @@ use tokio::{
 	time::sleep,
 };
 use tracing::{debug, error, info, trace, warn};
+use watchexec_events::{Event, Priority};
 
 use crate::{
 	command::{Args, Command, Supervisor, SupervisorId},
 	error::RuntimeError,
-	event::{Event, Priority},
 };
 
 use super::{process_holder::ProcessHolder, Outcome, WorkingData};

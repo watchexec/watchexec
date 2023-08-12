@@ -10,13 +10,13 @@ use tokio::{
 	},
 };
 use tracing::{debug, debug_span, error, info, trace};
+use watchexec_events::{Event, Priority, Source, Tag};
 use watchexec_signals::Signal;
 
 use crate::{
 	action::{PostSpawn, PreSpawn},
 	command::{Command, Isolation, Program},
 	error::RuntimeError,
-	event::{Event, Priority, Source, Tag},
 	handler::HandlerLock,
 };
 

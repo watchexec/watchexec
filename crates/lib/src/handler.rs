@@ -23,7 +23,6 @@
 //! Reconfiguring a handler held by a lock:
 //!
 //! ```
-//! # let _ = async || {
 //! use watchexec::handler::HandlerLock;
 //!
 //! let lock = HandlerLock::default();
@@ -32,20 +31,19 @@
 //!        if changed {
 //!            println!("something changed!");
 //!        }
-//! }).await;
+//! });
 //!
-//! lock.call(true).await;
-//! lock.call(false).await;
+//! lock.call(true);
+//! lock.call(false);
 //!
 //! lock.replace(|changed: bool| {
 //!     if !changed {
 //!         println!("nothing to see here");
 //!     }
-//! }).await;
+//! });
 //!
-//! lock.call(true).await;
-//! lock.call(false).await;
-//! # };
+//! lock.call(true);
+//! lock.call(false);
 //! ```
 
 use std::{

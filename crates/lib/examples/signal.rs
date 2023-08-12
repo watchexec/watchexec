@@ -3,10 +3,8 @@ use std::process::exit;
 use async_priority_channel as priority;
 use miette::Result;
 use tokio::sync::mpsc;
-use watchexec::{
-	event::{Event, Priority, Tag},
-	signal,
-};
+use watchexec::signal;
+use watchexec_events::{Event, Priority, Tag};
 use watchexec_signals::Signal;
 
 // Run with: `env RUST_LOG=debug cargo run --example signal`,

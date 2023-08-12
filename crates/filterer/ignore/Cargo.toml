@@ -28,6 +28,10 @@ path = "../../ignore-files"
 version = "2.3.0"
 path = "../../lib"
 
+[dependencies.watchexec-events]
+version = "1.0.0"
+path = "../../events"
+
 [dependencies.watchexec-signals]
 version = "1.0.0"
 path = "../../signals"

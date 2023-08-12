@@ -22,21 +22,23 @@ mod tests;
 /// For simple uses, the From and FromIterator implementations may be useful:
 ///
 /// ```
+/// # use watchexec::command::{Command, Program};
 /// Command::from(Program::Exec {
 ///        prog: "ping".into(),
-///        args: vec!["-c", "4"],
+///        args: vec!["-c".into(), "4".into()],
 /// });
 /// ```
 ///
 /// ```
+/// # use watchexec::command::{Command, Program, Shell};
 /// Command::from_iter(vec![
 ///        Program::Exec {
 ///            prog: "nslookup".into(),
-///            args: vec!["google.com"],
+///            args: vec!["google.com".into()],
 ///        },
 ///        Program::Shell {
 ///            shell: Shell::new("bash"),
-///            command: "curl -L google.com >/dev/null",
+///            command: "curl -L google.com >/dev/null".into(),
 ///         args: Vec::new(),
 ///        },
 ///    ]);

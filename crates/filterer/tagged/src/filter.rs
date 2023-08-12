@@ -6,7 +6,7 @@ use regex::Regex;
 use tokio::fs::canonicalize;
 use tracing::{trace, warn};
 use unicase::UniCase;
-use watchexec::event::Tag;
+use watchexec_events::Tag;
 
 use crate::TaggedFiltererError;
 

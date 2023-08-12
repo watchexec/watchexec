@@ -55,8 +55,8 @@ pub struct Config {
 	/// config.on_error(|err: ErrorHook| {
 	///     tracing::error!("{}", err.error);
 	///
-	///     if matches!(err.error, RuntimeError::FsWatcher) {
-	///            err.critical(CriticalError::External("fs watcher failed"));
+	///     if matches!(err.error, RuntimeError::FsWatcher { .. }) {
+	///         err.critical(CriticalError::External("fs watcher failed".into()));
 	///     }
 	/// });
 	/// ```
@@ -69,7 +69,7 @@ pub struct Config {
 	/// config.on_error(|err: ErrorHook| {
 	///     tracing::error!("{}", err.error);
 	///
-	///     if matches!(err.error, RuntimeError::FsWatcher) {
+	///     if matches!(err.error, RuntimeError::FsWatcher { .. }) {
 	///            err.elevate();
 	///     }
 	/// });

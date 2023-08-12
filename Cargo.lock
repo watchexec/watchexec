@@ -3854,6 +3854,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "watchexec",
+ "watchexec-events",
  "watchexec-filterer-ignore",
 ]
 
@@ -3869,6 +3870,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "watchexec",
+ "watchexec-events",
  "watchexec-signals",
 ]
 
@@ -3890,6 +3892,7 @@ dependencies = [
  "tracing-subscriber",
  "unicase",
  "watchexec",
+ "watchexec-events",
  "watchexec-filterer-ignore",
  "watchexec-signals",
 ]

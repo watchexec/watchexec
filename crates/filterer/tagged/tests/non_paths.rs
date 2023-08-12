@@ -1,6 +1,6 @@
 use std::num::{NonZeroI32, NonZeroI64};
 
-use watchexec::event::{filekind::*, ProcessEnd, Source};
+use watchexec_events::{filekind::*, ProcessEnd, Source};
 use watchexec_filterer_tagged::TaggedFilterer;
 use watchexec_signals::Signal;
 

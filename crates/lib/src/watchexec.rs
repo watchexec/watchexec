@@ -19,12 +19,12 @@ use tokio::{
 	try_join,
 };
 use tracing::{debug, error, trace};
+use watchexec_events::{Event, Priority};
 
 use crate::{
 	action,
 	config::{Config, InternalConfig},
 	error::{CriticalError, ReconfigError, RuntimeError},
-	event::{Event, Priority},
 	fs,
 	handler::HandlerLock,
 	keyboard, signal,
@@ -114,8 +114,7 @@ impl Watchexec {
 				action::worker(ac_r, er_s.clone(), ev_s.clone(), ev_r),
 			);
 			let fs = SubTask::spawn("fs", fs::worker(fs_r, er_s.clone(), ev_s.clone()));
-			let signal =
-				SubTask::spawn("signal", signal::source::worker(er_s.clone(), ev_s.clone()));
+			let signal = SubTask::spawn("signal", signal::worker(er_s.clone(), ev_s.clone()));
 			let keyboard = SubTask::spawn(
 				"keyboard",
 				keyboard::worker(keyboard_r, er_s.clone(), ev_s.clone()),

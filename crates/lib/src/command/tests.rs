@@ -9,7 +9,6 @@ async fn unix_shell_none() -> Result<(), std::io::Error> {
 		args: vec!["hi".into()]
 	}
 	.to_spawnable()
-	.expect("echo directly")
 	.group_status()
 	.await?
 	.success());
@@ -25,7 +24,6 @@ async fn unix_shell_sh() -> Result<(), std::io::Error> {
 		args: Vec::new(),
 	}
 	.to_spawnable()
-	.expect("echo with sh")
 	.group_status()
 	.await?
 	.success());
@@ -41,7 +39,6 @@ async fn unix_shell_alternate() -> Result<(), std::io::Error> {
 		args: vec!["--".into(), "hi".into()],
 	}
 	.to_spawnable()
-	.expect("echo with bash")
 	.group_status()
 	.await?
 	.success());
@@ -60,7 +57,6 @@ async fn unix_shell_alternate_shopts() -> Result<(), std::io::Error> {
 		args: Vec::new(),
 	}
 	.to_spawnable()
-	.expect("echo with shopts")
 	.group_status()
 	.await?
 	.success());

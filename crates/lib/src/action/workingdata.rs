@@ -6,13 +6,12 @@ use std::{
 	time::Duration,
 };
 use tokio::process::Command as TokioCommand;
-use watchexec_events::{FileType, ProcessEnd};
+use watchexec_events::{Event, FileType, ProcessEnd};
 use watchexec_signals::Signal;
 
 use crate::{
 	action::Outcome,
 	command::{Command, Isolation, Program, SupervisorId},
-	event::Event,
 	filter::Filterer,
 	handler::HandlerLock,
 };
