@@ -76,6 +76,10 @@ impl Watchexec {
 		Self::new_with_internals(config, Default::default())
 	}
 
+	/// Instantiates a new `Watchexec` runtime with custom internal settings.
+	///
+	/// There's a few settings deemed "internal" like buffer sizes for queues that are very
+	/// occasionally useful to tune. This is the way to do it.
 	pub fn new_with_internals(
 		mut config: Config,
 		internals: InternalConfig,
