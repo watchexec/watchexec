@@ -107,19 +107,18 @@ async fn main() -> Result<()> {
 
 ## Kitchen sink
 
-The library also exposes a number of components which are available to make your own tool, or to
-make anything else you may want:
+Though not its primary usecase, the library exposes most of its relatively standalone components,
+available to make other tools that are not Watchexec-shaped:
 
-- **[Command handling](https://docs.rs/watchexec/2/watchexec/command/index.html)**, to
+- **[Command handling](https://docs.rs/watchexec/3/watchexec/command/index.html)**, to
   build a command with an arbitrary shell, deal with grouped and ungrouped processes the same way,
   and supervise a process while also listening for & acting on interventions such as sending signals.
 
-- **Event sources**: [Filesystem](https://docs.rs/watchexec/2/watchexec/fs/index.html),
-  [Signals](https://docs.rs/watchexec/2/watchexec/signal/index.html),
-  [Keyboard](https://docs.rs/watchexec/2/watchexec/keyboard/index.html),
-  (more to come).
+- **Event sources**: [Filesystem](https://docs.rs/watchexec/3/watchexec/fs/index.html),
+  [Signals](https://docs.rs/watchexec/3/watchexec/signal/index.html),
+  [Keyboard](https://docs.rs/watchexec/3/watchexec/keyboard/index.html).
 
-- Finding **[a common prefix](https://docs.rs/watchexec/2/watchexec/paths/fn.common_prefix.html)**
+- Finding **[a common prefix](https://docs.rs/watchexec/3/watchexec/paths/fn.common_prefix.html)**
   of a set of paths.
 
 - And [more][docs]!
@@ -127,11 +126,11 @@ make anything else you may want:
 Filterers are split into their own crates, so they can be evolved independently:
 
 - The **[Globset](https://docs.rs/watchexec-filterer-globset) filterer** implements the default
-  Watchexec filter, and mimics the pre-1.18 behaviour as much as possible.
+  Watchexec CLI filtering, based on the regex crate's ignore mechanisms.
 
-- The **[Tagged](https://docs.rs/watchexec-filterer-tagged) filterer** is an experiment in creating
-  a more powerful filtering solution, which can operate on every part of events, not just their
-  paths.
+- ~~The **[Tagged](https://docs.rs/watchexec-filterer-tagged) filterer**~~ was an experiment in
+  creating a more powerful filtering solution, which could operate on every part of events, not
+  just their paths, using a custom syntax. It is no longer maintained.
 
 - The **[Ignore](https://docs.rs/watchexec-filterer-ignore) filterer** implements ignore-file
   semantics, and especially supports _trees_ of ignore files. It is used as a subfilterer in both
