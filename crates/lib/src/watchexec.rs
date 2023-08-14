@@ -1,7 +1,6 @@
 use std::{
 	fmt,
 	future::Future,
-	mem::take,
 	ops::{Deref, DerefMut},
 	pin::Pin,
 	sync::Arc,
@@ -14,7 +13,7 @@ use miette::Diagnostic;
 use once_cell::sync::OnceCell;
 use tokio::{
 	spawn,
-	sync::{mpsc, watch, Notify},
+	sync::{mpsc, Notify},
 	task::JoinHandle,
 	try_join,
 };
@@ -22,12 +21,10 @@ use tracing::{debug, error, trace};
 use watchexec_events::{Event, Priority};
 
 use crate::{
-	action,
-	config::{Config, InternalConfig},
-	error::{CriticalError, ReconfigError, RuntimeError},
-	fs,
-	handler::HandlerLock,
-	keyboard, signal,
+	action::{self, Action},
+	changeable::ChangeableFn,
+	error::{CriticalError, RuntimeError},
+	fs, keyboard, signal, Config,
 };
 
 /// The main watchexec runtime.
@@ -38,14 +35,60 @@ use crate::{
 /// error hook, and provides an interface to change the runtime configuration during the runtime,
 /// inject synthetic events, and wait for graceful shutdown.
 pub struct Watchexec {
-	handle: Arc<AtomicTake<JoinHandle<Result<(), CriticalError>>>>,
+	/// The configuration of this Watchexec instance.
+	///
+	/// Configuration can be changed at any time using the provided methods on [`Config`].
+	///
+	/// Treat this field as readonly: replacing it with a different instance of `Config` will not do
+	/// anything except potentially lose you access to the actual Watchexec config. In normal use
+	/// you'll have obtained `Watchexec` behind an `Arc` so that won't be an issue.
+	///
+	/// # Examples
+	///
+	/// Change the action handler:
+	///
+	/// ```no_run
+	/// # use watchexec::{action::Action, Watchexec};
+	/// let wx = Watchexec::default();
+	/// wx.config.on_action(|action: Action| {
+	///     if action.signals().next().is_some() {
+	///         action.quit();
+	///     }
+	/// });
+	/// ```
+	///
+	/// Set paths to be watched:
+	///
+	/// ```no_run
+	/// # use watchexec::{action::Action, Watchexec};
+	/// let wx = Watchexec::new(|action: Action| {
+	///     if action.signals().next().is_some() {
+	///         action.quit();
+	///         return;
+	///     }
+	///
+	///     for event in action.events.iter() {
+	///         println!("{event:?}");
+	///     }
+	/// }).unwrap();
+	///
+	/// wx.config.pathset(["."]);
+	/// ```
+	pub config: Arc<Config>,
 	start_lock: Arc<Notify>,
-
-	action_watch: watch::Sender<action::WorkingData>,
-	fs_watch: watch::Sender<fs::WorkingData>,
-	keyboard_watch: watch::Sender<keyboard::WorkingData>,
-
 	event_input: priority::Sender<Event, Priority>,
+	handle: Arc<AtomicTake<JoinHandle<Result<(), CriticalError>>>>,
+}
+
+impl Default for Watchexec {
+	/// Instantiate with default config.
+	///
+	/// Note that this will panic if the constructor errors.
+	///
+	/// Prefer calling `new()` instead.
+	fn default() -> Self {
+		Self::with_config(Default::default()).expect("Use Watchexec::new() to avoid this panic")
+	}
 }
 
 impl fmt::Debug for Watchexec {
@@ -55,73 +98,60 @@ impl fmt::Debug for Watchexec {
 }
 
 impl Watchexec {
-	/// Instantiates a new `Watchexec` runtime from configuration.
+	/// Instantiates a new `Watchexec` runtime given an initial action handler.
 	///
 	/// Returns an [`Arc`] for convenience; use [`try_unwrap`][Arc::try_unwrap()] to get the value
-	/// directly if needed.
+	/// directly if needed, or use `new_with_config`.
 	///
-	/// Note that `Config` is not a "live" or "shared" instance: if using reconfiguration,
-	/// you'll usually pass a `clone()` of your `Config` instance to this function; changes
-	/// made to the instance you _keep_ will not automatically be used by Watchexec, you need to
-	/// call [`reconfigure()`](Watchexec::reconfigure) with your updated config to apply the changes.
-	///
+	/// Look at the [`Config`] documentation for more on the required action handler.
 	/// Watchexec will subscribe to most signals sent to the process it runs in and send them, as
 	/// [`Event`]s, to the action handler. At minimum, you should check for interrupt/ctrl-c events
-	/// and return an [`Outcome::Exit`], otherwise hitting ctrl-c will do nothing.
-	///
-	/// If you need to adjust internal details, use `new_with_internals()`.
-	///
-	/// [`Outcome::Exit`]: crate::action::Outcome::Exit
-	pub fn new(config: Config) -> Result<Arc<Self>, CriticalError> {
-		Self::new_with_internals(config, Default::default())
+	/// and call `action.quit()` in your handler, otherwise hitting ctrl-c will do nothing.
+	pub fn new(
+		action_handler: impl Fn(Action) + Send + Sync + 'static,
+	) -> Result<Arc<Self>, CriticalError> {
+		let config = Config::default();
+		config.on_action(action_handler);
+		Self::with_config(config).map(Arc::new)
 	}
 
-	/// Instantiates a new `Watchexec` runtime with custom internal settings.
+	/// Instantiates a new `Watchexec` runtime with a config.
 	///
-	/// There's a few settings deemed "internal" like buffer sizes for queues that are very
-	/// occasionally useful to tune. This is the way to do it.
-	pub fn new_with_internals(
-		mut config: Config,
-		internals: InternalConfig,
-	) -> Result<Arc<Self>, CriticalError> {
-		debug!(?internals, ?config, pid=%std::process::id(), version=%env!("CARGO_PKG_VERSION"), "initialising");
+	/// This is generally not needed: the config can be changed after instantiation (before and
+	/// after _starting_ Watchexec with `main()`). The only time this should be used is to set the
+	/// "unchangeable" configuration items for internal details like buffer sizes for queues, or to
+	/// obtain Self unwrapped by an Arc like `new()` does.
+	pub fn with_config(config: Config) -> Result<Self, CriticalError> {
+		debug!(?config, pid=%std::process::id(), version=%env!("CARGO_PKG_VERSION"), "initialising");
+		let config = Arc::new(config);
+		let outer_config = config.clone();
 
-		let (ev_s, ev_r) = priority::bounded(internals.event_channel_size);
-		let (ac_s, ac_r) = watch::channel(take(&mut config.action));
-		let (fs_s, fs_r) = watch::channel(fs::WorkingData::default());
-		let (keyboard_s, keyboard_r) = watch::channel(keyboard::WorkingData::default());
-
-		let event_input = ev_s.clone();
-
-		// TODO: figure out how to do this (aka start the fs work) after the main task start lock
-		trace!("sending initial config to fs worker");
-		fs_s.send(take(&mut config.fs))
-			.expect("cannot send to just-created fs watch (bug)");
-
-		trace!("sending initial config to keyboard worker");
-		keyboard_s
-			.send(take(&mut config.keyboard))
-			.expect("cannot send to just-created keyboard watch (bug)");
-
-		trace!("creating main task");
 		let notify = Arc::new(Notify::new());
 		let start_lock = notify.clone();
+
+		let (ev_s, ev_r) = priority::bounded(config.event_channel_size);
+		let event_input = ev_s.clone();
+
+		trace!("creating main task");
 		let handle = spawn(async move {
 			trace!("waiting for start lock");
 			notify.notified().await;
 			debug!("starting main task");
 
-			let (er_s, er_r) = mpsc::channel(internals.error_channel_size);
+			let (er_s, er_r) = mpsc::channel(config.error_channel_size);
 
 			let action = SubTask::spawn(
 				"action",
-				action::worker(ac_r, er_s.clone(), ev_s.clone(), ev_r),
+				action::worker(config.clone(), er_s.clone(), ev_s.clone(), ev_r),
 			);
-			let fs = SubTask::spawn("fs", fs::worker(fs_r, er_s.clone(), ev_s.clone()));
-			let signal = SubTask::spawn("signal", signal::worker(er_s.clone(), ev_s.clone()));
+			let fs = SubTask::spawn("fs", fs::worker(config.clone(), er_s.clone(), ev_s.clone()));
+			let signal = SubTask::spawn(
+				"signal",
+				signal::worker(config.clone(), er_s.clone(), ev_s.clone()),
+			);
 			let keyboard = SubTask::spawn(
 				"keyboard",
-				keyboard::worker(keyboard_r, er_s.clone(), ev_s.clone()),
+				keyboard::worker(config.clone(), er_s.clone(), ev_s.clone()),
 			);
 
 			let error_hook =
@@ -147,26 +177,12 @@ impl Watchexec {
 		});
 
 		trace!("done with setup");
-		Ok(Arc::new(Self {
-			handle: Arc::new(AtomicTake::new(handle)),
+		Ok(Self {
+			config: outer_config,
 			start_lock,
-
-			action_watch: ac_s,
-			fs_watch: fs_s,
-			keyboard_watch: keyboard_s,
-
 			event_input,
-		}))
-	}
-
-	// TODO: Config *should* be live actually
-	/// Applies a new [`Config`] to the runtime.
-	pub fn reconfigure(&self, config: Config) -> Result<(), ReconfigError> {
-		debug!(?config, "reconfiguring");
-		self.action_watch.send(config.action)?;
-		self.fs_watch.send(config.fs)?;
-		self.keyboard_watch.send(config.keyboard)?;
-		Ok(())
+			handle: Arc::new(AtomicTake::new(handle)),
+		})
 	}
 
 	/// Inputs an [`Event`] directly.
@@ -199,7 +215,7 @@ impl Watchexec {
 
 async fn error_hook(
 	mut errors: mpsc::Receiver<RuntimeError>,
-	handler: HandlerLock<ErrorHook>,
+	handler: ChangeableFn<ErrorHook>,
 ) -> Result<(), CriticalError> {
 	while let Some(err) = errors.recv().await {
 		if matches!(err, RuntimeError::Exit) {

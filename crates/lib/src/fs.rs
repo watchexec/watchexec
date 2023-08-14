@@ -5,46 +5,47 @@ use std::{
 	fs::metadata,
 	mem::take,
 	path::{Path, PathBuf},
+	sync::Arc,
 	time::Duration,
 };
 
 use async_priority_channel as priority;
+use futures::StreamExt;
 use normalize_path::NormalizePath;
-use notify::{Config, Watcher as _};
-use tokio::sync::{mpsc, watch};
+use tokio::sync::mpsc;
 use tracing::{debug, error, trace};
 use watchexec_events::{Event, Priority, Source, Tag};
 
-use crate::error::{CriticalError, FsWatcherError, RuntimeError};
+use crate::{
+	error::{CriticalError, FsWatcherError, RuntimeError},
+	Config,
+};
 
 /// What kind of filesystem watcher to use.
 ///
 /// For now only native and poll watchers are supported. In the future there may be additional
 /// watchers available on some platforms.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Watcher {
 	/// The Notify-recommended watcher on the platform.
 	///
 	/// For platforms Notify supports, that's a [native implementation][notify::RecommendedWatcher],
 	/// for others it's polling with a default interval.
+	#[default]
 	Native,
 
 	/// Notify’s [poll watcher][notify::PollWatcher] with a custom interval.
 	Poll(Duration),
 }
 
-impl Default for Watcher {
-	fn default() -> Self {
-		Self::Native
-	}
-}
-
 impl Watcher {
 	fn create(
 		self,
 		f: impl notify::EventHandler,
-	) -> Result<Box<dyn notify::Watcher + Send>, RuntimeError> {
+	) -> Result<Box<dyn notify::Watcher + Send>, CriticalError> {
+		use notify::{Config, Watcher as _};
+
 		match self {
 			Self::Native => {
 				notify::RecommendedWatcher::new(f, Config::default()).map(|w| Box::new(w) as _)
@@ -54,7 +55,7 @@ impl Watcher {
 					.map(|w| Box::new(w) as _)
 			}
 		}
-		.map_err(|err| RuntimeError::FsWatcher {
+		.map_err(|err| CriticalError::FsWatcherInit {
 			kind: self,
 			err: if cfg!(target_os = "linux")
 				&& (matches!(err.kind, notify::ErrorKind::MaxFilesWatch)
@@ -70,19 +71,6 @@ impl Watcher {
 			},
 		})
 	}
-}
-
-/// The configuration of the [fs][self] worker.
-///
-/// This is marked non-exhaustive so new configuration can be added without breaking.
-#[derive(Clone, Debug, Default)]
-#[non_exhaustive]
-pub struct WorkingData {
-	/// The set of paths to be watched.
-	pub pathset: Vec<WatchedPath>,
-
-	/// The kind of watcher to be used.
-	pub watcher: Watcher,
 }
 
 /// A path to watch.
@@ -126,9 +114,7 @@ impl AsRef<Path> for WatchedPath {
 /// While you can run several, you should only have one.
 ///
 /// This only does a bare minimum of setup; to actually start the work, you need to set a non-empty
-/// pathset on the [`WorkingData`] with the [`watch`] channel, and send a notification. Take care
-/// _not_ to drop the watch sender: this will cause the worker to stop gracefully, which may not be
-/// what was expected.
+/// pathset in the [`Config`].
 ///
 /// Note that the paths emitted by the watcher are normalised. No guarantee is made about the
 /// implementation or output of that normalisation (it may change without notice).
@@ -139,25 +125,23 @@ impl AsRef<Path> for WatchedPath {
 ///
 /// ```no_run
 /// use async_priority_channel as priority;
-/// use tokio::sync::{mpsc, watch};
-/// use watchexec::fs::{worker, WorkingData};
+/// use tokio::sync::mpsc;
+/// use watchexec::{Config, fs::worker};
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let (ev_s, _) = priority::bounded(1024);
 ///     let (er_s, _) = mpsc::channel(64);
-///     let (wd_s, wd_r) = watch::channel(WorkingData::default());
 ///
-///     let mut wkd = WorkingData::default();
-///     wkd.pathset = vec![".".into()];
-///     wd_s.send(wkd)?;
+///     let config = Config::default();
+///     config.pathset(["."]);
 ///
-///     worker(wd_r, er_s, ev_s).await?;
+///     worker(config.into(), er_s, ev_s).await?;
 ///     Ok(())
 /// }
 /// ```
 pub async fn worker(
-	mut working: watch::Receiver<WorkingData>,
+	config: Arc<Config>,
 	errors: mpsc::Sender<RuntimeError>,
 	events: priority::Sender<Event, Priority>,
 ) -> Result<(), CriticalError> {
@@ -167,89 +151,91 @@ pub async fn worker(
 	let mut watcher = None;
 	let mut pathset = HashSet::new();
 
-	while working.changed().await.is_ok() {
-		// In separate scope so we drop the working read lock as early as we can
-		let (new_watcher, to_watch, to_drop) = {
-			let data = working.borrow();
-			trace!(?data, "filesystem worker got a working data change");
+	let mut config_watch = config.watch();
+	while config_watch.next().await.is_some() {
+		trace!("filesystem worker got a config change");
 
-			if data.pathset.is_empty() {
-				trace!("no more watched paths, dropping watcher");
-				watcher.take();
-				pathset.clear();
-				continue;
-			}
+		if config.pathset.get().is_empty() {
+			trace!("no more watched paths, dropping watcher");
+			watcher.take();
+			pathset.clear();
+			continue;
+		}
 
-			if watcher.is_none() || watcher_type != data.watcher {
-				pathset.clear();
+		// now we know the watcher should be alive, so let's start it if it's not already:
 
-				(Some(data.watcher), data.pathset.clone(), Vec::new())
-			} else {
-				let mut to_watch = Vec::with_capacity(data.pathset.len());
-				let mut to_drop = Vec::with_capacity(pathset.len());
-				for path in &data.pathset {
-					if !pathset.contains(path) {
-						to_watch.push(path.clone());
-					}
-				}
-
-				for path in &pathset {
-					if !data.pathset.contains(path) {
-						to_drop.push(path.clone());
-					}
-				}
-
-				(None, to_watch, to_drop)
-			}
-		};
-
-		if let Some(kind) = new_watcher {
-			debug!(?kind, "creating new watcher");
+		let config_watcher = config.file_watcher.get();
+		if watcher.is_none() || watcher_type != config_watcher {
+			debug!(kind=?config_watcher, "creating new watcher");
 			let n_errors = errors.clone();
 			let n_events = events.clone();
-			match kind.create(move |nev: Result<notify::Event, notify::Error>| {
-				trace!(event = ?nev, "receiving possible event from watcher");
-				if let Err(e) = process_event(nev, kind, &n_events) {
-					n_errors.try_send(e).ok();
+			watcher_type = config_watcher;
+			watcher = config_watcher
+				.create(move |nev: Result<notify::Event, notify::Error>| {
+					trace!(event = ?nev, "receiving possible event from watcher");
+					if let Err(e) = process_event(nev, config_watcher, &n_events) {
+						n_errors.try_send(e).ok();
+					}
+				})
+				.map(Some)?;
+		}
+
+		// now let's calculate which paths we should add to the watch, and which we should drop:
+
+		let config_pathset = config.pathset.get();
+		let (to_watch, to_drop) = if pathset.is_empty() {
+			// if the current pathset is empty, we can take a shortcut
+			(config_pathset, Vec::new())
+		} else {
+			let mut to_watch = Vec::with_capacity(config_pathset.len());
+			let mut to_drop = Vec::with_capacity(pathset.len());
+
+			for path in &pathset {
+				if !config_pathset.contains(path) {
+					to_drop.push(path.clone()); // try dropping the clone?
 				}
-			}) {
-				Ok(w) => {
-					watcher = Some(w);
-					watcher_type = kind;
+			}
+
+			for path in config_pathset {
+				if !pathset.contains(&path) {
+					to_watch.push(path);
 				}
-				Err(e) => {
+			}
+
+			(to_watch, to_drop)
+		};
+
+		// now apply it to the watcher
+
+		let Some(watcher) = watcher.as_mut() else {
+            panic!("BUG: watcher should exist at this point");
+        };
+
+		debug!(?to_watch, ?to_drop, "applying changes to the watcher");
+
+		for path in to_drop {
+			trace!(?path, "removing path from the watcher");
+			if let Err(err) = watcher.unwatch(path.as_ref()) {
+				error!(?err, "notify unwatch() error");
+				for e in notify_multi_path_errors(watcher_type, path, err, true) {
 					errors.send(e).await?;
 				}
+			} else {
+				pathset.remove(&path);
 			}
 		}
 
-		if let Some(w) = watcher.as_mut() {
-			debug!(?to_watch, ?to_drop, "applying changes to the watcher");
-
-			for path in to_drop {
-				trace!(?path, "removing path from the watcher");
-				if let Err(err) = w.unwatch(path.as_ref()) {
-					error!(?err, "notify unwatch() error");
-					for e in notify_multi_path_errors(watcher_type, path, err, true) {
-						errors.send(e).await?;
-					}
-				} else {
-					pathset.remove(&path);
+		for path in to_watch {
+			trace!(?path, "adding path to the watcher");
+			if let Err(err) = watcher.watch(path.as_ref(), notify::RecursiveMode::Recursive) {
+				error!(?err, "notify watch() error");
+				for e in notify_multi_path_errors(watcher_type, path, err, false) {
+					errors.send(e).await?;
 				}
-			}
-
-			for path in to_watch {
-				trace!(?path, "adding path to the watcher");
-				if let Err(err) = w.watch(path.as_ref(), notify::RecursiveMode::Recursive) {
-					error!(?err, "notify watch() error");
-					for e in notify_multi_path_errors(watcher_type, path, err, false) {
-						errors.send(e).await?;
-					}
-				// TODO: unwatch and re-watch manually while ignoring all the erroring paths
-				// See https://github.com/watchexec/watchexec/issues/218
-				} else {
-					pathset.insert(path);
-				}
+			// TODO: unwatch and re-watch manually while ignoring all the erroring paths
+			// See https://github.com/watchexec/watchexec/issues/218
+			} else {
+				pathset.insert(path);
 			}
 		}
 	}

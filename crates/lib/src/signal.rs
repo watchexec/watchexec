@@ -1,12 +1,17 @@
 //! Event source for signals / notifications sent to the main process.
 
+use std::sync::Arc;
+
 use async_priority_channel as priority;
 use tokio::{select, sync::mpsc};
 use tracing::{debug, trace};
 use watchexec_events::{Event, Priority, Source, Tag};
 use watchexec_signals::Signal;
 
-use crate::error::{CriticalError, RuntimeError};
+use crate::{
+	error::{CriticalError, RuntimeError},
+	Config,
+};
 
 /// Launch the signal event worker.
 ///
@@ -26,19 +31,21 @@ use crate::error::{CriticalError, RuntimeError};
 ///     let (ev_s, _) = priority::bounded(1024);
 ///     let (er_s, _) = mpsc::channel(64);
 ///
-///     worker(er_s, ev_s).await?;
+///     worker(Default::default(), er_s, ev_s).await?;
 ///     Ok(())
 /// }
 /// ```
 pub async fn worker(
+	config: Arc<Config>,
 	errors: mpsc::Sender<RuntimeError>,
 	events: priority::Sender<Event, Priority>,
 ) -> Result<(), CriticalError> {
-	imp_worker(errors, events).await
+	imp_worker(config, errors, events).await
 }
 
 #[cfg(unix)]
 async fn imp_worker(
+	_config: Arc<Config>,
 	errors: mpsc::Sender<RuntimeError>,
 	events: priority::Sender<Event, Priority>,
 ) -> Result<(), CriticalError> {
@@ -47,12 +54,12 @@ async fn imp_worker(
 	debug!("launching unix signal worker");
 
 	macro_rules! listen {
-	($sig:ident) => {{
-		trace!(kind=%stringify!($sig), "listening for unix signal");
-		signal(SignalKind::$sig()).map_err(|err| CriticalError::IoError {
-		about: concat!("setting ", stringify!($sig), " signal listener"), err
-	})?
-	}}
+    ($sig:ident) => {{
+        trace!(kind=%stringify!($sig), "listening for unix signal");
+        signal(SignalKind::$sig()).map_err(|err| CriticalError::IoError {
+        about: concat!("setting ", stringify!($sig), " signal listener"), err
+    })?
+    }}
 }
 
 	let mut s_hangup = listen!(hangup);
@@ -79,6 +86,7 @@ async fn imp_worker(
 
 #[cfg(windows)]
 async fn imp_worker(
+	_config: Arc<Config>,
 	errors: mpsc::Sender<RuntimeError>,
 	events: priority::Sender<Event, Priority>,
 ) -> Result<(), CriticalError> {
@@ -87,12 +95,12 @@ async fn imp_worker(
 	debug!("launching windows signal worker");
 
 	macro_rules! listen {
-	($sig:ident) => {{
-		trace!(kind=%stringify!($sig), "listening for windows process notification");
-		$sig().map_err(|err| CriticalError::IoError {
-			about: concat!("setting ", stringify!($sig), " signal listener"), err
-		})?
-	}}
+    ($sig:ident) => {{
+        trace!(kind=%stringify!($sig), "listening for windows process notification");
+        $sig().map_err(|err| CriticalError::IoError {
+            about: concat!("setting ", stringify!($sig), " signal listener"), err
+        })?
+    }}
 }
 
 	let mut sigint = listen!(ctrl_c);

@@ -3,7 +3,6 @@ use std::{
 	fmt,
 	path::Path,
 	sync::{Arc, Mutex, MutexGuard},
-	time::Duration,
 };
 use tokio::process::Command as TokioCommand;
 use watchexec_events::{Event, FileType, ProcessEnd};
@@ -12,89 +11,7 @@ use watchexec_signals::Signal;
 use crate::{
 	action::Outcome,
 	command::{Command, Isolation, Program, SupervisorId},
-	filter::Filterer,
-	handler::HandlerLock,
 };
-
-/// The configuration of the [action][crate::action] worker.
-///
-/// This is marked non-exhaustive so new configuration can be added without breaking.
-#[derive(Clone)]
-#[non_exhaustive]
-pub struct WorkingData {
-	/// How long to wait for events to build up before executing an action.
-	///
-	/// This is sometimes called "debouncing." We debounce on the trailing edge: an action is
-	/// triggered only after that amount of time has passed since the first event in the cycle. The
-	/// action is called with all the collected events in the cycle.
-	pub throttle: Duration,
-
-	/// The main handler to define: what to do when an action is triggered.
-	///
-	/// This handler is called with the [`Action`] environment, look at its doc for more detail.
-	///
-	/// Watchexec waits until the handler is done, and then performs any actions the handler
-	/// told it to. "Doneness" is determined by the handler returning, or resolving in case of
-	/// an async handler. You'll get unexpected results using eg a channel as the handler, as
-	/// the handler implementation will immediately return after sending to the channel, and
-	/// act as a no-op.
-	///
-	/// If this handler is not provided, or does nothing, Watchexec in turn will do nothing, not
-	/// even quit. Hence, you really need to provide a handler.
-	///
-	/// It is possible to change the handler or any other configuration inside the previous handler.
-	/// It's useful to know that the handlers are updated from this working data before any of them
-	/// run in any given cycle, so changing the pre-spawn and post-spawn handlers from this handler
-	/// will not affect the running action.
-	pub action_handler: HandlerLock<Action>,
-
-	// TODO: spawn handlers should really go inside Outcome or Create, not be defined here
-	/// A handler triggered before a command is spawned.
-	///
-	/// This handler is called with the [`PreSpawn`] environment, which provides mutable access to
-	/// the [`Command`](TokioCommand) which is about to be run. See the notes on the
-	/// [`PreSpawn::command()`] method for important information on what you can do with it.
-	///
-	/// Returning an error from the handler will stop the action from processing further, and issue
-	/// a [`RuntimeError`][crate::error::RuntimeError] to the error channel.
-	pub pre_spawn_handler: HandlerLock<PreSpawn>,
-
-	/// A handler triggered immediately after a command is spawned.
-	///
-	/// This handler is called with the [`PostSpawn`] environment, which provides details on the
-	/// spawned command, including its PID.
-	///
-	/// Returning an error from the handler will drop the [`Child`][tokio::process::Child], which
-	/// will terminate the command without triggering any of the normal Watchexec behaviour, and
-	/// issue a [`RuntimeError`][crate::error::RuntimeError] to the error channel.
-	pub post_spawn_handler: HandlerLock<PostSpawn>,
-
-	/// The filterer implementation to use when filtering events.
-	///
-	/// The default is a no-op, which will always pass every event.
-	pub filterer: Arc<dyn Filterer>,
-}
-
-impl fmt::Debug for WorkingData {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		f.debug_struct("WorkingData")
-			.field("throttle", &self.throttle)
-			.field("filterer", &self.filterer)
-			.finish_non_exhaustive()
-	}
-}
-
-impl Default for WorkingData {
-	fn default() -> Self {
-		Self {
-			throttle: Duration::from_millis(50),
-			action_handler: Default::default(),
-			pre_spawn_handler: Default::default(),
-			post_spawn_handler: Default::default(),
-			filterer: Arc::new(()),
-		}
-	}
-}
 
 /// The environment given to the action handler.
 ///
@@ -189,9 +106,9 @@ impl Action {
 		orders.entry(id).or_default().push(SupervisionOrder::Remove);
 	}
 
-	/// Stops all supervised commands and then shuts down the Watchexec instance.
+	/// Shuts down the Watchexec instance.
 	///
-	/// If a graceful stop is required, use `apply()` beforehand on all commands.
+	/// If a more graceful stop is required, use `apply()` beforehand on all commands.
 	pub fn quit(&self) {
 		self.instance
 			.lock()

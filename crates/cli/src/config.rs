@@ -13,21 +13,20 @@ use tracing::{debug, debug_span, error};
 use watchexec::{
 	action::{Action, /*Outcome,*/ PostSpawn, PreSpawn},
 	command::{Command, Isolation, Program, Shell},
-	config::Config,
-	error::{FsWatcherError, RuntimeError},
+	error::RuntimeError,
 	fs::Watcher,
-	ErrorHook,
+	Config, ErrorHook,
 };
 
-use watchexec_events::{Event, Keyboard, ProcessEnd, Tag};
-use watchexec_signals::Signal;
+// use watchexec_events::{Event, Keyboard, ProcessEnd, Tag};
+// use watchexec_signals::Signal;
 
 use crate::args::{Args, /*ClearMode,*/ EmitEvents /*OnBusyUpdate*/};
 use crate::state::State;
 
 pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 	let _span = debug_span!("args-runtime").entered();
-	let mut config = Config::default();
+	let config = Config::default();
 	config.on_error(|err: ErrorHook| {
 		if let RuntimeError::IoError {
 			about: "waiting on process group",
@@ -40,18 +39,6 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 			return;
 		}
 
-		if let RuntimeError::FsWatcher {
-			err:
-				FsWatcherError::Create { .. }
-				| FsWatcherError::TooManyWatches { .. }
-				| FsWatcherError::TooManyHandles { .. },
-			..
-		} = err.error
-		{
-			err.elevate();
-			return;
-		}
-
 		if cfg!(debug_assertions) {
 			eprintln!("[[{:?}]]", err.error);
 		}
@@ -59,7 +46,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 		eprintln!("[[Error (not fatal)]]\n{}", Report::new(err.error));
 	});
 
-	let mut command = Some(interpret_command_args(args)?);
+	let _command = Some(interpret_command_args(args)?);
 
 	config.pathset(if args.paths.is_empty() {
 		vec![current_dir().into_diagnostic()?]
@@ -67,8 +54,8 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 		args.paths.clone()
 	});
 
-	config.action_throttle(args.debounce.0);
-	config.keyboard_emit_eof(args.stdin_quit);
+	config.throttle(args.debounce.0);
+	config.keyboard_events(args.stdin_quit);
 
 	if let Some(interval) = args.poll {
 		config.file_watcher(Watcher::Poll(interval.0));

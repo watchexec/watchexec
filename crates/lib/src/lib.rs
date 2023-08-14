@@ -13,22 +13,13 @@
 //! [`std::error::Error`] so your favourite error handling library can of course be used.
 //!
 //! ```no_run
-//! use std::convert::Infallible;
 //! use miette::{IntoDiagnostic, Result};
 //! use watchexec_signals::Signal;
-//! use watchexec::{
-//!     action::{Action, Outcome},
-//!     Config,
-//!     Watchexec,
-//! };
+//! use watchexec::{action::Action, Watchexec};
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<()> {
-//!     let mut config = Config::default();
-//!
-//!     // watch the current directory
-//!     config.pathset(["."]);
-//!     config.on_action(|action: Action| {
+//!     let wx = Watchexec::new(|action: Action| {
 //!         // print any events
 //!         for event in action.events.iter() {
 //!             eprintln!("EVENT: {event:?}");
@@ -38,13 +29,12 @@
 //!         if action.signals().any(|sig| sig == Signal::Interrupt) {
 //!             action.quit();
 //!         }
-//!     });
+//!     })?;
 //!
-//!     Watchexec::new(config)?
-//!        .main()
-//!        .await
-//!        .into_diagnostic()?;
+//!     // watch the current directory
+//!     wx.config.pathset(["."]);
 //!
+//!     wx.main().await.into_diagnostic()?;
 //!     Ok(())
 //! }
 //! ```
@@ -74,8 +64,8 @@ pub mod paths;
 pub mod signal;
 
 // the core experience
+pub mod changeable;
 pub mod config;
-pub mod handler;
 mod watchexec;
 
 #[doc(inline)]

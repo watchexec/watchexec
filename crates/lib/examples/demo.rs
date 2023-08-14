@@ -10,7 +10,7 @@ use watchexec::{
 	action::{Action, EventSet, Outcome},
 	command::{Program, Shell, SupervisorId},
 	fs::Watcher,
-	Config, Watchexec,
+	Watchexec,
 };
 use watchexec_signals::Signal;
 
@@ -19,19 +19,13 @@ use watchexec_signals::Signal;
 async fn main() -> Result<()> {
 	tracing_subscriber::fmt::init();
 
-	let mut config = Config::default();
-	config.pathset(["src", "dontexist", "examples"]);
-
-	let wx = Watchexec::new(config.clone())?;
-	let w = wx.clone();
-
 	let known_commands: Arc<Mutex<HashMap<PathBuf, SupervisorId>>> = Default::default();
 
-	config.on_action({
-		let config = config.clone();
+	let wx = Watchexec::default();
+	let config = wx.config.clone();
+	wx.config.pathset(["src", "examples"]);
+	wx.config.on_action({
 		move |action: Action| {
-			let mut config = config.clone();
-			let w = w.clone();
 			let known_commands = known_commands.clone();
 			eprintln!("Watchexec Action: {action:?}");
 
@@ -42,11 +36,9 @@ async fn main() -> Result<()> {
 			} else if action.signals().any(|sig| sig == Signal::User1) {
 				eprintln!("Switching to native for funsies");
 				config.file_watcher(Watcher::Native);
-				w.reconfigure(config).unwrap();
 			} else if action.signals().any(|sig| sig == Signal::User2) {
 				eprintln!("Switching to polling for funsies");
 				config.file_watcher(Watcher::Poll(Duration::from_millis(50)));
-				w.reconfigure(config).unwrap();
 			}
 
 			// We're going to spawn one call to the program per file changed, passing the path that
@@ -88,7 +80,6 @@ async fn main() -> Result<()> {
 		}
 	});
 
-	wx.reconfigure(config)?;
 	wx.main().await.into_diagnostic()??;
 
 	Ok(())

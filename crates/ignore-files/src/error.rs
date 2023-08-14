@@ -10,7 +10,6 @@ pub enum Error {
 	///
 	/// [`IgnoreFile`]: crate::IgnoreFile
 	#[error("cannot read ignore '{file}': {err}")]
-	#[diagnostic(code(ignore_file::read))]
 	Read {
 		/// The path to the erroring ignore file.
 		file: PathBuf,
@@ -22,7 +21,6 @@ pub enum Error {
 
 	/// Error received when parsing a glob fails.
 	#[error("cannot parse glob from ignore '{file:?}': {err}")]
-	#[diagnostic(code(ignore_file::glob))]
 	Glob {
 		/// The path to the erroring ignore file.
 		file: Option<PathBuf>,
@@ -35,7 +33,6 @@ pub enum Error {
 
 	/// Multiple related [`Error`](enum@Error)s.
 	#[error("multiple: {0:?}")]
-	#[diagnostic(code(ignore_file::set))]
 	Multi(#[related] Vec<Error>),
 
 	/// Error received when trying to canonicalize a path

@@ -9,26 +9,23 @@ use futures::{
 	future::{select, Either},
 	Future,
 };
-use tokio::{
-	spawn,
-	sync::{mpsc, watch::Receiver},
-	time::sleep,
-};
+use tokio::{spawn, sync::mpsc, time::sleep};
 use tracing::{debug, error, info, trace, warn};
 use watchexec_events::{Event, Priority};
 
 use crate::{
 	command::{Args, Command, Supervisor, SupervisorId},
 	error::RuntimeError,
+	Config,
 };
 
-use super::{process_holder::ProcessHolder, Outcome, WorkingData};
+use super::{process_holder::ProcessHolder, Outcome};
 
 #[derive(Clone)]
 pub struct OutcomeWorker {
+	config: Arc<Config>,
 	events: Arc<[Event]>,
 	command: Command,
-	working: Receiver<WorkingData>,
 	process: ProcessHolder,
 	supervisor_id: SupervisorId,
 	gen: usize,
@@ -44,10 +41,10 @@ impl OutcomeWorker {
 
 	#[allow(clippy::too_many_arguments)]
 	pub fn spawn(
+		config: Arc<Config>,
 		outcome: Outcome,
 		events: Arc<[Event]>,
 		command: Command,
-		working: Receiver<WorkingData>,
 		process: ProcessHolder,
 		supervisor_id: SupervisorId,
 		gencheck: Arc<AtomicUsize>,
@@ -56,9 +53,9 @@ impl OutcomeWorker {
 	) {
 		let gen = gencheck.fetch_add(1, Ordering::SeqCst).wrapping_add(1);
 		let this = Self {
+			config,
 			events,
 			command,
-			working,
 			process,
 			supervisor_id,
 			gen,
@@ -127,23 +124,14 @@ impl OutcomeWorker {
 				debug!(outcome=?o, "meaningless without a process, not doing anything");
 			}
 			(_, Outcome::Start) => {
-				let (pre_spawn_handler, post_spawn_handler) = {
-					let wrk = self.working.borrow();
-					(
-						wrk.pre_spawn_handler.clone(),
-						wrk.post_spawn_handler.clone(),
-					)
-				};
-
 				trace!("spawning supervisor for command");
 				let sup = Supervisor::spawn(Args {
+					config: self.config.clone(),
 					errors: self.errors_c.clone(),
 					events: self.events_c.clone(),
 					command: self.command.clone(),
 					supervisor_id: self.supervisor_id,
 					actioned_events: self.events.clone(),
-					pre_spawn_handler,
-					post_spawn_handler,
 				})?;
 				notry!(self.process.replace(sup));
 			}
@@ -188,8 +176,8 @@ impl OutcomeWorker {
 			(_, Outcome::Both(one, two)) => {
 				if let Err(err) = notry!(self.apply(*one)) {
 					debug!(
-						"first outcome failed, sending an error but proceeding to the second anyway"
-					);
+                        "first outcome failed, sending an error but proceeding to the second anyway"
+                    );
 					notry!(self.errors_c.send(err)).ok();
 				}
 

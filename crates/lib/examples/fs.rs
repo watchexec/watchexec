@@ -1,12 +1,9 @@
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use async_priority_channel as priority;
 use miette::{IntoDiagnostic, Result};
-use tokio::{
-	sync::{mpsc, watch},
-	time::sleep,
-};
-use watchexec::fs;
+use tokio::{sync::mpsc, time::sleep};
+use watchexec::{fs, Config};
 use watchexec_events::{Event, Priority};
 
 // Run with: `env RUST_LOG=debug cargo run --example fs`,
@@ -17,11 +14,9 @@ async fn main() -> Result<()> {
 
 	let (ev_s, ev_r) = priority::bounded::<Event, Priority>(1024);
 	let (er_s, mut er_r) = mpsc::channel(64);
-	let (wd_s, wd_r) = watch::channel(fs::WorkingData::default());
 
-	let mut wkd = fs::WorkingData::default();
-	wkd.pathset = vec![".".into()];
-	wd_s.send(wkd.clone()).into_diagnostic()?;
+	let config = Arc::new(Config::default());
+	config.pathset(["."]);
 
 	tokio::spawn(async move {
 		while let Ok((event, priority)) = ev_r.recv().await {
@@ -35,16 +30,17 @@ async fn main() -> Result<()> {
 		}
 	});
 
-	let wd_sh = tokio::spawn(async move {
-		sleep(Duration::from_secs(15)).await;
-		wkd.pathset = Vec::new();
-		tracing::info!("turning off fs watcher without stopping it");
-		wd_s.send(wkd).unwrap();
-		wd_s
+	let shutdown = tokio::spawn({
+		let config = config.clone();
+		async move {
+			sleep(Duration::from_secs(15)).await;
+			tracing::info!("turning off fs watcher without stopping it");
+			config.pathset(Vec::<String>::new());
+		}
 	});
 
-	fs::worker(wd_r, er_s, ev_s).await?;
-	wd_sh.await.into_diagnostic()?;
+	fs::worker(config, er_s, ev_s).await?;
+	shutdown.await.into_diagnostic()?;
 
 	Ok(())
 }

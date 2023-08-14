@@ -6,20 +6,19 @@ use std::{
 };
 
 use async_priority_channel as priority;
-use tokio::{
-	sync::{mpsc, watch},
-	time::timeout,
-};
+use tokio::{sync::mpsc, time::timeout};
 use tracing::{debug, trace};
 use watchexec_events::{Event, Priority};
 
 use crate::{
 	action::{
-		outcome_worker::OutcomeWorker, process_holder::ProcessHolder, Action, EventSet, Outcome,
-		SupervisionOrder, WorkingData,
+		outcome_worker::OutcomeWorker, process_holder::ProcessHolder, Action, EventSet,
+		InstanceOrder, Outcome, SupervisionOrder,
 	},
 	command::{Command, SupervisorId},
 	error::{CriticalError, RuntimeError},
+	filter::Filterer,
+	Config,
 };
 
 /// The main worker of a Watchexec process.
@@ -28,7 +27,7 @@ use crate::{
 /// debounces them, obtains the desired outcome of an actioned event, calls the appropriate handlers
 /// and schedules processes as needed.
 pub async fn worker(
-	working: watch::Receiver<WorkingData>,
+	config: Arc<Config>,
 	errors: mpsc::Sender<RuntimeError>,
 	events_tx: priority::Sender<Event, Priority>,
 	events: priority::Receiver<Event, Priority>,
@@ -36,8 +35,8 @@ pub async fn worker(
 	let mut processes: HashMap<SupervisorId, ProcessData> = HashMap::new();
 
 	while let Some(mut set) = throttle_collect(
+		config.clone(),
 		events.clone(),
-		working.clone(),
 		errors.clone(),
 		Instant::now(),
 	)
@@ -57,19 +56,26 @@ pub async fn worker(
 					.into_boxed_slice(),
 			),
 		);
-		let action_handler = {
-			let wrk = working.borrow();
-			wrk.action_handler.clone()
-		};
 
 		// grab order arcs before running handler
 		let supervision_orders = action.supervision.clone();
-		let _instance_orders = action.instance.clone(); // TODO
+		let instance_orders = action.instance.clone();
 
 		debug!("running action handler");
-		action_handler.call(action);
+		config.action_handler.call(action);
 
-		// FIXME: process instance orders
+		debug!("apply orders to instance");
+		let instance_orders = take(&mut *instance_orders.lock().expect("lock poisoned"));
+		#[allow(clippy::never_loop)] // doesn't yet, but will in future
+		for order in instance_orders {
+			match order {
+				InstanceOrder::Quit => {
+					// TODO: make this a signal or something so we can uphold the promise that
+					//       calling apply() before quit() lets you gracefully stop processes.
+					break; // end the worker, which will quit watchexec
+				}
+			}
+		}
 
 		debug!("apply orders to supervisors");
 		let supervision_orders = take(&mut *supervision_orders.lock().expect("lock poisoned"));
@@ -92,8 +98,7 @@ pub async fn worker(
 						processes.insert(
 							id,
 							ProcessData {
-								// due to borrow semantics, workingdata lock is only held for this line
-								working: working.clone(),
+								config: config.clone(),
 								command: command.clone(),
 								process: ProcessHolder::default(),
 								outcome_gen: OutcomeWorker::newgen(),
@@ -114,9 +119,9 @@ pub async fn worker(
 
 				// FIXME: need to collect entire Outcome from all orders for a process
 
-				let Some((outcome, ProcessData { working, command, process, outcome_gen })) = found else {
-				continue;
-			};
+				let Some((outcome, ProcessData { config, command, process, outcome_gen })) = found else {
+                continue;
+            };
 
 				let outcome = outcome.resolve(process.is_running().await);
 				debug!(?outcome, "outcome resolved");
@@ -130,10 +135,10 @@ pub async fn worker(
 				};
 				debug!(?events, "events selected");
 				OutcomeWorker::spawn(
+					config.clone(),
 					outcome,
 					events.clone(),
 					command,
-					working.clone(),
 					process.clone(),
 					id,
 					outcome_gen.clone(),
@@ -154,15 +159,15 @@ pub async fn worker(
 // FIXME: dedicated file/struct for supervisorset
 #[derive(Clone, Debug)]
 struct ProcessData {
-	working: watch::Receiver<WorkingData>,
+	config: Arc<Config>,
 	command: Command,
 	process: ProcessHolder,
 	outcome_gen: Arc<AtomicUsize>,
 }
 
 pub async fn throttle_collect(
+	config: Arc<Config>,
 	events: priority::Receiver<Event, Priority>,
-	working: watch::Receiver<WorkingData>,
 	errors: mpsc::Sender<RuntimeError>,
 	mut last: Instant,
 ) -> Result<Option<Vec<Event>>, CriticalError> {
@@ -170,13 +175,14 @@ pub async fn throttle_collect(
 		trace!("events channel closed, stopping");
 		return Ok(None);
 	}
+
 	let mut set: Vec<Event> = vec![];
 	loop {
 		let maxtime = if set.is_empty() {
 			trace!("nothing in set, waiting forever for next event");
 			Duration::from_secs(u64::MAX)
 		} else {
-			working.borrow().throttle.saturating_sub(last.elapsed())
+			config.throttle.get().saturating_sub(last.elapsed())
 		};
 
 		if maxtime.is_zero() {
@@ -209,7 +215,7 @@ pub async fn throttle_collect(
 					} else if event.is_empty() {
 						trace!("empty event, by-passing filters");
 					} else {
-						let filtered = working.borrow().filterer.check_event(&event, priority);
+						let filtered = config.filterer.check_event(&event, priority);
 						match filtered {
 							Err(err) => {
 								trace!(%err, "filter errored on event");
@@ -237,7 +243,7 @@ pub async fn throttle_collect(
 						trace!("urgent event, by-passing throttle");
 					} else {
 						let elapsed = last.elapsed();
-						if elapsed < working.borrow().throttle {
+						if elapsed < config.throttle.get() {
 							trace!(?elapsed, "still within throttle window, cycling");
 							continue;
 						}

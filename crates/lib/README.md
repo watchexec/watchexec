@@ -19,14 +19,13 @@ _The library which powers [Watchexec CLI](https://watchexec.github.io) and other
 
 ```rust ,no_run
 use miette::{IntoDiagnostic, Result};
-use watchexec_events::{Event, Priority};
-use watchexec_signals::Signal;
 use watchexec::{
     action::{Action, EventSet, Outcome},
     command::{Program, Shell},
-    Config,
     Watchexec,
 };
+use watchexec_events::{Event, Priority};
+use watchexec_signals::Signal;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -34,33 +33,33 @@ async fn main() -> Result<()> {
     // even at error level. you will quickly want to filter it down.
     tracing_subscriber::fmt::init();
 
-    // define a simple initial configuration
-    let mut config = Config::default();
-    config.on_action(|action: Action| {
-        let id = action.create(Program::Shell {
-            shell: Shell::new("bash"),
-            command: "
-                echo 'Hello world';
-                trap INT 'echo Not quitting yet!';
-                read
-            ".into(),
-            args: Vec::new(),
-        }.into());
+    // initialise Watchexec with a simple initial action handler
+    let wx = Watchexec::new(|action: Action| {
+        let id = action.create(
+            Program::Shell {
+                shell: Shell::new("bash"),
+                command: "
+                    echo 'Hello world';
+                    trap INT 'echo Not quitting yet!';
+                    read
+                "
+                .into(),
+                args: Vec::new(),
+            }
+            .into(),
+        );
         action.apply(id, Outcome::Start, EventSet::All);
-    });
-
-    // Initialise Watchexec
-    let we = Watchexec::new(config.clone())?;
+    })?;
     // start the engine
-    let main = we.main();
+    let main = wx.main();
 
     // send an event to start
-    we.send_event(Event::default(), Priority::Urgent).await.unwrap();
-    // ^ this will cause the on_action handler we've defined above to run,
+    wx.send_event(Event::default(), Priority::Urgent).await.unwrap();
+    // ^ this will cause the action handler we've defined above to run,
     //   creating and starting our little bash program
 
     // now we change what the action does:
-    config.on_action(|action: Action| {
+    wx.config.on_action(|action: Action| {
         // if we get Ctrl-C on the Watchexec instance, we quit
         if action.signals().any(|sig| sig == Signal::Interrupt) {
             action.quit();
@@ -96,13 +95,10 @@ async fn main() -> Result<()> {
         }
     });
 
-    // watch all files in the current directory:
-    config.pathset(vec!["."]);
+    // and watch all files in the current directory:
+    wx.config.pathset(["."]);
 
-    // apply the new configuration!
-    we.reconfigure(config)?;
-
-    // now keep running until Watchexec quits
+    // then keep running until Watchexec quits!
     let _ = main.await.into_diagnostic()?;
     Ok(())
 }

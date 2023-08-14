@@ -17,7 +17,7 @@ use crate::{
 	action::{PostSpawn, PreSpawn},
 	command::{Command, Isolation, Program},
 	error::RuntimeError,
-	handler::HandlerLock,
+	Config,
 };
 
 use super::Process;
@@ -43,6 +43,8 @@ pub struct Supervisor {
 ///
 /// Used to gather all nc
 pub struct Args {
+	/// Config
+	pub config: Arc<Config>,
 	/// Error channel used to send and receive errors from the [`Supervisor`] and it's [`Command`]s.
 	pub errors: Sender<RuntimeError>,
 	/// Events channel used to send and receive events to and from the [`Supervisor`] and it's [`Command`]s.
@@ -53,10 +55,6 @@ pub struct Args {
 	pub supervisor_id: SupervisorId,
 	/// The [`Event`]s associated with the [`Supervisor`].
 	pub actioned_events: Arc<[Event]>,
-	/// The [`PreSpawn`] handler is executed before the [`Supervisor`] is spawned.
-	pub pre_spawn_handler: HandlerLock<PreSpawn>,
-	/// The [`PostSpawn`] handler is executed after the [`Supervisor`] finishes execution.
-	pub post_spawn_handler: HandlerLock<PostSpawn>,
 }
 
 impl Supervisor {
@@ -64,13 +62,12 @@ impl Supervisor {
 	/// control object.
 	pub fn spawn(args: Args) -> Result<Self, RuntimeError> {
 		let Args {
+			config,
 			errors,
 			events,
 			mut command,
 			supervisor_id,
 			actioned_events,
-			pre_spawn_handler,
-			post_spawn_handler,
 		} = args;
 
 		let program = command
@@ -91,12 +88,11 @@ impl Supervisor {
 			loop {
 				let (mut process, pid) = match span.in_scope(|| {
 					spawn_process(
+						config.clone(),
 						program,
 						supervisor_id,
 						command.isolation,
 						actioned_events.clone(),
-						pre_spawn_handler.clone(),
-						post_spawn_handler.clone(),
 					)
 				}) {
 					Ok(pp) => pp,
@@ -295,12 +291,11 @@ impl Supervisor {
 }
 
 fn spawn_process(
+	config: Arc<Config>,
 	program: Program,
 	supervisor_id: SupervisorId,
 	isolation: Isolation,
 	actioned_events: Arc<[Event]>,
-	pre_spawn_handler: HandlerLock<PreSpawn>,
-	post_spawn_handler: HandlerLock<PostSpawn>,
 ) -> Result<(Process, u32), RuntimeError> {
 	debug!(?isolation, ?program, "preparing program");
 	#[cfg_attr(windows, allow(unused_mut))]
@@ -334,7 +329,7 @@ fn spawn_process(
 		actioned_events.clone(),
 		supervisor_id,
 	);
-	pre_spawn_handler.call(payload);
+	config.pre_spawn_handler.call(payload);
 
 	debug!("pre-spawn handler done, obtaining command");
 	let mut spawnable = Arc::into_inner(command)
@@ -372,7 +367,7 @@ fn spawn_process(
 	};
 
 	debug!("running post-spawn handler");
-	post_spawn_handler.call(PostSpawn {
+	config.post_spawn_handler.call(PostSpawn {
 		program,
 		isolation,
 		events: actioned_events,

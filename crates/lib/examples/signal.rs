@@ -34,7 +34,7 @@ async fn main() -> Result<()> {
 	});
 
 	tracing::info!("PID is {}", std::process::id());
-	signal::worker(er_s.clone(), ev_s.clone()).await?;
+	signal::worker(Default::default(), er_s.clone(), ev_s.clone()).await?;
 
 	Ok(())
 }
