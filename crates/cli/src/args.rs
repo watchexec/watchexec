@@ -246,6 +246,7 @@ pub struct Args {
 	/// The default is 50 milliseconds. Setting to 0 is highly discouraged.
 	#[arg(
 		long,
+		short,
 		default_value = "50",
 		hide_default_value = true,
 		value_name = "TIMEOUT"
