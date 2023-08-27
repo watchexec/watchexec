@@ -213,7 +213,7 @@ impl Action {
 }
 
 /// Orders a Watchexec instance applies to the supervision set.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 #[non_exhaustive]
 pub enum SupervisionOrder {
 	/// Create a new supervised command.

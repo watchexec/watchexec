@@ -141,6 +141,20 @@ impl OutcomeWorker {
 					command: self.command.clone(),
 					supervisor_id: self.supervisor_id,
 					actioned_events: self.events.clone(),
+					pre_spawn_handler: None,
+				})?;
+				notry!(self.process.replace(sup));
+			}
+			(_, Outcome::StartHook(handler)) => {
+				trace!("spawning supervisor for command");
+				let sup = Supervisor::spawn(Args {
+					config: self.config.clone(),
+					errors: self.errors_c.clone(),
+					events: self.events_c.clone(),
+					command: self.command.clone(),
+					supervisor_id: self.supervisor_id,
+					actioned_events: self.events.clone(),
+					pre_spawn_handler: Some(handler),
 				})?;
 				notry!(self.process.replace(sup));
 			}
@@ -173,6 +187,11 @@ impl OutcomeWorker {
 				] {
 					cs.clear()?;
 				}
+			}
+
+			(_, Outcome::Hook(handler)) => {
+				// TODO: payload? thread?
+				handler.call(());
 			}
 
 			(true, Outcome::IfRunning(then, _)) => {

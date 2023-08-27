@@ -2,21 +2,16 @@ use std::time::Duration;
 
 use watchexec_signals::Signal;
 
+use crate::{action::PreSpawn, changeable::ChangeableFn};
+
 /// The outcome to execute when an action is triggered.
 ///
 /// Logic against the state of the command should be expressed using these variants, rather than
 /// inside the action handler, as it ensures the state of the command is always the latest available
 /// when the outcome is executed.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default)]
 #[non_exhaustive]
 pub enum Outcome {
-	/// Destroy the supervisor.
-	///
-	/// This implies stopping the command if it's still running.
-	///
-	/// In an action handler, prefer using `remove()` instead of specifying this in `apply()`.
-	Destroy,
-
 	/// Does nothing.
 	///
 	/// This can be used as a default action, or as one branch in a conditional.
@@ -59,6 +54,25 @@ pub enum Outcome {
 	/// [`VtWellDone`][clearscreen::ClearScreen::VtWellDone],
 	/// and [the default clear][clearscreen::ClearScreen::default()].
 	Reset,
+
+	/// Call a custom handler.
+	///
+	/// TODO: document synchronicity, requirements, and payload?
+	///
+	/// `PartialEq` ignores the value of this variant.
+	Hook(ChangeableFn<()>),
+
+	/// Start the command, calling a custom PreSpawn handler.
+	///
+	/// `PartialEq` ignores the value of this variant.
+	StartHook(ChangeableFn<PreSpawn>),
+
+	/// Destroy the supervisor.
+	///
+	/// This implies stopping the command if it's still running.
+	///
+	/// In an action handler, prefer using `remove()` instead of specifying this in `apply()`.
+	Destroy,
 
 	/// Exit watchexec.
 	Exit,
@@ -122,6 +136,29 @@ impl Outcome {
 			(false, Self::IfRunning(_, otherwise)) => otherwise.resolve(false),
 			(ir, Self::Both(one, two)) => Self::both(one.resolve(ir), two.resolve(ir)),
 			(_, other) => other,
+		}
+	}
+}
+
+impl PartialEq for Outcome {
+	fn eq(&self, other: &Self) -> bool {
+		use Outcome::*;
+		match (self, other) {
+			(DoNothing, DoNothing)
+			| (Stop, Stop)
+			| (Start, Start)
+			| (Wait, Wait)
+			| (Clear, Clear)
+			| (Reset, Reset)
+			| (Exit, Exit) => true,
+			(Sleep(a), Sleep(b)) => a == b,
+			(Signal(a), Signal(b)) => a == b,
+			(IfRunning(aa, ab), IfRunning(ba, bb)) | (Both(aa, ab), Both(ba, bb)) => {
+				aa == ba && ab == bb
+			}
+			(Race(aa, ab), Race(ba, bb)) => (aa == ba && ab == bb) || (aa == bb && ab == ba),
+			(Hook(_), Hook(_)) | (StartHook(_), StartHook(_)) => true,
+			_ => false,
 		}
 	}
 }
