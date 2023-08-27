@@ -68,13 +68,78 @@ impl Action {
 		}
 	}
 
-	/// Sets an [`Outcome`] for a single Supervised [`Command`].
-	pub fn apply(&self, to: SupervisorId, outcome: Outcome, because_of: EventSet) {
+	/// Clears the outcome queue for a supervisor.
+	///
+	/// When the handler returns, this clears any existing outcome queue on the supervisor. That
+	/// is, if the supervisor is currently applying a graceful stop sequence like:
+	///
+	/// ```
+	/// # use std::time::Duration;
+	/// # use watchexec::action::Outcome;
+	/// # use watchexec::action::Outcome::*;
+	/// # use watchexec_signals::Signal::*;
+	/// # let outcome =
+	/// Outcome::both(
+	///     Signal(Interrupt),
+	///     Outcome::wait_timeout(
+	///         Duration::from_secs(30),
+	///         Outcome::both(Stop, Wait),
+	///     )
+	/// )
+	/// # ;
+	/// ```
+	///
+	/// and is currently waiting, a `clear()` will prevent `Both(Stop, Wait)` from running and also
+	/// interrupt the wait/timeout.
+	///
+	/// This is most useful in conjunction with `apply()`. Any `apply()` calls before `clear()`
+	/// will be erased.
+	pub fn clear(&self, sid: SupervisorId) {
+		use SupervisionOrder::*;
 		let mut orders = self.supervision.lock().expect("lock poisoned");
-		orders
-			.entry(to)
-			.or_default()
-			.push(SupervisionOrder::Apply(outcome, because_of));
+		let orders = orders.entry(sid).or_default();
+
+		// a Destroy prevents more actions
+		if orders.contains(&Destroy) {
+			return;
+		}
+
+		// clearing right after a create doesn't do anything
+		if let Some(Create(_)) = orders.last() {
+			return;
+		}
+
+		// discard all previous clears and applys
+		orders.retain(|o| !matches!(o, Clear | Apply(_, _)));
+
+		orders.push(Clear);
+	}
+
+	/// Adds an [`Outcome`] to a supervisor.
+	///
+	/// This joins the given outcome to the queue of outcomes currently applying to the supervisor,
+	/// if any, or starts applying it if there's none. Note that this happens once the action
+	/// handler returns, not immediately.
+	///
+	/// If `apply()` has been called onto this supervisor before within this run of the handler,
+	/// the outcomes are combined (ie the equivalent of calling it once with `Outcome::sequence()`
+	/// and the arguments of the first to last calls).
+	pub fn apply(&self, sid: SupervisorId, outcome: Outcome, because_of: EventSet) {
+		use SupervisionOrder::*;
+		let mut orders = self.supervision.lock().expect("lock poisoned");
+		let orders = orders.entry(sid).or_default();
+
+		// a Destroy prevents more actions
+		if orders.contains(&Destroy) {
+			return;
+		}
+
+		// if the last order is an apply, combine it on the spot
+		if let Some(apply @ Apply(_, _)) = orders.last_mut() {
+			apply.combine_apply(Apply(outcome, because_of));
+		} else {
+			orders.push(Apply(outcome, because_of));
+		}
 	}
 
 	/// Creates a new Supervised [`Command`].
@@ -84,26 +149,36 @@ impl Action {
 	///
 	/// Returns an opaque ID to use to later `apply()` outcomes to this supervised command.
 	pub fn create(&self, command: Command) -> SupervisorId {
-		let id = SupervisorId::default();
+		let sid = SupervisorId::default();
 		let mut orders = self.supervision.lock().expect("lock poisoned");
-		orders
-			.entry(id)
-			.or_default()
-			.push(SupervisionOrder::Create(command));
-		id
+
+		// in the unlikely event there's a collision, retry
+		if orders.contains_key(&sid) || self.supervisors.contains(&sid) {
+			return self.create(command);
+		}
+
+		orders.insert(sid, vec![SupervisionOrder::Create(command)]);
+		sid
 	}
 
-	/// Removes an alive [`Command`] for this and all the following [`Action`]s.
+	/// Destroys a supervisor.
 	///
-	/// This implies applying an [`Outcome::Stop`]. The supervised command is killed if it was alive,
-	/// then removed from the Watchexec instance. To start the command again, `create()` must be
-	/// called again.
+	/// This waits until the supervisor's outcome queue is clear, then kills the command if it's still
+	/// alive, and removes the supervisor from the Watchexec instance. To start the command again,
+	/// `create()` must be called again.
 	///
 	/// To gracefully stop a supervised command instead, call `apply()` with the relevant `Outcome`
 	/// _before_ calling this.
-	pub fn remove(&self, id: SupervisorId) {
+	///
+	/// To skip waiting for the outcome queue to clear, call `clear()` before this.
+	///
+	/// Anything applied after this is ignored.
+	pub fn destroy(&self, sid: SupervisorId) {
 		let mut orders = self.supervision.lock().expect("lock poisoned");
-		orders.entry(id).or_default().push(SupervisionOrder::Remove);
+		orders
+			.entry(sid)
+			.or_default()
+			.push(SupervisionOrder::Destroy);
 	}
 
 	/// Shuts down the Watchexec instance.
@@ -121,12 +196,12 @@ impl Action {
 		self.events.iter().flat_map(Event::signals)
 	}
 
-	/// TODO: proper doc
+	/// Convenience to get all paths in the event set.
 	///
-	/// an action contains a set of events, and some of those events might relate to watched
+	/// An action contains a set of events, and some of those events might relate to watched
 	/// files, and each of *those* events may have one or more paths that were affected.
-	/// to hide this complexity this method just provides any and all paths in the event,
-	/// along with the type of file at that path, if watchexec knows that
+	/// To hide this complexity this method just provides any and all paths in the event,
+	/// along with the type of file at that path, if Watchexec knows that.
 	pub fn paths(&self) -> impl Iterator<Item = (&Path, Option<&FileType>)> + '_ {
 		self.events.iter().flat_map(Event::paths)
 	}
@@ -138,21 +213,47 @@ impl Action {
 }
 
 /// Orders a Watchexec instance applies to the supervision set.
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum SupervisionOrder {
 	/// Create a new supervised command.
 	Create(Command),
 
-	/// Apply an [`Outcome`] to an existing supervised command in response to some events.
+	/// Clear the outcome queue of a supervisor.
+	Clear,
+
+	/// Apply an [`Outcome`] to a supervisor in response to some events.
 	Apply(Outcome, EventSet),
 
-	/// Stop and remove a supervised command.
-	Remove,
+	/// Stop and destroy a supervisor.
+	Destroy,
+}
+
+impl SupervisionOrder {
+	pub(crate) fn combine_apply(&mut self, other: SupervisionOrder) {
+		let Self::Apply(prior_outcome, prior_event_set) = self else {
+			panic!("combine_apply() called without an Apply");
+		};
+		let Self::Apply(newer_outcome, newer_event_set) = other else {
+			panic!("combine_apply() called without an Apply");
+		};
+
+		*self = Self::Apply(
+			Outcome::both(prior_outcome.clone(), newer_outcome),
+			match (prior_event_set.clone(), newer_event_set) {
+				(EventSet::None, set) | (set, EventSet::None) => set,
+				(EventSet::All, _) | (_, EventSet::All) => EventSet::All,
+				(EventSet::Some(mut one), EventSet::Some(two)) => {
+					one.extend(two);
+					EventSet::Some(one)
+				}
+			},
+		);
+	}
 }
 
 /// Orders a Watchexec instance applies to itself.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum InstanceOrder {
 	/// Stop all supervised commands and then quit.
@@ -160,7 +261,7 @@ pub enum InstanceOrder {
 }
 
 /// Specifies whether to use all `Event`s, a subset, or none at all.
-#[derive(Debug, Clone, Default)]
+#[derive(Clone, Default, Debug, Eq, PartialEq)]
 pub enum EventSet {
 	/// All `Event`s associated with an action.
 	#[default]

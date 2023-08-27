@@ -120,6 +120,15 @@ impl OutcomeWorker {
 				notry!(self.process.wait())?;
 				notry!(self.process.drop_inner());
 			}
+			(running, Outcome::Destroy) => {
+				if running {
+					notry!(self.process.kill());
+					notry!(self.process.wait())?;
+					notry!(self.process.drop_inner());
+				}
+
+				todo!("implement destroy")
+			}
 			(false, o @ (Outcome::Stop | Outcome::Wait | Outcome::Signal(_))) => {
 				debug!(outcome=?o, "meaningless without a process, not doing anything");
 			}

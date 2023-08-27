@@ -7,20 +7,32 @@ use watchexec_signals::Signal;
 /// Logic against the state of the command should be expressed using these variants, rather than
 /// inside the action handler, as it ensures the state of the command is always the latest available
 /// when the outcome is executed.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Outcome {
-	/// Stop processing this action silently.
+	/// Destroy the supervisor.
+	///
+	/// This implies stopping the command if it's still running.
+	///
+	/// In an action handler, prefer using `remove()` instead of specifying this in `apply()`.
+	Destroy,
+
+	/// Does nothing.
+	///
+	/// This can be used as a default action, or as one branch in a conditional.
+	#[default]
 	DoNothing,
 
 	/// If the command is running, stop it.
 	///
 	/// This should be used with an `IfRunning`, and will warn if the command is not running.
+	/// TODO: don't warn
 	Stop,
 
 	/// If the command isn't running, start it.
 	///
 	/// This should be used with an `IfRunning`, and will warn if the command is running.
+	/// TODO: don't warn
 	Start,
 
 	/// Wait for command completion.
@@ -59,12 +71,6 @@ pub enum Outcome {
 
 	/// Race both outcomes: run both at once, and when one finishes, cancel the other.
 	Race(Box<Outcome>, Box<Outcome>),
-}
-
-impl Default for Outcome {
-	fn default() -> Self {
-		Self::DoNothing
-	}
 }
 
 impl Outcome {

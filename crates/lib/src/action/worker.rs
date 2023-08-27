@@ -80,9 +80,18 @@ pub async fn worker(
 		debug!("apply orders to supervisors");
 		let supervision_orders = take(&mut *supervision_orders.lock().expect("lock poisoned"));
 		for (id, orders) in supervision_orders {
+			// the action handler should produce at most a single Apply out of the box
+			debug_assert!(
+				orders
+					.iter()
+					.filter(|o| matches!(o, SupervisionOrder::Apply(_, _)))
+					.count() <= 1
+			);
+
 			// TODO process each process in parallel, but each order in series
 			for order in orders {
 				let (found, event_set) = match order {
+					SupervisionOrder::Clear => todo!(),
 					SupervisionOrder::Apply(outcome, event_set) => {
 						debug!(?id, ?outcome, "apply outcome to supervisor");
 						(
@@ -106,12 +115,10 @@ pub async fn worker(
 						);
 						(None, None)
 					}
-					SupervisionOrder::Remove => {
-						debug!(?id, "removing supervisor");
+					SupervisionOrder::Destroy => {
+						debug!(?id, "destroying supervisor");
 						(
-							processes.remove(&id).map(|data| {
-								(Outcome::if_running(Outcome::Stop, Outcome::DoNothing), data)
-							}),
+							processes.remove(&id).map(|data| (Outcome::Destroy, data)),
 							None,
 						)
 					}
