@@ -332,34 +332,3 @@ impl PreSpawn {
 		self.supervisor_id
 	}
 }
-
-/// The environment given to the post-spawn handler.
-///
-/// This is Clone, as there's nothing (except returning an error) that can be done to the command
-/// now that it's spawned, as far as Watchexec is concerned. Nevertheless, you should return from
-/// this handler quickly, to avoid holding up anything else.
-#[derive(Clone, Debug)]
-#[non_exhaustive]
-pub struct PostSpawn {
-	/// The program the process was spawned with.
-	pub program: Program,
-
-	/// The collected events which triggered the action the command issues from.
-	pub events: Arc<[Event]>,
-
-	/// The process ID or the process group ID.
-	pub id: u32,
-
-	/// Isolation method the program is run in.
-	pub isolation: Isolation,
-
-	/// The `SupervisorId` associated with the process' `Supervisor`.
-	pub(crate) supervisor_id: SupervisorId,
-}
-
-impl PostSpawn {
-	/// Returns the `SupervisorId` associated with the `Supervisor` and the `Command` that was run.
-	pub const fn supervisor(&self) -> SupervisorId {
-		self.supervisor_id
-	}
-}
