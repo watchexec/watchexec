@@ -208,8 +208,8 @@ pub async fn worker(
 		// now apply it to the watcher
 
 		let Some(watcher) = watcher.as_mut() else {
-            panic!("BUG: watcher should exist at this point");
-        };
+			panic!("BUG: watcher should exist at this point");
+		};
 
 		debug!(?to_watch, ?to_drop, "applying changes to the watcher");
 

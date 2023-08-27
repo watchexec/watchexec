@@ -42,7 +42,7 @@ impl ChangeableFilterer {
 	///
 	/// Panics if the lock was poisoned.
 	pub fn replace(&self, new: impl Filterer + Send + Sync + 'static) {
-		self.0.replace(Arc::new(new))
+		self.0.replace(Arc::new(new));
 	}
 }
 

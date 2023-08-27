@@ -19,7 +19,7 @@ mod tests;
 
 /// A command to execute.
 ///
-/// For simple uses, the From and FromIterator implementations may be useful:
+/// For simple uses, the `From` and `FromIterator` implementations may be useful:
 ///
 /// ```
 /// # use watchexec::command::{Command, Program};

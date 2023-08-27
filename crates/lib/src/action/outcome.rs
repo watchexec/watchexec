@@ -150,14 +150,15 @@ impl PartialEq for Outcome {
 			| (Wait, Wait)
 			| (Clear, Clear)
 			| (Reset, Reset)
-			| (Exit, Exit) => true,
+			| (Exit, Exit)
+			| (Hook(_), Hook(_))
+			| (StartHook(_), StartHook(_)) => true,
 			(Sleep(a), Sleep(b)) => a == b,
 			(Signal(a), Signal(b)) => a == b,
 			(IfRunning(aa, ab), IfRunning(ba, bb)) | (Both(aa, ab), Both(ba, bb)) => {
 				aa == ba && ab == bb
 			}
 			(Race(aa, ab), Race(ba, bb)) => (aa == ba && ab == bb) || (aa == bb && ab == ba),
-			(Hook(_), Hook(_)) | (StartHook(_), StartHook(_)) => true,
 			_ => false,
 		}
 	}

@@ -25,6 +25,7 @@ where
 	/// Create a new Changeable.
 	///
 	/// If `T: Default`, prefer using `::default()`.
+	#[must_use]
 	pub fn new(value: T) -> Self {
 		Self(Arc::new(RwLock::new(value)))
 	}
@@ -39,6 +40,7 @@ where
 	/// Get a clone of the value.
 	///
 	/// Panics if the lock was poisoned.
+	#[must_use]
 	pub fn get(&self) -> T {
 		self.0.read().expect("handler lock poisoned").clone()
 	}
@@ -77,14 +79,14 @@ where
 	///
 	/// Panics if the lock was poisoned.
 	pub fn replace(&self, new: impl Fn(T) + Send + Sync + 'static) {
-		self.0.replace(Arc::new(new))
+		self.0.replace(Arc::new(new));
 	}
 
 	/// Call the fn.
 	///
 	/// Panics if the lock was poisoned.
 	pub fn call(&self, data: T) {
-		(self.0.get())(data)
+		(self.0.get())(data);
 	}
 }
 

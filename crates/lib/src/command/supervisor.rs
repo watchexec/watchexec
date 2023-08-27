@@ -96,8 +96,8 @@ impl Supervisor {
 						supervisor_id,
 						command.isolation,
 						pre_spawn_handler
-							.clone()
-							.unwrap_or_else(|| config.pre_spawn_handler.clone()),
+							.as_ref()
+							.unwrap_or(&config.pre_spawn_handler),
 						actioned_events.clone(),
 					)
 				}) {
@@ -300,7 +300,7 @@ fn spawn_process(
 	program: Program,
 	supervisor_id: SupervisorId,
 	isolation: Isolation,
-	pre_spawn_handler: ChangeableFn<PreSpawn>,
+	pre_spawn_handler: &ChangeableFn<PreSpawn>,
 	actioned_events: Arc<[Event]>,
 ) -> Result<(Process, u32), RuntimeError> {
 	debug!(?isolation, ?program, "preparing program");

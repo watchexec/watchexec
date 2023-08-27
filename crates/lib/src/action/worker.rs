@@ -43,7 +43,7 @@ pub async fn worker(
 	.await?
 	{
 		#[allow(clippy::iter_with_drain)]
-		let events = Arc::from(set.drain(..).collect::<Vec<_>>().into_boxed_slice());
+		let events = Arc::from(take(&mut set).into_boxed_slice());
 
 		trace!("preparing action handler");
 		let action = Action::new(
@@ -126,9 +126,18 @@ pub async fn worker(
 
 				// FIXME: need to collect entire Outcome from all orders for a process
 
-				let Some((outcome, ProcessData { config, command, process, outcome_gen })) = found else {
-                continue;
-            };
+				let Some((
+					outcome,
+					ProcessData {
+						config,
+						command,
+						process,
+						outcome_gen,
+					},
+				)) = found
+				else {
+					continue;
+				};
 
 				let outcome = outcome.resolve(process.is_running().await);
 				debug!(?outcome, "outcome resolved");

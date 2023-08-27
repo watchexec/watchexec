@@ -20,7 +20,7 @@ use crate::{
 ///
 /// The action handler is the heart of a Watchexec program. Within, you decide what happens when an
 /// event successfully passes all filters. Watchexec maintains a set of Supervised Commands, which
-/// are assigned a SupervisorId for lightweight reference. In this action handler, you should
+/// are assigned a [`SupervisorId`] for lightweight reference. In this action handler, you should
 /// add commands to be supervised with `create()`, apply [`Outcome`]s to them when they need to
 /// change with `apply()`, and `delete()` them when they're not longer needed. While you're
 /// encouraged to keep track of the Supervised Commands yourself, the `list()` method also lets you
@@ -28,8 +28,8 @@ use crate::{
 ///
 /// Each method that handles supervised commands takes an [`EventSet`] argument, which is used to
 /// describe which events led to an action being taken on which command. `EventSet::All` should be
-/// the default if you're not sure what to do. This set of events is passed to the `PreSpawn` and
-/// `PostSpawn` handlers if they are called in response to an action.
+/// the default if you're not sure what to do. This set of events is passed to the `PreSpawn`
+/// handler if it is called in response to an action.
 ///
 /// It is important to note that methods called in this handler do not act immediately: rather they
 /// build up a list of desired effects which will be applied when the handler returns.
@@ -230,7 +230,7 @@ pub enum SupervisionOrder {
 }
 
 impl SupervisionOrder {
-	pub(crate) fn combine_apply(&mut self, other: SupervisionOrder) {
+	pub(crate) fn combine_apply(&mut self, other: Self) {
 		let Self::Apply(prior_outcome, prior_event_set) = self else {
 			panic!("combine_apply() called without an Apply");
 		};

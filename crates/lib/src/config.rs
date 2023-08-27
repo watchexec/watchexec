@@ -191,6 +191,7 @@ impl Config {
 	///
 	/// This is called automatically by all other methods here, so most of the time calling this
 	/// isn't needed, but it can be useful for some advanced uses.
+	#[must_use]
 	pub fn signal_change(&self) -> &Self {
 		self.change_signal.notify_waiters();
 		self
@@ -200,6 +201,7 @@ impl Config {
 	///
 	/// This returns a Stream where the first value is available immediately, and then every
 	/// subsequent one is from a change signal for this Config.
+	#[must_use]
 	pub(crate) fn watch(&self) -> ConfigWatched {
 		ConfigWatched::new(self.change_signal.clone())
 	}
