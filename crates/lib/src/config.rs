@@ -15,7 +15,7 @@ use tokio::sync::Notify;
 use tracing::debug;
 
 use crate::{
-	action::{Action, PostSpawn, PreSpawn},
+	action::{Action, PreSpawn},
 	changeable::{Changeable, ChangeableFn},
 	filter::{ChangeableFilterer, Filterer},
 	fs::{WatchedPath, Watcher},
@@ -146,14 +146,6 @@ pub struct Config {
 	/// The default is a no-op.
 	pub pre_spawn_handler: ChangeableFn<PreSpawn>,
 
-	/// A handler triggered immediately after a command is spawned.
-	///
-	/// This handler is called with the [`PostSpawn`] environment, which provides details on the
-	/// spawned command, including its PID.
-	///
-	/// The default is a no-op.
-	pub post_spawn_handler: ChangeableFn<PostSpawn>,
-
 	/// The filterer implementation to use when filtering events.
 	///
 	/// The default is a no-op, which will always pass every event.
@@ -187,7 +179,6 @@ impl Default for Config {
 			keyboard_events: Default::default(),
 			throttle: Changeable::new(Duration::from_millis(50)),
 			pre_spawn_handler: Default::default(),
-			post_spawn_handler: Default::default(),
 			filterer: Default::default(),
 			error_channel_size: 64,
 			event_channel_size: 4096,
@@ -272,13 +263,6 @@ impl Config {
 	pub fn on_pre_spawn(&self, handler: impl Fn(PreSpawn) + Send + Sync + 'static) -> &Self {
 		debug!("Config: on_pre_spawn");
 		self.pre_spawn_handler.replace(handler);
-		self.signal_change()
-	}
-
-	/// Set the post-spawn handler.
-	pub fn on_post_spawn(&self, handler: impl Fn(PostSpawn) + Send + Sync + 'static) -> &Self {
-		debug!("Config: on_post_spawn");
-		self.post_spawn_handler.replace(handler);
 		self.signal_change()
 	}
 }

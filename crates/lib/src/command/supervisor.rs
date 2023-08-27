@@ -14,7 +14,7 @@ use watchexec_events::{Event, Priority, Source, Tag};
 use watchexec_signals::Signal;
 
 use crate::{
-	action::{PostSpawn, PreSpawn},
+	action::PreSpawn,
 	changeable::ChangeableFn,
 	command::{Command, Isolation, Program},
 	error::RuntimeError,
@@ -329,10 +329,10 @@ fn spawn_process(
 
 	debug!("running pre-spawn handler");
 	let (payload, command) = PreSpawn::new(
-		program.clone(),
+		program,
 		isolation,
 		spawnable,
-		actioned_events.clone(),
+		actioned_events,
 		supervisor_id,
 	);
 	pre_spawn_handler.call(payload);

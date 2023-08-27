@@ -8,10 +8,10 @@ use std::{
 };
 
 use miette::{miette, IntoDiagnostic, Report, Result};
-use notify_rust::Notification;
+//use notify_rust::Notification;
 use tracing::{debug, debug_span, error};
 use watchexec::{
-	action::{Action, /*Outcome,*/ PostSpawn, PreSpawn},
+	action::{Action, /*Outcome,*/ PreSpawn},
 	command::{Command, Isolation, Program, Shell},
 	error::RuntimeError,
 	fs::Watcher,
@@ -61,7 +61,6 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 		config.file_watcher(Watcher::Poll(interval.0));
 	}
 
-	let notif = args.notify;
 	/*
 	let clear = args.screen_clear;
 	let on_busy = args.on_busy_update;
@@ -307,6 +306,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 		}
 	});
 
+	/* TODO: replace with Outcome::Hook
 	config.on_post_spawn(move |postspawn: PostSpawn| {
 		if notif {
 			Notification::new()
@@ -321,6 +321,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 				);
 		}
 	});
+	*/
 
 	Ok(config)
 }
