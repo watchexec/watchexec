@@ -136,7 +136,7 @@ pub async fn from_origin(path: impl AsRef<Path> + Send) -> (Vec<IgnoreFile>, Vec
 						)
 						.await
 						{
-							dirs.add_last_file_to_filter(&mut files, &mut errors).await;
+							dirs.add_last_file_to_filter(&files, &mut errors).await;
 						}
 
 						if discover_file(
@@ -148,7 +148,7 @@ pub async fn from_origin(path: impl AsRef<Path> + Send) -> (Vec<IgnoreFile>, Vec
 						)
 						.await
 						{
-							dirs.add_last_file_to_filter(&mut files, &mut errors).await;
+							dirs.add_last_file_to_filter(&files, &mut errors).await;
 						}
 
 						if discover_file(
@@ -160,7 +160,7 @@ pub async fn from_origin(path: impl AsRef<Path> + Send) -> (Vec<IgnoreFile>, Vec
 						)
 						.await
 						{
-							dirs.add_last_file_to_filter(&mut files, &mut errors).await;
+							dirs.add_last_file_to_filter(&files, &mut errors).await;
 						}
 					}
 				}
@@ -479,7 +479,7 @@ impl DirTourist {
 
 	pub(crate) async fn add_last_file_to_filter(
 		&mut self,
-		files: &mut [IgnoreFile],
+		files: &[IgnoreFile],
 		errors: &mut Vec<Error>,
 	) {
 		if let Some(ig) = files.last() {
