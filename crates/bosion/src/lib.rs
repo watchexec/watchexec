@@ -110,7 +110,7 @@ pub fn gather_to(filename: &str, structname: &str, public: bool) {
 		("".to_string(), format!("{crate_version} ({build_date}) {crate_feature_string}\nbuild-date: {build_date}\nrelease: {crate_version}\nfeatures: {crate_feature_list}"))
 	};
 
-	#[cfg(all(feature = "std"))]
+	#[cfg(feature = "std")]
 	let long_version_with_fn = r#"
 		/// Returns the long version string with extra information tacked on
 		///

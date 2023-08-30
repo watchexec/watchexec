@@ -199,7 +199,11 @@ impl IgnoreFilter {
 			.display()
 			.to_string();
 
-		let Some(Ignore { builder: Some(ref mut builder), ..}) = self.ignores.get_mut(&applies_in) else {
+		let Some(Ignore {
+			builder: Some(ref mut builder),
+			..
+		}) = self.ignores.get_mut(&applies_in)
+		else {
 			return Ok(());
 		};
 
@@ -236,7 +240,11 @@ impl IgnoreFilter {
 			.display()
 			.to_string();
 
-		let Some(Ignore { gitignore: compiled, builder: Some(builder)}) = self.ignores.get(&applies_in) else {
+		let Some(Ignore {
+			gitignore: compiled,
+			builder: Some(builder),
+		}) = self.ignores.get(&applies_in)
+		else {
 			return Ok(());
 		};
 
@@ -272,7 +280,11 @@ impl IgnoreFilter {
 	pub fn add_globs(&mut self, globs: &[&str], applies_in: Option<&PathBuf>) -> Result<(), Error> {
 		let applies_in = applies_in.unwrap_or(&self.origin);
 
-		let Some(Ignore {builder: Some(builder), ..}) = self.ignores.get_mut(&applies_in.display().to_string()) else {
+		let Some(Ignore {
+			builder: Some(builder),
+			..
+		}) = self.ignores.get_mut(&applies_in.display().to_string())
+		else {
 			return Ok(());
 		};
 
