@@ -38,6 +38,7 @@ module completions {
     --no-project-ignore       # Don't load project-local ignores
     --no-global-ignore        # Don't load global ignores
     --no-default-ignore       # Don't use internal default ignores
+    --no-discover-ignore      # Don't discover ignore files at all
     --postpone(-p)            # Wait until first change before running command
     --delay-run: string       # Sleep before running the command
     --poll: string            # Poll for filesystem changes

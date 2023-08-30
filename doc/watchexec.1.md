@@ -10,12 +10,12 @@ watchexec - Execute commands when watched files change
 \[**-d**\|**\--debounce**\] \[**\--stdin-quit**\]
 \[**\--no-vcs-ignore**\] \[**\--no-project-ignore**\]
 \[**\--no-global-ignore**\] \[**\--no-default-ignore**\]
-\[**-p**\|**\--postpone**\] \[**\--delay-run**\] \[**\--poll**\]
-\[**\--shell**\] \[**-n **\] \[**\--no-environment**\]
-\[**\--emit-events-to**\] \[**-E**\|**\--env**\]
-\[**\--no-process-group**\] \[**-N**\|**\--notify**\]
-\[**\--project-origin**\] \[**\--workdir**\] \[**-e**\|**\--exts**\]
-\[**-f**\|**\--filter**\] \[**\--filter-file**\]
+\[**\--no-discover-ignore**\] \[**-p**\|**\--postpone**\]
+\[**\--delay-run**\] \[**\--poll**\] \[**\--shell**\] \[**-n **\]
+\[**\--no-environment**\] \[**\--emit-events-to**\]
+\[**-E**\|**\--env**\] \[**\--no-process-group**\]
+\[**-N**\|**\--notify**\] \[**\--project-origin**\] \[**\--workdir**\]
+\[**-e**\|**\--exts**\] \[**-f**\|**\--filter**\] \[**\--filter-file**\]
 \[**-i**\|**\--ignore**\] \[**\--ignore-file**\] \[**\--fs-events**\]
 \[**\--no-meta**\] \[**\--print-events**\]
 \[**-v**\|**\--verbose**\]\... \[**\--log-file**\] \[**\--manual**\]
@@ -258,6 +258,16 @@ Watchexec has a set of default ignore patterns, such as editor swap
 files, \`\*.pyc\`, \`\*.pyo\`, \`.DS_Store\`, \`.bzr\`, \`\_darcs\`,
 \`.fossil-settings\`, \`.git\`, \`.hg\`, \`.pijul\`, \`.svn\`, and
 Watchexec log files.
+
+**\--no-discover-ignore**
+
+:   Dont discover ignore files at all
+
+This is a shorthand for \--no-global-ignore, \--no-vcs-ignore,
+\--no-project-ignore, but even more efficient as it will skip all the
+ignore discovery mechanisms from the get go.
+
+Note that default ignores are still loaded, see \--no-default-ignore.
 
 **-p**, **\--postpone**
 

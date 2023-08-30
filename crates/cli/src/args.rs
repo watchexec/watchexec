@@ -336,6 +336,18 @@ pub struct Args {
 	)]
 	pub no_default_ignore: bool,
 
+	/// Don't discover ignore files at all
+	///
+	/// This is a shorthand for '--no-global-ignore', '--no-vcs-ignore', '--no-project-ignore', but
+	/// even more efficient as it will skip all the ignore discovery mechanisms from the get go.
+	///
+	/// Note that default ignores are still loaded, see '--no-default-ignore'.
+	#[arg(
+		long,
+		help_heading = OPTSET_FILTERING,
+	)]
+	pub no_discover_ignore: bool,
+
 	/// Wait until first change before running command
 	///
 	/// By default, Watchexec will run the command once immediately. With this option, it will
