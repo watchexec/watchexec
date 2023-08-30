@@ -57,6 +57,7 @@ _watchexec() {
 '--no-project-ignore[Don'\''t load project-local ignores]' \
 '--no-global-ignore[Don'\''t load global ignores]' \
 '--no-default-ignore[Don'\''t use internal default ignores]' \
+'--no-discover-ignore[Don'\''t discover ignore files at all]' \
 '-p[Wait until first change before running command]' \
 '--postpone[Wait until first change before running command]' \
 '-n[Don'\''t use a shell]' \
