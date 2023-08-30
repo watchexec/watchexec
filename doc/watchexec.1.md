@@ -7,14 +7,15 @@ watchexec - Execute commands when watched files change
 **watchexec** \[**-w**\|**\--watch**\] \[**-c**\|**\--clear**\]
 \[**-o**\|**\--on-busy-update**\] \[**-r**\|**\--restart**\]
 \[**-s**\|**\--signal**\] \[**\--stop-signal**\] \[**\--stop-timeout**\]
-\[**\--debounce**\] \[**\--stdin-quit**\] \[**\--no-vcs-ignore**\]
-\[**\--no-project-ignore**\] \[**\--no-global-ignore**\]
-\[**\--no-default-ignore**\] \[**-p**\|**\--postpone**\]
-\[**\--delay-run**\] \[**\--poll**\] \[**\--shell**\] \[**-n **\]
-\[**\--no-environment**\] \[**\--emit-events-to**\]
-\[**-E**\|**\--env**\] \[**\--no-process-group**\]
-\[**-N**\|**\--notify**\] \[**\--project-origin**\] \[**\--workdir**\]
-\[**-e**\|**\--exts**\] \[**-f**\|**\--filter**\] \[**\--filter-file**\]
+\[**-d**\|**\--debounce**\] \[**\--stdin-quit**\]
+\[**\--no-vcs-ignore**\] \[**\--no-project-ignore**\]
+\[**\--no-global-ignore**\] \[**\--no-default-ignore**\]
+\[**-p**\|**\--postpone**\] \[**\--delay-run**\] \[**\--poll**\]
+\[**\--shell**\] \[**-n **\] \[**\--no-environment**\]
+\[**\--emit-events-to**\] \[**-E**\|**\--env**\]
+\[**\--no-process-group**\] \[**-N**\|**\--notify**\]
+\[**\--project-origin**\] \[**\--workdir**\] \[**-e**\|**\--exts**\]
+\[**-f**\|**\--filter**\] \[**\--filter-file**\]
 \[**-i**\|**\--ignore**\] \[**\--ignore-file**\] \[**\--fs-events**\]
 \[**\--no-meta**\] \[**\--print-events**\]
 \[**-v**\|**\--verbose**\]\... \[**\--log-file**\] \[**\--manual**\]
@@ -155,7 +156,7 @@ command.
 This has no practical effect on Windows as the command is always
 forcefully terminated; see \--stop-signal for why.
 
-**\--debounce**=*TIMEOUT*
+**-d**, **\--debounce**=*TIMEOUT*
 
 :   Time to wait for new events before taking action
 
