@@ -66,7 +66,7 @@ version = "0.1.26"
 features = ["log"]
 
 [target.'cfg(unix)'.dependencies.nix]
-version = "0.26.2"
+version = "0.27.1"
 features = ["signal"]
 
 [dev-dependencies]
