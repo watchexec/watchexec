@@ -684,7 +684,7 @@ file).
 
 # VERSION
 
-v1.22.3
+v1.23.0
 
 # AUTHORS
 
