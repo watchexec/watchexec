@@ -93,60 +93,73 @@ pub async fn vcs_types(origin: &Path) -> Vec<ProjectType> {
 }
 
 pub async fn ignores(args: &Args, vcs_types: &[ProjectType], origin: &Path) -> Vec<IgnoreFile> {
-	let (mut ignores, errors) = ignore_files::from_origin(origin).await;
-	for err in errors {
-		warn!("while discovering project-local ignore files: {}", err);
-	}
-	debug!(?ignores, "discovered ignore files from project origin");
-
 	let mut skip_git_global_excludes = false;
-	if !vcs_types.is_empty() {
-		ignores = ignores
-			.into_iter()
-			.filter(|ig| match ig.applies_to {
-				Some(pt) if pt.is_vcs() => vcs_types.contains(&pt),
-				_ => true,
-			})
-			.inspect(|ig| {
-				if let IgnoreFile {
-					applies_to: Some(ProjectType::Git),
-					applies_in: None,
-					..
-				} = ig
-				{
-					warn!("project git config overrides the global excludes");
-					skip_git_global_excludes = true;
-				}
-			})
-			.collect::<Vec<_>>();
-		debug!(?ignores, "filtered ignores to only those for project vcs");
-	}
 
-	let (mut global_ignores, errors) = ignore_files::from_environment(Some("watchexec")).await;
-	for err in errors {
-		warn!("while discovering global ignore files: {}", err);
-	}
-	debug!(?global_ignores, "discovered ignore files from environment");
+	let mut ignores = if args.no_project_ignore {
+		Vec::new()
+	} else {
+		let (mut ignores, errors) = ignore_files::from_origin(origin).await;
+		for err in errors {
+			warn!("while discovering project-local ignore files: {}", err);
+		}
+		debug!(?ignores, "discovered ignore files from project origin");
 
-	if skip_git_global_excludes {
-		global_ignores = global_ignores
-			.into_iter()
-			.filter(|gig| {
-				!matches!(
-					gig,
-					IgnoreFile {
+		if !vcs_types.is_empty() {
+			ignores = ignores
+				.into_iter()
+				.filter(|ig| match ig.applies_to {
+					Some(pt) if pt.is_vcs() => vcs_types.contains(&pt),
+					_ => true,
+				})
+				.inspect(|ig| {
+					if let IgnoreFile {
 						applies_to: Some(ProjectType::Git),
 						applies_in: None,
 						..
+					} = ig
+					{
+						warn!("project git config overrides the global excludes");
+						skip_git_global_excludes = true;
 					}
-				)
-			})
-			.collect::<Vec<_>>();
-		debug!(
-			?global_ignores,
-			"filtered global ignores to exclude global git ignores"
-		);
-	}
+				})
+				.collect::<Vec<_>>();
+			debug!(?ignores, "filtered ignores to only those for project vcs");
+		}
+
+		ignores
+	};
+
+	let global_ignores = if args.no_global_ignore {
+		Vec::new()
+	} else {
+		let (mut global_ignores, errors) = ignore_files::from_environment(Some("watchexec")).await;
+		for err in errors {
+			warn!("while discovering global ignore files: {}", err);
+		}
+		debug!(?global_ignores, "discovered ignore files from environment");
+
+		if skip_git_global_excludes {
+			global_ignores = global_ignores
+				.into_iter()
+				.filter(|gig| {
+					!matches!(
+						gig,
+						IgnoreFile {
+							applies_to: Some(ProjectType::Git),
+							applies_in: None,
+							..
+						}
+					)
+				})
+				.collect::<Vec<_>>();
+			debug!(
+				?global_ignores,
+				"filtered global ignores to exclude global git ignores"
+			);
+		}
+
+		global_ignores
+	};
 
 	ignores.extend(global_ignores.into_iter().filter(|ig| match ig.applies_to {
 		Some(pt) if pt.is_vcs() => vcs_types.contains(&pt),
