@@ -200,7 +200,7 @@ pub async fn ignores(args: &Args, vcs_types: &[ProjectType], origin: &Path) -> V
 	if args.no_global_ignore {
 		ignores = ignores
 			.into_iter()
-			.filter(|ig| !matches!(ig.applies_in, None))
+			.filter(|ig| ig.applies_in.is_some())
 			.collect::<Vec<_>>();
 		debug!(?ignores, "filtered ignores to exclude global ignores");
 	}
@@ -208,7 +208,7 @@ pub async fn ignores(args: &Args, vcs_types: &[ProjectType], origin: &Path) -> V
 	if args.no_vcs_ignore {
 		ignores = ignores
 			.into_iter()
-			.filter(|ig| matches!(ig.applies_to, None))
+			.filter(|ig| ig.applies_to.is_none())
 			.collect::<Vec<_>>();
 		debug!(?ignores, "filtered ignores to exclude VCS-specific ignores");
 	}

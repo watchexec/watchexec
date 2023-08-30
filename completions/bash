@@ -155,4 +155,4 @@ _watchexec() {
     esac
 }
 
-complete -F _watchexec -o bashdefault -o default watchexec
+complete -F _watchexec -o nosort -o bashdefault -o default watchexec
