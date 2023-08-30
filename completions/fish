@@ -4,7 +4,7 @@ complete -c watchexec -s o -l on-busy-update -d 'What to do when receiving event
 complete -c watchexec -s s -l signal -d 'Send a signal to the process when it\'s still running' -r
 complete -c watchexec -l stop-signal -d 'Signal to send to stop the command' -r
 complete -c watchexec -l stop-timeout -d 'Time to wait for the command to exit gracefully' -r
-complete -c watchexec -l debounce -d 'Time to wait for new events before taking action' -r
+complete -c watchexec -s d -l debounce -d 'Time to wait for new events before taking action' -r
 complete -c watchexec -l delay-run -d 'Sleep before running the command' -r
 complete -c watchexec -l poll -d 'Poll for filesystem changes' -r
 complete -c watchexec -l shell -d 'Use a different shell' -r
