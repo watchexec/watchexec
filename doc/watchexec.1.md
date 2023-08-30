@@ -586,7 +586,7 @@ level.
 
 You may want to use with \--log-file to avoid polluting your terminal.
 
-Setting \$RUST_LOG also works, and takes precendence, but is not
+Setting \$RUST_LOG also works, and takes precedence, but is not
 recommended. However, using \$RUST_LOG is the only way to get logs from
 before these options are parsed.
 

@@ -1,4 +1,5 @@
 use std::{
+	mem::take,
 	sync::Arc,
 	time::{Duration, Instant},
 };
@@ -121,7 +122,7 @@ pub async fn worker(
 		last = Instant::now();
 
 		#[allow(clippy::iter_with_drain)]
-		let events = Arc::from(set.drain(..).collect::<Vec<_>>().into_boxed_slice());
+		let events = Arc::from(take(&mut set).into_boxed_slice());
 		let action = Action::new(Arc::clone(&events));
 		info!(?action, "action constructed");
 
