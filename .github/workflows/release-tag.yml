@@ -29,7 +29,7 @@ jobs:
             echo "CUSTOM_TAG=${crate}-${version}" >> $GITHUB_ENV
           fi
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Push release tag
         id: tag_version
         uses: mathieudutour/github-tag-action@v6.1
