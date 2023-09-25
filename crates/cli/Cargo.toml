@@ -101,10 +101,10 @@ features = [
 mimalloc = "0.1.26"
 
 [target.'cfg(target_os = "linux")'.dependencies]
-shadow-rs = "0.22.0"
+shadow-rs = "0.24.0"
 
 [target.'cfg(target_os = "linux")'.build-dependencies]
-shadow-rs = "0.22.0"
+shadow-rs = "0.24.0"
 
 [build-dependencies]
 embed-resource = "2.1.1"
