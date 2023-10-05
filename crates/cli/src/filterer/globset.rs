@@ -18,11 +18,13 @@ use crate::args::{Args, FsEvent};
 
 pub async fn globset(args: &Args) -> Result<Arc<WatchexecFilterer>> {
 	let (project_origin, workdir) = super::common::dirs(args).await?;
+
 	let ignore_files = if args.no_discover_ignore {
 		Vec::new()
 	} else {
 		let vcs_types = super::common::vcs_types(&project_origin).await;
-		super::common::ignores(args, &vcs_types, &project_origin).await
+		let files = super::common::ignores(args, &vcs_types, &project_origin).await?;
+		files
 	};
 
 	let mut ignores = Vec::new();

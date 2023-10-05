@@ -4,7 +4,7 @@ use std::{
 	path::{Path, PathBuf},
 };
 
-use ignore_files::IgnoreFile;
+use ignore_files::{IgnoreFile, IgnoreFilesFromOriginArgs};
 use miette::{miette, IntoDiagnostic, Result};
 use project_origins::ProjectType;
 use tokio::fs::canonicalize;
@@ -13,7 +13,12 @@ use watchexec::paths::common_prefix;
 
 use crate::args::Args;
 
-pub async fn dirs(args: &Args) -> Result<(PathBuf, PathBuf)> {
+type ProjectOriginPath = PathBuf;
+type WorkDirPath = PathBuf;
+
+/// Extract relevant directories (in particular the project origin and work directory)
+/// given the command line arguments that were provided
+pub async fn dirs(args: &Args) -> Result<(ProjectOriginPath, WorkDirPath)> {
 	let curdir = env::current_dir().into_diagnostic()?;
 	let curdir = canonicalize(curdir).await.into_diagnostic()?;
 	debug!(?curdir, "current directory");
@@ -92,13 +97,49 @@ pub async fn vcs_types(origin: &Path) -> Vec<ProjectType> {
 	vcs_types
 }
 
-pub async fn ignores(args: &Args, vcs_types: &[ProjectType], origin: &Path) -> Vec<IgnoreFile> {
+pub async fn ignores(
+	args: &Args,
+	vcs_types: &[ProjectType],
+	origin: &Path,
+) -> Result<Vec<IgnoreFile>> {
 	let mut skip_git_global_excludes = false;
 
 	let mut ignores = if args.no_project_ignore {
 		Vec::new()
 	} else {
-		let (mut ignores, errors) = ignore_files::from_origin(origin).await;
+		// Build list of absolute explicitly included paths
+		let include_paths = args
+			.paths
+			.iter()
+			.map(|p| {
+				if p.is_absolute() {
+					p.clone()
+				} else {
+					origin.join(p)
+				}
+			})
+			.collect();
+
+		// Build list of absolute explicitly ignored paths
+		let ignore_files = args
+			.ignore_files
+			.iter()
+			.map(|p| {
+				if p.is_absolute() {
+					p.clone()
+				} else {
+					origin.join(p)
+				}
+			})
+			.collect();
+
+		let (mut ignores, errors) = ignore_files::from_origin(IgnoreFilesFromOriginArgs::new(
+			origin,
+			include_paths,
+			ignore_files,
+		)?)
+		.await;
+
 		for err in errors {
 			warn!("while discovering project-local ignore files: {}", err);
 		}
@@ -214,5 +255,5 @@ pub async fn ignores(args: &Args, vcs_types: &[ProjectType], origin: &Path) -> V
 	}
 
 	info!(files=?ignores.iter().map(|ig| ig.path.as_path()).collect::<Vec<_>>(), "found some ignores");
-	ignores
+	Ok(ignores)
 }
