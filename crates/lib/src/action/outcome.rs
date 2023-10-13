@@ -75,6 +75,10 @@ pub enum Outcome {
 	Destroy,
 
 	/// Exit watchexec.
+	///
+	/// This implies stopping every command still running.
+	///
+	/// In an action handler, prefer using `quit()` instead of specifying this in `apply()`.
 	Exit,
 
 	/// When command is running, do the first, otherwise the second.

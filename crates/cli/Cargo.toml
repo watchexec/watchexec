@@ -55,6 +55,10 @@ path = "../ignore-files"
 version = "5.3.0"
 features = ["fancy"]
 
+[dependencies.pid1]
+version = "0.1.1"
+optional = true
+
 [dependencies.project-origins]
 version = "1.2.0"
 path = "../project-origins"
@@ -108,6 +112,10 @@ version = "1.0.1"
 path = "../bosion"
 
 [features]
+default = ["pid1-withlog"]
+pid1-withlog = ["pid1"]
+pid1 = ["dep:pid1"]
+
 ## For debugging only: enables the Tokio Console.
 dev-console = ["console-subscriber"]
 

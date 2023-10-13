@@ -1,14 +1,19 @@
+use miette::IntoDiagnostic;
+
 #[cfg(target_env = "musl")]
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-#[tokio::main]
-async fn main() -> miette::Result<()> {
-	watchexec_cli::run().await?;
+fn main() -> miette::Result<()> {
+	#[cfg(feature = "pid1")]
+	pid1::Pid1Settings::new()
+		.enable_log(cfg!(feature = "pid1-withlog"))
+		.launch()
+		.into_diagnostic()?;
 
-	if std::process::id() == 1 {
-		std::process::exit(0);
-	}
-
-	Ok(())
+	tokio::runtime::Builder::new_multi_thread()
+		.enable_all()
+		.build()
+		.unwrap()
+		.block_on(async { watchexec_cli::run().await })
 }

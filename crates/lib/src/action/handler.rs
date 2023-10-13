@@ -33,6 +33,8 @@ use crate::{
 ///
 /// It is important to note that methods called in this handler do not act immediately: rather they
 /// build up a list of desired effects which will be applied when the handler returns.
+///
+/// You are not obliged to use supervised commands: do whatever makes sense for your application.
 pub struct Action {
 	/// The collected events which triggered the action.
 	pub events: Arc<[Event]>,
