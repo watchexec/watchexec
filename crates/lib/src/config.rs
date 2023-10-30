@@ -27,10 +27,10 @@ use crate::{
 /// Almost every field is a [`Changeable`], such that its value can be changed from a `&self`.
 ///
 /// Fields are public for advanced use, but in most cases changes should be made through the
-/// methods provided: not only are they more convenient, each also calls `debug!` on the new value,
+/// methods provided: not only are they more convenient, each calls `debug!` on the new value,
 /// providing a quick insight into what your application sets.
 ///
-/// The methods also set the "change signal" of the Config: this notifies some parts of  Watchexec
+/// The methods also set the "change signal" of the Config: this notifies some parts of Watchexec
 /// they should re-read the config. If you modify values via the fields directly, you should call
 /// `signal_change()` yourself. Note that this doesn't mean that changing values _without_ calling
 /// this will prevent Watchexec changing until it's called: most parts of Watchexec take a
@@ -60,8 +60,14 @@ pub struct Config {
 	/// It is possible to change the handler or any other configuration inside the previous handler.
 	/// This and other handlers are fetched "just in time" when needed, so changes to handlers can
 	/// appear instant, or may lag a little depending on lock contention, but a handler being called
-	/// does not hold its lock. A handler changing while it's being called does not affect the run of
-	/// the previous version of the handler: it will neither be stopped nor retried with the new code.
+	/// does not hold its lock. A handler changing while it's being called doesn't affect the run of
+	/// a previous version of the handler: it will neither be stopped nor retried with the new code.
+	///
+	/// It is important for this handler to return quickly: avoid performing blocking work in it.
+	/// This is true for all handlers, but especially for this one, as it will block the event loop
+	/// and you'll find that the internal event queues quickly fill up and it all grinds to a halt.
+	/// Spawn threads or tasks, or use channels or other async primitives to communicate with your
+	/// expensive code.
 	pub action_handler: ChangeableFn<Action>,
 
 	/// Runtime error handler.
@@ -108,6 +114,11 @@ pub struct Config {
 	///     }
 	/// });
 	/// ```
+	///
+	/// Just like other handlers, it is important for this to return quickly: avoid performing
+	/// blocking work. However, there should be a lot less errors than events, so it's less critical
+	/// than, say, the action handler. Locking and writing to stdio is fine, for example. Of course,
+	/// an asynchronous log writer or separate UI thread is always a good idea.
 	pub error_handler: ChangeableFn<ErrorHook>,
 
 	/// The set of filesystem paths to be watched.
@@ -144,6 +155,11 @@ pub struct Config {
 	/// [`PreSpawn::command()`] method for important information on what you can do with it.
 	///
 	/// The default is a no-op.
+	///
+	/// Just like other handlers, it is important for this to return quickly: avoid performing
+	/// blocking work. However, process supervision work (such as spawns) is handled off the main
+	/// thread/task. Blocking here will delay spawning the command, and will prevent other actions
+	/// being applied to the command's supervisor, but will not block the rest of Watchexec.
 	pub pre_spawn_handler: ChangeableFn<PreSpawn>,
 
 	/// The filterer implementation to use when filtering events.
