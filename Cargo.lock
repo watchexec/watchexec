@@ -602,9 +602,9 @@ checksum = "acbf1af155f9b9ef647e42cdc158db4b64a1b61f743629225fde6f3e0be2a7c7"
 
 [[package]]
 name = "command-group"
-version = "2.1.1"
+version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e13c1a03756c92e00201a929b92fd1f0611afe9208795b6f0de7044057817cd"
+checksum = "38f0a774e568e1cce33f12d03f442e87d9e0bc519f877317aa6e536d845d0a24"
 dependencies = [
  "async-trait",
  "nix 0.27.1",
