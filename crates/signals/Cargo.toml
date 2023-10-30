@@ -19,16 +19,16 @@ version = "5.3.0"
 optional = true
 
 [dependencies.thiserror]
-version = "1.0.26"
+version = "1.0.50"
 optional = true
 
 [dependencies.serde]
-version = "1.0.152"
+version = "1.0.183"
 optional = true
 features = ["derive"]
 
 [target.'cfg(unix)'.dependencies.nix]
-version = "0.26.2"
+version = "0.27.1"
 features = ["signal"]
 
 [features]

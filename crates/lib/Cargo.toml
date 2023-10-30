@@ -17,17 +17,18 @@ edition = "2021"
 
 [dependencies]
 async-priority-channel = "0.1.0"
-async-recursion = "1.0.0"
+async-recursion = "1.0.5"
 atomic-take = "1.0.0"
 clearscreen = "2.0.1"
-futures = "0.3.16"
+futures = "0.3.29"
 miette = "5.3.0"
+notify = "6.0.0"
 once_cell = "1.8.0"
-thiserror = "1.0.26"
+thiserror = "1.0.44"
 normalize-path = "0.2.0"
 
 [dependencies.command-group]
-version = "2.1.0"
+version = "2.1.1"
 features = ["with-tokio"]
 
 [dependencies.watchexec-events]
@@ -42,15 +43,12 @@ path = "../signals"
 version = "1.3.1"
 path = "../ignore-files"
 
-[dependencies.notify]
-version = "6.0.0"
-
 [dependencies.project-origins]
 version = "1.2.0"
 path = "../project-origins"
 
 [dependencies.tokio]
-version = "1.32.0"
+version = "1.33.0"
 features = [
 	"fs",
 	"io-std",
@@ -62,11 +60,11 @@ features = [
 ]
 
 [dependencies.tracing]
-version = "0.1.26"
+version = "0.1.40"
 features = ["log"]
 
 [target.'cfg(unix)'.dependencies.nix]
-version = "0.26.2"
+version = "0.27.1"
 features = ["signal"]
 
 [dev-dependencies]
