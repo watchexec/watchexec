@@ -32,12 +32,13 @@ module completions {
     --kill(-k)                # Hidden legacy shorthand for '--signal=kill'
     --stop-signal: string     # Signal to send to stop the command
     --stop-timeout: string    # Time to wait for the command to exit gracefully
-    --debounce: string        # Time to wait for new events before taking action
+    --debounce(-d): string    # Time to wait for new events before taking action
     --stdin-quit              # Exit when stdin closes
     --no-vcs-ignore           # Don't load gitignores
     --no-project-ignore       # Don't load project-local ignores
     --no-global-ignore        # Don't load global ignores
     --no-default-ignore       # Don't use internal default ignores
+    --no-discover-ignore      # Don't discover ignore files at all
     --postpone(-p)            # Wait until first change before running command
     --delay-run: string       # Sleep before running the command
     --poll: string            # Poll for filesystem changes

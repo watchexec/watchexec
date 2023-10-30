@@ -35,7 +35,7 @@ jobs:
     runs-on: "${{ matrix.platform }}-latest"
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Configure toolchain
       run: |
         rustup toolchain install --profile minimal --no-self-update stable
@@ -92,7 +92,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Configure toolchain
       run: |
         rustup toolchain install --profile minimal --no-self-update stable

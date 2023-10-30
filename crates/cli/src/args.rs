@@ -246,6 +246,7 @@ pub struct Args {
 	/// The default is 50 milliseconds. Setting to 0 is highly discouraged.
 	#[arg(
 		long,
+		short,
 		default_value = "50",
 		hide_default_value = true,
 		value_name = "TIMEOUT"
@@ -334,6 +335,18 @@ pub struct Args {
 		help_heading = OPTSET_FILTERING,
 	)]
 	pub no_default_ignore: bool,
+
+	/// Don't discover ignore files at all
+	///
+	/// This is a shorthand for '--no-global-ignore', '--no-vcs-ignore', '--no-project-ignore', but
+	/// even more efficient as it will skip all the ignore discovery mechanisms from the get go.
+	///
+	/// Note that default ignores are still loaded, see '--no-default-ignore'.
+	#[arg(
+		long,
+		help_heading = OPTSET_FILTERING,
+	)]
+	pub no_discover_ignore: bool,
 
 	/// Wait until first change before running command
 	///

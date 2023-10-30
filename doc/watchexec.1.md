@@ -7,9 +7,10 @@ watchexec - Execute commands when watched files change
 **watchexec** \[**-w**\|**\--watch**\] \[**-c**\|**\--clear**\]
 \[**-o**\|**\--on-busy-update**\] \[**-r**\|**\--restart**\]
 \[**-s**\|**\--signal**\] \[**\--stop-signal**\] \[**\--stop-timeout**\]
-\[**\--debounce**\] \[**\--stdin-quit**\] \[**\--no-vcs-ignore**\]
-\[**\--no-project-ignore**\] \[**\--no-global-ignore**\]
-\[**\--no-default-ignore**\] \[**-p**\|**\--postpone**\]
+\[**-d**\|**\--debounce**\] \[**\--stdin-quit**\]
+\[**\--no-vcs-ignore**\] \[**\--no-project-ignore**\]
+\[**\--no-global-ignore**\] \[**\--no-default-ignore**\]
+\[**\--no-discover-ignore**\] \[**-p**\|**\--postpone**\]
 \[**\--delay-run**\] \[**\--poll**\] \[**\--shell**\] \[**-n **\]
 \[**\--no-environment**\] \[**\--emit-events-to**\]
 \[**-E**\|**\--env**\] \[**\--no-process-group**\]
@@ -155,7 +156,7 @@ command.
 This has no practical effect on Windows as the command is always
 forcefully terminated; see \--stop-signal for why.
 
-**\--debounce**=*TIMEOUT*
+**-d**, **\--debounce**=*TIMEOUT*
 
 :   Time to wait for new events before taking action
 
@@ -257,6 +258,16 @@ Watchexec has a set of default ignore patterns, such as editor swap
 files, \`\*.pyc\`, \`\*.pyo\`, \`.DS_Store\`, \`.bzr\`, \`\_darcs\`,
 \`.fossil-settings\`, \`.git\`, \`.hg\`, \`.pijul\`, \`.svn\`, and
 Watchexec log files.
+
+**\--no-discover-ignore**
+
+:   Dont discover ignore files at all
+
+This is a shorthand for \--no-global-ignore, \--no-vcs-ignore,
+\--no-project-ignore, but even more efficient as it will skip all the
+ignore discovery mechanisms from the get go.
+
+Note that default ignores are still loaded, see \--no-default-ignore.
 
 **-p**, **\--postpone**
 
@@ -586,7 +597,7 @@ level.
 
 You may want to use with \--log-file to avoid polluting your terminal.
 
-Setting \$RUST_LOG also works, and takes precendence, but is not
+Setting \$RUST_LOG also works, and takes precedence, but is not
 recommended. However, using \$RUST_LOG is the only way to get logs from
 before these options are parsed.
 
@@ -673,7 +684,7 @@ file).
 
 # VERSION
 
-v1.22.3
+v1.23.0
 
 # AUTHORS
 

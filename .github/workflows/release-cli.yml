@@ -20,7 +20,7 @@ jobs:
       release_notes: ${{ fromJSON(steps.notes.outputs.notes_json) }}
       announce: ${{ steps.announce.outputs.announce }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Extract version
         id: version
         shell: bash
@@ -161,7 +161,7 @@ jobs:
       dst: watchexec-${{ needs.info.outputs.cli_version }}-${{ matrix.target }}
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       # https://github.com/actions/cache/issues/752
       - if: ${{ runner.os == 'Windows' }}
@@ -292,7 +292,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install b3sum
         uses: taiki-e/install-action@v2

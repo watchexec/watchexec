@@ -469,8 +469,8 @@ impl TaggedFilterer {
 				trace!(?op_filter, "pulling filters from swaplock");
 				// we want to hold the lock as little as possible, so we clone the filters
 				fs.iter()
+					.filter(|&f| f.op == op_filter)
 					.cloned()
-					.filter(|f| f.op == op_filter)
 					.collect::<Vec<_>>()
 			} else {
 				trace!(?op_filter, "no filters, erasing compiled glob");

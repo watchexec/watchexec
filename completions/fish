@@ -4,7 +4,7 @@ complete -c watchexec -s o -l on-busy-update -d 'What to do when receiving event
 complete -c watchexec -s s -l signal -d 'Send a signal to the process when it\'s still running' -r
 complete -c watchexec -l stop-signal -d 'Signal to send to stop the command' -r
 complete -c watchexec -l stop-timeout -d 'Time to wait for the command to exit gracefully' -r
-complete -c watchexec -l debounce -d 'Time to wait for new events before taking action' -r
+complete -c watchexec -s d -l debounce -d 'Time to wait for new events before taking action' -r
 complete -c watchexec -l delay-run -d 'Sleep before running the command' -r
 complete -c watchexec -l poll -d 'Poll for filesystem changes' -r
 complete -c watchexec -l shell -d 'Use a different shell' -r
@@ -28,6 +28,7 @@ complete -c watchexec -l no-vcs-ignore -d 'Don\'t load gitignores'
 complete -c watchexec -l no-project-ignore -d 'Don\'t load project-local ignores'
 complete -c watchexec -l no-global-ignore -d 'Don\'t load global ignores'
 complete -c watchexec -l no-default-ignore -d 'Don\'t use internal default ignores'
+complete -c watchexec -l no-discover-ignore -d 'Don\'t discover ignore files at all'
 complete -c watchexec -s p -l postpone -d 'Wait until first change before running command'
 complete -c watchexec -s n -d 'Don\'t use a shell'
 complete -c watchexec -l no-shell-long -d 'Don\'t use a shell'

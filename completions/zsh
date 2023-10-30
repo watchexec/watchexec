@@ -25,6 +25,7 @@ _watchexec() {
 '(-r --restart -W --watch-when-idle)--signal=[Send a signal to the process when it'\''s still running]:SIGNAL: ' \
 '--stop-signal=[Signal to send to stop the command]:SIGNAL: ' \
 '--stop-timeout=[Time to wait for the command to exit gracefully]:TIMEOUT: ' \
+'-d+[Time to wait for new events before taking action]:TIMEOUT: ' \
 '--debounce=[Time to wait for new events before taking action]:TIMEOUT: ' \
 '--delay-run=[Sleep before running the command]:DURATION: ' \
 '--poll=[Poll for filesystem changes]' \
@@ -56,6 +57,7 @@ _watchexec() {
 '--no-project-ignore[Don'\''t load project-local ignores]' \
 '--no-global-ignore[Don'\''t load global ignores]' \
 '--no-default-ignore[Don'\''t use internal default ignores]' \
+'--no-discover-ignore[Don'\''t discover ignore files at all]' \
 '-p[Wait until first change before running command]' \
 '--postpone[Wait until first change before running command]' \
 '-n[Don'\''t use a shell]' \
