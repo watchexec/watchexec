@@ -42,7 +42,6 @@ pub async fn worker(
 	)
 	.await?
 	{
-		#[allow(clippy::iter_with_drain)]
 		let events = Arc::from(take(&mut set).into_boxed_slice());
 
 		trace!("preparing action handler");
