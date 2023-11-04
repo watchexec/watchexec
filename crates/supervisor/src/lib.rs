@@ -9,7 +9,6 @@
 pub mod command;
 
 // #[doc(inline)]
-// pub use process::Process;
-
-// #[doc(inline)]
 // pub use supervisor::{Args, Supervisor, SupervisorId};
+
+// Supervisor -> SupervisedCommand(Command, runtime info, control queue) -> ErasedChild
