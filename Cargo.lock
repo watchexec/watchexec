@@ -3685,6 +3685,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "watchexec-supervisor"
+version = "0.1.0"
+dependencies = [
+ "command-group",
+ "futures",
+ "miette",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "which"
 version = "4.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

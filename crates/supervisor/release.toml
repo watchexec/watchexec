@@ -1,0 +1,10 @@
+pre-release-commit-message = "release: supervisor v{{version}}"
+tag-prefix = "supervisor-"
+tag-message = "watchexec-supervisor {{version}}"
+
+[[pre-release-replacements]]
+file = "CHANGELOG.md"
+search = "^## Next.*$"
+replace = "## Next (YYYY-MM-DD)\n\n## v{{version}} ({{date}})"
+prerelease = true
+max = 1
