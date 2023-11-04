@@ -27,7 +27,7 @@ use tracing::trace;
 ///     Program::Shell {
 ///         shell: Shell::new("bash"),
 ///         command: "curl -L google.com >/dev/null".into(),
-///      args: Vec::new(),
+///         args: Vec::new(),
 ///     },
 /// ]);
 /// ```
@@ -92,7 +92,7 @@ impl FromIterator<Program> for Command {
 ///     Program::Shell {
 ///         shell: Shell::new("bash"),
 ///         command: "curl -L google.com >/dev/null".into(),
-///      args: Vec::new(),
+///         args: Vec::new(),
 ///     },
 /// ]);
 /// ```
@@ -107,7 +107,8 @@ impl FromIterator<Program> for Command {
 /// }).and(Program::Shell {
 ///     shell: Shell::new("bash"),
 ///     command: "curl -L google.com >/dev/null".into(),
-/// });
+///     args: Vec::new(),
+/// }.into());
 /// // = `nslookup google.com && curl -L google.com >/dev/null`
 /// ```
 ///
@@ -116,10 +117,12 @@ impl FromIterator<Program> for Command {
 /// Sequence::Run(Program::Shell {
 ///     shell: Shell::new("bash"),
 ///     command: "make test".into(),
+///     args: Vec::new(),
 /// }).or(Program::Shell {
 ///     shell: Shell::new("bash"),
 ///     command: "make fix".into(),
-/// });
+///     args: Vec::new(),
+/// }.into());
 /// // = `make test || make fix`
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
