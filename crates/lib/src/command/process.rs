@@ -1,7 +1,6 @@
 use std::process::ExitStatus;
 
-use command_group::AsyncGroupChild;
-use tokio::process::Child;
+use command_group::tokio::ErasedChild;
 use tracing::{debug, trace};
 
 use crate::error::RuntimeError;
@@ -12,11 +11,8 @@ pub enum Process {
 	/// The initial state of the process, before it's spawned.
 	None,
 
-	/// A grouped process that's been spawned.
-	Grouped(AsyncGroupChild),
-
-	/// An ungrouped process that's been spawned.
-	Ungrouped(Child),
+	/// A process that's been spawned.
+	Spawned(ErasedChild),
 
 	/// The cached exit status of the process.
 	Done(ExitStatus),
@@ -35,15 +31,9 @@ impl Process {
 	/// Does nothing if the process is not running.
 	#[cfg(unix)]
 	pub fn signal(&mut self, sig: command_group::Signal) -> Result<(), RuntimeError> {
-		use command_group::UnixChildExt;
-
 		match self {
 			Self::None | Self::Done(_) => Ok(()),
-			Self::Grouped(c) => {
-				debug!(signal=%sig, pgid=?c.id(), "sending signal to process group");
-				c.signal(sig)
-			}
-			Self::Ungrouped(c) => {
+			Self::Spawned(c) => {
 				debug!(signal=%sig, pid=?c.id(), "sending signal to process");
 				c.signal(sig)
 			}
@@ -54,17 +44,10 @@ impl Process {
 	/// Kills the process.
 	///
 	/// Does nothing if the process is not running.
-	///
-	/// Note that this has different behaviour for grouped and ungrouped processes due to Tokio's
-	/// API: it waits on ungrouped processes, but not for grouped processes.
 	pub async fn kill(&mut self) -> Result<(), RuntimeError> {
 		match self {
 			Self::None | Self::Done(_) => Ok(()),
-			Self::Grouped(c) => {
-				debug!(pgid=?c.id(), "killing process group");
-				c.kill()
-			}
-			Self::Ungrouped(c) => {
+			Self::Spawned(c) => {
 				debug!(pid=?c.id(), "killing process");
 				c.kill().await
 			}
@@ -84,17 +67,7 @@ impl Process {
 	pub fn is_running(&mut self) -> Result<bool, RuntimeError> {
 		match self {
 			Self::None | Self::Done(_) => Ok(false),
-			Self::Grouped(c) => c.try_wait().map(|status| {
-				trace!("try-waiting on process group");
-				if let Some(status) = status {
-					trace!(?status, "converting to ::Done");
-					*self = Self::Done(status);
-					true
-				} else {
-					false
-				}
-			}),
-			Self::Ungrouped(c) => c.try_wait().map(|status| {
+			Self::Spawned(c) => c.try_wait().map(|status| {
 				trace!("try-waiting on process");
 				if let Some(status) = status {
 					trace!(?status, "converting to ::Done");
@@ -122,20 +95,10 @@ impl Process {
 		match self {
 			Self::None => Ok(None),
 			Self::Done(status) => Ok(Some(*status)),
-			Self::Grouped(c) => {
-				trace!("waiting on process group");
-				let status = c.wait().await.map_err(|err| RuntimeError::IoError {
-					about: "waiting on process group",
-					err,
-				})?;
-				trace!(?status, "converting to ::Done");
-				*self = Self::Done(status);
-				Ok(Some(status))
-			}
-			Self::Ungrouped(c) => {
+			Self::Spawned(c) => {
 				trace!("waiting on process");
 				let status = c.wait().await.map_err(|err| RuntimeError::IoError {
-					about: "waiting on process (ungrouped)",
+					about: "waiting on process",
 					err,
 				})?;
 				trace!(?status, "converting to ::Done");

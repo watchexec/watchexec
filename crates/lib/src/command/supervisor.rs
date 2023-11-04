@@ -1,7 +1,7 @@
 use std::{num::NonZeroU64, sync::Arc};
 
 use async_priority_channel as priority;
-use command_group::AsyncCommandGroup;
+use command_group::{AsyncCommandGroup, tokio::ErasedChild};
 use tokio::{
 	select, spawn,
 	sync::{
@@ -355,7 +355,7 @@ fn spawn_process(
 				})?;
 			let id = proc.id().ok_or(RuntimeError::ProcessDeadOnArrival)?;
 			info!(pgid=%id, "process group spawned");
-			(Process::Grouped(proc), id)
+			(Process::Spawned(ErasedChild::Grouped(proc)), id)
 		}
 		Isolation::None => {
 			let proc =
@@ -368,7 +368,7 @@ fn spawn_process(
 					})?;
 			let id = proc.id().ok_or(RuntimeError::ProcessDeadOnArrival)?;
 			info!(pid=%id, "process spawned");
-			(Process::Ungrouped(proc), id)
+			(Process::Spawned(ErasedChild::Ungrouped(proc)), id)
 		}
 	};
 
