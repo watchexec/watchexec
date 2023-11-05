@@ -103,6 +103,9 @@ pub struct Args {
 	/// for '--project-origin' for more information.
 	///
 	/// This option can be specified multiple times to watch multiple files or directories.
+	///
+	/// The special value '/dev/null', provided as the only path watched, will cause Watchexec to
+	/// not watch any paths. Other event sources (like signals or key events) may still be used.
 	#[arg(
 		short = 'w',
 		long = "watch",
