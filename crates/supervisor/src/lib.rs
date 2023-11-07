@@ -7,8 +7,9 @@
 //! will always primarily be driven by the needs of Watchexec itself.
 
 pub mod command;
+pub mod supervisor;
 
 // #[doc(inline)]
 // pub use supervisor::{Args, Supervisor, SupervisorId};
 
-// Supervisor -> SupervisedCommand(Command, runtime info, control queue) -> ErasedChild
+// Supervisor -> Job(Command, runtime info, control (priority) queue) -> ErasedChild

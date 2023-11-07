@@ -3688,6 +3688,7 @@ dependencies = [
 name = "watchexec-supervisor"
 version = "0.1.0"
 dependencies = [
+ "async-priority-channel",
  "command-group",
  "futures",
  "miette",
