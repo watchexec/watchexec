@@ -46,7 +46,8 @@ include!(env!("BOSION_PATH"));
 	author,
 	version,
 	long_version = Bosion::LONG_VERSION,
-	after_help = "Use @argfile as first argument to load arguments from the file 'argfile' (one argument per line) which will be inserted in place of the @argfile (further arguments on the CLI will override or add onto those in the file).",
+	after_help = "Want more detail? Try the long '--help' flag!",
+	after_long_help = "Use @argfile as first argument to load arguments from the file 'argfile' (one argument per line) which will be inserted in place of the @argfile (further arguments on the CLI will override or add onto those in the file).\n\nDidn't expect this much output? Use the short '-h' flag to get short help.",
 	hide_possible_values = true,
 )]
 #[cfg_attr(debug_assertions, command(before_help = "⚠ DEBUG BUILD ⚠"))]
