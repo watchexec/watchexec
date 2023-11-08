@@ -2,6 +2,8 @@ use std::{time::Duration, sync::{atomic::AtomicBool, Arc}};
 
 use command_group::Signal;
 
+use super::ids::TicketId;
+
 pub enum Control {
 	Signal(Signal),
 	Wait(Option<Duration>),
@@ -31,7 +33,22 @@ impl std::fmt::Debug for Control {
 				.field("grace", grace)
 				.finish(),
 			Self::Hook(arg0) => f.debug_struct("Hook").finish_non_exhaustive(),
-			Self::Delete(gc) => f.debug_struct("Delete").field("gc", gc).finish(),
+			Self::Delete(gone) => f.debug_struct("Delete").field("gone", gone).finish(),
+		}
+	}
+}
+
+#[derive(Debug)]
+pub struct ControlTicket {
+	pub id: TicketId,
+	pub control: Control,
+}
+
+impl From<Control> for ControlTicket {
+	fn from(control: Control) -> Self {
+		Self {
+			control,
+			id: TicketId::default(),
 		}
 	}
 }
