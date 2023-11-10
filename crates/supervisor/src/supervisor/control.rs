@@ -7,17 +7,28 @@ use std::{
 
 use command_group::Signal;
 use futures::{future::select, FutureExt};
+use tokio::process::Command as TokioCommand;
 
-use crate::flag::Flag;
+use crate::{command::Program, flag::Flag};
+
+use super::job::Job;
 
 pub enum Control {
 	Signal(Signal),
 	Wait(Option<Duration>),
-	Stop { signal: Signal, grace: Duration },
+	Stop {
+		signal: Signal,
+		grace: Duration,
+	},
 	Start,
-	StartWithAsyncHook(Box<dyn (FnOnce() -> dyn Future<Output = ()>) + Send + 'static>),
-	StartWithHook(Box<dyn FnOnce() + Send + 'static>),
-	TryRestart { signal: Signal, grace: Duration },
+	StartWithAsyncHook(
+		Box<dyn (FnOnce(&mut TokioCommand, &Program) -> dyn Future<Output = ()>) + Send + 'static>,
+	),
+	StartWithHook(Box<dyn FnOnce(&mut TokioCommand, &Program) + Send + 'static>),
+	TryRestart {
+		signal: Signal,
+		grace: Duration,
+	},
 	AsyncHook(Box<dyn (FnOnce() -> dyn Future<Output = ()>) + Send + 'static>),
 	Hook(Box<dyn FnOnce() + Send + 'static>),
 	Delete(Flag),

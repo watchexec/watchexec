@@ -6,8 +6,12 @@ use std::{
 };
 
 use command_group::Signal;
+use tokio::process::Command as TokioCommand;
 
-use crate::{command::Command, flag::Flag};
+use crate::{
+	command::{Command, Program},
+	flag::Flag,
+};
 
 use super::{
 	control::{Control, ControlMessage, Ticket},
@@ -90,7 +94,7 @@ impl Job {
 	/// Start the command, using the given pre-spawn hook.
 	pub async fn start_with_hook(
 		&self,
-		fun: impl FnOnce() + Send + 'static,
+		fun: impl FnOnce(&mut TokioCommand, &Program) + Send + 'static,
 	) -> Result<Ticket, SendError> {
 		self.control(Control::StartWithHook(Box::new(fun))).await
 	}
@@ -98,7 +102,7 @@ impl Job {
 	/// Start the command, using the given pre-spawn async hook.
 	pub async fn start_with_async_hook(
 		&self,
-		fun: impl (FnOnce() -> dyn Future<Output = ()>) + Send + 'static,
+		fun: impl (FnOnce(&mut TokioCommand, &Program) -> dyn Future<Output = ()>) + Send + 'static,
 	) -> Result<Ticket, SendError> {
 		self.control(Control::StartWithAsyncHook(Box::new(fun)))
 			.await
