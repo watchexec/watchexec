@@ -15,8 +15,10 @@ pub enum Control {
 	Wait(Option<Duration>),
 	Stop { signal: Signal, grace: Duration },
 	Start,
+	StartWithAsyncHook(Box<dyn (FnOnce() -> dyn Future<Output = ()>) + Send + 'static>),
 	StartWithHook(Box<dyn FnOnce() + Send + 'static>),
 	TryRestart { signal: Signal, grace: Duration },
+	AsyncHook(Box<dyn (FnOnce() -> dyn Future<Output = ()>) + Send + 'static>),
 	Hook(Box<dyn FnOnce() + Send + 'static>),
 	Delete(Flag),
 }
@@ -32,13 +34,17 @@ impl std::fmt::Debug for Control {
 				.field("grace", grace)
 				.finish(),
 			Self::Start => write!(f, "Start"),
-			Self::StartWithHook(arg0) => f.debug_struct("StartWithHook").finish_non_exhaustive(),
+			Self::StartWithAsyncHook(_) => {
+				f.debug_struct("StartWithAsyncHook").finish_non_exhaustive()
+			}
+			Self::StartWithHook(_) => f.debug_struct("StartWithHook").finish_non_exhaustive(),
 			Self::TryRestart { signal, grace } => f
 				.debug_struct("TryRestart")
 				.field("signal", signal)
 				.field("grace", grace)
 				.finish(),
-			Self::Hook(arg0) => f.debug_struct("Hook").finish_non_exhaustive(),
+			Self::AsyncHook(_) => f.debug_struct("AsyncHook").finish_non_exhaustive(),
+			Self::Hook(_) => f.debug_struct("Hook").finish_non_exhaustive(),
 			Self::Delete(gone) => f.debug_struct("Delete").field("gone", gone).finish(),
 		}
 	}

@@ -1,5 +1,6 @@
 use std::{
 	fmt::{self, Display},
+	future::Future,
 	sync::Arc,
 	time::Duration,
 };
@@ -94,6 +95,15 @@ impl Job {
 		self.control(Control::StartWithHook(Box::new(fun))).await
 	}
 
+	/// Start the command, using the given pre-spawn async hook.
+	pub async fn start_with_async_hook(
+		&self,
+		fun: impl (FnOnce() -> dyn Future<Output = ()>) + Send + 'static,
+	) -> Result<Ticket, SendError> {
+		self.control(Control::StartWithAsyncHook(Box::new(fun)))
+			.await
+	}
+
 	/// Restart the command if it's running, or start it if it's not.
 	pub async fn restart(&self, signal: Signal, grace: Duration) -> Result<Ticket, SendError> {
 		if self.gone.raised() {
@@ -120,6 +130,14 @@ impl Job {
 	/// Run a hook.
 	pub async fn run_hook(&self, fun: impl FnOnce() + Send + 'static) -> Result<Ticket, SendError> {
 		self.control(Control::Hook(Box::new(fun))).await
+	}
+
+	/// Run a hook and await the returned future.
+	pub async fn run_async_hook(
+		&self,
+		fun: impl (FnOnce() -> dyn Future<Output = ()>) + Send + 'static,
+	) -> Result<Ticket, SendError> {
+		self.control(Control::AsyncHook(Box::new(fun))).await
 	}
 
 	async fn delete_with(
