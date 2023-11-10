@@ -1,5 +1,5 @@
-use watchexec_supervisor::command::{Program, Shell};
 use command_group::AsyncCommandGroup;
+use watchexec_supervisor::command::{Program, Shell};
 
 #[tokio::test]
 #[cfg(unix)]

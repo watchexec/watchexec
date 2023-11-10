@@ -1,8 +1,14 @@
-use std::{time::Duration, sync::{atomic::AtomicBool, Arc}};
+use std::{
+	future::Future,
+	pin::Pin,
+	task::{Context, Poll},
+	time::Duration,
+};
 
 use command_group::Signal;
+use futures::{future::select, FutureExt};
 
-use super::ids::TicketId;
+use crate::flag::Flag;
 
 pub enum Control {
 	Signal(Signal),
@@ -12,7 +18,7 @@ pub enum Control {
 	StartWithHook(Box<dyn FnOnce() + Send + 'static>),
 	TryRestart { signal: Signal, grace: Duration },
 	Hook(Box<dyn FnOnce() + Send + 'static>),
-	Delete(Arc<AtomicBool>),
+	Delete(Flag),
 }
 
 impl std::fmt::Debug for Control {
@@ -39,16 +45,30 @@ impl std::fmt::Debug for Control {
 }
 
 #[derive(Debug)]
-pub struct ControlTicket {
-	pub id: TicketId,
+pub(crate) struct ControlMessage {
 	pub control: Control,
+	pub done: Flag,
 }
 
-impl From<Control> for ControlTicket {
-	fn from(control: Control) -> Self {
+#[derive(Debug, Clone)]
+pub struct Ticket {
+	pub(crate) job_gone: Flag,
+	pub(crate) control_done: Flag,
+}
+
+impl Ticket {
+	pub(crate) fn cancelled() -> Self {
 		Self {
-			control,
-			id: TicketId::default(),
+			job_gone: Flag::new(true),
+			control_done: Flag::new(true),
 		}
+	}
+}
+
+impl Future for Ticket {
+	type Output = ();
+
+	fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+		Pin::new(&mut select(self.job_gone.clone(), self.control_done.clone()).map(|_| ())).poll(cx)
 	}
 }

@@ -7,6 +7,7 @@
 //! will always primarily be driven by the needs of Watchexec itself.
 
 pub mod command;
+mod flag;
 pub mod supervisor;
 
 // #[doc(inline)]

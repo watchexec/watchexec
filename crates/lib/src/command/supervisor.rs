@@ -1,7 +1,7 @@
 use std::{num::NonZeroU64, sync::Arc};
 
 use async_priority_channel as priority;
-use command_group::{AsyncCommandGroup, tokio::ErasedChild};
+use command_group::{tokio::ErasedChild, AsyncCommandGroup};
 use tokio::{
 	select, spawn,
 	sync::{

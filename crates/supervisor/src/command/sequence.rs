@@ -1,4 +1,4 @@
-use std::{collections::VecDeque};
+use std::collections::VecDeque;
 
 use super::Program;
 
@@ -88,7 +88,7 @@ pub enum Sequence {
 		given: Box<Sequence>,
 		then: Option<Box<Sequence>>,
 		otherwise: Option<Box<Sequence>>,
-	}
+	},
 }
 
 impl Default for Sequence {
