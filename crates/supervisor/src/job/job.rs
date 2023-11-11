@@ -22,9 +22,10 @@ use super::{
 
 /// A handle to a job task spawned in the supervisor.
 ///
-/// A job is a task which manages a [`Command`]. It is responsible for spawning the command and
-/// handling control messages sent to it. It also manages the command's lifetime, and will collect
-/// its exit status.
+/// A job is a task which manages a [`Command`]. It is responsible for spawning the programs in the
+/// order determined by the command's [`Sequence`](crate::command::Sequence), and for handling
+/// messages which control it, for managing the programs' lifetimes, and for collecting their exit
+/// statuses and some timing information.
 ///
 /// All the async methods here queue [`Control`]s to the job task and return [`Ticket`]s. Controls
 /// execute in order, except where noted. Tickets are futures which resolve when the corresponding
@@ -76,6 +77,8 @@ impl Job {
 	}
 
 	/// Send a signal to the command.
+	///
+	/// Sends a signal to the current program, if there is one. If there isn't, this is a no-op.
 	pub async fn signal(&self, sig: Signal) -> Result<Ticket, SendError> {
 		self.control(Control::Signal(sig)).await
 	}
@@ -169,6 +172,9 @@ impl Job {
 	}
 
 	/// Restart the command if it's running, or start it if it's not.
+	///
+	/// Stops the currently running program, if any, using the same logic as [`Job::stop`]; the
+	/// `signal` and `grace` arguments are used for an optional graceful stop.
 	pub async fn restart(&self, signal: Signal, grace: Duration) -> Result<Ticket, SendError> {
 		if self.gone.raised() {
 			Ok(Ticket::cancelled())
@@ -187,6 +193,9 @@ impl Job {
 	}
 
 	/// Restart the command if it's running, but don't start it if it's not.
+	///
+	/// Stops the currently running program, if any, using the same logic as [`Job::stop`]; the
+	/// `signal` and `grace` arguments are used for an optional graceful stop.
 	pub async fn try_restart(&self, signal: Signal, grace: Duration) -> Result<Ticket, SendError> {
 		self.control(Control::TryRestart { signal, grace }).await
 	}
