@@ -37,6 +37,22 @@ pub enum Control {
 impl std::fmt::Debug for Control {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
+			Self::SetAsyncSpawnHook(_) => {
+				f.debug_struct("SetSpawnAsyncHook").finish_non_exhaustive()
+			}
+			Self::SetSyncSpawnHook(_) => f.debug_struct("SetSyncSpawnHook").finish_non_exhaustive(),
+			Self::UnsetSpawnHook => f.debug_struct("UnsetSpawnHook").finish(),
+			Self::SetAsyncErrorHandler(_) => f
+				.debug_struct("SetAsyncErrorHandler")
+				.finish_non_exhaustive(),
+			Self::SetSyncErrorHandler(_) => f
+				.debug_struct("SetSyncErrorHandler")
+				.finish_non_exhaustive(),
+			Self::UnsetErrorHandler => f.debug_struct("UnsetErrorHandler").finish(),
+
+			Self::AsyncFunc(_) => f.debug_struct("AsyncFunc").finish_non_exhaustive(),
+			Self::SyncFunc(_) => f.debug_struct("SyncFunc").finish_non_exhaustive(),
+
 			Self::Signal(signal) => f.debug_struct("Signal").field("signal", signal).finish(),
 			Self::Wait(timeout) => f.debug_struct("Wait").field("timeout", timeout).finish(),
 			Self::Skip { signal, grace } => f
@@ -50,25 +66,11 @@ impl std::fmt::Debug for Control {
 				.field("grace", grace)
 				.finish(),
 			Self::Start => f.debug_struct("Start").finish(),
-			Self::SetAsyncSpawnHook(_) => {
-				f.debug_struct("SetSpawnAsyncHook").finish_non_exhaustive()
-			}
-			Self::SetSyncSpawnHook(_) => f.debug_struct("SetSyncSpawnHook").finish_non_exhaustive(),
-			Self::UnsetSpawnHook => f.debug_struct("UnsetSpawnHook").finish(),
-			Self::SetAsyncErrorHandler(_) => f
-				.debug_struct("SetAsyncErrorHandler")
-				.finish_non_exhaustive(),
-			Self::SetSyncErrorHandler(_) => f
-				.debug_struct("SetSyncErrorHandler")
-				.finish_non_exhaustive(),
-			Self::UnsetErrorHandler => f.debug_struct("UnsetErrorHandler").finish(),
 			Self::TryRestart { signal, grace } => f
 				.debug_struct("TryRestart")
 				.field("signal", signal)
 				.field("grace", grace)
 				.finish(),
-			Self::AsyncFunc(_) => f.debug_struct("AsyncFunc").finish_non_exhaustive(),
-			Self::SyncFunc(_) => f.debug_struct("SyncFunc").finish_non_exhaustive(),
 			Self::Delete => f.debug_struct("Delete").finish(),
 		}
 	}
