@@ -6,7 +6,8 @@ use watchexec_supervisor::command::{Program, Shell};
 async fn unix_shell_none() -> Result<(), std::io::Error> {
 	assert!(Program::Exec {
 		prog: "echo".into(),
-		args: vec!["hi".into()]
+		args: vec!["hi".into()],
+		grouped: true,
 	}
 	.to_spawnable()
 	.group_status()
@@ -68,7 +69,8 @@ async fn unix_shell_alternate_shopts() -> Result<(), std::io::Error> {
 async fn windows_shell_none() -> Result<(), std::io::Error> {
 	assert!(Program::Exec {
 		prog: "echo".into(),
-		args: vec!["hi".into()]
+		args: vec!["hi".into()],
+		grouped: true,
 	}
 	.to_spawnable()
 	.unwrap()
