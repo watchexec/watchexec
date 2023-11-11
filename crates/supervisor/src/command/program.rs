@@ -100,6 +100,15 @@ impl Program {
 			}
 		}
 	}
+
+	/// Internal method to create a (non-sensical) empty program, for mem::replace.
+	pub(crate) fn empty() -> Self {
+		Self::Exec {
+			prog: PathBuf::new(),
+			args: Vec::new(),
+			grouped: false,
+		}
+	}
 }
 
 impl fmt::Display for Program {

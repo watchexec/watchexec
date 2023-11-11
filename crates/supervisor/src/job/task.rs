@@ -6,6 +6,7 @@ use crate::{
 	command::{Command, Program},
 	errors::{sync_io_error, SyncIoError},
 	flag::Flag,
+	job::program_state::SpawnResult,
 };
 
 use super::{
@@ -78,6 +79,19 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command, channel_size: Opti
 						try_with_handler!(child.signal(signal));
 					}
 				}
+				Control::Start => 'start: loop {
+					match sequence.spawn_next_program(&spawn_hook).await {
+						SpawnResult::Spawned | SpawnResult::AlreadyRunning => break 'start,
+						SpawnResult::SpawnError(error) => {
+							error_handler.call(error).await;
+							break 'start;
+						}
+						SpawnResult::SequenceFinished => {
+							sequence.reset();
+							continue 'start;
+						}
+					}
+				},
 
 				Control::Delete => {
 					done.raise();
@@ -97,14 +111,14 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command, channel_size: Opti
 
 macro_rules! sync_async_callbox {
 	($name:ident, $synct:ty, $asynct:ty, ($($argname:ident : $argtype:ty),*)) => {
-		enum $name {
+		pub(crate) enum $name {
 			None,
 			Sync($synct),
 			Async($asynct),
 		}
 
 		impl $name {
-			async fn call(&self, $($argname: $argtype),*) {
+			pub async fn call(&self, $($argname: $argtype),*) {
 				match self {
 					$name::None => (),
 					$name::Sync(f) => f($($argname),*),

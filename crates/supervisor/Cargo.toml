@@ -35,6 +35,10 @@ version = "1.0.0"
 default-features = false
 path = "../events"
 
+[target.'cfg(unix)'.dependencies.nix]
+version = "0.27.1"
+features = ["signal"]
+
 [dev-dependencies.tokio]
 version = "1.33.0"
 default-features = false
