@@ -10,32 +10,27 @@ use futures::{future::select, FutureExt};
 
 use crate::flag::Flag;
 
-use super::task::{AsyncErrorHandler, AsyncSpawnHook, SyncErrorHandler, SyncSpawnHook};
+use super::task::{
+	AsyncErrorHandler, AsyncFunc, AsyncSpawnHook, SyncErrorHandler, SyncFunc, SyncSpawnHook,
+};
 
 pub enum Control {
 	SetAsyncSpawnHook(AsyncSpawnHook),
-	SetSpawnHook(SyncSpawnHook),
+	SetSyncSpawnHook(SyncSpawnHook),
 	UnsetSpawnHook,
 	SetAsyncErrorHandler(AsyncErrorHandler),
-	SetErrorHandler(SyncErrorHandler),
+	SetSyncErrorHandler(SyncErrorHandler),
 	UnsetErrorHandler,
 
-	AsyncFunc(
-		Box<dyn (FnOnce() -> Box<dyn Future<Output = ()> + Send + Sync>) + Send + Sync + 'static>,
-	),
-	Func(Box<dyn FnOnce() + Send + Sync + 'static>),
+	AsyncFunc(AsyncFunc),
+	SyncFunc(SyncFunc),
 
 	Signal(Signal),
 	Wait(Option<Duration>),
-	Stop {
-		signal: Signal,
-		grace: Duration,
-	},
+	Skip { signal: Signal, grace: Duration },
+	Stop { signal: Signal, grace: Duration },
 	Start,
-	TryRestart {
-		signal: Signal,
-		grace: Duration,
-	},
+	TryRestart { signal: Signal, grace: Duration },
 	Delete,
 }
 
@@ -44,6 +39,11 @@ impl std::fmt::Debug for Control {
 		match self {
 			Self::Signal(signal) => f.debug_struct("Signal").field("signal", signal).finish(),
 			Self::Wait(timeout) => f.debug_struct("Wait").field("timeout", timeout).finish(),
+			Self::Skip { signal, grace } => f
+				.debug_struct("Skip")
+				.field("signal", signal)
+				.field("grace", grace)
+				.finish(),
 			Self::Stop { signal, grace } => f
 				.debug_struct("Stop")
 				.field("signal", signal)
@@ -53,20 +53,22 @@ impl std::fmt::Debug for Control {
 			Self::SetAsyncSpawnHook(_) => {
 				f.debug_struct("SetSpawnAsyncHook").finish_non_exhaustive()
 			}
-			Self::SetSpawnHook(_) => f.debug_struct("SetSpawnHook").finish_non_exhaustive(),
+			Self::SetSyncSpawnHook(_) => f.debug_struct("SetSyncSpawnHook").finish_non_exhaustive(),
 			Self::UnsetSpawnHook => f.debug_struct("UnsetSpawnHook").finish(),
 			Self::SetAsyncErrorHandler(_) => f
 				.debug_struct("SetAsyncErrorHandler")
 				.finish_non_exhaustive(),
-			Self::SetErrorHandler(_) => f.debug_struct("SetErrorHandler").finish_non_exhaustive(),
+			Self::SetSyncErrorHandler(_) => f
+				.debug_struct("SetSyncErrorHandler")
+				.finish_non_exhaustive(),
 			Self::UnsetErrorHandler => f.debug_struct("UnsetErrorHandler").finish(),
 			Self::TryRestart { signal, grace } => f
 				.debug_struct("TryRestart")
 				.field("signal", signal)
 				.field("grace", grace)
 				.finish(),
-			Self::AsyncFunc(_) => f.debug_struct("AsyncHook").finish_non_exhaustive(),
-			Self::Func(_) => f.debug_struct("Hook").finish_non_exhaustive(),
+			Self::AsyncFunc(_) => f.debug_struct("AsyncFunc").finish_non_exhaustive(),
+			Self::SyncFunc(_) => f.debug_struct("SyncFunc").finish_non_exhaustive(),
 			Self::Delete => f.debug_struct("Delete").finish(),
 		}
 	}

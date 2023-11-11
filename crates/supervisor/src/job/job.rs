@@ -17,6 +17,7 @@ use super::{
 	messages::{Control, ControlMessage, Ticket},
 	priority::Priority,
 	task::SyncIoError,
+	StateSequence,
 };
 
 /// A handle to a job task spawned in the supervisor.
@@ -86,8 +87,9 @@ impl Job {
 
 	/// Stop the command if it's running.
 	///
-	/// If `grace > Duration::ZERO`, the command will be sent `signal` and then given `grace` time
-	/// before being forcefully terminated.
+	/// If `grace > Duration::ZERO`, the current program will be sent `signal` and then given
+	/// `grace` time before being forcefully terminated. If the current program is in the middle of
+	/// the command sequence, the next program is not started; use `skip` if you want to do that.
 	pub async fn stop(&self, signal: Signal, grace: Duration) -> Result<Ticket, SendError> {
 		self.control(Control::Stop { signal, grace }).await
 	}
@@ -95,6 +97,14 @@ impl Job {
 	/// Start the command if it's not running.
 	pub async fn start(&self) -> Result<Ticket, SendError> {
 		self.control(Control::Start).await
+	}
+
+	/// Skip to the next program in the sequence.
+	///
+	/// Stops the currently running program, if any, and starts the next one in the sequence if
+	/// there is one. Takes the same arguments as [`Job::stop`] for an optional graceful stop.
+	pub async fn skip(&self, signal: Signal, grace: Duration) -> Result<Ticket, SendError> {
+		self.control(Control::Skip { signal, grace }).await
 	}
 
 	/// Set the spawn hook.
@@ -106,7 +116,7 @@ impl Job {
 		&self,
 		fun: impl Fn(&mut TokioCommand, &Program) + Send + Sync + 'static,
 	) -> Result<Ticket, SendError> {
-		self.control(Control::SetSpawnHook(Arc::new(fun))).await
+		self.control(Control::SetSyncSpawnHook(Arc::new(fun))).await
 	}
 
 	/// Set the spawn hook (async version).
@@ -135,7 +145,8 @@ impl Job {
 		&self,
 		fun: impl Fn(SyncIoError) + Send + Sync + 'static,
 	) -> Result<Ticket, SendError> {
-		self.control(Control::SetErrorHandler(Arc::new(fun))).await
+		self.control(Control::SetSyncErrorHandler(Arc::new(fun)))
+			.await
 	}
 
 	/// Set the error handler (async version).
@@ -181,17 +192,36 @@ impl Job {
 	}
 
 	/// Run an arbitrary function.
+	///
+	/// The function is given [`&StateSequence`](StateSequence): the state of the command sequence,
+	/// including the currently running program, and the exit status of past ones, plus timings.
+	///
+	/// Technically, some operations can be done through a `&self` shared borrow on the running
+	/// program [`ErasedChild`](command_group::tokio::ErasedChild), but this library recommends
+	/// against taking advantage of this, and prefer using the methods here instead, so that the
+	/// supervisor can keep track of what's going on.
 	pub async fn run(
 		&self,
-		fun: impl FnOnce() + Send + Sync + 'static,
+		fun: impl FnOnce(&StateSequence) + Send + Sync + 'static,
 	) -> Result<Ticket, SendError> {
-		self.control(Control::Func(Box::new(fun))).await
+		self.control(Control::SyncFunc(Box::new(fun))).await
 	}
 
 	/// Run an arbitrary function and await the returned future.
+	///
+	/// The function is given [`&StateSequence`](StateSequence): the state of the command sequence,
+	/// including the currently running program, and the exit status of past ones, plus timings.
+	///
+	/// Technically, some operations can be done through a `&self` shared borrow on the running
+	/// program [`ErasedChild`](command_group::tokio::ErasedChild), but this library recommends
+	/// against taking advantage of this, and prefer using the methods here instead, so that the
+	/// supervisor can keep track of what's going on.
 	pub async fn run_async(
 		&self,
-		fun: impl (FnOnce() -> Box<dyn Future<Output = ()> + Send + Sync>) + Send + Sync + 'static,
+		fun: impl (FnOnce(&StateSequence) -> Box<dyn Future<Output = ()> + Send + Sync>)
+			+ Send
+			+ Sync
+			+ 'static,
 	) -> Result<Ticket, SendError> {
 		self.control(Control::AsyncFunc(Box::new(fun))).await
 	}

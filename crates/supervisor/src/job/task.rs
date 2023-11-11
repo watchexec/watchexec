@@ -54,7 +54,7 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command, channel_size: Opti
 				Control::SetAsyncErrorHandler(f) => {
 					error_handler = ErrorHandler::Async(f);
 				}
-				Control::SetErrorHandler(f) => {
+				Control::SetSyncErrorHandler(f) => {
 					error_handler = ErrorHandler::Sync(f);
 				}
 				Control::UnsetErrorHandler => {
@@ -63,7 +63,7 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command, channel_size: Opti
 				Control::SetAsyncSpawnHook(f) => {
 					spawn_hook = SpawnHook::Async(f);
 				}
-				Control::SetSpawnHook(f) => {
+				Control::SetSyncSpawnHook(f) => {
 					spawn_hook = SpawnHook::Sync(f);
 				}
 				Control::UnsetSpawnHook => {
@@ -71,10 +71,10 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command, channel_size: Opti
 				}
 
 				Control::AsyncFunc(f) => {
-					Box::into_pin(f()).await;
+					Box::into_pin(f(&sequence)).await;
 				}
-				Control::Func(f) => {
-					f();
+				Control::SyncFunc(f) => {
+					f(&sequence);
 				}
 
 				Control::Signal(signal) => {
@@ -118,6 +118,14 @@ macro_rules! sync_async_callbox {
 		}
 	};
 }
+
+pub(crate) type SyncFunc = Box<dyn FnOnce(&StateSequence) + Send + Sync + 'static>;
+pub(crate) type AsyncFunc = Box<
+	dyn (FnOnce(&StateSequence) -> Box<dyn Future<Output = ()> + Send + Sync>)
+		+ Send
+		+ Sync
+		+ 'static,
+>;
 
 pub(crate) type SyncSpawnHook = Arc<dyn Fn(&mut TokioCommand, &Program) + Send + Sync + 'static>;
 pub(crate) type AsyncSpawnHook = Arc<
