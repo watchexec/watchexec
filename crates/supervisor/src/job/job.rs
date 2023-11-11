@@ -10,13 +10,13 @@ use tokio::process::Command as TokioCommand;
 
 use crate::{
 	command::{Command, Program},
+	errors::SyncIoError,
 	flag::Flag,
 };
 
 use super::{
 	messages::{Control, ControlMessage, Ticket},
 	priority::Priority,
-	task::SyncIoError,
 	StateSequence,
 };
 

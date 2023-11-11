@@ -1,12 +1,10 @@
-use std::{
-	future::Future,
-	sync::{Arc, OnceLock},
-};
+use std::{future::Future, sync::Arc};
 
 use tokio::{process::Command as TokioCommand, task::JoinSet};
 
 use crate::{
 	command::{Command, Program},
+	errors::{sync_io_error, SyncIoError},
 	flag::Flag,
 };
 
@@ -36,16 +34,14 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command, channel_size: Opti
 		let mut spawn_hook = SpawnHook::None;
 		let mut sequence = StateSequence::from(command.sequence);
 
-		while let Ok((ControlMessage { control, done }, _)) = receiver.recv().await {
+		'main: while let Ok((ControlMessage { control, done }, _)) = receiver.recv().await {
 			macro_rules! try_with_handler {
 				($erroring:expr) => {
 					if let Err(err) = $erroring {
-						let lock = OnceLock::new();
-						lock.set(err).ok();
-						let fut = error_handler.call(lock);
+						let fut = error_handler.call(sync_io_error(err));
 						fut.await;
 						done.raise();
-						continue;
+						continue 'main;
 					}
 				};
 			}
@@ -85,7 +81,7 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command, channel_size: Opti
 
 				Control::Delete => {
 					done.raise();
-					break;
+					break 'main;
 				}
 				_ => todo!(),
 			}
@@ -137,7 +133,6 @@ pub(crate) type AsyncSpawnHook = Arc<
 
 sync_async_callbox!(SpawnHook, SyncSpawnHook, AsyncSpawnHook, (command: &mut TokioCommand, program: &Program));
 
-pub type SyncIoError = OnceLock<std::io::Error>;
 pub(crate) type SyncErrorHandler = Arc<dyn Fn(SyncIoError) + Send + Sync + 'static>;
 pub(crate) type AsyncErrorHandler = Arc<
 	dyn (Fn(SyncIoError) -> Box<dyn Future<Output = ()> + Send + Sync>) + Send + Sync + 'static,
