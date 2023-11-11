@@ -8,7 +8,7 @@
 
 pub mod command;
 mod flag;
-pub mod supervisor;
+pub mod job;
 
 // #[doc(inline)]
 // pub use supervisor::{Args, Supervisor, SupervisorId};

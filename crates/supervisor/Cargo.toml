@@ -21,14 +21,19 @@ miette = "5.3.0"
 thiserror = "1.0.50"
 tracing = "0.1.40"
 
+[dependencies.command-group]
+version = "4.1.0"
+features = ["with-tokio"]
+
 [dependencies.tokio]
 version = "1.33.0"
 default-features = false
 features = ["rt"]
 
-[dependencies.command-group]
-version = "4.1.0"
-features = ["with-tokio"]
+[dependencies.watchexec-events]
+version = "1.0.0"
+default-features = false
+path = "../events"
 
 [dev-dependencies.tokio]
 version = "1.33.0"

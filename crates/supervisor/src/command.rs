@@ -1,7 +1,11 @@
 //! Command construction and configuration.
 
 #[doc(inline)]
-pub use self::{program::Program, sequence::Sequence, shell::Shell};
+pub use self::{
+	program::Program,
+	sequence::{Sequence, SequenceTree},
+	shell::Shell,
+};
 
 mod conversions;
 mod program;

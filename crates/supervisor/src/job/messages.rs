@@ -7,13 +7,24 @@ use std::{
 
 use command_group::Signal;
 use futures::{future::select, FutureExt};
-use tokio::process::Command as TokioCommand;
 
-use crate::{command::Program, flag::Flag};
+use crate::flag::Flag;
 
-use super::job::Job;
+use super::task::{AsyncErrorHandler, AsyncSpawnHook, SyncErrorHandler, SyncSpawnHook};
 
 pub enum Control {
+	SetAsyncSpawnHook(AsyncSpawnHook),
+	SetSpawnHook(SyncSpawnHook),
+	UnsetSpawnHook,
+	SetAsyncErrorHandler(AsyncErrorHandler),
+	SetErrorHandler(SyncErrorHandler),
+	UnsetErrorHandler,
+
+	AsyncFunc(
+		Box<dyn (FnOnce() -> Box<dyn Future<Output = ()> + Send + Sync>) + Send + Sync + 'static>,
+	),
+	Func(Box<dyn FnOnce() + Send + Sync + 'static>),
+
 	Signal(Signal),
 	Wait(Option<Duration>),
 	Stop {
@@ -21,17 +32,11 @@ pub enum Control {
 		grace: Duration,
 	},
 	Start,
-	StartWithAsyncHook(
-		Box<dyn (FnOnce(&mut TokioCommand, &Program) -> dyn Future<Output = ()>) + Send + 'static>,
-	),
-	StartWithHook(Box<dyn FnOnce(&mut TokioCommand, &Program) + Send + 'static>),
 	TryRestart {
 		signal: Signal,
 		grace: Duration,
 	},
-	AsyncHook(Box<dyn (FnOnce() -> dyn Future<Output = ()>) + Send + 'static>),
-	Hook(Box<dyn FnOnce() + Send + 'static>),
-	Delete(Flag),
+	Delete,
 }
 
 impl std::fmt::Debug for Control {
@@ -44,19 +49,25 @@ impl std::fmt::Debug for Control {
 				.field("signal", signal)
 				.field("grace", grace)
 				.finish(),
-			Self::Start => write!(f, "Start"),
-			Self::StartWithAsyncHook(_) => {
-				f.debug_struct("StartWithAsyncHook").finish_non_exhaustive()
+			Self::Start => f.debug_struct("Start").finish(),
+			Self::SetAsyncSpawnHook(_) => {
+				f.debug_struct("SetSpawnAsyncHook").finish_non_exhaustive()
 			}
-			Self::StartWithHook(_) => f.debug_struct("StartWithHook").finish_non_exhaustive(),
+			Self::SetSpawnHook(_) => f.debug_struct("SetSpawnHook").finish_non_exhaustive(),
+			Self::UnsetSpawnHook => f.debug_struct("UnsetSpawnHook").finish(),
+			Self::SetAsyncErrorHandler(_) => f
+				.debug_struct("SetAsyncErrorHandler")
+				.finish_non_exhaustive(),
+			Self::SetErrorHandler(_) => f.debug_struct("SetErrorHandler").finish_non_exhaustive(),
+			Self::UnsetErrorHandler => f.debug_struct("UnsetErrorHandler").finish(),
 			Self::TryRestart { signal, grace } => f
 				.debug_struct("TryRestart")
 				.field("signal", signal)
 				.field("grace", grace)
 				.finish(),
-			Self::AsyncHook(_) => f.debug_struct("AsyncHook").finish_non_exhaustive(),
-			Self::Hook(_) => f.debug_struct("Hook").finish_non_exhaustive(),
-			Self::Delete(gone) => f.debug_struct("Delete").field("gone", gone).finish(),
+			Self::AsyncFunc(_) => f.debug_struct("AsyncHook").finish_non_exhaustive(),
+			Self::Func(_) => f.debug_struct("Hook").finish_non_exhaustive(),
+			Self::Delete => f.debug_struct("Delete").finish(),
 		}
 	}
 }

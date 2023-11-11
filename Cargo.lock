@@ -3695,6 +3695,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
+ "watchexec-events",
 ]
 
 [[package]]

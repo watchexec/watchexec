@@ -7,6 +7,8 @@ use super::Program;
 /// This is effectively a hybrid tree of programs and subsequences, and can be thought of as the AST
 /// that would result from parsing a command line.
 ///
+/// See the [`SequenceTree`] enum for the variants' documentation.
+///
 /// # Examples
 ///
 /// For simple uses, the `From` and `FromIterator` implementations may be useful:
@@ -62,17 +64,24 @@ use super::Program;
 /// }.into());
 /// // = `make test || make fix`
 /// ```
+pub type Sequence = SequenceTree<Program>;
+
+/// A sequence tree of `T`.
+///
+/// You should generally use the [`Sequence`] type alias instead of this enum directly. This type is
+/// also used by the supervisor to represent the sequence of programs and their state, by swapping
+/// out the [`Program`] type parameter with [`ProgramState`](crate::job::ProgramState).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum Sequence {
+pub enum SequenceTree<T> {
 	/// A single program to execute.
-	Run(Program),
+	Run(T),
 
 	/// A list of subsequences to execute sequentially.
 	///
 	/// If a sequence fails, the next sequence is started. If all sequences fail, this sequence fails.
 	///
 	/// It is equivalent to `a; b; c; ...`.
-	List(VecDeque<Sequence>),
+	List(VecDeque<SequenceTree<T>>),
 
 	/// A conditional control.
 	///
@@ -85,9 +94,9 @@ pub enum Sequence {
 	///
 	/// If neither `then` nor `otherwise` are provided, this is equivalent to the `given` sequence.
 	Condition {
-		given: Box<Sequence>,
-		then: Option<Box<Sequence>>,
-		otherwise: Option<Box<Sequence>>,
+		given: Box<SequenceTree<T>>,
+		then: Option<Box<SequenceTree<T>>>,
+		otherwise: Option<Box<SequenceTree<T>>>,
 	},
 }
 
