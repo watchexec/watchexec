@@ -4,7 +4,6 @@ impl From<Program> for Command {
 	fn from(program: Program) -> Self {
 		Self {
 			sequence: Sequence::from(program),
-			grouped: false,
 		}
 	}
 }
@@ -16,7 +15,6 @@ impl FromIterator<Program> for Command {
 	{
 		Self {
 			sequence: Sequence::from_iter(programs),
-			grouped: false,
 		}
 	}
 }

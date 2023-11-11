@@ -21,6 +21,7 @@ mod shell;
 /// Command::from(Program::Exec {
 ///     prog: "ping".into(),
 ///     args: vec!["-c".into(), "4".into()],
+///     grouped: false,
 /// });
 /// ```
 ///
@@ -30,6 +31,7 @@ mod shell;
 ///     Program::Exec {
 ///         prog: "nslookup".into(),
 ///         args: vec!["google.com".into()],
+///         grouped: true,
 ///     },
 ///     Program::Shell {
 ///         shell: Shell::new("bash"),
@@ -46,13 +48,4 @@ pub struct Command {
 	/// such flows as `a && b`, `a || b`, `a; b`, and more. However, pipelines are not supported;
 	/// use a shell program for that.
 	pub sequence: Sequence,
-
-	/// Spawn the programs in a command group.
-	///
-	/// This will use either of Unix [process groups] or Windows [Job Objects] via the
-	/// [`command-group`] crate.
-	///
-	/// [process group]: https://en.wikipedia.org/wiki/Process_group
-	/// [Job Objects]: https://en.wikipedia.org/wiki/Object_Manager_(Windows)
-	pub grouped: bool,
 }

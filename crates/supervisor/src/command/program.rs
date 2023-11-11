@@ -15,9 +15,21 @@ pub enum Program {
 
 		/// The arguments to pass.
 		args: Vec<String>,
+
+		/// Run the program in a new process group.
+		///
+		/// This will use either of Unix [process groups] or Windows [Job Objects] via the
+		/// [`command-group`](command_group) crate.
+		///
+		/// [process group]: https://en.wikipedia.org/wiki/Process_group
+		/// [Job Objects]: https://en.wikipedia.org/wiki/Object_Manager_(Windows)
+		grouped: bool,
 	},
 
 	/// A shell program: a string which is to be executed by a shell.
+	///
+	/// We assume that the shell is handling job control, and so there is no option to create a new
+	/// process group as with [`Program::Exec`].
 	Shell {
 		/// The shell to run.
 		shell: Shell,
@@ -44,7 +56,7 @@ impl Program {
 		trace!(prog=?self, "constructing command");
 
 		match self {
-			Self::Exec { prog, args } => {
+			Self::Exec { prog, args, .. } => {
 				let mut c = TokioCommand::new(prog);
 				c.args(args);
 				c
@@ -93,7 +105,7 @@ impl Program {
 impl fmt::Display for Program {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
-			Self::Exec { prog, args } => {
+			Self::Exec { prog, args, .. } => {
 				write!(f, "{}", prog.display())?;
 				for arg in args {
 					write!(f, " {arg}")?;

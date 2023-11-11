@@ -18,6 +18,7 @@ use super::Program;
 /// Sequence::from(Program::Exec {
 ///     prog: "ping".into(),
 ///     args: vec!["-c".into(), "4".into()],
+///     grouped: false,
 /// });
 /// ```
 ///
@@ -27,6 +28,7 @@ use super::Program;
 ///     Program::Exec {
 ///         prog: "nslookup".into(),
 ///         args: vec!["google.com".into()],
+///         grouped: true,
 ///     },
 ///     Program::Shell {
 ///         shell: Shell::new("bash"),
@@ -43,6 +45,7 @@ use super::Program;
 /// Sequence::Run(Program::Exec {
 ///     prog: "nslookup".into(),
 ///     args: vec!["google.com".into()],
+///     grouped: false,
 /// }).and(Program::Shell {
 ///     shell: Shell::new("bash"),
 ///     command: "curl -L google.com >/dev/null".into(),
