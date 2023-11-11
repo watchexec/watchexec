@@ -34,6 +34,7 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command, channel_size: Opti
 		let mut error_handler = ErrorHandler::None;
 		let mut spawn_hook = SpawnHook::None;
 		let mut sequence = StateSequence::from(command.sequence);
+		let mut last_sequence = None;
 
 		'main: while let Ok((ControlMessage { control, done }, _)) = receiver.recv().await {
 			macro_rules! try_with_handler {
@@ -68,10 +69,17 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command, channel_size: Opti
 				}
 
 				Control::AsyncFunc(f) => {
-					Box::into_pin(f(&sequence)).await;
+					Box::into_pin(f(&JobTaskContext {
+						current_sequence: &sequence,
+						last_sequence: last_sequence.as_ref(),
+					}))
+					.await;
 				}
 				Control::SyncFunc(f) => {
-					f(&sequence);
+					f(&JobTaskContext {
+						current_sequence: &sequence,
+						last_sequence: last_sequence.as_ref(),
+					});
 				}
 
 				Control::Signal(signal) => {
@@ -87,7 +95,7 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command, channel_size: Opti
 							break 'start;
 						}
 						SpawnResult::SequenceFinished => {
-							sequence.reset();
+							last_sequence = Some(sequence.reset());
 							continue 'start;
 						}
 					}
@@ -129,9 +137,14 @@ macro_rules! sync_async_callbox {
 	};
 }
 
-pub(crate) type SyncFunc = Box<dyn FnOnce(&StateSequence) + Send + Sync + 'static>;
+pub struct JobTaskContext<'task> {
+	pub current_sequence: &'task StateSequence,
+	pub last_sequence: Option<&'task StateSequence>,
+}
+
+pub(crate) type SyncFunc = Box<dyn FnOnce(&JobTaskContext) + Send + Sync + 'static>;
 pub(crate) type AsyncFunc = Box<
-	dyn (FnOnce(&StateSequence) -> Box<dyn Future<Output = ()> + Send + Sync>)
+	dyn (FnOnce(&JobTaskContext) -> Box<dyn Future<Output = ()> + Send + Sync>)
 		+ Send
 		+ Sync
 		+ 'static,

@@ -3692,6 +3692,7 @@ dependencies = [
  "command-group",
  "futures",
  "miette",
+ "nix 0.27.1",
  "thiserror",
  "tokio",
  "tracing",

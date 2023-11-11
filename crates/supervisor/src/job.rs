@@ -4,6 +4,7 @@ pub use self::{
 	messages::{Control, Ticket},
 	priority::Priority,
 	program_state::{ProgramState, StateSequence},
+	task::JobTaskContext,
 };
 
 pub use task::start_job; // TODO: remove pub (dev only)

@@ -218,36 +218,89 @@ impl StateSequence {
 		}
 	}
 
-	pub(crate) fn reset(&mut self) {
+	#[must_use]
+	pub(crate) fn reset(&mut self) -> Self {
 		match self {
-			Self::Run(ProgramState::ToRun(_)) => {}
-			Self::Run(
-				state @ ProgramState::FailedToStart { .. }
-				| state @ ProgramState::IsRunning { .. }
-				| state @ ProgramState::Finished { .. },
-			) => {
-				let (ProgramState::FailedToStart { program, .. }
-				| ProgramState::IsRunning { program, .. }
-				| ProgramState::Finished { program, .. }) = state
-				else {
-					unreachable!("already matched")
-				};
-				*state = ProgramState::ToRun(std::mem::replace(program, Program::empty()))
+			Self::Run(ProgramState::ToRun(program)) => {
+				Self::Run(ProgramState::ToRun(program.clone()))
 			}
-			Self::List(list) => list.iter_mut().for_each(Self::reset),
+			Self::Run(state @ ProgramState::FailedToStart { .. }) => {
+				let (program, cloned) = {
+					let ProgramState::FailedToStart {
+						program,
+						error,
+						when,
+					} = state
+					else {
+						unreachable!()
+					};
+					(
+						program.clone(),
+						ProgramState::FailedToStart {
+							program: program.clone(),
+							error: error.clone(),
+							when: *when,
+						},
+					)
+				};
+				*state = ProgramState::ToRun(program.clone());
+				Self::Run(cloned)
+			}
+			Self::Run(state @ ProgramState::Finished { .. }) => {
+				let (program, cloned) = {
+					let ProgramState::Finished {
+						program,
+						status,
+						started,
+						finished,
+					} = state
+					else {
+						unreachable!()
+					};
+					(
+						program.clone(),
+						ProgramState::Finished {
+							program: program.clone(),
+							status: *status,
+							started: *started,
+							finished: *finished,
+						},
+					)
+				};
+				*state = ProgramState::ToRun(program.clone());
+				Self::Run(cloned)
+			}
+			Self::Run(state @ ProgramState::IsRunning { .. }) => {
+				let (program, cloned) = {
+					let ProgramState::IsRunning {
+						program, started, ..
+					} = state
+					else {
+						unreachable!()
+					};
+					(
+						program.clone(),
+						ProgramState::Finished {
+							program: program.clone(),
+							status: ProcessEnd::Continued,
+							started: *started,
+							finished: Instant::now(),
+						},
+					)
+				};
+				*state = ProgramState::ToRun(program.clone());
+				Self::Run(cloned)
+			}
+			Self::List(list) => Self::List(list.iter_mut().map(Self::reset).collect()),
 			Self::Condition {
 				given,
 				then,
 				otherwise,
-			} => {
-				given.reset();
-				if let Some(then) = then {
-					then.reset();
-				}
-				if let Some(otherwise) = otherwise {
-					otherwise.reset();
-				}
-			}
+			} => Self::Condition {
+				given: Box::new(given.reset()),
+				then: then.as_mut().map(|seq| Box::new(seq.reset())),
+				otherwise: otherwise.as_mut().map(|seq| Box::new(seq.reset())),
+			},
 		}
 	}
 }

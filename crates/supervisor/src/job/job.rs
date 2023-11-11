@@ -17,7 +17,7 @@ use crate::{
 use super::{
 	messages::{Control, ControlMessage, Ticket},
 	priority::Priority,
-	StateSequence,
+	JobTaskContext,
 };
 
 /// A handle to a job task spawned in the supervisor.
@@ -202,8 +202,9 @@ impl Job {
 
 	/// Run an arbitrary function.
 	///
-	/// The function is given [`&StateSequence`](StateSequence): the state of the command sequence,
-	/// including the currently running program, and the exit status of past ones, plus timings.
+	/// The function is given [`&JobTaskContext`](JobTaskContext), which contains the state of the
+	/// currently executing, next-to-start, or just-finished command sequence, as well as the final
+	/// state of the _last_ run of the sequence.
 	///
 	/// Technically, some operations can be done through a `&self` shared borrow on the running
 	/// program [`ErasedChild`](command_group::tokio::ErasedChild), but this library recommends
@@ -211,15 +212,16 @@ impl Job {
 	/// supervisor can keep track of what's going on.
 	pub async fn run(
 		&self,
-		fun: impl FnOnce(&StateSequence) + Send + Sync + 'static,
+		fun: impl FnOnce(&JobTaskContext) + Send + Sync + 'static,
 	) -> Result<Ticket, SendError> {
 		self.control(Control::SyncFunc(Box::new(fun))).await
 	}
 
 	/// Run an arbitrary function and await the returned future.
 	///
-	/// The function is given [`&StateSequence`](StateSequence): the state of the command sequence,
-	/// including the currently running program, and the exit status of past ones, plus timings.
+	/// The function is given [`&JobTaskContext`](JobTaskContext), which contains the state of the
+	/// currently executing, next-to-start, or just-finished command sequence, as well as the final
+	/// state of the _last_ run of the sequence.
 	///
 	/// Technically, some operations can be done through a `&self` shared borrow on the running
 	/// program [`ErasedChild`](command_group::tokio::ErasedChild), but this library recommends
@@ -227,7 +229,7 @@ impl Job {
 	/// supervisor can keep track of what's going on.
 	pub async fn run_async(
 		&self,
-		fun: impl (FnOnce(&StateSequence) -> Box<dyn Future<Output = ()> + Send + Sync>)
+		fun: impl (FnOnce(&JobTaskContext) -> Box<dyn Future<Output = ()> + Send + Sync>)
 			+ Send
 			+ Sync
 			+ 'static,
