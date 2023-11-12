@@ -76,27 +76,6 @@ impl Job {
 		}
 	}
 
-	/// Send a signal to the command.
-	///
-	/// Sends a signal to the current program, if there is one. If there isn't, this is a no-op.
-	pub async fn signal(&self, sig: Signal) -> Result<Ticket, SendError> {
-		self.control(Control::Signal(sig)).await
-	}
-
-	/// Wait for the command to exit, with an optional timeout.
-	pub async fn wait(&self, timeout: Option<Duration>) -> Result<Ticket, SendError> {
-		self.control(Control::Wait(timeout)).await
-	}
-
-	/// Stop the command if it's running.
-	///
-	/// If `grace > Duration::ZERO`, the current program will be sent `signal` and then given
-	/// `grace` time before being forcefully terminated. If the current program is in the middle of
-	/// the command sequence, the next program is not started; use `skip` if you want to do that.
-	pub async fn stop(&self, signal: Signal, grace: Duration) -> Result<Ticket, SendError> {
-		self.control(Control::Stop { signal, grace }).await
-	}
-
 	/// Start the command if it's not running.
 	pub async fn start(&self) -> Result<Ticket, SendError> {
 		self.control(Control::Start).await
@@ -108,6 +87,135 @@ impl Job {
 	/// there is one. Takes the same arguments as [`Job::stop`] for an optional graceful stop.
 	pub async fn skip(&self, signal: Signal, grace: Duration) -> Result<Ticket, SendError> {
 		self.control(Control::Skip { signal, grace }).await
+	}
+
+	/// Stop the command if it's running.
+	///
+	/// If `grace > Duration::ZERO`, the current program will be sent `signal` and then given
+	/// `grace` time before being forcefully terminated. If the current program is in the middle of
+	/// the command sequence, the next program is not started; use `skip` if you want to do that.
+	pub async fn stop(&self, signal: Signal, grace: Duration) -> Result<Ticket, SendError> {
+		self.control(Control::Stop { signal, grace }).await
+	}
+
+	/// Restart the command if it's running, or start it if it's not.
+	///
+	/// Stops the currently running program, if any, using the same logic as [`Job::stop`]; the
+	/// `signal` and `grace` arguments are used for an optional graceful stop.
+	pub async fn restart(&self, signal: Signal, grace: Duration) -> Result<Ticket, SendError> {
+		if self.gone.raised() {
+			Ok(Ticket::cancelled())
+		} else {
+			let (_, stop) = self.prepare_control(Control::Stop { signal, grace });
+			let (ticket, start) = self.prepare_control(Control::Start);
+			self.control_queue
+				.sendv(
+					[(stop, Priority::Normal), (start, Priority::Normal)]
+						.into_iter()
+						.peekable(),
+				)
+				.await?;
+			Ok(ticket)
+		}
+	}
+
+	/// Restart the command if it's running, but don't start it if it's not.
+	///
+	/// Stops the currently running program, if any, using the same logic as [`Job::stop`]; the
+	/// `signal` and `grace` arguments are used for an optional graceful stop.
+	pub async fn try_restart(&self, signal: Signal, grace: Duration) -> Result<Ticket, SendError> {
+		self.control(Control::TryRestart { signal, grace }).await
+	}
+
+	/// Wait for the command to exit, with an optional timeout.
+	pub async fn wait(&self, timeout: Option<Duration>) -> Result<Ticket, SendError> {
+		self.control(Control::Wait(timeout)).await
+	}
+
+	/// Send a signal to the command.
+	///
+	/// Sends a signal to the current program, if there is one. If there isn't, this is a no-op.
+	pub async fn signal(&self, sig: Signal) -> Result<Ticket, SendError> {
+		self.control(Control::Signal(sig)).await
+	}
+
+	async fn delete_with(
+		&self,
+		priority: Priority,
+		signal: Signal,
+		grace: Duration,
+	) -> Result<Ticket, SendError> {
+		if self.gone.raised() {
+			Ok(Ticket::cancelled())
+		} else {
+			let (_, stop) = self.prepare_control(Control::Stop { signal, grace });
+			let (ticket, delete) = self.prepare_control(Control::Delete);
+			self.control_queue
+				.sendv(
+					[(stop, priority), (delete, priority)]
+						.into_iter()
+						.peekable(),
+				)
+				.await?;
+			Ok(ticket)
+		}
+	}
+
+	/// Stop the command, then mark it for garbage collection.
+	///
+	/// The underlying control messages are sent like normal, so they wait for all pending controls
+	/// to process. If you want to delete the command immediately, use `delete_now()`.
+	///
+	/// The arguments are the same as for `stop()`.
+	pub async fn delete(&self, signal: Signal, grace: Duration) -> Result<Ticket, SendError> {
+		self.delete_with(Priority::Normal, signal, grace).await
+	}
+
+	/// Stop the command immediately, then mark it for garbage collection.
+	///
+	/// The underlying control messages are sent with higher priority than normal, so they bypass
+	/// all others. If you want to delete after all current controls are processed, use `delete()`.
+	///
+	/// The arguments are the same as for `stop()`.
+	pub async fn delete_now(&self, signal: Signal, grace: Duration) -> Result<Ticket, SendError> {
+		self.delete_with(Priority::Urgent, signal, grace).await
+	}
+
+	/// Run an arbitrary function.
+	///
+	/// The function is given [`&JobTaskContext`](JobTaskContext), which contains the state of the
+	/// currently executing, next-to-start, or just-finished command sequence, as well as the final
+	/// state of the _last_ run of the sequence.
+	///
+	/// Technically, some operations can be done through a `&self` shared borrow on the running
+	/// program [`ErasedChild`](command_group::tokio::ErasedChild), but this library recommends
+	/// against taking advantage of this, and prefer using the methods here instead, so that the
+	/// supervisor can keep track of what's going on.
+	pub async fn run(
+		&self,
+		fun: impl FnOnce(&JobTaskContext) + Send + Sync + 'static,
+	) -> Result<Ticket, SendError> {
+		self.control(Control::SyncFunc(Box::new(fun))).await
+	}
+
+	/// Run an arbitrary function and await the returned future.
+	///
+	/// The function is given [`&JobTaskContext`](JobTaskContext), which contains the state of the
+	/// currently executing, next-to-start, or just-finished command sequence, as well as the final
+	/// state of the _last_ run of the sequence.
+	///
+	/// Technically, some operations can be done through a `&self` shared borrow on the running
+	/// program [`ErasedChild`](command_group::tokio::ErasedChild), but this library recommends
+	/// against taking advantage of this, and prefer using the methods here instead, so that the
+	/// supervisor can keep track of what's going on.
+	pub async fn run_async(
+		&self,
+		fun: impl (FnOnce(&JobTaskContext) -> Box<dyn Future<Output = ()> + Send + Sync>)
+			+ Send
+			+ Sync
+			+ 'static,
+	) -> Result<Ticket, SendError> {
+		self.control(Control::AsyncFunc(Box::new(fun))).await
 	}
 
 	/// Set the spawn hook.
@@ -169,114 +277,6 @@ impl Job {
 	/// Errors will be silently ignored.
 	pub async fn unset_error_handler(&self) -> Result<Ticket, SendError> {
 		self.control(Control::UnsetErrorHandler).await
-	}
-
-	/// Restart the command if it's running, or start it if it's not.
-	///
-	/// Stops the currently running program, if any, using the same logic as [`Job::stop`]; the
-	/// `signal` and `grace` arguments are used for an optional graceful stop.
-	pub async fn restart(&self, signal: Signal, grace: Duration) -> Result<Ticket, SendError> {
-		if self.gone.raised() {
-			Ok(Ticket::cancelled())
-		} else {
-			let (_, stop) = self.prepare_control(Control::Stop { signal, grace });
-			let (ticket, start) = self.prepare_control(Control::Start);
-			self.control_queue
-				.sendv(
-					[(stop, Priority::Normal), (start, Priority::Normal)]
-						.into_iter()
-						.peekable(),
-				)
-				.await?;
-			Ok(ticket)
-		}
-	}
-
-	/// Restart the command if it's running, but don't start it if it's not.
-	///
-	/// Stops the currently running program, if any, using the same logic as [`Job::stop`]; the
-	/// `signal` and `grace` arguments are used for an optional graceful stop.
-	pub async fn try_restart(&self, signal: Signal, grace: Duration) -> Result<Ticket, SendError> {
-		self.control(Control::TryRestart { signal, grace }).await
-	}
-
-	/// Run an arbitrary function.
-	///
-	/// The function is given [`&JobTaskContext`](JobTaskContext), which contains the state of the
-	/// currently executing, next-to-start, or just-finished command sequence, as well as the final
-	/// state of the _last_ run of the sequence.
-	///
-	/// Technically, some operations can be done through a `&self` shared borrow on the running
-	/// program [`ErasedChild`](command_group::tokio::ErasedChild), but this library recommends
-	/// against taking advantage of this, and prefer using the methods here instead, so that the
-	/// supervisor can keep track of what's going on.
-	pub async fn run(
-		&self,
-		fun: impl FnOnce(&JobTaskContext) + Send + Sync + 'static,
-	) -> Result<Ticket, SendError> {
-		self.control(Control::SyncFunc(Box::new(fun))).await
-	}
-
-	/// Run an arbitrary function and await the returned future.
-	///
-	/// The function is given [`&JobTaskContext`](JobTaskContext), which contains the state of the
-	/// currently executing, next-to-start, or just-finished command sequence, as well as the final
-	/// state of the _last_ run of the sequence.
-	///
-	/// Technically, some operations can be done through a `&self` shared borrow on the running
-	/// program [`ErasedChild`](command_group::tokio::ErasedChild), but this library recommends
-	/// against taking advantage of this, and prefer using the methods here instead, so that the
-	/// supervisor can keep track of what's going on.
-	pub async fn run_async(
-		&self,
-		fun: impl (FnOnce(&JobTaskContext) -> Box<dyn Future<Output = ()> + Send + Sync>)
-			+ Send
-			+ Sync
-			+ 'static,
-	) -> Result<Ticket, SendError> {
-		self.control(Control::AsyncFunc(Box::new(fun))).await
-	}
-
-	async fn delete_with(
-		&self,
-		priority: Priority,
-		signal: Signal,
-		grace: Duration,
-	) -> Result<Ticket, SendError> {
-		if self.gone.raised() {
-			Ok(Ticket::cancelled())
-		} else {
-			let (_, stop) = self.prepare_control(Control::Stop { signal, grace });
-			let (ticket, delete) = self.prepare_control(Control::Delete);
-			self.control_queue
-				.sendv(
-					[(stop, priority), (delete, priority)]
-						.into_iter()
-						.peekable(),
-				)
-				.await?;
-			Ok(ticket)
-		}
-	}
-
-	/// Stop the command, then mark it for garbage collection.
-	///
-	/// The underlying control messages are sent like normal, so they wait for all pending controls
-	/// to process. If you want to delete the command immediately, use `delete_now()`.
-	///
-	/// The arguments are the same as for `stop()`.
-	pub async fn delete(&self, signal: Signal, grace: Duration) -> Result<Ticket, SendError> {
-		self.delete_with(Priority::Normal, signal, grace).await
-	}
-
-	/// Stop the command immediately, then mark it for garbage collection.
-	///
-	/// The underlying control messages are sent with higher priority than normal, so they bypass
-	/// all others. If you want to delete after all current controls are processed, use `delete()`.
-	///
-	/// The arguments are the same as for `stop()`.
-	pub async fn delete_now(&self, signal: Signal, grace: Duration) -> Result<Ticket, SendError> {
-		self.delete_with(Priority::Urgent, signal, grace).await
 	}
 }
 

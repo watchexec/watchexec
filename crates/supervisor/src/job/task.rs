@@ -49,44 +49,6 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command, channel_size: Opti
 			}
 
 			match control {
-				Control::SetAsyncErrorHandler(f) => {
-					error_handler = ErrorHandler::Async(f);
-				}
-				Control::SetSyncErrorHandler(f) => {
-					error_handler = ErrorHandler::Sync(f);
-				}
-				Control::UnsetErrorHandler => {
-					error_handler = ErrorHandler::None;
-				}
-				Control::SetAsyncSpawnHook(f) => {
-					spawn_hook = SpawnHook::Async(f);
-				}
-				Control::SetSyncSpawnHook(f) => {
-					spawn_hook = SpawnHook::Sync(f);
-				}
-				Control::UnsetSpawnHook => {
-					spawn_hook = SpawnHook::None;
-				}
-
-				Control::AsyncFunc(f) => {
-					Box::into_pin(f(&JobTaskContext {
-						current_sequence: &sequence,
-						last_sequence: last_sequence.as_ref(),
-					}))
-					.await;
-				}
-				Control::SyncFunc(f) => {
-					f(&JobTaskContext {
-						current_sequence: &sequence,
-						last_sequence: last_sequence.as_ref(),
-					});
-				}
-
-				Control::Signal(signal) => {
-					if let Some(child) = sequence.current_child() {
-						try_with_handler!(child.signal(signal));
-					}
-				}
 				Control::Start => 'start: loop {
 					match sequence.spawn_next_program(&spawn_hook).await {
 						SpawnResult::Spawned | SpawnResult::AlreadyRunning => break 'start,
@@ -100,10 +62,48 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command, channel_size: Opti
 						}
 					}
 				},
-
+				//
+				Control::Signal(signal) => {
+					if let Some(child) = sequence.current_child() {
+						try_with_handler!(child.signal(signal));
+					}
+				}
 				Control::Delete => {
 					done.raise();
 					break 'main;
+				}
+
+				Control::SyncFunc(f) => {
+					f(&JobTaskContext {
+						current_sequence: &sequence,
+						last_sequence: last_sequence.as_ref(),
+					});
+				}
+				Control::AsyncFunc(f) => {
+					Box::into_pin(f(&JobTaskContext {
+						current_sequence: &sequence,
+						last_sequence: last_sequence.as_ref(),
+					}))
+					.await;
+				}
+
+				Control::SetSyncErrorHandler(f) => {
+					error_handler = ErrorHandler::Sync(f);
+				}
+				Control::SetAsyncErrorHandler(f) => {
+					error_handler = ErrorHandler::Async(f);
+				}
+				Control::UnsetErrorHandler => {
+					error_handler = ErrorHandler::None;
+				}
+				Control::SetSyncSpawnHook(f) => {
+					spawn_hook = SpawnHook::Sync(f);
+				}
+				Control::SetAsyncSpawnHook(f) => {
+					spawn_hook = SpawnHook::Async(f);
+				}
+				Control::UnsetSpawnHook => {
+					spawn_hook = SpawnHook::None;
 				}
 				_ => todo!(),
 			}
