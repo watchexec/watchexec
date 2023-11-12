@@ -190,7 +190,7 @@ impl Job {
 	/// actively running program, not the one that will be running after the rest of the controls
 	/// get done; note that may still be racy if the program ends between the time the message is
 	/// sent and the time it's processed.
-	pub async fn until_program_end(&self) -> Result<Ticket, SendError> {
+	pub async fn this_program_end(&self) -> Result<Ticket, SendError> {
 		self.send_controls(vec![Control::NextEnding], Priority::High)
 			.await
 	}
@@ -203,7 +203,7 @@ impl Job {
 	/// actively running sequence, not the one that will be running after the rest of the controls
 	/// get done; note that may still be racy if the sequence ends between the time the message is
 	/// sent and the time it's processed.
-	pub async fn until_sequence_end(&self) -> Result<Ticket, SendError> {
+	pub async fn this_sequence_end(&self) -> Result<Ticket, SendError> {
 		self.send_controls(vec![Control::SequenceEnding], Priority::High)
 			.await
 	}
