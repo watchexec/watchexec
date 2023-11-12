@@ -58,7 +58,7 @@ impl Job {
 		controls: [Control; N],
 		priority: Priority,
 	) -> Result<Ticket, SendError> {
-		if self.gone.raised() {
+		if N == 0 || self.gone.raised() {
 			Ok(Ticket::cancelled())
 		} else if N == 1 {
 			let control = controls.into_iter().next().unwrap();
@@ -66,16 +66,13 @@ impl Job {
 			self.control_queue.send(control, priority)?;
 			Ok(ticket)
 		} else {
-			let (mut tickets, controls): (Vec<Ticket>, Vec<ControlMessage>) = controls
-				.into_iter()
-				.map(|control| self.prepare_control(control))
-				.unzip();
-			let ticket = tickets.pop().expect("controls should always be non-empty");
-
+			let mut last_ticket = None;
 			for control in controls {
+				let (ticket, control) = self.prepare_control(control);
+				last_ticket = Some(ticket);
 				self.control_queue.send(control, priority)?;
 			}
-			Ok(ticket)
+			Ok(last_ticket.unwrap())
 		}
 	}
 
