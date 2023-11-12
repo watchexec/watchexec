@@ -1,10 +1,4 @@
-use std::{
-	error::Error,
-	fmt::{self, Display},
-	future::Future,
-	sync::Arc,
-	time::Duration,
-};
+use std::{future::Future, sync::Arc, time::Duration};
 
 use tokio::process::Command as TokioCommand;
 use watchexec_signals::Signal;
@@ -13,7 +7,7 @@ use crate::{command::Command, errors::SyncIoError, flag::Flag};
 
 use super::{
 	messages::{Control, ControlMessage, Ticket},
-	priority::Priority,
+	priority::{Priority, PrioritySender, SendError},
 	JobTaskContext,
 };
 
@@ -23,7 +17,7 @@ use super::{
 /// program, for handling messages which control it, for managing the program's lifetime, and for
 /// collecting its exit status and some timing information.
 ///
-/// All the async methods here queue [`Control`]s to the job task and return [`Ticket`]s. Controls
+/// Most of the methods here queue [`Control`]s to the job task and return [`Ticket`]s. Controls
 /// execute in order, except where noted. Tickets are futures which resolve when the corresponding
 /// control has been run. Unlike most futures, tickets don't need to be polled for controls to make
 /// progress; the future is only used to signal completion. Dropping a ticket will not drop the
@@ -36,7 +30,7 @@ use super::{
 #[derive(Debug, Clone)]
 pub struct Job {
 	pub(crate) command: Arc<Command>,
-	pub(crate) control_queue: async_priority_channel::Sender<ControlMessage, Priority>,
+	pub(crate) control_queue: PrioritySender,
 
 	/// Set to true when the command task has stopped gracefully.
 	pub(crate) gone: Flag,
@@ -59,7 +53,7 @@ impl Job {
 		)
 	}
 
-	async fn send_controls(
+	fn send_controls(
 		&self,
 		mut controls: Vec<Control>,
 		priority: Priority,
@@ -68,7 +62,7 @@ impl Job {
 			Ok(Ticket::cancelled())
 		} else if controls.len() == 1 {
 			let (ticket, control) = self.prepare_control(controls.pop().unwrap());
-			self.control_queue.send(control, priority).await?;
+			self.control_queue.send(control, priority)?;
 			Ok(ticket)
 		} else {
 			let (mut tickets, controls): (Vec<Ticket>, Vec<ControlMessage>) = controls
@@ -77,14 +71,9 @@ impl Job {
 				.unzip();
 			let ticket = tickets.pop().expect("controls should always be non-empty");
 
-			self.control_queue
-				.sendv(
-					controls
-						.into_iter()
-						.map(|control| (control, priority))
-						.peekable(),
-				)
-				.await?;
+			for control in controls {
+				self.control_queue.send(control, priority)?;
+			}
 			Ok(ticket)
 		}
 	}
@@ -95,18 +84,18 @@ impl Job {
 	///
 	/// In general prefer using the other methods on this struct rather than sending [`Control`]s
 	/// directly.
-	pub async fn control(&self, control: Control) -> Result<Ticket, SendError> {
-		self.send_controls(vec![control], Priority::Normal).await
+	pub fn control(&self, control: Control) -> Result<Ticket, SendError> {
+		self.send_controls(vec![control], Priority::Normal)
 	}
 
 	/// Start the command if it's not running.
-	pub async fn start(&self) -> Result<Ticket, SendError> {
-		self.control(Control::Start).await
+	pub fn start(&self) -> Result<Ticket, SendError> {
+		self.control(Control::Start)
 	}
 
 	/// Stop the command if it's running.
-	pub async fn stop(&self) -> Result<Ticket, SendError> {
-		self.control(Control::Stop).await
+	pub fn stop(&self) -> Result<Ticket, SendError> {
+		self.control(Control::Stop)
 	}
 
 	/// Gracefully stop the command if it's running.
@@ -115,22 +104,17 @@ impl Job {
 	/// before being forcefully terminated.
 	///
 	/// On Windows, this is equivalent to [`stop`](Job::stop).
-	pub async fn stop_with_signal(
-		&self,
-		signal: Signal,
-		grace: Duration,
-	) -> Result<Ticket, SendError> {
+	pub fn stop_with_signal(&self, signal: Signal, grace: Duration) -> Result<Ticket, SendError> {
 		if cfg!(unix) {
-			self.control(Control::GracefulStop { signal, grace }).await
+			self.control(Control::GracefulStop { signal, grace })
 		} else {
-			self.stop().await
+			self.stop()
 		}
 	}
 
 	/// Restart the command if it's running, or start it if it's not.
-	pub async fn restart(&self) -> Result<Ticket, SendError> {
+	pub fn restart(&self) -> Result<Ticket, SendError> {
 		self.send_controls(vec![Control::Stop, Control::Start], Priority::Normal)
-			.await
 	}
 
 	/// Gracefully restart the command if it's running, or start it if it's not.
@@ -139,7 +123,7 @@ impl Job {
 	/// before being forcefully terminated.
 	///
 	/// On Windows, this is equivalent to [`restart`](Job::restart).
-	pub async fn restart_with_signal(
+	pub fn restart_with_signal(
 		&self,
 		signal: Signal,
 		grace: Duration,
@@ -149,15 +133,14 @@ impl Job {
 				vec![Control::GracefulStop { signal, grace }, Control::Start],
 				Priority::Normal,
 			)
-			.await
 		} else {
-			self.restart().await
+			self.restart()
 		}
 	}
 
 	/// Restart the command if it's running, but don't start it if it's not.
-	pub async fn try_restart(&self) -> Result<Ticket, SendError> {
-		self.control(Control::TryRestart).await
+	pub fn try_restart(&self) -> Result<Ticket, SendError> {
+		self.control(Control::TryRestart)
 	}
 
 	/// Restart the command if it's running, but don't start it if it's not.
@@ -166,16 +149,15 @@ impl Job {
 	/// before being forcefully terminated.
 	///
 	/// On Windows, this is equivalent to [`try_restart`](Job::try_restart).
-	pub async fn try_restart_with_signal(
+	pub fn try_restart_with_signal(
 		&self,
 		signal: Signal,
 		grace: Duration,
 	) -> Result<Ticket, SendError> {
 		if cfg!(unix) {
 			self.control(Control::TryGracefulRestart { signal, grace })
-				.await
 		} else {
-			self.try_restart().await
+			self.try_restart()
 		}
 	}
 
@@ -184,9 +166,9 @@ impl Job {
 	/// Sends a signal to the current program, if there is one. If there isn't, this is a no-op.
 	///
 	/// On Windows, this is a no-op.
-	pub async fn signal(&self, sig: Signal) -> Result<Ticket, SendError> {
+	pub fn signal(&self, sig: Signal) -> Result<Ticket, SendError> {
 		if cfg!(unix) {
-			self.control(Control::Signal(sig)).await
+			self.control(Control::Signal(sig))
 		} else {
 			Ok(Ticket::cancelled())
 		}
@@ -196,18 +178,16 @@ impl Job {
 	///
 	/// The underlying control messages are sent like normal, so they wait for all pending controls
 	/// to process. If you want to delete the command immediately, use `delete_now()`.
-	pub async fn delete(&self) -> Result<Ticket, SendError> {
+	pub fn delete(&self) -> Result<Ticket, SendError> {
 		self.send_controls(vec![Control::Stop, Control::Delete], Priority::Normal)
-			.await
 	}
 
 	/// Stop the command immediately, then mark it for garbage collection.
 	///
 	/// The underlying control messages are sent with higher priority than normal, so they bypass
 	/// all others. If you want to delete after all current controls are processed, use `delete()`.
-	pub async fn delete_now(&self) -> Result<Ticket, SendError> {
+	pub fn delete_now(&self) -> Result<Ticket, SendError> {
 		self.send_controls(vec![Control::Stop, Control::Delete], Priority::Urgent)
-			.await
 	}
 
 	/// Get a future which resolves when the command ends.
@@ -218,9 +198,8 @@ impl Job {
 	/// actively running command, not the one that will be running after the rest of the controls
 	/// get done; note that may still be racy if the command ends between the time the message is
 	/// sent and the time it's processed.
-	pub async fn to_wait(&self) -> Result<Ticket, SendError> {
+	pub fn to_wait(&self) -> Result<Ticket, SendError> {
 		self.send_controls(vec![Control::NextEnding], Priority::High)
-			.await
 	}
 
 	/// Run an arbitrary function.
@@ -233,11 +212,11 @@ impl Job {
 	/// command's [`ErasedChild`](command_group::tokio::ErasedChild), but this library recommends
 	/// against taking advantage of this, and prefer using the methods here instead, so that the
 	/// supervisor can keep track of what's going on.
-	pub async fn run(
+	pub fn run(
 		&self,
 		fun: impl FnOnce(&JobTaskContext) + Send + Sync + 'static,
 	) -> Result<Ticket, SendError> {
-		self.control(Control::SyncFunc(Box::new(fun))).await
+		self.control(Control::SyncFunc(Box::new(fun)))
 	}
 
 	/// Run an arbitrary function and await the returned future.
@@ -250,14 +229,14 @@ impl Job {
 	/// command's [`ErasedChild`](command_group::tokio::ErasedChild), but this library recommends
 	/// against taking advantage of this, and prefer using the methods here instead, so that the
 	/// supervisor can keep track of what's going on.
-	pub async fn run_async(
+	pub fn run_async(
 		&self,
 		fun: impl (FnOnce(&JobTaskContext) -> Box<dyn Future<Output = ()> + Send + Sync>)
 			+ Send
 			+ Sync
 			+ 'static,
 	) -> Result<Ticket, SendError> {
-		self.control(Control::AsyncFunc(Box::new(fun))).await
+		self.control(Control::AsyncFunc(Box::new(fun)))
 	}
 
 	/// Set the spawn hook.
@@ -265,11 +244,11 @@ impl Job {
 	/// The hook will be called once per process spawned, before the process is spawned. It's given
 	/// a mutable reference to the [`tokio::process::Command`] and some context; it can modify the
 	/// command as it sees fit.
-	pub async fn set_spawn_hook(
+	pub fn set_spawn_hook(
 		&self,
 		fun: impl Fn(&mut TokioCommand, &JobTaskContext) + Send + Sync + 'static,
 	) -> Result<Ticket, SendError> {
-		self.control(Control::SetSyncSpawnHook(Arc::new(fun))).await
+		self.control(Control::SetSyncSpawnHook(Arc::new(fun)))
 	}
 
 	/// Set the spawn hook (async version).
@@ -277,7 +256,7 @@ impl Job {
 	/// The hook will be called once per process spawned, before the process is spawned. It's given
 	/// a mutable reference to the [`tokio::process::Command`] and some context; it can modify the
 	/// command as it sees fit.
-	pub async fn set_spawn_async_hook(
+	pub fn set_spawn_async_hook(
 		&self,
 		fun: impl (Fn(&mut TokioCommand, &JobTaskContext) -> Box<dyn Future<Output = ()> + Send + Sync>)
 			+ Send
@@ -285,25 +264,23 @@ impl Job {
 			+ 'static,
 	) -> Result<Ticket, SendError> {
 		self.control(Control::SetAsyncSpawnHook(Arc::new(fun)))
-			.await
 	}
 
 	/// Unset any spawn hook.
-	pub async fn unset_spawn_hook(&self) -> Result<Ticket, SendError> {
-		self.control(Control::UnsetSpawnHook).await
+	pub fn unset_spawn_hook(&self) -> Result<Ticket, SendError> {
+		self.control(Control::UnsetSpawnHook)
 	}
 
 	/// Set the error handler.
-	pub async fn set_error_handler(
+	pub fn set_error_handler(
 		&self,
 		fun: impl Fn(SyncIoError) + Send + Sync + 'static,
 	) -> Result<Ticket, SendError> {
 		self.control(Control::SetSyncErrorHandler(Arc::new(fun)))
-			.await
 	}
 
 	/// Set the error handler (async version).
-	pub async fn set_async_error_handler(
+	pub fn set_async_error_handler(
 		&self,
 		fun: impl (Fn(SyncIoError) -> Box<dyn Future<Output = ()> + Send + Sync>)
 			+ Send
@@ -311,33 +288,12 @@ impl Job {
 			+ 'static,
 	) -> Result<Ticket, SendError> {
 		self.control(Control::SetAsyncErrorHandler(Arc::new(fun)))
-			.await
 	}
 
 	/// Unset the error handler.
 	///
 	/// Errors will be silently ignored.
-	pub async fn unset_error_handler(&self) -> Result<Ticket, SendError> {
-		self.control(Control::UnsetErrorHandler).await
+	pub fn unset_error_handler(&self) -> Result<Ticket, SendError> {
+		self.control(Control::UnsetErrorHandler)
 	}
 }
-
-/// Error when sending a control message.
-///
-/// This can only happen if the command task panics.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct SendError;
-
-impl<T> From<async_priority_channel::SendError<T>> for SendError {
-	fn from(_: async_priority_channel::SendError<T>) -> Self {
-		Self
-	}
-}
-
-impl Display for SendError {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		write!(f, "failed to send control message")
-	}
-}
-
-impl Error for SendError {}

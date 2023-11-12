@@ -12,14 +12,12 @@ use crate::{
 use super::{
 	job::Job,
 	messages::{Control, ControlMessage},
+	priority,
 	state::CommandState,
 };
 
-pub fn start_job(joinset: &mut JoinSet<()>, command: Command, channel_size: Option<usize>) -> Job {
-	let (sender, receiver) = channel_size.map_or_else(
-		async_priority_channel::unbounded,
-		async_priority_channel::bounded,
-	);
+pub fn start_job(joinset: &mut JoinSet<()>, command: Command) -> Job {
+	let (sender, mut receiver) = priority::new();
 
 	let gone = Flag::default();
 	let done = gone.clone();
@@ -37,7 +35,7 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command, channel_size: Opti
 		let mut previous_run = None;
 		let mut on_end = Vec::new(); // TODO
 
-		'main: while let Ok((ControlMessage { control, done }, _)) = receiver.recv().await {
+		'main: while let Some(ControlMessage { control, done }) = receiver.recv().await {
 			macro_rules! try_with_handler {
 				($erroring:expr) => {
 					match $erroring {

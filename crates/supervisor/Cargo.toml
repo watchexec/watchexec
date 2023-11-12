@@ -3,7 +3,7 @@ name = "watchexec-supervisor"
 version = "0.1.0"
 
 authors = ["Félix Saparelli <felix@passcod.name>"]
-license = "Apache-2.0"
+license = "Apache-2.0 OR MIT"
 description = "Watchexec's process supervisor component"
 keywords = ["process", "command", "supervisor", "watchexec"]
 
@@ -15,7 +15,6 @@ rust-version = "1.58.0"
 edition = "2021"
 
 [dependencies]
-async-priority-channel = "0.1.0"
 futures = "0.3.29"
 miette = "5.3.0"
 thiserror = "1.0.50"
@@ -28,18 +27,18 @@ features = ["with-tokio"]
 [dependencies.tokio]
 version = "1.33.0"
 default-features = false
-features = ["rt"]
+features = ["rt", "process", "sync", "macros"]
 
 [dependencies.watchexec-events]
 version = "1.0.0"
 default-features = false
 path = "../events"
 
+[dependencies.watchexec-signals]
+version = "1.0.0"
+default-features = false
+path = "../signals"
+
 [target.'cfg(unix)'.dependencies.nix]
 version = "0.27.1"
 features = ["signal"]
-
-[dev-dependencies.tokio]
-version = "1.33.0"
-default-features = false
-features = ["rt", "macros"]

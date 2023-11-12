@@ -19,7 +19,7 @@ mod shell;
 ///         args: vec!["check".into()],
 ///     },
 ///     grouped: true,
-/// }
+/// };
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Command {
