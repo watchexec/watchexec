@@ -79,7 +79,13 @@ impl StateSequence {
 		})
 	}
 
-	pub(crate) fn is_finished(&self) -> bool {
+	/// Whether the sequence is finished.
+	///
+	/// Walks the sequence, and returns true if no program is running and no programs are left to
+	/// run. This is slightly different from checking for all programs to be in the `Finished`
+	/// or `FailedToStart` states: `Condition`s can be finished without their `then` or `otherwise`
+	/// having run at all.
+	pub fn is_finished(&self) -> bool {
 		match self {
 			Self::Run(ProgramState::Finished { .. } | ProgramState::FailedToStart { .. }) => true,
 			Self::Run(ProgramState::ToRun(_) | ProgramState::IsRunning { .. }) => false,
