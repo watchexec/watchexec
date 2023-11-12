@@ -81,8 +81,8 @@ impl StateSequence {
 
 	pub(crate) fn is_finished(&self) -> bool {
 		match self {
-			Self::Run(ProgramState::Finished { .. }) => true,
-			Self::Run(_) => false,
+			Self::Run(ProgramState::Finished { .. } | ProgramState::FailedToStart { .. }) => true,
+			Self::Run(ProgramState::ToRun(_) | ProgramState::IsRunning { .. }) => false,
 			Self::List(list) => list.iter().all(|seq| seq.is_finished()),
 			Self::Condition {
 				given,
