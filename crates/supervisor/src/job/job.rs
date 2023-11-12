@@ -53,15 +53,16 @@ impl Job {
 		)
 	}
 
-	fn send_controls(
+	fn send_controls<const N: usize>(
 		&self,
-		mut controls: Vec<Control>,
+		controls: [Control; N],
 		priority: Priority,
 	) -> Result<Ticket, SendError> {
 		if self.gone.raised() {
 			Ok(Ticket::cancelled())
-		} else if controls.len() == 1 {
-			let (ticket, control) = self.prepare_control(controls.pop().unwrap());
+		} else if N == 1 {
+			let control = controls.into_iter().next().unwrap();
+			let (ticket, control) = self.prepare_control(control);
 			self.control_queue.send(control, priority)?;
 			Ok(ticket)
 		} else {
@@ -85,7 +86,7 @@ impl Job {
 	/// In general prefer using the other methods on this struct rather than sending [`Control`]s
 	/// directly.
 	pub fn control(&self, control: Control) -> Result<Ticket, SendError> {
-		self.send_controls(vec![control], Priority::Normal)
+		self.send_controls([control], Priority::Normal)
 	}
 
 	/// Start the command if it's not running.
@@ -114,7 +115,7 @@ impl Job {
 
 	/// Restart the command if it's running, or start it if it's not.
 	pub fn restart(&self) -> Result<Ticket, SendError> {
-		self.send_controls(vec![Control::Stop, Control::Start], Priority::Normal)
+		self.send_controls([Control::Stop, Control::Start], Priority::Normal)
 	}
 
 	/// Gracefully restart the command if it's running, or start it if it's not.
@@ -130,7 +131,7 @@ impl Job {
 	) -> Result<Ticket, SendError> {
 		if cfg!(unix) {
 			self.send_controls(
-				vec![Control::GracefulStop { signal, grace }, Control::Start],
+				[Control::GracefulStop { signal, grace }, Control::Start],
 				Priority::Normal,
 			)
 		} else {
@@ -179,7 +180,7 @@ impl Job {
 	/// The underlying control messages are sent like normal, so they wait for all pending controls
 	/// to process. If you want to delete the command immediately, use `delete_now()`.
 	pub fn delete(&self) -> Result<Ticket, SendError> {
-		self.send_controls(vec![Control::Stop, Control::Delete], Priority::Normal)
+		self.send_controls([Control::Stop, Control::Delete], Priority::Normal)
 	}
 
 	/// Stop the command immediately, then mark it for garbage collection.
@@ -187,7 +188,7 @@ impl Job {
 	/// The underlying control messages are sent with higher priority than normal, so they bypass
 	/// all others. If you want to delete after all current controls are processed, use `delete()`.
 	pub fn delete_now(&self) -> Result<Ticket, SendError> {
-		self.send_controls(vec![Control::Stop, Control::Delete], Priority::Urgent)
+		self.send_controls([Control::Stop, Control::Delete], Priority::Urgent)
 	}
 
 	/// Get a future which resolves when the command ends.
@@ -199,7 +200,7 @@ impl Job {
 	/// get done; note that may still be racy if the command ends between the time the message is
 	/// sent and the time it's processed.
 	pub fn to_wait(&self) -> Result<Ticket, SendError> {
-		self.send_controls(vec![Control::NextEnding], Priority::High)
+		self.send_controls([Control::NextEnding], Priority::High)
 	}
 
 	/// Run an arbitrary function.
