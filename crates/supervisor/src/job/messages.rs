@@ -19,9 +19,11 @@ pub enum Control {
 	Skip { signal: Signal, grace: Duration },
 	Stop { signal: Signal, grace: Duration },
 	TryRestart { signal: Signal, grace: Duration },
-	Wait(Option<Duration>),
 	Signal(Signal),
 	Delete,
+
+	NextEnding,
+	SequenceEnding,
 
 	SyncFunc(SyncFunc),
 	AsyncFunc(AsyncFunc),
@@ -53,9 +55,11 @@ impl std::fmt::Debug for Control {
 				.field("signal", signal)
 				.field("grace", grace)
 				.finish(),
-			Self::Wait(timeout) => f.debug_struct("Wait").field("timeout", timeout).finish(),
 			Self::Signal(signal) => f.debug_struct("Signal").field("signal", signal).finish(),
 			Self::Delete => f.debug_struct("Delete").finish(),
+
+			Self::NextEnding => f.debug_struct("NextEnding").finish(),
+			Self::SequenceEnding => f.debug_struct("SequenceEnding").finish(),
 
 			Self::SyncFunc(_) => f.debug_struct("SyncFunc").finish_non_exhaustive(),
 			Self::AsyncFunc(_) => f.debug_struct("AsyncFunc").finish_non_exhaustive(),

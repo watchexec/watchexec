@@ -63,17 +63,41 @@ impl Job {
 		)
 	}
 
+	async fn send_controls(
+		&self,
+		mut controls: Vec<Control>,
+		priority: Priority,
+	) -> Result<Ticket, SendError> {
+		if self.gone.raised() {
+			Ok(Ticket::cancelled())
+		} else if controls.len() == 1 {
+			let (ticket, control) = self.prepare_control(controls.pop().unwrap());
+			self.control_queue.send(control, priority).await?;
+			Ok(ticket)
+		} else {
+			let (mut tickets, controls): (Vec<Ticket>, Vec<ControlMessage>) = controls
+				.into_iter()
+				.map(|control| self.prepare_control(control))
+				.unzip();
+			let ticket = tickets.pop().expect("controls should always be non-empty");
+
+			self.control_queue
+				.sendv(
+					controls
+						.into_iter()
+						.map(|control| (control, priority))
+						.peekable(),
+				)
+				.await?;
+			Ok(ticket)
+		}
+	}
+
 	/// Send a control message to the command.
 	///
 	/// All control messages are queued in the order they're sent and processed in order.
 	pub async fn control(&self, control: Control) -> Result<Ticket, SendError> {
-		if self.gone.raised() {
-			Ok(Ticket::cancelled())
-		} else {
-			let (ticket, control) = self.prepare_control(control);
-			self.control_queue.send(control, Priority::Normal).await?;
-			Ok(ticket)
-		}
+		self.send_controls(vec![control], Priority::Normal).await
 	}
 
 	/// Start the command if it's not running.
@@ -103,20 +127,11 @@ impl Job {
 	/// Stops the currently running program, if any, using the same logic as [`Job::stop`]; the
 	/// `signal` and `grace` arguments are used for an optional graceful stop.
 	pub async fn restart(&self, signal: Signal, grace: Duration) -> Result<Ticket, SendError> {
-		if self.gone.raised() {
-			Ok(Ticket::cancelled())
-		} else {
-			let (_, stop) = self.prepare_control(Control::Stop { signal, grace });
-			let (ticket, start) = self.prepare_control(Control::Start);
-			self.control_queue
-				.sendv(
-					[(stop, Priority::Normal), (start, Priority::Normal)]
-						.into_iter()
-						.peekable(),
-				)
-				.await?;
-			Ok(ticket)
-		}
+		self.send_controls(
+			vec![Control::Stop { signal, grace }, Control::Start],
+			Priority::Normal,
+		)
+		.await
 	}
 
 	/// Restart the command if it's running, but don't start it if it's not.
@@ -125,11 +140,6 @@ impl Job {
 	/// `signal` and `grace` arguments are used for an optional graceful stop.
 	pub async fn try_restart(&self, signal: Signal, grace: Duration) -> Result<Ticket, SendError> {
 		self.control(Control::TryRestart { signal, grace }).await
-	}
-
-	/// Wait for the command to exit, with an optional timeout.
-	pub async fn wait(&self, timeout: Option<Duration>) -> Result<Ticket, SendError> {
-		self.control(Control::Wait(timeout)).await
 	}
 
 	/// Send a signal to the command.
@@ -145,20 +155,11 @@ impl Job {
 		signal: Signal,
 		grace: Duration,
 	) -> Result<Ticket, SendError> {
-		if self.gone.raised() {
-			Ok(Ticket::cancelled())
-		} else {
-			let (_, stop) = self.prepare_control(Control::Stop { signal, grace });
-			let (ticket, delete) = self.prepare_control(Control::Delete);
-			self.control_queue
-				.sendv(
-					[(stop, priority), (delete, priority)]
-						.into_iter()
-						.peekable(),
-				)
-				.await?;
-			Ok(ticket)
-		}
+		self.send_controls(
+			vec![Control::Stop { signal, grace }, Control::Delete],
+			priority,
+		)
+		.await
 	}
 
 	/// Stop the command, then mark it for garbage collection.
@@ -179,6 +180,32 @@ impl Job {
 	/// The arguments are the same as for `stop()`.
 	pub async fn delete_now(&self, signal: Signal, grace: Duration) -> Result<Ticket, SendError> {
 		self.delete_with(Priority::Urgent, signal, grace).await
+	}
+
+	/// Get a future which resolves when the current program ends.
+	///
+	/// If the command sequence is not running, the future resolves immediately.
+	///
+	/// The underlying control message is sent with higher priority than normal, so it targets the
+	/// actively running program, not the one that will be running after the rest of the controls
+	/// get done; note that may still be racy if the program ends between the time the message is
+	/// sent and the time it's processed.
+	pub async fn until_program_end(&self) -> Result<Ticket, SendError> {
+		self.send_controls(vec![Control::NextEnding], Priority::High)
+			.await
+	}
+
+	/// Get a future which resolves when the current command sequence ends.
+	///
+	/// If the command sequence is not running, the future resolves immediately.
+	///
+	/// The underlying control message is sent with higher priority than normal, so it targets the
+	/// actively running sequence, not the one that will be running after the rest of the controls
+	/// get done; note that may still be racy if the sequence ends between the time the message is
+	/// sent and the time it's processed.
+	pub async fn until_sequence_end(&self) -> Result<Ticket, SendError> {
+		self.send_controls(vec![Control::SequenceEnding], Priority::High)
+			.await
 	}
 
 	/// Run an arbitrary function.

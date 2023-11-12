@@ -35,6 +35,8 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command, channel_size: Opti
 		let mut spawn_hook = SpawnHook::None;
 		let mut sequence = StateSequence::from(command.sequence);
 		let mut last_sequence = None;
+		let mut when_program_ends = Vec::new();
+		let mut when_sequence_ends = Vec::new();
 
 		'main: while let Ok((ControlMessage { control, done }, _)) = receiver.recv().await {
 			macro_rules! try_with_handler {
@@ -71,6 +73,23 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command, channel_size: Opti
 				Control::Delete => {
 					done.raise();
 					break 'main;
+				}
+
+				Control::NextEnding => {
+					if sequence.is_finished() {
+						done.raise();
+					} else {
+						when_program_ends.push(done);
+					}
+					continue 'main;
+				}
+				Control::SequenceEnding => {
+					if sequence.is_finished() {
+						done.raise();
+					} else {
+						when_sequence_ends.push(done);
+					}
+					continue 'main;
 				}
 
 				Control::SyncFunc(f) => {
