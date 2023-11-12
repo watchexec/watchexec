@@ -1,51 +1,37 @@
 //! Command construction and configuration.
 
 #[doc(inline)]
-pub use self::{
-	program::Program,
-	sequence::{Sequence, SequenceTree},
-	shell::Shell,
-};
+pub use self::{program::Program, shell::Shell};
 
 mod conversions;
 mod program;
-mod sequence;
 mod shell;
 
 /// A command to execute.
 ///
-/// For simple uses, the `From` and `FromIterator` implementations may be useful:
+/// # Examples
 ///
 /// ```
 /// # use watchexec_supervisor::command::{Command, Program};
-/// Command::from(Program::Exec {
-///     prog: "ping".into(),
-///     args: vec!["-c".into(), "4".into()],
-///     grouped: false,
-/// });
-/// ```
-///
-/// ```
-/// # use watchexec_supervisor::command::{Command, Program, Shell};
-/// Command::from_iter(vec![
-///     Program::Exec {
-///         prog: "nslookup".into(),
-///         args: vec!["google.com".into()],
-///         grouped: true,
+/// Command {
+///     program: Program::Exec {
+///         prog: "make".into(),
+///         args: vec!["check".into()],
 ///     },
-///     Program::Shell {
-///         shell: Shell::new("bash"),
-///         command: "curl -L google.com >/dev/null".into(),
-///         args: Vec::new(),
-///     },
-/// ]);
+///     grouped: true,
+/// }
 /// ```
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Command {
-	/// Programs to execute as part of this command.
+	/// Program to execute for this command.
+	pub program: Program,
+
+	/// Run the program in a new process group.
 	///
-	/// The [`Sequence`] type defines a sequential control flow for the programs, and can represent
-	/// such flows as `a && b`, `a || b`, `a; b`, and more. However, pipelines are not supported;
-	/// use a shell program for that.
-	pub sequence: Sequence,
+	/// This will use either of Unix [process groups] or Windows [Job Objects] via the
+	/// [`command-group`](command_group) crate.
+	///
+	/// [process group]: https://en.wikipedia.org/wiki/Process_group
+	/// [Job Objects]: https://en.wikipedia.org/wiki/Object_Manager_(Windows)
+	pub grouped: bool,
 }

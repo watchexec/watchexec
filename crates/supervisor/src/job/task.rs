@@ -1,18 +1,18 @@
 use std::{future::Future, sync::Arc};
 
 use tokio::{process::Command as TokioCommand, task::JoinSet};
+use watchexec_signals::Signal;
 
 use crate::{
-	command::{Command, Program},
+	command::Command,
 	errors::{sync_io_error, SyncIoError},
 	flag::Flag,
-	job::program_state::SpawnResult,
 };
 
 use super::{
 	job::Job,
 	messages::{Control, ControlMessage},
-	program_state::StateSequence,
+	state::CommandState,
 };
 
 pub fn start_job(joinset: &mut JoinSet<()>, command: Command, channel_size: Option<usize>) -> Job {
@@ -33,41 +33,50 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command, channel_size: Opti
 	joinset.spawn(async move {
 		let mut error_handler = ErrorHandler::None;
 		let mut spawn_hook = SpawnHook::None;
-		let mut sequence = StateSequence::from(command.sequence);
-		let mut last_sequence = None;
-		let mut when_program_ends = Vec::new();
-		let mut when_sequence_ends = Vec::new();
+		let mut command_state = CommandState::ToRun(command.clone());
+		let mut previous_run = None;
+		let mut on_end = Vec::new(); // TODO
 
 		'main: while let Ok((ControlMessage { control, done }, _)) = receiver.recv().await {
 			macro_rules! try_with_handler {
 				($erroring:expr) => {
-					if let Err(err) = $erroring {
-						let fut = error_handler.call(sync_io_error(err));
-						fut.await;
-						done.raise();
-						continue 'main;
+					match $erroring {
+						Err(err) => {
+							let fut = error_handler.call(sync_io_error(err));
+							fut.await;
+							done.raise();
+							continue 'main;
+						}
+						Ok(value) => value,
 					}
 				};
 			}
 
 			match control {
-				Control::Start => 'start: loop {
-					match sequence.spawn_next_program(&spawn_hook).await {
-						SpawnResult::Spawned | SpawnResult::AlreadyRunning => break 'start,
-						SpawnResult::SpawnError(error) => {
-							error_handler.call(error).await;
-							break 'start;
-						}
-						SpawnResult::SequenceFinished => {
-							last_sequence = Some(sequence.reset());
-							continue 'start;
-						}
-					}
-				},
+				Control::Start => {
+					let mut spawnable = command.to_spawnable();
+					spawn_hook
+						.call(
+							&mut spawnable,
+							&JobTaskContext {
+								command: &command,
+								current: &command_state,
+								previous: previous_run.as_ref(),
+							},
+						)
+						.await;
+					try_with_handler!(command_state.spawn(spawnable).await);
+				}
 				//
 				Control::Signal(signal) => {
-					if let Some(child) = sequence.current_child() {
-						try_with_handler!(child.signal(signal));
+					#[cfg(unix)]
+					if let CommandState::IsRunning { child, .. } = &mut command_state {
+						try_with_handler!(child.signal(
+							signal
+								.to_nix()
+								.or_else(|| Signal::Terminate.to_nix())
+								.unwrap()
+						));
 					}
 				}
 				Control::Delete => {
@@ -76,32 +85,24 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command, channel_size: Opti
 				}
 
 				Control::NextEnding => {
-					if sequence.is_finished() {
-						done.raise();
-					} else {
-						when_program_ends.push(done);
+					if !matches!(command_state, CommandState::Finished { .. }) {
+						on_end.push(done);
+						continue 'main;
 					}
-					continue 'main;
-				}
-				Control::SequenceEnding => {
-					if sequence.is_finished() {
-						done.raise();
-					} else {
-						when_sequence_ends.push(done);
-					}
-					continue 'main;
 				}
 
 				Control::SyncFunc(f) => {
 					f(&JobTaskContext {
-						current_sequence: &sequence,
-						last_sequence: last_sequence.as_ref(),
+						command: &command,
+						current: &command_state,
+						previous: previous_run.as_ref(),
 					});
 				}
 				Control::AsyncFunc(f) => {
 					Box::into_pin(f(&JobTaskContext {
-						current_sequence: &sequence,
-						last_sequence: last_sequence.as_ref(),
+						command: &command,
+						current: &command_state,
+						previous: previous_run.as_ref(),
 					}))
 					.await;
 				}
@@ -156,9 +157,11 @@ macro_rules! sync_async_callbox {
 	};
 }
 
+#[derive(Debug)]
 pub struct JobTaskContext<'task> {
-	pub current_sequence: &'task StateSequence,
-	pub last_sequence: Option<&'task StateSequence>,
+	pub command: &'task Command,
+	pub current: &'task CommandState,
+	pub previous: Option<&'task CommandState>,
 }
 
 pub(crate) type SyncFunc = Box<dyn FnOnce(&JobTaskContext) + Send + Sync + 'static>;
@@ -169,15 +172,16 @@ pub(crate) type AsyncFunc = Box<
 		+ 'static,
 >;
 
-pub(crate) type SyncSpawnHook = Arc<dyn Fn(&mut TokioCommand, &Program) + Send + Sync + 'static>;
+pub(crate) type SyncSpawnHook =
+	Arc<dyn Fn(&mut TokioCommand, &JobTaskContext) + Send + Sync + 'static>;
 pub(crate) type AsyncSpawnHook = Arc<
-	dyn (Fn(&mut TokioCommand, &Program) -> Box<dyn Future<Output = ()> + Send + Sync>)
+	dyn (Fn(&mut TokioCommand, &JobTaskContext) -> Box<dyn Future<Output = ()> + Send + Sync>)
 		+ Send
 		+ Sync
 		+ 'static,
 >;
 
-sync_async_callbox!(SpawnHook, SyncSpawnHook, AsyncSpawnHook, (command: &mut TokioCommand, program: &Program));
+sync_async_callbox!(SpawnHook, SyncSpawnHook, AsyncSpawnHook, (command: &mut TokioCommand, context: &JobTaskContext<'_>));
 
 pub(crate) type SyncErrorHandler = Arc<dyn Fn(SyncIoError) + Send + Sync + 'static>;
 pub(crate) type AsyncErrorHandler = Arc<

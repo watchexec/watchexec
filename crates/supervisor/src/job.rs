@@ -3,7 +3,7 @@ pub use self::{
 	job::Job,
 	messages::{Control, Ticket},
 	priority::Priority,
-	program_state::{ProgramState, StateSequence},
+	state::CommandState,
 	task::JobTaskContext,
 };
 
@@ -13,5 +13,5 @@ pub use task::start_job; // TODO: remove pub (dev only)
 mod job;
 mod messages;
 mod priority;
-mod program_state;
+mod state;
 mod task;

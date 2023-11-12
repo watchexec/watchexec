@@ -5,8 +5,8 @@ use std::{
 	time::Duration,
 };
 
-use command_group::Signal;
 use futures::{future::select, FutureExt};
+use watchexec_signals::Signal;
 
 use crate::flag::Flag;
 
@@ -16,14 +16,14 @@ use super::task::{
 
 pub enum Control {
 	Start,
-	Skip { signal: Signal, grace: Duration },
-	Stop { signal: Signal, grace: Duration },
-	TryRestart { signal: Signal, grace: Duration },
+	Stop,
+	GracefulStop { signal: Signal, grace: Duration },
+	TryRestart,
+	TryGracefulRestart { signal: Signal, grace: Duration },
 	Signal(Signal),
 	Delete,
 
 	NextEnding,
-	SequenceEnding,
 
 	SyncFunc(SyncFunc),
 	AsyncFunc(AsyncFunc),
@@ -40,18 +40,15 @@ impl std::fmt::Debug for Control {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
 			Self::Start => f.debug_struct("Start").finish(),
-			Self::Skip { signal, grace } => f
-				.debug_struct("Skip")
+			Self::Stop => f.debug_struct("Stop").finish(),
+			Self::GracefulStop { signal, grace } => f
+				.debug_struct("GracefulStop")
 				.field("signal", signal)
 				.field("grace", grace)
 				.finish(),
-			Self::Stop { signal, grace } => f
-				.debug_struct("Stop")
-				.field("signal", signal)
-				.field("grace", grace)
-				.finish(),
-			Self::TryRestart { signal, grace } => f
-				.debug_struct("TryRestart")
+			Self::TryRestart => f.debug_struct("TryRestart").finish(),
+			Self::TryGracefulRestart { signal, grace } => f
+				.debug_struct("TryGracefulRestart")
 				.field("signal", signal)
 				.field("grace", grace)
 				.finish(),
@@ -59,7 +56,6 @@ impl std::fmt::Debug for Control {
 			Self::Delete => f.debug_struct("Delete").finish(),
 
 			Self::NextEnding => f.debug_struct("NextEnding").finish(),
-			Self::SequenceEnding => f.debug_struct("SequenceEnding").finish(),
 
 			Self::SyncFunc(_) => f.debug_struct("SyncFunc").finish_non_exhaustive(),
 			Self::AsyncFunc(_) => f.debug_struct("AsyncFunc").finish_non_exhaustive(),
