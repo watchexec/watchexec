@@ -1,6 +1,6 @@
 use std::{
 	io::Result,
-	process::{ExitStatus, Output},
+	process::{ExitStatus, Output}, sync::Arc,
 };
 
 use tokio::{process::Command as TokioCommand, sync::Mutex, task::yield_now};
@@ -10,12 +10,23 @@ use crate::command::Command;
 /// Mock version of [`ErasedChild`](command_group::ErasedChild).
 #[derive(Debug)]
 pub struct TestChild {
-	pub id: Option<u32>,
 	pub grouped: bool,
 	pub spawnable: TokioCommand,
 	pub command: Command,
-	pub calls: Vec<TestChildCall>,
+	pub calls: Arc<boxcar::Vec<TestChildCall>>,
 	pub output: Mutex<Option<Output>>,
+}
+
+impl TestChild {
+	pub fn new(command: Command, spawnable: TokioCommand) -> Self {
+		Self {
+			grouped: command.grouped,
+			spawnable,
+			command,
+			calls: Arc::new(boxcar::Vec::new()),
+			output: Mutex::new(None),
+		}
+	}
 }
 
 #[derive(Debug)]
@@ -28,10 +39,11 @@ pub enum TestChildCall {
 	Signal(command_group::Signal),
 }
 
+// Exact same signatures as ErasedChild
 impl TestChild {
 	pub fn id(&mut self) -> Option<u32> {
 		self.calls.push(TestChildCall::Id);
-		self.id
+		None
 	}
 
 	pub async fn kill(&mut self) -> Result<()> {
@@ -76,7 +88,7 @@ impl TestChild {
 		}
 	}
 
-	pub fn signal(&mut self, sig: command_group::Signal) -> Result<()> {
+	pub fn signal(&self, sig: command_group::Signal) -> Result<()> {
 		self.calls.push(TestChildCall::Signal(sig));
 		Ok(())
 	}

@@ -439,6 +439,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "boxcar"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e516014975db8769c0dcd1aba681c21079475fcddf77118bf54f9e2e013f6b29"
+
+[[package]]
 name = "bstr"
 version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3688,7 +3694,7 @@ dependencies = [
 name = "watchexec-supervisor"
 version = "0.1.0"
 dependencies = [
- "async-priority-channel",
+ "boxcar",
  "command-group",
  "futures",
  "miette",
@@ -3697,6 +3703,7 @@ dependencies = [
  "tokio",
  "tracing",
  "watchexec-events",
+ "watchexec-signals",
 ]
 
 [[package]]

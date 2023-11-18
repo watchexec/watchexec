@@ -37,14 +37,7 @@ impl CommandState {
 		};
 
 		#[cfg(test)]
-		let child = super::TestChild {
-			id: Some(0),
-			grouped: command.grouped,
-			spawnable,
-			command: command.clone(),
-			calls: Vec::new(),
-			output: Default::default(),
-		};
+		let child = super::TestChild::new(command.clone(), spawnable);
 
 		#[cfg(not(test))]
 		let child = if command.grouped {
