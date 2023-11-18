@@ -21,7 +21,7 @@ thiserror = "1.0.50"
 tracing = "0.1.40"
 
 [dependencies.command-group]
-version = "4.1.0"
+version = "5.0.1"
 features = ["with-tokio"]
 
 [dependencies.tokio]

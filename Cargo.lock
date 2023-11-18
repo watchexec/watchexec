@@ -619,6 +619,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "command-group"
+version = "5.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a68fa787550392a9d58f44c21a3022cfb3ea3e2458b7f85d3b399d0ceeccf409"
+dependencies = [
+ "async-trait",
+ "nix 0.27.1",
+ "tokio",
+ "winapi",
+]
+
+[[package]]
 name = "concurrent-queue"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3560,7 +3572,7 @@ dependencies = [
  "async-recursion",
  "atomic-take",
  "clearscreen",
- "command-group",
+ "command-group 4.1.0",
  "futures",
  "ignore-files",
  "miette",
@@ -3588,7 +3600,7 @@ dependencies = [
  "clap_complete",
  "clap_complete_nushell",
  "clap_mangen",
- "command-group",
+ "command-group 4.1.0",
  "console-subscriber",
  "dirs 5.0.1",
  "embed-resource",
@@ -3695,7 +3707,7 @@ name = "watchexec-supervisor"
 version = "0.1.0"
 dependencies = [
  "boxcar",
- "command-group",
+ "command-group 5.0.1",
  "futures",
  "miette",
  "nix 0.27.1",
