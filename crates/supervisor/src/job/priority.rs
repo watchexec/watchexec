@@ -29,7 +29,7 @@ pub(crate) struct PrioritySender {
 impl PrioritySender {
 	pub fn send(&self, message: ControlMessage, priority: Priority) {
 		// drop errors: if the channel is closed, the job is dead
-		match priority {
+		let _ = match priority {
 			Priority::Normal => self.normal.send(message),
 			Priority::High => self.high.send(message),
 			Priority::Urgent => self.urgent.send(message),

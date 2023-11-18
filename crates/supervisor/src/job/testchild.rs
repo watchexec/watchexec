@@ -7,7 +7,7 @@ use std::{
 
 use tokio::{process::Command as TokioCommand, sync::Mutex, task::yield_now};
 
-use crate::command::Command;
+use crate::command::{Command, Program};
 
 /// Mock version of [`ErasedChild`](command_group::ErasedChild).
 #[derive(Debug)]
@@ -21,12 +21,13 @@ pub struct TestChild {
 
 impl TestChild {
 	pub fn new(command: Command, spawnable: TokioCommand) -> std::io::Result<Self> {
-		if matches!(&command.program, crate::command::Program::Exec { prog, .. } if prog == Path::new("/does/not/exist"))
-		{
-			return Err(std::io::Error::new(
-				std::io::ErrorKind::NotFound,
-				"file not found",
-			));
+		if let Program::Exec { prog, .. } = &command.program {
+			if prog == Path::new("/does/not/exist") {
+				return Err(std::io::Error::new(
+					std::io::ErrorKind::NotFound,
+					"file not found",
+				));
+			}
 		}
 
 		Ok(Self {
