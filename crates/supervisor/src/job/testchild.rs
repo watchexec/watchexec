@@ -1,6 +1,8 @@
 use std::{
 	io::Result,
-	process::{ExitStatus, Output}, sync::Arc,
+	path::Path,
+	process::{ExitStatus, Output},
+	sync::Arc,
 };
 
 use tokio::{process::Command as TokioCommand, sync::Mutex, task::yield_now};
@@ -18,14 +20,22 @@ pub struct TestChild {
 }
 
 impl TestChild {
-	pub fn new(command: Command, spawnable: TokioCommand) -> Self {
-		Self {
+	pub fn new(command: Command, spawnable: TokioCommand) -> std::io::Result<Self> {
+		if matches!(&command.program, crate::command::Program::Exec { prog, .. } if prog == Path::new("/does/not/exist"))
+		{
+			return Err(std::io::Error::new(
+				std::io::ErrorKind::NotFound,
+				"file not found",
+			));
+		}
+
+		Ok(Self {
 			grouped: command.grouped,
 			spawnable,
 			command,
 			calls: Arc::new(boxcar::Vec::new()),
 			output: Mutex::new(None),
-		}
+		})
 	}
 }
 

@@ -21,3 +21,6 @@ mod task;
 
 #[cfg(test)]
 mod testchild;
+
+#[cfg(test)]
+mod test;

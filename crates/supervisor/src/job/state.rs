@@ -37,7 +37,7 @@ impl CommandState {
 		};
 
 		#[cfg(test)]
-		let child = super::TestChild::new(command.clone(), spawnable);
+		let child = super::TestChild::new(command.clone(), spawnable)?;
 
 		#[cfg(not(test))]
 		let child = if command.grouped {
