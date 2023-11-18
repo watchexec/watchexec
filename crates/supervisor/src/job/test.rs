@@ -1,17 +1,16 @@
-use std::{
-	ffi::OsStr,
-	sync::{
-		atomic::{AtomicBool, Ordering},
-		Arc,
-	},
+use std::sync::{
+	atomic::{AtomicBool, Ordering},
+	Arc, Mutex,
 };
 
 use tokio::task::JoinSet;
 
 use crate::{
-	command::{Command, Program, Shell},
-	job::start_job,
+	command::{Command, Program},
+	job::{start_job, CommandState, TestChildCall},
 };
+
+use super::{Job, TestChild};
 
 fn erroring_command() -> Command {
 	Command {
@@ -190,6 +189,78 @@ async fn async_func() {
 		func_called.load(Ordering::Relaxed),
 		"after it's been processed"
 	);
+
+	joinset.abort_all();
+}
+
+// TODO: figure out how to test spawn hooks
+
+async fn refresh_state(job: &Job, state: &Arc<Mutex<Option<CommandState>>>) {
+	job.run({
+		let state = state.clone();
+		move |context| {
+			state.lock().unwrap().replace(context.current.clone());
+		}
+	})
+	.await;
+}
+
+macro_rules! expect_state {
+	($job:expr, $state:expr, $expected:pat) => {
+		refresh_state(&$job, &$state).await;
+		{
+			let state = $state.lock().unwrap();
+			assert!(
+				matches!(*state, Some($expected)),
+				"expected Some({}), got {state:?}",
+				stringify!($expected),
+			);
+		}
+	};
+}
+
+async fn get_child(job: &Job, state: &Arc<Mutex<Option<CommandState>>>) -> TestChild {
+	refresh_state(job, state).await;
+	let state = state.lock().unwrap();
+	let state = state.as_ref().expect("no state");
+	match state {
+		CommandState::IsRunning { ref child, .. } => child.clone(),
+		_ => panic!("expected IsRunning, got {state:?}"),
+	}
+}
+
+#[tokio::test]
+async fn start() {
+	let mut joinset = JoinSet::new();
+	let job = start_job(&mut joinset, working_command());
+	let state = Arc::new(Mutex::new(None));
+
+	expect_state!(job, state, CommandState::ToRun(_));
+
+	job.start().await;
+
+	expect_state!(job, state, CommandState::IsRunning { .. });
+
+	joinset.abort_all();
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn signal() {
+	let mut joinset = JoinSet::new();
+	let job = start_job(&mut joinset, working_command());
+	let state = Arc::new(Mutex::new(None));
+
+	expect_state!(job, state, CommandState::ToRun(_));
+
+	job.start();
+	job.signal(watchexec_signals::Signal::User1).await;
+
+	get_child(&job, &state)
+		.await
+		.calls
+		.iter()
+		.any(|(_, call)| matches!(call, TestChildCall::Signal(command_group::Signal::SIGUSR1)));
 
 	joinset.abort_all();
 }

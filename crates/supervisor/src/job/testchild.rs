@@ -5,22 +5,22 @@ use std::{
 	sync::Arc,
 };
 
-use tokio::{process::Command as TokioCommand, sync::Mutex, task::yield_now};
+use command_group::Signal;
+use tokio::{sync::Mutex, task::yield_now};
 
 use crate::command::{Command, Program};
 
 /// Mock version of [`ErasedChild`](command_group::ErasedChild).
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TestChild {
 	pub grouped: bool,
-	pub spawnable: TokioCommand,
 	pub command: Command,
 	pub calls: Arc<boxcar::Vec<TestChildCall>>,
-	pub output: Mutex<Option<Output>>,
+	pub output: Arc<Mutex<Option<Output>>>,
 }
 
 impl TestChild {
-	pub fn new(command: Command, spawnable: TokioCommand) -> std::io::Result<Self> {
+	pub fn new(command: Command) -> std::io::Result<Self> {
 		if let Program::Exec { prog, .. } = &command.program {
 			if prog == Path::new("/does/not/exist") {
 				return Err(std::io::Error::new(
@@ -32,10 +32,9 @@ impl TestChild {
 
 		Ok(Self {
 			grouped: command.grouped,
-			spawnable,
 			command,
 			calls: Arc::new(boxcar::Vec::new()),
-			output: Mutex::new(None),
+			output: Arc::new(Mutex::new(None)),
 		})
 	}
 }
@@ -47,7 +46,7 @@ pub enum TestChildCall {
 	StartKill,
 	TryWait,
 	Wait,
-	Signal(command_group::Signal),
+	Signal(Signal),
 }
 
 // Exact same signatures as ErasedChild
@@ -99,7 +98,7 @@ impl TestChild {
 		}
 	}
 
-	pub fn signal(&self, sig: command_group::Signal) -> Result<()> {
+	pub fn signal(&self, sig: Signal) -> Result<()> {
 		self.calls.push(TestChildCall::Signal(sig));
 		Ok(())
 	}

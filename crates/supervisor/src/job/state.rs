@@ -8,6 +8,7 @@ use watchexec_events::ProcessEnd;
 use crate::command::Command;
 
 #[derive(Debug)]
+#[cfg_attr(test, derive(Clone))]
 pub enum CommandState {
 	ToRun(Command),
 	IsRunning {
@@ -27,7 +28,7 @@ pub enum CommandState {
 }
 
 impl CommandState {
-	#[cfg_attr(test, allow(unused_mut))]
+	#[cfg_attr(test, allow(unused_mut, unused_variables))]
 	pub(crate) async fn spawn(&mut self, mut spawnable: TokioCommand) -> std::io::Result<bool> {
 		let command = match self {
 			Self::IsRunning { .. } => {
@@ -37,7 +38,7 @@ impl CommandState {
 		};
 
 		#[cfg(test)]
-		let child = super::TestChild::new(command.clone(), spawnable)?;
+		let child = super::TestChild::new(command.clone())?;
 
 		#[cfg(not(test))]
 		let child = if command.grouped {
