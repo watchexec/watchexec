@@ -1,5 +1,6 @@
 use std::time::Instant;
 
+#[cfg(not(test))]
 use command_group::{tokio::ErasedChild, AsyncCommandGroup};
 use tokio::process::Command as TokioCommand;
 use watchexec_events::ProcessEnd;
@@ -11,6 +12,9 @@ pub enum CommandState {
 	ToRun(Command),
 	IsRunning {
 		command: Command,
+		#[cfg(test)]
+		child: super::TestChild,
+		#[cfg(not(test))]
 		child: ErasedChild,
 		started: Instant,
 	},
@@ -23,6 +27,7 @@ pub enum CommandState {
 }
 
 impl CommandState {
+	#[cfg_attr(test, allow(unused_mut))]
 	pub(crate) async fn spawn(&mut self, mut spawnable: TokioCommand) -> std::io::Result<bool> {
 		let command = match self {
 			Self::IsRunning { .. } => {
@@ -31,6 +36,17 @@ impl CommandState {
 			Self::ToRun(command) | Self::Finished { command, .. } => command,
 		};
 
+		#[cfg(test)]
+		let child = super::TestChild {
+			id: Some(0),
+			grouped: command.grouped,
+			spawnable,
+			command: command.clone(),
+			calls: Vec::new(),
+			output: Default::default(),
+		};
+
+		#[cfg(not(test))]
 		let child = if command.grouped {
 			ErasedChild::Grouped(spawnable.group().spawn()?)
 		} else {
