@@ -1,8 +1,6 @@
 use tokio::{
 	select,
-	sync::mpsc::{
-		error::SendError as GenericSendError, unbounded_channel, UnboundedReceiver, UnboundedSender,
-	},
+	sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
 };
 
 use super::messages::ControlMessage;
@@ -13,11 +11,6 @@ pub enum Priority {
 	High,
 	Urgent,
 }
-
-/// Error when sending a control message.
-///
-/// This can only happen if the command task panics.
-pub(crate) type SendError = GenericSendError<()>;
 
 #[derive(Debug)]
 pub(crate) struct PriorityReceiver {
@@ -34,12 +27,13 @@ pub(crate) struct PrioritySender {
 }
 
 impl PrioritySender {
-	pub fn send(&self, message: ControlMessage, priority: Priority) -> Result<(), SendError> {
+	pub fn send(&self, message: ControlMessage, priority: Priority) {
+		// drop errors: if the channel is closed, the job is dead
 		match priority {
-			Priority::Normal => self.normal.send(message).map_err(|_| GenericSendError(())),
-			Priority::High => self.high.send(message).map_err(|_| GenericSendError(())),
-			Priority::Urgent => self.urgent.send(message).map_err(|_| GenericSendError(())),
-		}
+			Priority::Normal => self.normal.send(message),
+			Priority::High => self.high.send(message),
+			Priority::Urgent => self.urgent.send(message),
+		};
 	}
 }
 
