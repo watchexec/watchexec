@@ -33,9 +33,12 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command) -> Job {
 		let mut spawn_hook = SpawnHook::None;
 		let mut command_state = CommandState::ToRun(command.clone());
 		let mut previous_run = None;
+		let mut stop_timer = None;
 		let mut on_end = Vec::new(); // TODO
 
-		'main: while let Some(ControlMessage { control, done }) = receiver.recv().await {
+		'main: while let Some(ControlMessage { control, done }) =
+			receiver.recv(&mut stop_timer).await
+		{
 			macro_rules! try_with_handler {
 				($erroring:expr) => {
 					match $erroring {

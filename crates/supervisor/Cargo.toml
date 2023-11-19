@@ -27,7 +27,7 @@ features = ["with-tokio"]
 [dependencies.tokio]
 version = "1.33.0"
 default-features = false
-features = ["rt", "process", "sync", "macros"]
+features = ["macros", "process", "rt", "sync", "time"]
 
 [dependencies.watchexec-events]
 version = "1.0.0"

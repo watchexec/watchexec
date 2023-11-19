@@ -1,9 +1,12 @@
 use tokio::{
 	select,
 	sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
+	time::Instant,
 };
 
-use super::messages::ControlMessage;
+use crate::flag::Flag;
+
+use super::{messages::ControlMessage, Control};
 
 #[derive(Debug, Copy, Clone)]
 pub enum Priority {
@@ -38,7 +41,27 @@ impl PrioritySender {
 }
 
 impl PriorityReceiver {
-	pub async fn recv(&mut self) -> Option<ControlMessage> {
+	/// Receive a control message from the command.
+	///
+	/// If `stop_timer` is `Some`, normal priority messages are not received; instead, only high and
+	/// urgent priority messages are received until the timer expires, and when the timer completes,
+	/// a `Stop` control message is returned and the `stop_timer` is `None`d.
+	///
+	/// This is used to implement stop's, restart's, and try-restart's graceful stopping logic.
+	pub async fn recv(
+		&mut self,
+		stop_timer: &mut Option<(Instant, Flag)>,
+	) -> Option<ControlMessage> {
+		if stop_timer
+			.as_ref()
+			.map_or(false, |(timer, _)| *timer >= Instant::now())
+		{
+			return stop_timer.take().map(|(_, done)| ControlMessage {
+				control: Control::Stop,
+				done,
+			});
+		}
+
 		if let Ok(message) = self.urgent.try_recv() {
 			return Some(message);
 		}
@@ -47,10 +70,21 @@ impl PriorityReceiver {
 			return Some(message);
 		}
 
-		select! {
-			message = self.urgent.recv() => message,
-			message = self.high.recv() => message,
-			message = self.normal.recv() => message,
+		if let Some((timer, done)) = stop_timer.clone() {
+			select! {
+				_ = tokio::time::sleep_until(timer) => {
+					*stop_timer = None;
+					Some(ControlMessage { control: Control::Stop, done })
+				}
+				message = self.urgent.recv() => message,
+				message = self.high.recv() => message,
+			}
+		} else {
+			select! {
+				message = self.urgent.recv() => message,
+				message = self.high.recv() => message,
+				message = self.normal.recv() => message,
+			}
 		}
 	}
 }
