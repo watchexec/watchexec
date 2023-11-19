@@ -68,6 +68,7 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command) -> Job {
 							},
 						)
 						.await;
+					previous_run = Some(command_state.reset());
 					try_with_handler!(command_state.spawn(spawnable).await);
 				}
 				Control::Stop => {

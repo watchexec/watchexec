@@ -53,7 +53,11 @@ impl Job {
 		)
 	}
 
-	pub(crate) fn send_controls<const N: usize>(&self, controls: [Control; N], priority: Priority) -> Ticket {
+	pub(crate) fn send_controls<const N: usize>(
+		&self,
+		controls: [Control; N],
+		priority: Priority,
+	) -> Ticket {
 		if N == 0 || self.gone.raised() {
 			Ticket::cancelled()
 		} else if N == 1 {
