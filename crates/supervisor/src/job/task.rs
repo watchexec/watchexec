@@ -1,4 +1,4 @@
-use std::{future::Future, sync::Arc};
+use std::{future::Future, sync::Arc, time::Instant};
 
 use tokio::{process::Command as TokioCommand, task::JoinSet};
 use watchexec_signals::Signal;
@@ -67,6 +67,26 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command) -> Job {
 						)
 						.await;
 					try_with_handler!(command_state.spawn(spawnable).await);
+				}
+				Control::Stop => {
+					let CommandState::IsRunning {
+						command,
+						child,
+						started,
+					} = &mut command_state
+					else {
+						continue 'main;
+					};
+
+					try_with_handler!(child.kill().await);
+					let status = try_with_handler!(child.wait().await);
+
+					command_state = CommandState::Finished {
+						command: command.clone(),
+						status: status.into(),
+						started: *started,
+						finished: Instant::now(),
+					};
 				}
 				//
 				Control::Signal(signal) => {

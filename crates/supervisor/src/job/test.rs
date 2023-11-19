@@ -1,9 +1,13 @@
-use std::sync::{
-	atomic::{AtomicBool, Ordering},
-	Arc, Mutex,
+use std::{
+	process::{ExitStatus, Output},
+	sync::{
+		atomic::{AtomicBool, Ordering},
+		Arc, Mutex,
+	},
 };
 
 use tokio::task::JoinSet;
+use watchexec_events::ProcessEnd;
 
 use crate::{
 	command::{Command, Program},
@@ -205,6 +209,44 @@ async fn refresh_state(job: &Job, state: &Arc<Mutex<Option<CommandState>>>) {
 	.await;
 }
 
+async fn set_running_child_status_code(
+	job: &Job,
+	#[cfg(unix)] code: i32,
+	#[cfg(windows)] code: u32,
+) {
+	#[cfg(unix)]
+	let status = {
+		use std::os::unix::process::ExitStatusExt;
+		ExitStatus::from_raw(code)
+	};
+	#[cfg(windows)]
+	let status = {
+		use std::os::windows::process::ExitStatusExt;
+		ExitStatus::from_raw(code)
+	};
+
+	job.run_async({
+		move |context| {
+			let output_lock = if let CommandState::IsRunning { child, .. } = context.current {
+				Some(child.output.clone())
+			} else {
+				None
+			};
+
+			Box::new(async move {
+				if let Some(output_lock) = output_lock {
+					*output_lock.lock().await = Some(Output {
+						status,
+						stdout: Vec::new(),
+						stderr: Vec::new(),
+					});
+				}
+			})
+		}
+	})
+	.await;
+}
+
 macro_rules! expect_state {
 	($job:expr, $state:expr, $expected:pat) => {
 		refresh_state(&$job, &$state).await;
@@ -246,7 +288,7 @@ async fn start() {
 
 #[cfg(unix)]
 #[tokio::test]
-async fn signal() {
+async fn signal_unix() {
 	let mut joinset = JoinSet::new();
 	let job = start_job(&mut joinset, working_command());
 	let state = Arc::new(Mutex::new(None));
@@ -261,6 +303,34 @@ async fn signal() {
 		.calls
 		.iter()
 		.any(|(_, call)| matches!(call, TestChildCall::Signal(command_group::Signal::SIGUSR1)));
+
+	joinset.abort_all();
+}
+
+#[tokio::test]
+async fn stop() {
+	let mut joinset = JoinSet::new();
+	let job = start_job(&mut joinset, working_command());
+	let state = Arc::new(Mutex::new(None));
+
+	expect_state!(job, state, CommandState::ToRun(_));
+
+	job.start().await;
+
+	expect_state!(job, state, CommandState::IsRunning { .. });
+
+	set_running_child_status_code(&job, 0).await;
+
+	job.stop().await;
+
+	expect_state!(
+		job,
+		state,
+		CommandState::Finished {
+			status: ProcessEnd::Success,
+			..
+		}
+	);
 
 	joinset.abort_all();
 }
