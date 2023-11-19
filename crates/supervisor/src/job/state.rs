@@ -10,9 +10,8 @@ use crate::command::Command;
 #[derive(Debug)]
 #[cfg_attr(test, derive(Clone))]
 pub enum CommandState {
-	ToRun(Command),
+	ToRun,
 	IsRunning {
-		command: Command,
 		#[cfg(test)]
 		child: super::TestChild,
 		#[cfg(not(test))]
@@ -20,7 +19,6 @@ pub enum CommandState {
 		started: Instant,
 	},
 	Finished {
-		command: Command,
 		status: ProcessEnd,
 		started: Instant,
 		finished: Instant,
@@ -29,16 +27,17 @@ pub enum CommandState {
 
 impl CommandState {
 	#[cfg_attr(test, allow(unused_mut, unused_variables))]
-	pub(crate) async fn spawn(&mut self, mut spawnable: TokioCommand) -> std::io::Result<bool> {
-		let command = match self {
-			Self::IsRunning { .. } => {
-				return Ok(false);
-			}
-			Self::ToRun(command) | Self::Finished { command, .. } => command,
-		};
+	pub(crate) async fn spawn(
+		&mut self,
+		command: Command,
+		mut spawnable: TokioCommand,
+	) -> std::io::Result<bool> {
+		if let Self::IsRunning { .. } = self {
+			return Ok(false);
+		}
 
 		#[cfg(test)]
-		let child = super::TestChild::new(command.clone())?;
+		let child = super::TestChild::new(command)?;
 
 		#[cfg(not(test))]
 		let child = if command.grouped {
@@ -48,7 +47,6 @@ impl CommandState {
 		};
 
 		*self = Self::IsRunning {
-			command: command.clone(),
 			child,
 			started: Instant::now(),
 		};
@@ -58,35 +56,31 @@ impl CommandState {
 	#[must_use]
 	pub(crate) fn reset(&mut self) -> Self {
 		match self {
-			Self::ToRun(command) => Self::ToRun(command.clone()),
+			Self::ToRun => Self::ToRun,
 			Self::Finished {
-				command,
 				status,
 				started,
 				finished,
+				..
 			} => {
-				let cloned = Self::Finished {
-					command: command.clone(),
+				let copy = Self::Finished {
 					status: *status,
 					started: *started,
 					finished: *finished,
 				};
 
-				*self = Self::ToRun(command.clone());
-				cloned
+				*self = Self::ToRun;
+				copy
 			}
-			Self::IsRunning {
-				command, started, ..
-			} => {
-				let cloned = Self::Finished {
-					command: command.clone(),
+			Self::IsRunning { started, .. } => {
+				let copy = Self::Finished {
 					status: ProcessEnd::Continued,
 					started: *started,
 					finished: Instant::now(),
 				};
 
-				*self = Self::ToRun(command.clone());
-				cloned
+				*self = Self::ToRun;
+				copy
 			}
 		}
 	}

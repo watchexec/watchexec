@@ -293,7 +293,7 @@ async fn start() {
 	let mut joinset = JoinSet::new();
 	let job = start_job(&mut joinset, working_command());
 
-	expect_state!(job, CommandState::ToRun(_));
+	expect_state!(job, CommandState::ToRun);
 
 	job.start().await;
 
@@ -308,7 +308,7 @@ async fn signal_unix() {
 	let mut joinset = JoinSet::new();
 	let job = start_job(&mut joinset, working_command());
 
-	expect_state!(job, CommandState::ToRun(_));
+	expect_state!(job, CommandState::ToRun);
 
 	job.start();
 	job.signal(watchexec_signals::Signal::User1).await;
@@ -326,7 +326,7 @@ async fn stop() {
 	let mut joinset = JoinSet::new();
 	let job = start_job(&mut joinset, working_command());
 
-	expect_state!(job, CommandState::ToRun(_));
+	expect_state!(job, CommandState::ToRun);
 
 	job.start().await;
 
@@ -352,11 +352,11 @@ async fn stop_when_running() {
 	let mut joinset = JoinSet::new();
 	let job = start_job(&mut joinset, working_command());
 
-	expect_state!(job, CommandState::ToRun(_));
+	expect_state!(job, CommandState::ToRun);
 
 	job.stop().await;
 
-	expect_state!(job, CommandState::ToRun(_));
+	expect_state!(job, CommandState::ToRun);
 
 	job.start().await;
 
@@ -370,7 +370,7 @@ async fn stop_fail() {
 	let mut joinset = JoinSet::new();
 	let job = start_job(&mut joinset, working_command());
 
-	expect_state!(job, CommandState::ToRun(_));
+	expect_state!(job, CommandState::ToRun);
 
 	job.start().await;
 
@@ -400,7 +400,7 @@ async fn graceful_stop() {
 	let mut joinset = JoinSet::new();
 	let job = start_job(&mut joinset, working_command());
 
-	expect_state!(job, CommandState::ToRun(_));
+	expect_state!(job, CommandState::ToRun);
 
 	job.start().await;
 
@@ -439,7 +439,7 @@ async fn restart() {
 	let mut joinset = JoinSet::new();
 	let job = start_job(&mut joinset, working_command());
 
-	expect_state!(job, CommandState::ToRun(_));
+	expect_state!(job, CommandState::ToRun);
 
 	job.start().await;
 
@@ -483,7 +483,7 @@ async fn graceful_restart() {
 	let mut joinset = JoinSet::new();
 	let job = start_job(&mut joinset, working_command());
 
-	expect_state!(job, CommandState::ToRun(_));
+	expect_state!(job, CommandState::ToRun);
 
 	job.start().await;
 

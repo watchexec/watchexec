@@ -72,17 +72,11 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command) -> Job {
 					try_with_handler!(command_state.spawn(spawnable).await);
 				}
 				Control::Stop => {
-					if let CommandState::IsRunning {
-						command,
-						child,
-						started,
-					} = &mut command_state
-					{
+					if let CommandState::IsRunning { child, started, .. } = &mut command_state {
 						try_with_handler!(child.kill().await);
 						let status = try_with_handler!(child.wait().await);
 
 						command_state = CommandState::Finished {
-							command: command.clone(),
 							status: status.into(),
 							started: *started,
 							finished: Instant::now(),
