@@ -477,3 +477,64 @@ async fn restart() {
 
 	joinset.abort_all();
 }
+
+#[tokio::test]
+async fn graceful_restart() {
+	let mut joinset = JoinSet::new();
+	let job = start_job(&mut joinset, working_command());
+
+	expect_state!(job, CommandState::ToRun(_));
+
+	job.start().await;
+
+	expect_state!(job, CommandState::IsRunning { .. });
+
+	set_running_child_status(
+		&job,
+		ProcessEnd::ExitError(NonZeroI64::new(1).unwrap()).into_exitstatus(),
+	)
+	.await;
+
+	let restart = job.restart_with_signal(
+		watchexec_signals::Signal::User1,
+		std::time::Duration::from_millis(1),
+	);
+
+	expect_state!(
+		job,
+		CommandState::IsRunning { .. },
+		"after USR1 but before delayed restart"
+	);
+
+	let calls = get_child(&job).await.calls;
+	assert!(calls
+		.iter()
+		.any(|(_, call)| matches!(call, TestChildCall::Signal(command_group::Signal::SIGUSR1))));
+	assert!(!calls
+		.iter()
+		.any(|(_, call)| matches!(call, TestChildCall::Wait)));
+
+	restart.await;
+
+	set_running_child_status(&job, ProcessEnd::Success.into_exitstatus()).await;
+
+	job.stop().await;
+
+	expect_state!(
+		previous: job,
+		CommandState::Finished {
+			status: ProcessEnd::ExitError(_),
+			..
+		}
+	);
+
+	expect_state!(
+		job,
+		CommandState::Finished {
+			status: ProcessEnd::Success,
+			..
+		}
+	);
+
+	joinset.abort_all();
+}
