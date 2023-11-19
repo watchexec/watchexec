@@ -159,7 +159,7 @@ impl Job {
 	/// using [GenerateConsoleCtrlEvent](https://learn.microsoft.com/en-us/windows/console/generateconsolectrlevent),
 	/// see [tracking issue #219](https://github.com/watchexec/watchexec/issues/219).
 	pub fn signal(&self, sig: Signal) -> Ticket {
-			self.control(Control::Signal(sig))
+		self.control(Control::Signal(sig))
 	}
 
 	/// Stop the command, then mark it for garbage collection.
@@ -214,6 +214,52 @@ impl Job {
 	/// command's [`ErasedChild`](command_group::tokio::ErasedChild), but this library recommends
 	/// against taking advantage of this, and prefer using the methods here instead, so that the
 	/// supervisor can keep track of what's going on.
+	///
+	/// A gotcha when using this method is that the future returned by the function can live longer
+	/// than the `&JobTaskContext` it was given, so you can't bring the context into the async block
+	/// and instead must clone or copy the parts you need beforehand, in the sync portion.
+	///
+	/// For example, this won't compile:
+	///
+	/// ```compile_fail
+	/// # use tokio::{sync::mpsc, task::JoinSet};
+	/// # use watchexec_supervisor::command::{Command, Program};
+	/// # use watchexec_supervisor::job::{CommandState, start_job};
+	/// #
+	/// # let mut joinset = JoinSet::new();
+	/// # let job = start_job(&mut joinset, Command { program: Program::Exec { prog: "/bin/date".into(), args: Vec::new() }.into(), grouped: true });
+	/// let (channel, receiver) = mpsc::channel(10);
+	/// job.run_async(|context| Box::new(async move {
+	///     if let CommandState::Finished { status, .. } = context.current {
+	///         channel.send(status).await.ok();
+	///     }
+	/// }));
+	/// ```
+	///
+	/// But this does:
+	///
+	/// ```no_run
+	/// # use tokio::{sync::mpsc, task::JoinSet};
+	/// # use watchexec_supervisor::command::{Command, Program};
+	/// # use watchexec_supervisor::job::{CommandState, start_job};
+	/// #
+	/// # let mut joinset = JoinSet::new();
+	/// # let job = start_job(&mut joinset, Command { program: Program::Exec { prog: "/bin/date".into(), args: Vec::new() }.into(), grouped: true });
+	/// let (channel, receiver) = mpsc::channel(10);
+	/// job.run_async(|context| {
+	///     let status = if let CommandState::Finished { status, .. } = context.current {
+	///         Some(*status)
+	///     } else {
+	///         None
+	///     };
+	///
+	///     Box::new(async move {
+	///         if let Some(status) = status {
+	///             channel.send(status).await.ok();
+	///         }
+	///     })
+	/// });
+	/// ```
 	pub fn run_async(
 		&self,
 		fun: impl (FnOnce(&JobTaskContext) -> Box<dyn Future<Output = ()> + Send + Sync>)
@@ -241,6 +287,14 @@ impl Job {
 	/// The hook will be called once per process spawned, before the process is spawned. It's given
 	/// a mutable reference to the [`tokio::process::Command`] and some context; it can modify the
 	/// command as it sees fit.
+	///
+	/// A gotcha when using this method is that the future returned by the function can live longer
+	/// than the references it was given, so you can't bring the command or context into the async
+	/// block and instead must clone or copy the parts you need beforehand, in the sync portion. See
+	/// the documentation for [`run_async`](Job::run_async) for an example.
+	///
+	/// Fortunately, async spawn hooks should be exceedingly rare: there's very few things to do in
+	/// spawn hooks that can't be done in the simpler sync version.
 	pub fn set_spawn_async_hook(
 		&self,
 		fun: impl (Fn(&mut TokioCommand, &JobTaskContext) -> Box<dyn Future<Output = ()> + Send + Sync>)
