@@ -96,10 +96,10 @@ impl Job {
 
 	/// Gracefully stop the command if it's running.
 	///
-	/// If `grace > Duration::ZERO`, the command will be sent `signal` and then given `grace` time
-	/// before being forcefully terminated.
-	///
-	/// On Windows, this is equivalent to [`stop`](Job::stop).
+	/// The command will be sent `signal` and then given `grace` time before being forcefully
+	/// terminated. If `grace` is zero, that still happens, but the command is terminated forcefully
+	/// on the next "tick" of the supervisor loop, which doesn't leave the process a lot of time to
+	/// do anything.
 	pub fn stop_with_signal(&self, signal: Signal, grace: Duration) -> Ticket {
 		if cfg!(unix) {
 			self.control(Control::GracefulStop { signal, grace })
@@ -115,10 +115,10 @@ impl Job {
 
 	/// Gracefully restart the command if it's running, or start it if it's not.
 	///
-	/// If `grace > Duration::ZERO`, the command will be sent `signal` and then given `grace` time
-	/// before being forcefully terminated.
-	///
-	/// On Windows, this is equivalent to [`restart`](Job::restart).
+	/// The command will be sent `signal` and then given `grace` time before being forcefully
+	/// terminated. If `grace` is zero, that still happens, but the command is terminated forcefully
+	/// on the next "tick" of the supervisor loop, which doesn't leave the process a lot of time to
+	/// do anything.
 	pub fn restart_with_signal(&self, signal: Signal, grace: Duration) -> Ticket {
 		if cfg!(unix) {
 			self.send_controls(
@@ -137,10 +137,10 @@ impl Job {
 
 	/// Restart the command if it's running, but don't start it if it's not.
 	///
-	/// If `grace > Duration::ZERO`, the command will be sent `signal` and then given `grace` time
-	/// before being forcefully terminated.
-	///
-	/// On Windows, this is equivalent to [`try_restart`](Job::try_restart).
+	/// The command will be sent `signal` and then given `grace` time before being forcefully
+	/// terminated. If `grace` is zero, that still happens, but the command is terminated forcefully
+	/// on the next "tick" of the supervisor loop, which doesn't leave the process a lot of time to
+	/// do anything.
 	pub fn try_restart_with_signal(&self, signal: Signal, grace: Duration) -> Ticket {
 		if cfg!(unix) {
 			self.control(Control::TryGracefulRestart { signal, grace })
