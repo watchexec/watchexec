@@ -87,7 +87,9 @@ impl Job {
 		self.control(Control::Start)
 	}
 
-	/// Stop the command if it's running.
+	/// Stop the command if it's running and wait for completion.
+	///
+	/// If you don't want to wait for completion, use `signal(Signal::ForceStop)` instead.
 	pub fn stop(&self) -> Ticket {
 		self.control(Control::Stop)
 	}
