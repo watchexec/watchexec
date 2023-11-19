@@ -1,6 +1,6 @@
 use std::{future::Future, sync::Arc, time::Instant};
 
-use tokio::{process::Command as TokioCommand, task::JoinSet};
+use tokio::{process::Command as TokioCommand, task::JoinSet, time::Instant as TokioInstant};
 use watchexec_signals::Signal;
 
 use crate::{
@@ -53,6 +53,8 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command) -> Job {
 				};
 			}
 
+			// eprintln!("[{:?}] control: {control:?}", Instant::now());
+
 			match control {
 				Control::Start => {
 					let mut spawnable = command.to_spawnable();
@@ -69,40 +71,35 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command) -> Job {
 					try_with_handler!(command_state.spawn(spawnable).await);
 				}
 				Control::Stop => {
-					let CommandState::IsRunning {
+					if let CommandState::IsRunning {
 						command,
 						child,
 						started,
 					} = &mut command_state
-					else {
+					{
+						try_with_handler!(child.kill().await);
+						let status = try_with_handler!(child.wait().await);
+
+						command_state = CommandState::Finished {
+							command: command.clone(),
+							status: status.into(),
+							started: *started,
+							finished: Instant::now(),
+						};
+					}
+				}
+				Control::GracefulStop { signal, grace } => {
+					if let CommandState::IsRunning { child, .. } = &mut command_state {
+						try_with_handler!(signal_child(signal, child).await);
+
+						stop_timer.replace((TokioInstant::now() + grace, done));
 						continue 'main;
-					};
-
-					try_with_handler!(child.kill().await);
-					let status = try_with_handler!(child.wait().await);
-
-					command_state = CommandState::Finished {
-						command: command.clone(),
-						status: status.into(),
-						started: *started,
-						finished: Instant::now(),
-					};
+					}
 				}
 				//
 				Control::Signal(signal) => {
 					if let CommandState::IsRunning { child, .. } = &mut command_state {
-						#[cfg(unix)]
-						try_with_handler!(child.signal(
-							signal
-								.to_nix()
-								.or_else(|| Signal::Terminate.to_nix())
-								.unwrap()
-						));
-
-						#[cfg(windows)]
-						if signal == Signal::ForceStop {
-							try_with_handler!(child.start_kill().await);
-						}
+						try_with_handler!(signal_child(signal, child).await);
 					}
 				}
 				Control::Delete => {
@@ -215,3 +212,24 @@ pub(crate) type AsyncErrorHandler = Arc<
 >;
 
 sync_async_callbox!(ErrorHandler, SyncErrorHandler, AsyncErrorHandler, (error: SyncIoError));
+
+async fn signal_child(
+	signal: Signal,
+	#[cfg(test)] child: &mut super::TestChild,
+	#[cfg(not(test))] child: &mut command_group::tokio::ErasedChild,
+) -> std::io::Result<()> {
+	#[cfg(unix)]
+	child.signal(
+		signal
+			.to_nix()
+			.or_else(|| Signal::Terminate.to_nix())
+			.unwrap(),
+	)?;
+
+	#[cfg(windows)]
+	if signal == Signal::ForceStop {
+		child.start_kill().await?;
+	}
+
+	Ok(())
+}

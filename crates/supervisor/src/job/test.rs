@@ -15,7 +15,7 @@ use crate::{
 	job::{start_job, CommandState, TestChildCall},
 };
 
-use super::{Job, TestChild};
+use super::{Control, Job, Priority, TestChild};
 
 fn erroring_command() -> Command {
 	Command {
@@ -201,12 +201,15 @@ async fn async_func() {
 // TODO: figure out how to test spawn hooks
 
 async fn refresh_state(job: &Job, state: &Arc<Mutex<Option<CommandState>>>) {
-	job.run({
-		let state = state.clone();
-		move |context| {
-			state.lock().unwrap().replace(context.current.clone());
-		}
-	})
+	job.send_controls(
+		[Control::SyncFunc(Box::new({
+			let state = state.clone();
+			move |context| {
+				state.lock().unwrap().replace(context.current.clone());
+			}
+		}))],
+		Priority::Urgent,
+	)
 	.await;
 }
 
@@ -234,16 +237,26 @@ async fn set_running_child_status(job: &Job, status: ExitStatus) {
 }
 
 macro_rules! expect_state {
-	($job:expr, $state:expr, $expected:pat) => {
+	($job:expr, $state:expr, $expected:pat, $reason:literal) => {
 		refresh_state(&$job, &$state).await;
 		{
 			let state = $state.lock().unwrap();
+			let reason = $reason;
+			let reason = if reason.is_empty() {
+				String::new()
+			} else {
+				format!(" ({reason})")
+			};
 			assert!(
 				matches!(*state, Some($expected)),
-				"expected Some({}), got {state:?}",
+				"expected Some({}), got {state:?}{reason}",
 				stringify!($expected),
 			);
 		}
+	};
+
+	($job:expr, $state:expr, $expected:pat) => {
+		expect_state!($job, $state, $expected, "")
 	};
 }
 
@@ -253,7 +266,7 @@ async fn get_child(job: &Job, state: &Arc<Mutex<Option<CommandState>>>) -> TestC
 	let state = state.as_ref().expect("no state");
 	match state {
 		CommandState::IsRunning { ref child, .. } => child.clone(),
-		_ => panic!("expected IsRunning, got {state:?}"),
+		_ => panic!("get_child: expected IsRunning, got {state:?}"),
 	}
 }
 
@@ -284,11 +297,10 @@ async fn signal_unix() {
 	job.start();
 	job.signal(watchexec_signals::Signal::User1).await;
 
-	get_child(&job, &state)
-		.await
-		.calls
+	let calls = get_child(&job, &state).await.calls;
+	assert!(calls
 		.iter()
-		.any(|(_, call)| matches!(call, TestChildCall::Signal(command_group::Signal::SIGUSR1)));
+		.any(|(_, call)| matches!(call, TestChildCall::Signal(command_group::Signal::SIGUSR1))));
 
 	joinset.abort_all();
 }
@@ -322,6 +334,25 @@ async fn stop() {
 }
 
 #[tokio::test]
+async fn stop_when_running() {
+	let mut joinset = JoinSet::new();
+	let job = start_job(&mut joinset, working_command());
+	let state = Arc::new(Mutex::new(None));
+
+	expect_state!(job, state, CommandState::ToRun(_));
+
+	job.stop().await;
+
+	expect_state!(job, state, CommandState::ToRun(_));
+
+	job.start().await;
+
+	expect_state!(job, state, CommandState::IsRunning { .. });
+
+	joinset.abort_all();
+}
+
+#[tokio::test]
 async fn stop_fail() {
 	let mut joinset = JoinSet::new();
 	let job = start_job(&mut joinset, working_command());
@@ -349,6 +380,47 @@ async fn stop_fail() {
 			..
 		}
 	);
+
+	joinset.abort_all();
+}
+
+#[tokio::test]
+async fn graceful_stop() {
+	let mut joinset = JoinSet::new();
+	let job = start_job(&mut joinset, working_command());
+	let state = Arc::new(Mutex::new(None));
+
+	expect_state!(job, state, CommandState::ToRun(_));
+
+	job.start().await;
+
+	expect_state!(job, state, CommandState::IsRunning { .. });
+
+	set_running_child_status(&job, ProcessEnd::Success.into_exitstatus()).await;
+
+	let stop = job.stop_with_signal(
+		watchexec_signals::Signal::User1,
+		std::time::Duration::from_millis(1),
+	);
+
+	expect_state!(
+		job,
+		state,
+		CommandState::IsRunning { .. },
+		"after USR1 but before delayed stop"
+	);
+
+	let calls = get_child(&job, &state).await.calls;
+	assert!(calls
+		.iter()
+		.any(|(_, call)| matches!(call, TestChildCall::Signal(command_group::Signal::SIGUSR1))));
+	assert!(!calls
+		.iter()
+		.any(|(_, call)| matches!(call, TestChildCall::Wait)));
+
+	stop.await;
+
+	expect_state!(job, state, CommandState::Finished { .. });
 
 	joinset.abort_all();
 }

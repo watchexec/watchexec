@@ -54,7 +54,7 @@ impl PriorityReceiver {
 	) -> Option<ControlMessage> {
 		if stop_timer
 			.as_ref()
-			.map_or(false, |(timer, _)| *timer >= Instant::now())
+			.map_or(false, |(timer, _)| *timer <= Instant::now())
 		{
 			return stop_timer.take().map(|(_, done)| ControlMessage {
 				control: Control::Stop,
