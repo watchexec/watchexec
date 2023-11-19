@@ -91,6 +91,32 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command) -> Job {
 						continue 'main;
 					}
 				}
+				Control::TryRestart => {
+					if let CommandState::IsRunning { child, started, .. } = &mut command_state {
+						try_with_handler!(child.kill().await);
+						let status = try_with_handler!(child.wait().await);
+
+						command_state = CommandState::Finished {
+							status: status.into(),
+							started: *started,
+							finished: Instant::now(),
+						};
+						previous_run = Some(command_state.reset());
+
+						let mut spawnable = command.to_spawnable();
+						spawn_hook
+							.call(
+								&mut spawnable,
+								&JobTaskContext {
+									command: &command,
+									current: &command_state,
+									previous: previous_run.as_ref(),
+								},
+							)
+							.await;
+						try_with_handler!(command_state.spawn(command.clone(), spawnable).await);
+					}
+				}
 				//
 				Control::Signal(signal) => {
 					if let CommandState::IsRunning { child, .. } = &mut command_state {

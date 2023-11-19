@@ -538,3 +538,55 @@ async fn graceful_restart() {
 
 	joinset.abort_all();
 }
+
+#[tokio::test]
+async fn try_restart() {
+	let mut joinset = JoinSet::new();
+	let job = start_job(&mut joinset, working_command());
+
+	expect_state!(job, CommandState::ToRun);
+
+	job.try_restart().await;
+
+	expect_state!(
+		job,
+		CommandState::ToRun,
+		"command still not running after try-restart"
+	);
+
+	job.start().await;
+
+	expect_state!(job, CommandState::IsRunning { .. });
+
+	set_running_child_status(
+		&job,
+		ProcessEnd::ExitError(NonZeroI64::new(1).unwrap()).into_exitstatus(),
+	)
+	.await;
+
+	job.try_restart().await;
+
+	expect_state!(job, CommandState::IsRunning { .. });
+
+	set_running_child_status(&job, ProcessEnd::Success.into_exitstatus()).await;
+
+	job.stop().await;
+
+	expect_state!(
+		previous: job,
+		CommandState::Finished {
+			status: ProcessEnd::ExitError(_),
+			..
+		}
+	);
+
+	expect_state!(
+		job,
+		CommandState::Finished {
+			status: ProcessEnd::Success,
+			..
+		}
+	);
+
+	joinset.abort_all();
+}
