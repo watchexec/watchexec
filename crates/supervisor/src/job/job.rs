@@ -153,13 +153,13 @@ impl Job {
 	///
 	/// Sends a signal to the current program, if there is one. If there isn't, this is a no-op.
 	///
-	/// On Windows, this is a no-op.
+	/// On Windows, this is a no-op for all signals but `Signal::ForceStop`, which tries to stop the
+	/// command like a `Stop` would, but doesn't wait for completion. This is because Windows
+	/// doesn't have signals; in future `Hangup`, `Interrupt`, and `Terminate` may be implemented
+	/// using [GenerateConsoleCtrlEvent](https://learn.microsoft.com/en-us/windows/console/generateconsolectrlevent),
+	/// see [tracking issue #219](https://github.com/watchexec/watchexec/issues/219).
 	pub fn signal(&self, sig: Signal) -> Ticket {
-		if cfg!(unix) {
 			self.control(Control::Signal(sig))
-		} else {
-			Ticket::cancelled()
-		}
 	}
 
 	/// Stop the command, then mark it for garbage collection.

@@ -70,14 +70,19 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command) -> Job {
 				}
 				//
 				Control::Signal(signal) => {
-					#[cfg(unix)]
 					if let CommandState::IsRunning { child, .. } = &mut command_state {
+						#[cfg(unix)]
 						try_with_handler!(child.signal(
 							signal
 								.to_nix()
 								.or_else(|| Signal::Terminate.to_nix())
 								.unwrap()
 						));
+
+						#[cfg(windows)]
+						if signal == Signal::ForceStop {
+							try_with_handler!(child.start_kill().await);
+						}
 					}
 				}
 				Control::Delete => {
