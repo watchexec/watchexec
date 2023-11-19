@@ -1,4 +1,5 @@
 use std::{
+	num::NonZeroI64,
 	process::{ExitStatus, Output},
 	sync::{
 		atomic::{AtomicBool, Ordering},
@@ -209,22 +210,7 @@ async fn refresh_state(job: &Job, state: &Arc<Mutex<Option<CommandState>>>) {
 	.await;
 }
 
-async fn set_running_child_status_code(
-	job: &Job,
-	#[cfg(unix)] code: i32,
-	#[cfg(windows)] code: u32,
-) {
-	#[cfg(unix)]
-	let status = {
-		use std::os::unix::process::ExitStatusExt;
-		ExitStatus::from_raw(code)
-	};
-	#[cfg(windows)]
-	let status = {
-		use std::os::windows::process::ExitStatusExt;
-		ExitStatus::from_raw(code)
-	};
-
+async fn set_running_child_status(job: &Job, status: ExitStatus) {
 	job.run_async({
 		move |context| {
 			let output_lock = if let CommandState::IsRunning { child, .. } = context.current {
@@ -319,7 +305,7 @@ async fn stop() {
 
 	expect_state!(job, state, CommandState::IsRunning { .. });
 
-	set_running_child_status_code(&job, 0).await;
+	set_running_child_status(&job, ProcessEnd::Success.into_exitstatus()).await;
 
 	job.stop().await;
 
@@ -328,6 +314,38 @@ async fn stop() {
 		state,
 		CommandState::Finished {
 			status: ProcessEnd::Success,
+			..
+		}
+	);
+
+	joinset.abort_all();
+}
+
+#[tokio::test]
+async fn stop_fail() {
+	let mut joinset = JoinSet::new();
+	let job = start_job(&mut joinset, working_command());
+	let state = Arc::new(Mutex::new(None));
+
+	expect_state!(job, state, CommandState::ToRun(_));
+
+	job.start().await;
+
+	expect_state!(job, state, CommandState::IsRunning { .. });
+
+	set_running_child_status(
+		&job,
+		ProcessEnd::ExitError(NonZeroI64::new(1).unwrap()).into_exitstatus(),
+	)
+	.await;
+
+	job.stop().await;
+
+	expect_state!(
+		job,
+		state,
+		CommandState::Finished {
+			status: ProcessEnd::ExitError(_),
 			..
 		}
 	);
