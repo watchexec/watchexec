@@ -31,7 +31,7 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command) -> Job {
 	joinset.spawn(async move {
 		let mut error_handler = ErrorHandler::None;
 		let mut spawn_hook = SpawnHook::None;
-		let mut command_state = CommandState::ToRun(command.clone());
+		let mut command_state = CommandState::ToRun;
 		let mut previous_run = None;
 		let mut stop_timer = None;
 		let mut on_end = Vec::new(); // TODO
@@ -58,6 +58,7 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command) -> Job {
 			match control {
 				Control::Start => {
 					let mut spawnable = command.to_spawnable();
+					previous_run = Some(command_state.reset());
 					spawn_hook
 						.call(
 							&mut spawnable,
@@ -68,8 +69,7 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command) -> Job {
 							},
 						)
 						.await;
-					previous_run = Some(command_state.reset());
-					try_with_handler!(command_state.spawn(spawnable).await);
+					try_with_handler!(command_state.spawn(command.clone(), spawnable).await);
 				}
 				Control::Stop => {
 					if let CommandState::IsRunning { child, started, .. } = &mut command_state {
