@@ -88,3 +88,45 @@ impl From<ExitStatus> for ProcessEnd {
 		}
 	}
 }
+
+impl ProcessEnd {
+	/// Convert a `ProcessEnd` to an `ExitStatus`.
+	///
+	/// This is a testing function only! **It will panic** if the `ProcessEnd` is not representable
+	/// as an `ExitStatus` on Unix. This is also not guaranteed to be accurate, as the waitpid()
+	/// status union is platform-specific. Exit codes and signals are implemented, other variants
+	/// are not.
+	#[cfg(unix)]
+	pub fn into_exitstatus(self) -> ExitStatus {
+		use std::os::unix::process::ExitStatusExt;
+		match self {
+			Self::Success => ExitStatus::from_raw(0),
+			Self::ExitError(code) => ExitStatus::from_raw((code.get() as u8 as i32) << 8),
+			Self::ExitSignal(signal) => {
+				ExitStatus::from_raw(signal.to_nix().map_or(0, |sig| sig as i32))
+			}
+			Self::Continued => ExitStatus::from_raw(0xffff),
+			_ => unimplemented!(),
+		}
+	}
+
+	/// Convert a `ProcessEnd` to an `ExitStatus`.
+	///
+	/// This is a testing function only! **It will panic** if the `ProcessEnd` is not representable
+	/// as an `ExitStatus` on Windows.
+	#[cfg(windows)]
+	pub fn into_exitstatus(self) -> ExitStatus {
+		use std::os::windows::process::ExitStatusExt;
+		match self {
+			Self::Success => ExitStatus::from_raw(0),
+			Self::ExitError(code) => ExitStatus::from_raw(code.get()),
+			_ => unimplemented!(),
+		}
+	}
+
+	/// Unimplemented on this platform.
+	#[cfg(not(any(unix, windows)))]
+	pub fn into_exitstatus(self) -> ExitStatus {
+		unimplemented!()
+	}
+}
