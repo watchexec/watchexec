@@ -1,12 +1,13 @@
 use std::{future::Future, sync::Arc, time::Instant};
 
-use tokio::{process::Command as TokioCommand, task::JoinSet, time::Instant as TokioInstant};
+use tokio::{process::Command as TokioCommand, task::JoinSet};
 use watchexec_signals::Signal;
 
 use crate::{
 	command::Command,
 	errors::{sync_io_error, SyncIoError},
 	flag::Flag,
+	job::priority::Timer,
 };
 
 use super::{
@@ -34,7 +35,7 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command) -> Job {
 		let mut command_state = CommandState::ToRun;
 		let mut previous_run = None;
 		let mut stop_timer = None;
-		let mut on_end = Vec::new(); // TODO
+		let mut on_end: Vec<Flag> = Vec::new();
 
 		'main: while let Some(ControlMessage { control, done }) =
 			receiver.recv(&mut stop_timer).await
@@ -53,7 +54,7 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command) -> Job {
 				};
 			}
 
-			// eprintln!("[{:?}] control: {control:?}", Instant::now());
+			eprintln!("[{:?}] control: {control:?}", Instant::now());
 
 			match control {
 				Control::Start => {
@@ -81,13 +82,17 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command) -> Job {
 							started: *started,
 							finished: Instant::now(),
 						};
+
+						for done in on_end.drain(..) {
+							done.raise();
+						}
 					}
 				}
 				Control::GracefulStop { signal, grace } => {
 					if let CommandState::IsRunning { child, .. } = &mut command_state {
 						try_with_handler!(signal_child(signal, child).await);
 
-						stop_timer.replace((TokioInstant::now() + grace, done));
+						stop_timer.replace(Timer::stop(grace, done));
 						continue 'main;
 					}
 				}
@@ -103,6 +108,10 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command) -> Job {
 						};
 						previous_run = Some(command_state.reset());
 
+						for done in on_end.drain(..) {
+							done.raise();
+						}
+
 						let mut spawnable = command.to_spawnable();
 						spawn_hook
 							.call(
@@ -117,7 +126,44 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command) -> Job {
 						try_with_handler!(command_state.spawn(command.clone(), spawnable).await);
 					}
 				}
-				//
+				Control::TryGracefulRestart { signal, grace } => {
+					if let CommandState::IsRunning { child, .. } = &mut command_state {
+						try_with_handler!(signal_child(signal, child).await);
+
+						stop_timer.replace(Timer::restart(grace, done));
+						continue 'main;
+					}
+				}
+				Control::ContinueTryGracefulRestart => {
+					if let CommandState::IsRunning { child, started, .. } = &mut command_state {
+						try_with_handler!(child.kill().await);
+						let status = try_with_handler!(child.wait().await);
+
+						command_state = CommandState::Finished {
+							status: status.into(),
+							started: *started,
+							finished: Instant::now(),
+						};
+
+						for done in on_end.drain(..) {
+							done.raise();
+						}
+					}
+
+					let mut spawnable = command.to_spawnable();
+					previous_run = Some(command_state.reset());
+					spawn_hook
+						.call(
+							&mut spawnable,
+							&JobTaskContext {
+								command: &command,
+								current: &command_state,
+								previous: previous_run.as_ref(),
+							},
+						)
+						.await;
+					try_with_handler!(command_state.spawn(command.clone(), spawnable).await);
+				}
 				Control::Signal(signal) => {
 					if let CommandState::IsRunning { child, .. } = &mut command_state {
 						try_with_handler!(signal_child(signal, child).await);
@@ -169,7 +215,6 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command) -> Job {
 				Control::UnsetSpawnHook => {
 					spawn_hook = SpawnHook::None;
 				}
-				_ => todo!(),
 			}
 
 			done.raise();

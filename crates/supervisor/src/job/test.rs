@@ -410,7 +410,7 @@ async fn graceful_stop() {
 
 	let stop = job.stop_with_signal(
 		watchexec_signals::Signal::User1,
-		std::time::Duration::from_millis(1),
+		std::time::Duration::from_millis(10),
 	);
 
 	expect_state!(
@@ -497,7 +497,7 @@ async fn graceful_restart() {
 
 	let restart = job.restart_with_signal(
 		watchexec_signals::Signal::User1,
-		std::time::Duration::from_millis(1),
+		std::time::Duration::from_millis(10),
 	);
 
 	expect_state!(
@@ -579,6 +579,69 @@ async fn try_restart() {
 			..
 		}
 	);
+
+	expect_state!(
+		job,
+		CommandState::Finished {
+			status: ProcessEnd::Success,
+			..
+		}
+	);
+
+	joinset.abort_all();
+}
+
+#[tokio::test]
+async fn try_graceful_restart() {
+	let mut joinset = JoinSet::new();
+	let job = start_job(&mut joinset, working_command());
+
+	expect_state!(job, CommandState::ToRun);
+
+	job.try_restart_with_signal(
+		watchexec_signals::Signal::User1,
+		std::time::Duration::from_millis(10),
+	)
+	.await;
+
+	expect_state!(
+		job,
+		CommandState::ToRun,
+		"command still not running after try-graceful-restart"
+	);
+
+	job.start().await;
+
+	expect_state!(job, CommandState::IsRunning { .. });
+
+	set_running_child_status(
+		&job,
+		ProcessEnd::ExitError(NonZeroI64::new(1).unwrap()).into_exitstatus(),
+	)
+	.await;
+
+	let restart = job.try_restart_with_signal(
+		watchexec_signals::Signal::User1,
+		std::time::Duration::from_millis(10),
+	);
+
+	expect_state!(job, CommandState::IsRunning { .. });
+
+	restart.await;
+
+	expect_state!(
+		previous: job,
+		CommandState::Finished {
+			status: ProcessEnd::ExitError(_),
+			..
+		}
+	);
+
+	expect_state!(job, CommandState::IsRunning { .. });
+
+	set_running_child_status(&job, ProcessEnd::Success.into_exitstatus()).await;
+
+	job.stop().await;
 
 	expect_state!(
 		job,

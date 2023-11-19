@@ -20,6 +20,7 @@ pub enum Control {
 	GracefulStop { signal: Signal, grace: Duration },
 	TryRestart,
 	TryGracefulRestart { signal: Signal, grace: Duration },
+	ContinueTryGracefulRestart,
 	Signal(Signal),
 	Delete,
 
@@ -52,6 +53,9 @@ impl std::fmt::Debug for Control {
 				.field("signal", signal)
 				.field("grace", grace)
 				.finish(),
+			Self::ContinueTryGracefulRestart => {
+				f.debug_struct("ContinueTryGracefulRestart").finish()
+			}
 			Self::Signal(signal) => f.debug_struct("Signal").field("signal", signal).finish(),
 			Self::Delete => f.debug_struct("Delete").finish(),
 

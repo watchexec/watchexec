@@ -1,7 +1,9 @@
+use std::time::Duration;
+
 use tokio::{
 	select,
 	sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
-	time::Instant,
+	time::{sleep_until, Instant, Sleep},
 };
 
 use crate::flag::Flag;
@@ -48,18 +50,9 @@ impl PriorityReceiver {
 	/// a `Stop` control message is returned and the `stop_timer` is `None`d.
 	///
 	/// This is used to implement stop's, restart's, and try-restart's graceful stopping logic.
-	pub async fn recv(
-		&mut self,
-		stop_timer: &mut Option<(Instant, Flag)>,
-	) -> Option<ControlMessage> {
-		if stop_timer
-			.as_ref()
-			.map_or(false, |(timer, _)| *timer <= Instant::now())
-		{
-			return stop_timer.take().map(|(_, done)| ControlMessage {
-				control: Control::Stop,
-				done,
-			});
+	pub async fn recv(&mut self, stop_timer: &mut Option<Timer>) -> Option<ControlMessage> {
+		if stop_timer.as_ref().map_or(false, Timer::is_past) {
+			return stop_timer.take().map(|timer| timer.to_control());
 		}
 
 		if let Ok(message) = self.urgent.try_recv() {
@@ -70,11 +63,11 @@ impl PriorityReceiver {
 			return Some(message);
 		}
 
-		if let Some((timer, done)) = stop_timer.clone() {
+		if let Some(timer) = stop_timer.clone() {
 			select! {
-				_ = tokio::time::sleep_until(timer) => {
+				_ = timer.to_sleep() => {
 					*stop_timer = None;
-					Some(ControlMessage { control: Control::Stop, done })
+					Some(timer.to_control())
 				}
 				message = self.urgent.recv() => message,
 				message = self.high.recv() => message,
@@ -106,4 +99,48 @@ pub(crate) fn new() -> (PrioritySender, PriorityReceiver) {
 			urgent: urgent_rx,
 		},
 	)
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct Timer {
+	pub until: Instant,
+	pub done: Flag,
+	pub is_restart: bool,
+}
+
+impl Timer {
+	pub fn stop(grace: Duration, done: Flag) -> Self {
+		Self {
+			until: Instant::now() + grace,
+			done,
+			is_restart: false,
+		}
+	}
+
+	pub fn restart(grace: Duration, done: Flag) -> Self {
+		Self {
+			until: Instant::now() + grace,
+			done,
+			is_restart: true,
+		}
+	}
+
+	fn to_sleep(&self) -> Sleep {
+		sleep_until(self.until)
+	}
+
+	fn is_past(&self) -> bool {
+		self.until <= Instant::now()
+	}
+
+	fn to_control(&self) -> ControlMessage {
+		ControlMessage {
+			control: if self.is_restart {
+				Control::ContinueTryGracefulRestart
+			} else {
+				Control::Stop
+			},
+			done: self.done.clone(),
+		}
+	}
 }
