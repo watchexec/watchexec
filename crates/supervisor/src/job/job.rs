@@ -42,6 +42,11 @@ impl Job {
 		self.command.clone()
 	}
 
+	/// If this job is dead.
+	pub fn is_dead(&self) -> bool {
+		self.gone.raised()
+	}
+
 	fn prepare_control(&self, control: Control) -> (Ticket, ControlMessage) {
 		let done = Flag::default();
 		(
