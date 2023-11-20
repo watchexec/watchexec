@@ -99,4 +99,18 @@ impl CommandState {
 			}
 		}
 	}
+
+	pub(crate) async fn wait(&mut self) -> std::io::Result<bool> {
+		if let Self::Running { child, started } = self {
+			let end = child.wait().await?;
+			*self = Self::Finished {
+				status: end.into(),
+				started: *started,
+				finished: Instant::now(),
+			};
+			Ok(true)
+		} else {
+			Ok(false)
+		}
+	}
 }

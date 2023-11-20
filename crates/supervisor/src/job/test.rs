@@ -5,9 +5,10 @@ use std::{
 		atomic::{AtomicBool, Ordering},
 		Arc, Mutex,
 	},
+	time::{Duration, Instant},
 };
 
-use tokio::task::JoinSet;
+use tokio::{task::JoinSet, time::sleep};
 use watchexec_events::ProcessEnd;
 
 use crate::{
@@ -16,6 +17,8 @@ use crate::{
 };
 
 use super::{Control, Job, Priority, TestChild};
+
+const GRACE: u64 = 10; // millis
 
 fn erroring_command() -> Command {
 	Command {
@@ -32,6 +35,26 @@ fn working_command() -> Command {
 		program: Program::Exec {
 			prog: "/does/not/run".into(),
 			args: Vec::new(),
+		},
+		grouped: true,
+	}
+}
+
+fn ungraceful_command() -> Command {
+	Command {
+		program: Program::Exec {
+			prog: "sleep".into(),
+			args: vec![(GRACE * 2).to_string()],
+		},
+		grouped: true,
+	}
+}
+
+fn graceful_command() -> Command {
+	Command {
+		program: Program::Exec {
+			prog: "sleep".into(),
+			args: vec![(2 * GRACE / 3).to_string()],
 		},
 		grouped: true,
 	}
@@ -218,25 +241,28 @@ async fn refresh_state(job: &Job, state: &Arc<Mutex<Option<CommandState>>>, curr
 }
 
 async fn set_running_child_status(job: &Job, status: ExitStatus) {
-	job.run_async({
-		move |context| {
+	job.send_controls(
+		[Control::AsyncFunc(Box::new({
+			move |context| {
 				let output_lock = if let CommandState::Running { child, .. } = context.current {
-				Some(child.output.clone())
-			} else {
-				None
-			};
+					Some(child.output.clone())
+				} else {
+					None
+				};
 
-			Box::new(async move {
-				if let Some(output_lock) = output_lock {
-					*output_lock.lock().await = Some(Output {
-						status,
-						stdout: Vec::new(),
-						stderr: Vec::new(),
-					});
-				}
-			})
-		}
-	})
+				Box::new(async move {
+					if let Some(output_lock) = output_lock {
+						*output_lock.lock().await = Some(Output {
+							status,
+							stdout: Vec::new(),
+							stderr: Vec::new(),
+						});
+					}
+				})
+			}
+		}))],
+		Priority::Urgent,
+	)
 	.await;
 }
 
@@ -396,45 +422,6 @@ async fn stop_fail() {
 }
 
 #[tokio::test]
-async fn graceful_stop() {
-	let mut joinset = JoinSet::new();
-	let job = start_job(&mut joinset, working_command());
-
-	expect_state!(job, CommandState::Pending);
-
-	job.start().await;
-
-	expect_state!(job, CommandState::Running { .. });
-
-	set_running_child_status(&job, ProcessEnd::Success.into_exitstatus()).await;
-
-	let stop = job.stop_with_signal(
-		watchexec_signals::Signal::User1,
-		std::time::Duration::from_millis(10),
-	);
-
-	expect_state!(
-		job,
-		CommandState::IsRunning { .. },
-		"after USR1 but before delayed stop"
-	);
-
-	let calls = get_child(&job).await.calls;
-	assert!(calls
-		.iter()
-		.any(|(_, call)| matches!(call, TestChildCall::Signal(command_group::Signal::SIGUSR1))));
-	assert!(!calls
-		.iter()
-		.any(|(_, call)| matches!(call, TestChildCall::Wait)));
-
-	stop.await;
-
-	expect_state!(job, CommandState::Finished { .. });
-
-	joinset.abort_all();
-}
-
-#[tokio::test]
 async fn restart() {
 	let mut joinset = JoinSet::new();
 	let job = start_job(&mut joinset, working_command());
@@ -453,7 +440,7 @@ async fn restart() {
 
 	job.restart().await;
 
-	expect_state!(job, CommandState::IsRunning { .. });
+	expect_state!(job, CommandState::Running { .. });
 
 	set_running_child_status(&job, ProcessEnd::Success.into_exitstatus()).await;
 
@@ -479,6 +466,39 @@ async fn restart() {
 }
 
 #[tokio::test]
+async fn graceful_stop() {
+	let mut joinset = JoinSet::new();
+	let job = start_job(&mut joinset, working_command());
+
+	expect_state!(job, CommandState::Pending);
+
+	job.start().await;
+
+	expect_state!(job, CommandState::Running { .. });
+
+	set_running_child_status(&job, ProcessEnd::Success.into_exitstatus()).await;
+
+	let stop = job.stop_with_signal(
+		watchexec_signals::Signal::Terminate,
+		Duration::from_millis(GRACE),
+	);
+
+	sleep(Duration::from_millis(GRACE / 2)).await;
+
+	expect_state!(
+		job,
+		CommandState::Finished { .. },
+		"after signal but before delayed force-stop"
+	);
+
+	stop.await;
+
+	expect_state!(job, CommandState::Finished { .. });
+
+	joinset.abort_all();
+}
+
+#[tokio::test]
 async fn graceful_restart() {
 	let mut joinset = JoinSet::new();
 	let job = start_job(&mut joinset, working_command());
@@ -495,9 +515,91 @@ async fn graceful_restart() {
 	)
 	.await;
 
+	job.restart_with_signal(
+		watchexec_signals::Signal::Terminate,
+		Duration::from_millis(GRACE),
+	)
+	.await;
+
+	set_running_child_status(&job, ProcessEnd::Success.into_exitstatus()).await;
+
+	job.stop().await;
+
+	expect_state!(
+		previous: job,
+		CommandState::Finished {
+			status: ProcessEnd::ExitError(_),
+			..
+		}
+	);
+
+	expect_state!(
+		job,
+		CommandState::Finished {
+			status: ProcessEnd::Success,
+			..
+		}
+	);
+
+	joinset.abort_all();
+}
+
+#[tokio::test]
+async fn graceful_stop_beyond_grace() {
+	let mut joinset = JoinSet::new();
+	let job = start_job(&mut joinset, ungraceful_command());
+
+	expect_state!(job, CommandState::Pending);
+
+	job.start().await;
+
+	expect_state!(job, CommandState::Running { .. });
+
+	set_running_child_status(&job, ProcessEnd::Success.into_exitstatus()).await;
+
+	let stop = job.stop_with_signal(
+		watchexec_signals::Signal::User1,
+		Duration::from_millis(GRACE),
+	);
+
+	expect_state!(
+		job,
+		CommandState::Running { .. },
+		"after USR1 but before delayed stop"
+	);
+
+	let calls = get_child(&job).await.calls;
+	assert!(calls
+		.iter()
+		.any(|(_, call)| matches!(call, TestChildCall::Signal(command_group::Signal::SIGUSR1))));
+
+	stop.await;
+
+	expect_state!(job, CommandState::Finished { .. });
+
+	joinset.abort_all();
+}
+
+#[tokio::test]
+async fn graceful_restart_beyond_grace() {
+	let mut joinset = JoinSet::new();
+	let job = start_job(&mut joinset, ungraceful_command());
+
+	expect_state!(job, CommandState::Pending);
+
+	job.start().await;
+
+	expect_state!(job, CommandState::Running { .. });
+
+	set_running_child_status(
+		&job,
+		ProcessEnd::ExitError(NonZeroI64::new(1).unwrap()).into_exitstatus(),
+	)
+	.await;
+
 	let restart = job.restart_with_signal(
 		watchexec_signals::Signal::User1,
-		std::time::Duration::from_millis(10),
+		Duration::from_millis(GRACE),
 	);
 
 	expect_state!(
@@ -510,9 +612,6 @@ async fn graceful_restart() {
 	assert!(calls
 		.iter()
 		.any(|(_, call)| matches!(call, TestChildCall::Signal(command_group::Signal::SIGUSR1))));
-	assert!(!calls
-		.iter()
-		.any(|(_, call)| matches!(call, TestChildCall::Wait)));
 
 	restart.await;
 
@@ -542,7 +641,110 @@ async fn graceful_restart() {
 #[tokio::test]
 async fn try_restart() {
 	let mut joinset = JoinSet::new();
-	let job = start_job(&mut joinset, working_command());
+	let job = start_job(&mut joinset, graceful_command());
+
+	expect_state!(job, CommandState::Pending);
+
+	job.try_restart().await;
+
+	expect_state!(
+		job,
+		CommandState::Pending,
+		"command still not running after try-restart"
+	);
+
+	job.start().await;
+
+	expect_state!(job, CommandState::Running { .. });
+
+	let try_restart = job.try_restart();
+
+	eprintln!("[{:?}] test: await try_restart", Instant::now());
+	try_restart.await;
+
+	expect_state!(job, CommandState::Running { .. });
+
+	job.stop().await;
+
+	expect_state!(
+		previous: job,
+		CommandState::Finished { .. }
+	);
+
+	expect_state!(job, CommandState::Finished { .. });
+
+	joinset.abort_all();
+}
+
+#[tokio::test]
+async fn try_graceful_restart() {
+	let mut joinset = JoinSet::new();
+	let job = start_job(&mut joinset, graceful_command());
+
+	expect_state!(job, CommandState::Pending);
+
+	job.try_restart_with_signal(
+		watchexec_signals::Signal::User1,
+		Duration::from_millis(GRACE),
+	)
+	.await;
+
+	expect_state!(
+		job,
+		CommandState::Pending,
+		"command still not running after try-graceful-restart"
+	);
+
+	job.start().await;
+
+	expect_state!(job, CommandState::Running { .. });
+
+	set_running_child_status(
+		&job,
+		ProcessEnd::ExitError(NonZeroI64::new(1).unwrap()).into_exitstatus(),
+	)
+	.await;
+
+	let restart = job.try_restart_with_signal(
+		watchexec_signals::Signal::User1,
+		Duration::from_millis(GRACE),
+	);
+
+	expect_state!(job, CommandState::Running { .. });
+
+	eprintln!("[{:?}] await restart", Instant::now());
+	restart.await;
+	eprintln!("[{:?}] awaited restart", Instant::now());
+
+	expect_state!(
+		previous: job,
+		CommandState::Finished {
+			status: ProcessEnd::ExitError(_),
+			..
+		}
+	);
+
+	expect_state!(job, CommandState::Running { .. });
+
+	set_running_child_status(&job, ProcessEnd::Success.into_exitstatus()).await;
+
+	job.stop().await;
+
+	expect_state!(
+		job,
+		CommandState::Finished {
+			status: ProcessEnd::Success,
+			..
+		}
+	);
+
+	joinset.abort_all();
+}
+
+#[tokio::test]
+async fn try_restart_beyond_grace() {
+	let mut joinset = JoinSet::new();
+	let job = start_job(&mut joinset, ungraceful_command());
 
 	expect_state!(job, CommandState::Pending);
 
@@ -592,15 +794,15 @@ async fn try_restart() {
 }
 
 #[tokio::test]
-async fn try_graceful_restart() {
+async fn try_graceful_restart_beyond_grace() {
 	let mut joinset = JoinSet::new();
-	let job = start_job(&mut joinset, working_command());
+	let job = start_job(&mut joinset, ungraceful_command());
 
 	expect_state!(job, CommandState::Pending);
 
 	job.try_restart_with_signal(
 		watchexec_signals::Signal::User1,
-		std::time::Duration::from_millis(10),
+		Duration::from_millis(GRACE),
 	)
 	.await;
 
@@ -622,7 +824,7 @@ async fn try_graceful_restart() {
 
 	let restart = job.try_restart_with_signal(
 		watchexec_signals::Signal::User1,
-		std::time::Duration::from_millis(10),
+		Duration::from_millis(GRACE),
 	);
 
 	expect_state!(job, CommandState::Running { .. });

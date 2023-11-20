@@ -3,10 +3,12 @@ use std::{
 	path::Path,
 	process::{ExitStatus, Output},
 	sync::Arc,
+	time::{Duration, Instant},
 };
 
 use command_group::Signal;
-use tokio::{sync::Mutex, task::yield_now};
+use tokio::{sync::Mutex, time::sleep};
+use watchexec_events::ProcessEnd;
 
 use crate::command::{Command, Program};
 
@@ -17,6 +19,7 @@ pub struct TestChild {
 	pub command: Command,
 	pub calls: Arc<boxcar::Vec<TestChildCall>>,
 	pub output: Arc<Mutex<Option<Output>>>,
+	pub spawned: Instant,
 }
 
 impl TestChild {
@@ -35,6 +38,7 @@ impl TestChild {
 			command,
 			calls: Arc::new(boxcar::Vec::new()),
 			output: Arc::new(Mutex::new(None)),
+			spawned: Instant::now(),
 		})
 	}
 }
@@ -68,6 +72,21 @@ impl TestChild {
 
 	pub fn try_wait(&mut self) -> Result<Option<ExitStatus>> {
 		self.calls.push(TestChildCall::TryWait);
+
+		if let Program::Exec { prog, args } = &self.command.program {
+			if prog == Path::new("sleep") {
+				if let Some(time) = args
+					.get(0)
+					.and_then(|arg| arg.parse().ok())
+					.map(Duration::from_millis)
+				{
+					if self.spawned.elapsed() < time {
+						return Ok(None);
+					}
+				}
+			}
+		}
+
 		Ok(self
 			.output
 			.try_lock()
@@ -77,13 +96,36 @@ impl TestChild {
 
 	pub async fn wait(&mut self) -> Result<ExitStatus> {
 		self.calls.push(TestChildCall::Wait);
+		if let Program::Exec { prog, args } = &self.command.program {
+			if prog == Path::new("sleep") {
+				if let Some(time) = args
+					.get(0)
+					.and_then(|arg| arg.parse().ok())
+					.map(Duration::from_millis)
+				{
+					if self.spawned.elapsed() < time {
+						sleep(time - self.spawned.elapsed()).await;
+						if let Ok(guard) = self.output.try_lock() {
+							if let Some(output) = guard.as_ref() {
+								return Ok(output.status);
+							}
+						}
+
+						return Ok(ProcessEnd::Success.into_exitstatus());
+					}
+				}
+			}
+		}
+
 		loop {
+			eprintln!("[{:?}] child: output lock", Instant::now());
 			let output = self.output.lock().await;
 			if let Some(output) = output.as_ref() {
 				return Ok(output.status);
-			} else {
-				yield_now().await;
 			}
+			eprintln!("[{:?}] child: output unlock", Instant::now());
+
+			sleep(Duration::from_secs(1)).await;
 		}
 	}
 
@@ -93,7 +135,7 @@ impl TestChild {
 			if let Some(output) = output.take() {
 				return Ok(output);
 			} else {
-				yield_now().await;
+				sleep(Duration::from_secs(1)).await;
 			}
 		}
 	}
