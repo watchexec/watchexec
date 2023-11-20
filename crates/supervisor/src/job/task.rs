@@ -73,7 +73,7 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command) -> Job {
 					try_with_handler!(command_state.spawn(command.clone(), spawnable).await);
 				}
 				Control::Stop => {
-					if let CommandState::IsRunning { child, started, .. } = &mut command_state {
+							if let CommandState::Running { child, started, .. } = &mut command_state {
 						try_with_handler!(child.kill().await);
 						let status = try_with_handler!(child.wait().await);
 
@@ -89,7 +89,7 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command) -> Job {
 					}
 				}
 				Control::GracefulStop { signal, grace } => {
-					if let CommandState::IsRunning { child, .. } = &mut command_state {
+							if let CommandState::Running { child, .. } = &mut command_state {
 						try_with_handler!(signal_child(signal, child).await);
 
 						stop_timer.replace(Timer::stop(grace, done));
@@ -97,7 +97,7 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command) -> Job {
 					}
 				}
 				Control::TryRestart => {
-					if let CommandState::IsRunning { child, started, .. } = &mut command_state {
+							if let CommandState::Running { child, started, .. } = &mut command_state {
 						try_with_handler!(child.kill().await);
 						let status = try_with_handler!(child.wait().await);
 
@@ -127,7 +127,7 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command) -> Job {
 					}
 				}
 				Control::TryGracefulRestart { signal, grace } => {
-					if let CommandState::IsRunning { child, .. } = &mut command_state {
+							if let CommandState::Running { child, .. } = &mut command_state {
 						try_with_handler!(signal_child(signal, child).await);
 
 						stop_timer.replace(Timer::restart(grace, done));
@@ -135,7 +135,7 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command) -> Job {
 					}
 				}
 				Control::ContinueTryGracefulRestart => {
-					if let CommandState::IsRunning { child, started, .. } = &mut command_state {
+							if let CommandState::Running { child, started, .. } = &mut command_state {
 						try_with_handler!(child.kill().await);
 						let status = try_with_handler!(child.wait().await);
 
@@ -165,7 +165,7 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command) -> Job {
 					try_with_handler!(command_state.spawn(command.clone(), spawnable).await);
 				}
 				Control::Signal(signal) => {
-					if let CommandState::IsRunning { child, .. } = &mut command_state {
+							if let CommandState::Running { child, .. } = &mut command_state {
 						try_with_handler!(signal_child(signal, child).await);
 					}
 				}

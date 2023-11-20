@@ -220,7 +220,7 @@ async fn refresh_state(job: &Job, state: &Arc<Mutex<Option<CommandState>>>, curr
 async fn set_running_child_status(job: &Job, status: ExitStatus) {
 	job.run_async({
 		move |context| {
-			let output_lock = if let CommandState::IsRunning { child, .. } = context.current {
+				let output_lock = if let CommandState::Running { child, .. } = context.current {
 				Some(child.output.clone())
 			} else {
 				None
@@ -283,7 +283,7 @@ async fn get_child(job: &Job) -> TestChild {
 	let state = state.lock().unwrap();
 	let state = state.as_ref().expect("no state");
 	match state {
-		CommandState::IsRunning { ref child, .. } => child.clone(),
+		CommandState::Running { ref child, .. } => child.clone(),
 		_ => panic!("get_child: expected IsRunning, got {state:?}"),
 	}
 }
@@ -293,11 +293,11 @@ async fn start() {
 	let mut joinset = JoinSet::new();
 	let job = start_job(&mut joinset, working_command());
 
-	expect_state!(job, CommandState::ToRun);
+	expect_state!(job, CommandState::Pending);
 
 	job.start().await;
 
-	expect_state!(job, CommandState::IsRunning { .. });
+	expect_state!(job, CommandState::Running { .. });
 
 	joinset.abort_all();
 }
@@ -308,7 +308,7 @@ async fn signal_unix() {
 	let mut joinset = JoinSet::new();
 	let job = start_job(&mut joinset, working_command());
 
-	expect_state!(job, CommandState::ToRun);
+	expect_state!(job, CommandState::Pending);
 
 	job.start();
 	job.signal(watchexec_signals::Signal::User1).await;
@@ -326,11 +326,11 @@ async fn stop() {
 	let mut joinset = JoinSet::new();
 	let job = start_job(&mut joinset, working_command());
 
-	expect_state!(job, CommandState::ToRun);
+	expect_state!(job, CommandState::Pending);
 
 	job.start().await;
 
-	expect_state!(job, CommandState::IsRunning { .. });
+	expect_state!(job, CommandState::Running { .. });
 
 	set_running_child_status(&job, ProcessEnd::Success.into_exitstatus()).await;
 
@@ -352,15 +352,15 @@ async fn stop_when_running() {
 	let mut joinset = JoinSet::new();
 	let job = start_job(&mut joinset, working_command());
 
-	expect_state!(job, CommandState::ToRun);
+	expect_state!(job, CommandState::Pending);
 
 	job.stop().await;
 
-	expect_state!(job, CommandState::ToRun);
+	expect_state!(job, CommandState::Pending);
 
 	job.start().await;
 
-	expect_state!(job, CommandState::IsRunning { .. });
+	expect_state!(job, CommandState::Running { .. });
 
 	joinset.abort_all();
 }
@@ -370,11 +370,11 @@ async fn stop_fail() {
 	let mut joinset = JoinSet::new();
 	let job = start_job(&mut joinset, working_command());
 
-	expect_state!(job, CommandState::ToRun);
+	expect_state!(job, CommandState::Pending);
 
 	job.start().await;
 
-	expect_state!(job, CommandState::IsRunning { .. });
+	expect_state!(job, CommandState::Running { .. });
 
 	set_running_child_status(
 		&job,
@@ -400,11 +400,11 @@ async fn graceful_stop() {
 	let mut joinset = JoinSet::new();
 	let job = start_job(&mut joinset, working_command());
 
-	expect_state!(job, CommandState::ToRun);
+	expect_state!(job, CommandState::Pending);
 
 	job.start().await;
 
-	expect_state!(job, CommandState::IsRunning { .. });
+	expect_state!(job, CommandState::Running { .. });
 
 	set_running_child_status(&job, ProcessEnd::Success.into_exitstatus()).await;
 
@@ -439,11 +439,11 @@ async fn restart() {
 	let mut joinset = JoinSet::new();
 	let job = start_job(&mut joinset, working_command());
 
-	expect_state!(job, CommandState::ToRun);
+	expect_state!(job, CommandState::Pending);
 
 	job.start().await;
 
-	expect_state!(job, CommandState::IsRunning { .. });
+	expect_state!(job, CommandState::Running { .. });
 
 	set_running_child_status(
 		&job,
@@ -483,11 +483,11 @@ async fn graceful_restart() {
 	let mut joinset = JoinSet::new();
 	let job = start_job(&mut joinset, working_command());
 
-	expect_state!(job, CommandState::ToRun);
+	expect_state!(job, CommandState::Pending);
 
 	job.start().await;
 
-	expect_state!(job, CommandState::IsRunning { .. });
+	expect_state!(job, CommandState::Running { .. });
 
 	set_running_child_status(
 		&job,
@@ -502,7 +502,7 @@ async fn graceful_restart() {
 
 	expect_state!(
 		job,
-		CommandState::IsRunning { .. },
+		CommandState::Running { .. },
 		"after USR1 but before delayed restart"
 	);
 
@@ -544,19 +544,19 @@ async fn try_restart() {
 	let mut joinset = JoinSet::new();
 	let job = start_job(&mut joinset, working_command());
 
-	expect_state!(job, CommandState::ToRun);
+	expect_state!(job, CommandState::Pending);
 
 	job.try_restart().await;
 
 	expect_state!(
 		job,
-		CommandState::ToRun,
+		CommandState::Pending,
 		"command still not running after try-restart"
 	);
 
 	job.start().await;
 
-	expect_state!(job, CommandState::IsRunning { .. });
+	expect_state!(job, CommandState::Running { .. });
 
 	set_running_child_status(
 		&job,
@@ -566,7 +566,7 @@ async fn try_restart() {
 
 	job.try_restart().await;
 
-	expect_state!(job, CommandState::IsRunning { .. });
+	expect_state!(job, CommandState::Running { .. });
 
 	set_running_child_status(&job, ProcessEnd::Success.into_exitstatus()).await;
 
@@ -596,7 +596,7 @@ async fn try_graceful_restart() {
 	let mut joinset = JoinSet::new();
 	let job = start_job(&mut joinset, working_command());
 
-	expect_state!(job, CommandState::ToRun);
+	expect_state!(job, CommandState::Pending);
 
 	job.try_restart_with_signal(
 		watchexec_signals::Signal::User1,
@@ -606,13 +606,13 @@ async fn try_graceful_restart() {
 
 	expect_state!(
 		job,
-		CommandState::ToRun,
+		CommandState::Pending,
 		"command still not running after try-graceful-restart"
 	);
 
 	job.start().await;
 
-	expect_state!(job, CommandState::IsRunning { .. });
+	expect_state!(job, CommandState::Running { .. });
 
 	set_running_child_status(
 		&job,
@@ -625,7 +625,7 @@ async fn try_graceful_restart() {
 		std::time::Duration::from_millis(10),
 	);
 
-	expect_state!(job, CommandState::IsRunning { .. });
+	expect_state!(job, CommandState::Running { .. });
 
 	restart.await;
 
@@ -637,7 +637,7 @@ async fn try_graceful_restart() {
 		}
 	);
 
-	expect_state!(job, CommandState::IsRunning { .. });
+	expect_state!(job, CommandState::Running { .. });
 
 	set_running_child_status(&job, ProcessEnd::Success.into_exitstatus()).await;
 

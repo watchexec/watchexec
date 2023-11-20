@@ -10,8 +10,8 @@ use crate::command::Command;
 #[derive(Debug)]
 #[cfg_attr(test, derive(Clone))]
 pub enum CommandState {
-	ToRun,
-	IsRunning {
+	Pending,
+	Running {
 		#[cfg(test)]
 		child: super::TestChild,
 		#[cfg(not(test))]
@@ -26,13 +26,28 @@ pub enum CommandState {
 }
 
 impl CommandState {
+	/// Whether the command is pending, i.e. not running or finished.
+	pub fn is_pending(&self) -> bool {
+		matches!(self, Self::Pending)
+	}
+
+	/// Whether the command is running.
+	pub fn is_running(&self) -> bool {
+		matches!(self, Self::Running { .. })
+	}
+
+	/// Whether the command is finished.
+	pub fn is_finished(&self) -> bool {
+		matches!(self, Self::Finished { .. })
+	}
+
 	#[cfg_attr(test, allow(unused_mut, unused_variables))]
 	pub(crate) async fn spawn(
 		&mut self,
 		command: Command,
 		mut spawnable: TokioCommand,
 	) -> std::io::Result<bool> {
-		if let Self::IsRunning { .. } = self {
+		if let Self::Running { .. } = self {
 			return Ok(false);
 		}
 
@@ -46,7 +61,7 @@ impl CommandState {
 			ErasedChild::Ungrouped(spawnable.spawn()?)
 		};
 
-		*self = Self::IsRunning {
+		*self = Self::Running {
 			child,
 			started: Instant::now(),
 		};
@@ -56,7 +71,7 @@ impl CommandState {
 	#[must_use]
 	pub(crate) fn reset(&mut self) -> Self {
 		match self {
-			Self::ToRun => Self::ToRun,
+			Self::Pending => Self::Pending,
 			Self::Finished {
 				status,
 				started,
@@ -69,17 +84,17 @@ impl CommandState {
 					finished: *finished,
 				};
 
-				*self = Self::ToRun;
+				*self = Self::Pending;
 				copy
 			}
-			Self::IsRunning { started, .. } => {
+			Self::Running { started, .. } => {
 				let copy = Self::Finished {
 					status: ProcessEnd::Continued,
 					started: *started,
 					finished: Instant::now(),
 				};
 
-				*self = Self::ToRun;
+				*self = Self::Pending;
 				copy
 			}
 		}
