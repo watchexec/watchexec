@@ -27,6 +27,11 @@ use super::{
 /// control is processed. If a job task stops gracefully, all pending tickets will resolve
 /// immediately. If a job task panics (outside of hooks, panics are bugs!), pending tickets will
 /// never resolve.
+///
+/// This struct is cloneable (internally it is made of Arcs). Dropping the last instance of a Job
+/// will close the job's control queue, which will cause the job task to stop gracefully. Note that
+/// a task graceful stop is not the same as a graceful stop of the contained command; when the job
+/// drops, the command will be dropped in turn, and forcefully terminated via `kill_on_drop`.
 #[derive(Debug, Clone)]
 pub struct Job {
 	pub(crate) command: Arc<Command>,

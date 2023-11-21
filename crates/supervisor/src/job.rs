@@ -7,7 +7,8 @@ pub use self::{
 	task::JobTaskContext,
 };
 
-pub use task::start_job; // TODO: remove pub (dev only)
+#[doc(inline)]
+pub use task::start_job;
 
 #[cfg(test)]
 pub use testchild::{TestChild, TestChildCall};

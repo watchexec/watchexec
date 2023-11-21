@@ -5,59 +5,107 @@
 //!
 //! You may use this crate to implement your own process supervisor, but keep in mind its direction
 //! will always primarily be driven by the needs of Watchexec itself.
+//!
+//! # Usage
+//!
+//! There is no struct or implementation of a single supervisor, as the particular needs of the
+//! application will dictate how that is designed. Instead, this crate provides a [`Job`](job::Job)
+//! construct, which is a handle to a single [`Command`](command::Command), and manages its
+//! lifecycle. The `Job` API has been modeled after the `systemctl` set of commands for service
+//! control, with operations for starting, stopping, restarting, sending signals, waiting for the
+//! process to complete, etc.
+//!
+//! There are also methods for running hooks within the job's runtime task, and for handling errors.
+//!
+//! # Theory of Operation
+//!
+//! A [`Job`](job::Job) is, properly speaking, a handle which lets one control a Tokio task. That
+//! task is spawned on a [`JoinSet`](tokio::task::JoinSet), which is a Tokio construct that allows
+//! for a set of tasks to be held together and waited on or cancelled collectively. A `Job` takes as
+//! input a [`Command`](command::Command), which describes how to start a single process, through
+//! either a shell command or a direct executable invocation, and if the process should be grouped
+//! (using [`command-group`](command_group)) or not.
+//!
+//! The job's task runs an event loop on two sources: the process's `wait()` (i.e. when the process
+//! ends) and the job's control queue. The control queue is a hybrid MPSC queue, with three priority
+//! levels and a timer. When the timer is active, the lowest ("Normal") priority queue is disabled.
+//! This is an internal detail which serves to implement graceful stops and restarts. The internals
+//! of the job's task are not available to the API user, action and query is only available mediated
+//! via sending control messages on this control queue.
+//!
+//! The control queue is executed in priority and in order within priorities. Sending a control to
+//! the task returns a [`Ticket`](job::Ticket), which is a future that resolves when the control has
+//! been processed. Dropping the ticket will not cancel the control. This provides two complementary
+//! ways to orchestrate actions: queueing controls in the desired order if there is no need for
+//! branching flow or for signaling, and sending controls or performing other actions after awaiting
+//! tickets.
+//!
+//! Do note that both of these can be used together. There is no need for the below pattern:
+//!
+//! ```no_run
+//! # #[tokio::main(flavor = "current_thread")] async fn main() { // single-threaded for doctest only
+//! # use tokio::{sync::mpsc, task::JoinSet};
+//! # use watchexec_supervisor::Signal;
+//! # use watchexec_supervisor::command::{Command, Program};
+//! # use watchexec_supervisor::job::{CommandState, start_job};
+//! #
+//! # let mut joinset = JoinSet::new();
+//! # let job = start_job(&mut joinset, Command { program: Program::Exec { prog: "/bin/date".into(), args: Vec::new() }.into(), grouped: true });
+//! #
+//! job.start().await;
+//! job.signal(Signal::User1).await;
+//! job.stop().await;
+//! # }
+//! ```
+//!
+//! Because of ordering, it behaves the same as this:
+//!
+//! ```no_run
+//! # #[tokio::main(flavor = "current_thread")] async fn main() { // single-threaded for doctest only
+//! # use tokio::{sync::mpsc, task::JoinSet};
+//! # use watchexec_supervisor::Signal;
+//! # use watchexec_supervisor::command::{Command, Program};
+//! # use watchexec_supervisor::job::{CommandState, start_job};
+//! #
+//! # let mut joinset = JoinSet::new();
+//! # let job = start_job(&mut joinset, Command { program: Program::Exec { prog: "/bin/date".into(), args: Vec::new() }.into(), grouped: true });
+//! #
+//! job.start();
+//! job.signal(Signal::User1);
+//! job.stop().await; // here, all of start(), signal(), and stop() will have run
+//! # }
+//! ```
+//!
+//! However, this is a different program:
+//!
+//! ```no_run
+//! # #[tokio::main(flavor = "current_thread")] async fn main() { // single-threaded for doctest only
+//! # use std::time::Duration;
+//! # use tokio::{sync::mpsc, task::JoinSet, time::sleep};
+//! # use watchexec_supervisor::Signal;
+//! # use watchexec_supervisor::command::{Command, Program};
+//! # use watchexec_supervisor::job::{CommandState, start_job};
+//! #
+//! # let mut joinset = JoinSet::new();
+//! # let job = start_job(&mut joinset, Command { program: Program::Exec { prog: "/bin/date".into(), args: Vec::new() }.into(), grouped: true });
+//! #
+//! job.start().await;
+//! println!("program started!");
+//! sleep(Duration::from_secs(5)).await; // wait until program is fully started
+//!
+//! job.signal(Signal::User1).await;
+//! sleep(Duration::from_millis(150)).await; // wait until program has dumped stats
+//! println!("program stats dumped via USR1 signal!");
+//!
+//! job.stop().await;
+//! println!("program stopped");
+//! # }
+//! ```
 
-use command::Command;
-use job::{start_job, Job};
-use tokio::task::JoinSet;
+/// Re-export for convenience.
+pub use watchexec_signals::Signal;
 
 pub mod command;
-mod errors;
-mod flag;
+pub mod errors;
+pub mod flag;
 pub mod job;
-
-/// The supervisor.
-///
-/// A supervisor in this crate is a simple structure: it wraps the [`JoinSet`] that holds the tasks
-/// running the [`Job`]s that it manages, and keeps a bag of the handles to those jobs.
-///
-/// To start a job, call [`Supervisor::add`]. To end it, call [`Job::delete`]. To list all jobs, or
-/// obtain one or more of them, get an iterator with [`Supervisor::list`].
-///
-/// To abort all jobs, drop the supervisor. To get a future that completes when all jobs are done,
-/// call [`Supervisor::wait`].
-///
-/// If you start lots of jobs and then delete them without starting any new ones, you may want to
-/// call [`Supervisor::gc`] to clean up the internal lists. This is called internally on `add()` and
-/// within `wait()`.
-#[derive(Debug, Default)]
-pub struct Supervisor {
-	tasks: JoinSet<()>,
-	jobs: Vec<Job>,
-}
-
-impl Supervisor {
-	/// Create and spawn a new [`Job`].
-	pub fn add(&mut self, command: Command) -> Job {
-		let job = start_job(&mut self.tasks, command);
-		self.jobs.push(job.clone());
-		self.gc();
-		job
-	}
-
-	/// An iterator of alive jobs.
-	pub fn list(&self) -> impl Iterator<Item=Job> + '_ {
-		self.jobs.iter().filter(|job| !job.is_dead()).cloned()
-	}
-
-	/// Clear out dead jobs.
-	pub fn gc(&mut self) {
-		self.jobs.retain(|job| !job.is_dead());
-	}
-
-	/// Wait for all jobs to finish.
-	pub async fn wait(&mut self) {
-		while self.tasks.join_next().await.is_some() {
-			self.gc();
-		}
-	}
-}
