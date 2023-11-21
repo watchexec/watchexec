@@ -11,7 +11,7 @@ use crate::flag::Flag;
 use super::{messages::ControlMessage, Control};
 
 #[derive(Debug, Copy, Clone)]
-pub enum Priority {
+pub(crate) enum Priority {
 	Normal,
 	High,
 	Urgent,

@@ -1,17 +1,21 @@
+//! Job supervision.
+
 #[doc(inline)]
 pub use self::{
 	job::Job,
 	messages::{Control, Ticket},
-	priority::Priority,
 	state::CommandState,
 	task::JobTaskContext,
 };
 
+#[cfg(test)]
+pub(crate) use self::{
+	priority::Priority,
+	testchild::{TestChild, TestChildCall},
+};
+
 #[doc(inline)]
 pub use task::start_job;
-
-#[cfg(test)]
-pub use testchild::{TestChild, TestChildCall};
 
 #[allow(clippy::module_inception)]
 mod job;

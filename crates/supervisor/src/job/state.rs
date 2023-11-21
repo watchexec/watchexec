@@ -7,20 +7,46 @@ use watchexec_events::ProcessEnd;
 
 use crate::command::Command;
 
+/// The state of the job's command / process.
+///
+/// This is used both internally to represent the current state (ready/pending, running, finished)
+/// of the command, and can be queried via the [`JobTaskContext`](super::JobTaskContext) by hooks.
+///
+/// Technically, some operations can be done through a `&self` shared borrow on the running
+/// command's [`ErasedChild`](command_group::tokio::ErasedChild), but this library recommends
+/// against taking advantage of this, and prefer using the methods on [`Job`](super::Job) instead,
+/// so that the job can keep track of what's going on.
 #[derive(Debug)]
 #[cfg_attr(test, derive(Clone))]
 pub enum CommandState {
+	/// The command is neither running nor has finished. This is the initial state.
 	Pending,
+
+	/// The command is currently running. Note that this is established after the process is spawned
+	/// and not precisely synchronised with the process' aliveness: in some cases the process may be
+	/// exited but still `Running` in this enum.
 	Running {
+		/// The child process (test version).
 		#[cfg(test)]
 		child: super::TestChild,
+
+		/// The child process.
 		#[cfg(not(test))]
 		child: ErasedChild,
+
+		/// The time at which the process was spawned.
 		started: Instant,
 	},
+
+	/// The command has completed and its status was collected.
 	Finished {
+		/// The command's exit status.
 		status: ProcessEnd,
+
+		/// The time at which the process was spawned.
 		started: Instant,
+
+		/// The time at which the process finished, or more precisely, when its status was collected.
 		finished: Instant,
 	},
 }

@@ -104,7 +104,7 @@
 
 #![doc(html_favicon_url = "https://watchexec.github.io/logo:watchexec.svg")]
 #![doc(html_logo_url = "https://watchexec.github.io/logo:watchexec.svg")]
-#![warn(clippy::unwrap_used, missing_docs)]
+#![warn(clippy::unwrap_used, missing_docs, rustdoc::unescaped_backticks)]
 #![deny(rust_2018_idioms)]
 
 /// Re-export for convenience.
@@ -112,5 +112,6 @@ pub use watchexec_signals::Signal;
 
 pub mod command;
 pub mod errors;
-pub mod flag;
 pub mod job;
+
+mod flag;

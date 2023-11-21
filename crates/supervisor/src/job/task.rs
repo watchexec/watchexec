@@ -17,6 +17,9 @@ use super::{
 	state::CommandState,
 };
 
+/// Spawn a job task onto a [`JoinSet`] and return a [`Job`] handle.
+///
+/// The job task immediately start in the background: it does not need polling.
 pub fn start_job(joinset: &mut JoinSet<()>, command: Command) -> Job {
 	let (sender, mut receiver) = priority::new();
 
@@ -289,10 +292,18 @@ macro_rules! sync_async_callbox {
 	};
 }
 
+/// Job task internals exposed via hooks.
 #[derive(Debug)]
 pub struct JobTaskContext<'task> {
+	/// The job's [`Command`].
 	pub command: &'task Command,
+
+	/// The current state of the job.
 	pub current: &'task CommandState,
+
+	/// The state of the previous iteration of the job, if any.
+	///
+	/// This is generally [`CommandState::Finished`], but may be other states in rare cases.
 	pub previous: Option<&'task CommandState>,
 }
 
@@ -332,7 +343,7 @@ async fn signal_child(
 		signal
 			.to_nix()
 			.or_else(|| Signal::Terminate.to_nix())
-			.unwrap(),
+			.expect("UNWRAP: guaranteed for Signal::Terminate default"),
 	)?;
 
 	#[cfg(windows)]

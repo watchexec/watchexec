@@ -71,7 +71,7 @@ impl Job {
 		if N == 0 || self.gone.raised() {
 			Ticket::cancelled()
 		} else if N == 1 {
-			let control = controls.into_iter().next().unwrap();
+			let control = controls.into_iter().next().expect("UNWRAP: N > 0");
 			let (ticket, control) = self.prepare_control(control);
 			self.control_queue.send(control, priority);
 			ticket
@@ -82,7 +82,7 @@ impl Job {
 				last_ticket = Some(ticket);
 				self.control_queue.send(control, priority);
 			}
-			last_ticket.unwrap()
+			last_ticket.expect("UNWRAP: N > 0")
 		}
 	}
 

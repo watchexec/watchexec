@@ -1,5 +1,7 @@
-// Copied wholesale from https://docs.rs/futures/latest/futures/task/struct.AtomicWaker.html
-// unfortunately not aware of crated version!
+//! A flag that can be raised to wake a task.
+//!
+//! Copied wholesale from <https://docs.rs/futures/latest/futures/task/struct.AtomicWaker.html>
+//! unfortunately not aware of crated version!
 
 use std::{
 	pin::Pin,
