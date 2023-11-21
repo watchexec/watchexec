@@ -30,8 +30,8 @@
 //! ends) and the job's control queue. The control queue is a hybrid MPSC queue, with three priority
 //! levels and a timer. When the timer is active, the lowest ("Normal") priority queue is disabled.
 //! This is an internal detail which serves to implement graceful stops and restarts. The internals
-//! of the job's task are not available to the API user, action and query is only available mediated
-//! via sending control messages on this control queue.
+//! of the job's task are not available to the API user, actions and queries are performed by
+//! sending messages on this control queue.
 //!
 //! The control queue is executed in priority and in order within priorities. Sending a control to
 //! the task returns a [`Ticket`](job::Ticket), which is a future that resolves when the control has
@@ -44,7 +44,7 @@
 //!
 //! ```no_run
 //! # #[tokio::main(flavor = "current_thread")] async fn main() { // single-threaded for doctest only
-//! # use tokio::{sync::mpsc, task::JoinSet};
+//! # use tokio::task::JoinSet;
 //! # use watchexec_supervisor::Signal;
 //! # use watchexec_supervisor::command::{Command, Program};
 //! # use watchexec_supervisor::job::{CommandState, start_job};
@@ -62,7 +62,7 @@
 //!
 //! ```no_run
 //! # #[tokio::main(flavor = "current_thread")] async fn main() { // single-threaded for doctest only
-//! # use tokio::{sync::mpsc, task::JoinSet};
+//! # use tokio::task::JoinSet;
 //! # use watchexec_supervisor::Signal;
 //! # use watchexec_supervisor::command::{Command, Program};
 //! # use watchexec_supervisor::job::{CommandState, start_job};
@@ -72,7 +72,7 @@
 //! #
 //! job.start();
 //! job.signal(Signal::User1);
-//! job.stop().await; // here, all of start(), signal(), and stop() will have run
+//! job.stop().await; // here, all of start(), signal(), and stop() will have run in order
 //! # }
 //! ```
 //!
@@ -81,7 +81,7 @@
 //! ```no_run
 //! # #[tokio::main(flavor = "current_thread")] async fn main() { // single-threaded for doctest only
 //! # use std::time::Duration;
-//! # use tokio::{sync::mpsc, task::JoinSet, time::sleep};
+//! # use tokio::{task::JoinSet, time::sleep};
 //! # use watchexec_supervisor::Signal;
 //! # use watchexec_supervisor::command::{Command, Program};
 //! # use watchexec_supervisor::job::{CommandState, start_job};
@@ -101,13 +101,43 @@
 //! println!("program stopped");
 //! # }
 //! ```
+//!
+//! # Example
+//!
+//! ```no_run
+//! # #[tokio::main(flavor = "current_thread")] async fn main() { // single-threaded for doctest only
+//! use tokio::task::JoinSet;
+//! use watchexec_supervisor::Signal;
+//! use watchexec_supervisor::command::{Command, Program};
+//! use watchexec_supervisor::job::{CommandState, start_job};
+//!
+//! let mut joinset = JoinSet::new();
+//! let job = start_job(&mut joinset, Command {
+//!     program: Program::Exec {
+//!         prog: "/bin/date".into(),
+//!         args: Vec::new(),
+//!     }.into(),
+//!     grouped: true,
+//! });
+//!
+//! job.start().await;
+//! job.signal(Signal::User1).await;
+//! job.stop().await;
+//!
+//! job.delete_now().await;
+//!
+//! joinset.abort_all();
+//! # }
+//! ```
 
 #![doc(html_favicon_url = "https://watchexec.github.io/logo:watchexec.svg")]
 #![doc(html_logo_url = "https://watchexec.github.io/logo:watchexec.svg")]
 #![warn(clippy::unwrap_used, missing_docs, rustdoc::unescaped_backticks)]
 #![deny(rust_2018_idioms)]
 
-/// Re-export for convenience.
+#[doc(no_inline)]
+pub use watchexec_events::ProcessEnd;
+#[doc(no_inline)]
 pub use watchexec_signals::Signal;
 
 pub mod command;

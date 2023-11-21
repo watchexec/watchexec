@@ -19,7 +19,7 @@ use super::{
 
 /// Spawn a job task onto a [`JoinSet`] and return a [`Job`] handle.
 ///
-/// The job task immediately start in the background: it does not need polling.
+/// The job task immediately starts in the background: it does not need polling.
 pub fn start_job(joinset: &mut JoinSet<()>, command: Command) -> Job {
 	let (sender, mut receiver) = priority::new();
 

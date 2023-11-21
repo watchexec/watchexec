@@ -16,8 +16,8 @@ pub enum Program {
 
 	/// A shell program: a string which is to be executed by a shell.
 	///
-	/// We assume that the shell is handling job control, and so there is no option to create a new
-	/// process group as with [`Program::Exec`].
+	/// (Tip: in general, a shell will handle its own job control, so there's no inherent need to
+	/// set `grouped: true` at the [`Command`](super::Command) level.)
 	Shell {
 		/// The shell to run.
 		shell: Shell,

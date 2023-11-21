@@ -31,7 +31,7 @@ pub struct Command {
 	/// This will use either of Unix [process groups] or Windows [Job Objects] via the
 	/// [`command-group`](command_group) crate.
 	///
-	/// [process group]: https://en.wikipedia.org/wiki/Process_group
+	/// [process groups]: https://en.wikipedia.org/wiki/Process_group
 	/// [Job Objects]: https://en.wikipedia.org/wiki/Object_Manager_(Windows)
 	pub grouped: bool,
 }
