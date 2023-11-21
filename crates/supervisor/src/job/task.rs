@@ -296,18 +296,18 @@ pub struct JobTaskContext<'task> {
 	pub previous: Option<&'task CommandState>,
 }
 
-pub(crate) type SyncFunc = Box<dyn FnOnce(&JobTaskContext) + Send + Sync + 'static>;
+pub(crate) type SyncFunc = Box<dyn FnOnce(&JobTaskContext<'_>) + Send + Sync + 'static>;
 pub(crate) type AsyncFunc = Box<
-	dyn (FnOnce(&JobTaskContext) -> Box<dyn Future<Output = ()> + Send + Sync>)
+	dyn (FnOnce(&JobTaskContext<'_>) -> Box<dyn Future<Output = ()> + Send + Sync>)
 		+ Send
 		+ Sync
 		+ 'static,
 >;
 
 pub(crate) type SyncSpawnHook =
-	Arc<dyn Fn(&mut TokioCommand, &JobTaskContext) + Send + Sync + 'static>;
+	Arc<dyn Fn(&mut TokioCommand, &JobTaskContext<'_>) + Send + Sync + 'static>;
 pub(crate) type AsyncSpawnHook = Arc<
-	dyn (Fn(&mut TokioCommand, &JobTaskContext) -> Box<dyn Future<Output = ()> + Send + Sync>)
+	dyn (Fn(&mut TokioCommand, &JobTaskContext<'_>) -> Box<dyn Future<Output = ()> + Send + Sync>)
 		+ Send
 		+ Sync
 		+ 'static,

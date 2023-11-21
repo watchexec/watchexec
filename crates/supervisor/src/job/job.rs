@@ -214,7 +214,7 @@ impl Job {
 	/// command's [`ErasedChild`](command_group::tokio::ErasedChild), but this library recommends
 	/// against taking advantage of this, and prefer using the methods here instead, so that the
 	/// supervisor can keep track of what's going on.
-	pub fn run(&self, fun: impl FnOnce(&JobTaskContext) + Send + Sync + 'static) -> Ticket {
+	pub fn run(&self, fun: impl FnOnce(&JobTaskContext<'_>) + Send + Sync + 'static) -> Ticket {
 		self.control(Control::SyncFunc(Box::new(fun)))
 	}
 
@@ -276,7 +276,7 @@ impl Job {
 	/// ```
 	pub fn run_async(
 		&self,
-		fun: impl (FnOnce(&JobTaskContext) -> Box<dyn Future<Output = ()> + Send + Sync>)
+		fun: impl (FnOnce(&JobTaskContext<'_>) -> Box<dyn Future<Output = ()> + Send + Sync>)
 			+ Send
 			+ Sync
 			+ 'static,
@@ -291,7 +291,7 @@ impl Job {
 	/// command as it sees fit.
 	pub fn set_spawn_hook(
 		&self,
-		fun: impl Fn(&mut TokioCommand, &JobTaskContext) + Send + Sync + 'static,
+		fun: impl Fn(&mut TokioCommand, &JobTaskContext<'_>) + Send + Sync + 'static,
 	) -> Ticket {
 		self.control(Control::SetSyncSpawnHook(Arc::new(fun)))
 	}
@@ -311,7 +311,7 @@ impl Job {
 	/// spawn hooks that can't be done in the simpler sync version.
 	pub fn set_spawn_async_hook(
 		&self,
-		fun: impl (Fn(&mut TokioCommand, &JobTaskContext) -> Box<dyn Future<Output = ()> + Send + Sync>)
+		fun: impl (Fn(&mut TokioCommand, &JobTaskContext<'_>) -> Box<dyn Future<Output = ()> + Send + Sync>)
 			+ Send
 			+ Sync
 			+ 'static,
