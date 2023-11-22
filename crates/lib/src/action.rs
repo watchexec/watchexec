@@ -8,6 +8,7 @@ pub use outcome::Outcome;
 pub use worker::worker;
 
 mod handler;
+mod id;
 mod outcome;
 mod outcome_worker;
 mod process_holder;
