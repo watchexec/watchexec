@@ -1,7 +1,4 @@
-use std::{
-	num::NonZeroU64,
-	sync::atomic::{AtomicU64, Ordering},
-};
+use std::{cell::Cell, num::NonZeroU64};
 
 /// Unique opaque identifier.
 #[must_use]
@@ -12,14 +9,17 @@ pub struct Id {
 }
 
 thread_local! {
-	static COUNTER: AtomicU64 = AtomicU64::new(0);
+	static COUNTER: Cell<u64> = const { Cell::new(0) };
 }
 
 impl Default for Id {
 	fn default() -> Self {
+		let counter = COUNTER.get();
+		COUNTER.set(counter.wrapping_add(1));
+
 		Self {
 			thread: threadid(),
-			counter: COUNTER.with(|counter| counter.fetch_add(1, Ordering::Relaxed)),
+			counter,
 		}
 	}
 }
@@ -61,5 +61,7 @@ fn test_threadid() {
 	let top = threadid();
 	std::thread::spawn(move || {
 		assert_ne!(top, threadid());
-	}).join().expect("thread failed");
+	})
+	.join()
+	.expect("thread failed");
 }
