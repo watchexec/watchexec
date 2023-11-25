@@ -2,17 +2,13 @@
 
 use std::{
 	path::Path,
-	pin::{pin, Pin},
+	pin::pin,
 	sync::Arc,
 	time::Duration,
 };
 
-use futures::{
-	task::{Context, Poll},
-	Future, Stream,
-};
 use tokio::sync::Notify;
-use tracing::debug;
+use tracing::{trace, debug};
 
 use crate::{
 	action::Action,
@@ -202,7 +198,6 @@ impl Config {
 	///
 	/// This is called automatically by all other methods here, so most of the time calling this
 	/// isn't needed, but it can be useful for some advanced uses.
-	#[must_use]
 	pub fn signal_change(&self) -> &Self {
 		self.change_signal.notify_waiters();
 		self
@@ -288,36 +283,28 @@ pub(crate) struct ConfigWatched {
 
 impl ConfigWatched {
 	fn new(notify: Arc<Notify>) -> Self {
+		let notified = notify.notified();
+		pin!(notified).as_mut().enable();
+
 		Self {
 			first_run: true,
 			notify,
 		}
 	}
-}
 
-impl Stream for ConfigWatched {
-	type Item = ();
+	pub async fn next(&mut self) {
+		let notified = self.notify.notified();
+		let mut notified = pin!(notified);
+		notified.as_mut().enable();
 
-	fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
 		if self.first_run {
+			trace!("ConfigWatched: first run");
 			self.first_run = false;
-			Poll::Ready(Some(()))
 		} else {
+			trace!(?notified, "ConfigWatched: waiting for change");
 			// there's a bit of a gotcha where any config changes made after a Notified resolves
 			// but before a new one is issued will not be caught. not sure how to fix that yet.
-			let notified = self.notify.notified();
-			match Pin::new(&mut pin!(notified)).poll(cx) {
-				Poll::Pending => Poll::Pending,
-				Poll::Ready(_) => Poll::Ready(Some(())),
-			}
-		}
-	}
-
-	fn size_hint(&self) -> (usize, Option<usize>) {
-		if self.first_run {
-			(1, None)
-		} else {
-			(0, None)
+			notified.await;
 		}
 	}
 }

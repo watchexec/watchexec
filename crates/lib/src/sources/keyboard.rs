@@ -2,7 +2,6 @@
 use std::sync::Arc;
 
 use async_priority_channel as priority;
-use futures::StreamExt;
 use tokio::{
 	io::AsyncReadExt,
 	select, spawn,
@@ -28,7 +27,8 @@ pub async fn worker(
 ) -> Result<(), CriticalError> {
 	let mut send_close = None;
 	let mut config_watch = config.watch();
-	while config_watch.next().await.is_some() {
+	loop {
+		config_watch.next().await;
 		match (config.keyboard_events.get(), &send_close) {
 			// if we want to watch stdin and we're not already watching it then spawn a task to watch it
 			(true, None) => {
@@ -51,8 +51,6 @@ pub async fn worker(
 			_ => {}
 		}
 	}
-
-	Ok(())
 }
 
 async fn watch_stdin(

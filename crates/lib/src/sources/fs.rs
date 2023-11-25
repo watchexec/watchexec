@@ -10,7 +10,6 @@ use std::{
 };
 
 use async_priority_channel as priority;
-use futures::StreamExt;
 use normalize_path::NormalizePath;
 use tokio::sync::mpsc;
 use tracing::{debug, error, trace};
@@ -152,11 +151,16 @@ pub async fn worker(
 	let mut pathset = HashSet::new();
 
 	let mut config_watch = config.watch();
-	while config_watch.next().await.is_some() {
+	loop {
+		config_watch.next().await;
 		trace!("filesystem worker got a config change");
 
 		if config.pathset.get().is_empty() {
-			trace!("no more watched paths, dropping watcher");
+			trace!("{}", if pathset.is_empty() {
+				"no watched paths, no watcher needed"
+			} else {
+				"no more watched paths, dropping watcher"
+			});
 			watcher.take();
 			pathset.clear();
 			continue;
@@ -239,9 +243,6 @@ pub async fn worker(
 			}
 		}
 	}
-
-	debug!("ending file watcher");
-	Ok(())
 }
 
 fn notify_multi_path_errors(
