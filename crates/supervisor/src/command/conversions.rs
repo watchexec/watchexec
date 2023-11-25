@@ -5,19 +5,19 @@ use tracing::trace;
 
 use super::{Command, Program};
 
-impl Program {
+impl Command {
 	/// Obtain a [`tokio::process::Command`].
 	pub fn to_spawnable(&self) -> TokioCommand {
-		trace!(program=?self, "constructing command");
+		trace!(program=?self.program, "constructing command");
 
-		let mut cmd = match self {
-			Self::Exec { prog, args, .. } => {
+		let mut cmd = match &self.program {
+			Program::Exec { prog, args, .. } => {
 				let mut c = TokioCommand::new(prog);
 				c.args(args);
 				c
 			}
 
-			Self::Shell {
+			Program::Shell {
 				shell,
 				args,
 				command,
@@ -56,19 +56,12 @@ impl Program {
 		};
 
 		#[cfg(unix)]
-		{
-			// Resets the sigmask of the process before we spawn it.
-			//
-			// Required from Rust 1.66:
-			// https://github.com/rust-lang/rust/pull/101077
-			//
-			// Done before the spawn hook so it can be used to set a different mask if desired.
-			use nix::sys::signal::{sigprocmask, SigSet, SigmaskHow, Signal};
+		if self.options.reset_sigmask {
+			use nix::sys::signal::{sigprocmask, SigSet, SigmaskHow};
 			unsafe {
 				cmd.pre_exec(|| {
 					let mut oldset = SigSet::empty();
-					let mut newset = SigSet::all();
-					newset.remove(Signal::SIGHUP); // leave SIGHUP alone so nohup works
+					let newset = SigSet::all();
 					trace!(unblocking=?newset, "resetting process sigmask");
 					sigprocmask(SigmaskHow::SIG_UNBLOCK, Some(&newset), Some(&mut oldset))?;
 					trace!(?oldset, "sigmask reset");
@@ -78,13 +71,6 @@ impl Program {
 		}
 
 		cmd
-	}
-}
-
-impl Command {
-	/// Obtain a [`tokio::process::Command`].
-	pub fn to_spawnable(&self) -> TokioCommand {
-		self.program.to_spawnable()
 	}
 }
 

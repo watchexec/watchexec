@@ -97,7 +97,7 @@ pub fn start_job(command: Command) -> (Job, JoinHandle<()>) {
 							};
 						}
 
-						eprintln!("[{:?}] control: {control:?}", Instant::now());
+						// eprintln!("[{:?}] control: {control:?}", Instant::now());
 
 						match control {
 							Control::Start => {

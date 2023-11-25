@@ -81,7 +81,7 @@ impl CommandState {
 		let child = super::TestChild::new(command)?;
 
 		#[cfg(not(test))]
-		let child = if command.grouped {
+		let child = if command.options.grouped {
 			ErasedChild::Grouped(spawnable.group().spawn()?)
 		} else {
 			ErasedChild::Ungrouped(spawnable.spawn()?)

@@ -28,7 +28,7 @@ fn erroring_command() -> Command {
 			prog: "/does/not/exist".into(),
 			args: Vec::new(),
 		},
-		grouped: true,
+		options: Default::default(),
 	}
 }
 
@@ -38,7 +38,7 @@ fn working_command() -> Command {
 			prog: "/does/not/run".into(),
 			args: Vec::new(),
 		},
-		grouped: true,
+		options: Default::default(),
 	}
 }
 
@@ -48,7 +48,7 @@ fn ungraceful_command() -> Command {
 			prog: "sleep".into(),
 			args: vec![(GRACE * 2).to_string()],
 		},
-		grouped: true,
+		options: Default::default(),
 	}
 }
 
@@ -58,7 +58,7 @@ fn graceful_command() -> Command {
 			prog: "sleep".into(),
 			args: vec![(2 * GRACE / 3).to_string()],
 		},
-		grouped: true,
+		options: Default::default(),
 	}
 }
 

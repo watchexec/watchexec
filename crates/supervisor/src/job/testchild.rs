@@ -34,7 +34,7 @@ impl TestChild {
 		}
 
 		Ok(Self {
-			grouped: command.grouped,
+			grouped: command.options.grouped,
 			command,
 			calls: Arc::new(boxcar::Vec::new()),
 			output: Arc::new(Mutex::new(None)),
