@@ -2,6 +2,98 @@
 
 ## Next (YYYY-MM-DD)
 
+### General
+
+- Crate is more oriented around `Watchexec` the core experience rather than providing the kitchensink / components so you could build your own from the pieces; that helps the cohesion of the whole and simplifies many patterns.
+- Deprecated items (mostly leftover from splitting out the `watchexec_events` and `watchexec_signals` crates) are removed.
+- Watchexec can now supervise multiple commands at once. See [Action](#Action) below, the [Action docs](https://docs.rs/watchexec/latest/watchexec/action/struct.Action.html), and the [Supervisor docs](https://docs.rs/watchexec-supervisor) for more.
+- Because of this new feature, the one where multiple commands could be set under the one supervisor is removed.
+- Watchexec's supervisor was split up into its own crate, [`watchexec-supervisor`](https://docs.rs/watchexec-supervisor).
+- Running as PID1 (e.g. in Docker) is now fully handled, with support from the [`pid1`](https://www.fpcomplete.com/blog/announcing-pid1-crate-for-easier-rust-docker-images/) crate.
+- Tokio requirement is now 1.33.
+- Notify was upgraded to 6.0.
+- Nix was upgraded to 0.27.
+
+### `Watchexec`
+
+- `Watchexec::new()` now takes the `on_action` handler. As this is the most important handler to define and Watchexec will not be functional without one, that enforces providing it first.
+- `Watchexec::with_config()` lets one provide a config upfront, otherwise the default values are used.
+- `Watchexec::default()` is mostly used to avoid boilerplate in doc comment examples, and panics on initialisation errors.
+- `Watchexec::reconfigure()` is removed. Use the public `config` field instead to access the "live" `Arc<Config>` (see below).
+
+### Config
+
+- `InitConfig` and `RuntimeConfig` have been unified into a single `Config` struct.
+- Instead of module-specific `WorkingData` structures, all of the config is now flat in the same `Config`. That makes it easier to work with as all that's needed is to pass an `Arc<Config>` around, but it does mean the event sources are no longer independent.
+- Instead of using `tokio::sync::watch` for some values, and `HandlerLock` for handlers, and so on, everything is now a new `Changeable` type, specialised to `ChangeableFn` for closures and `ChangeableFilterer` for the Filterer.
+- There's now a `signal_change()` method which must be called after changes to the config; this is taken care of when using the methods on `Config`. This is required for the few places in Watchexec which need active reconfiguration rather than reading config values just-in-time.
+- The above means that instead of using `Watchexec::reconfigure()` and keeping a clone of the config around, an `Arc<Config>` is now "live" and changes applied to it will affect the Watchexec instance directly.
+- `command` / `commands` are removed from config. Instead use the Action handler API for creating new supervised commands.
+- `command_grouped` is removed from config. That's now an option set on `Command`.
+- `action_throttle` is renamed to `throttle` and now defaults to `50ms`, which is the default in Watchexec CLI.
+- `keyboard_emit_eof` is renamed to `keyboard_events`.
+- `pre_spawn_handler` is removed. Use `Job#set_spawn_hook` instead.
+- `post_spawn_handler` is removed. Use `Job#run` instead.
+
+### Command
+
+The structure has been reworked to be simpler and more extensible. Instead of a Command _enum_, there's now a Command _struct_, which holds a single `Program` and behaviour-altering options. `Shell` has also been redone, with less special-casing.
+
+If you had:
+
+```rust
+Command::Exec {
+  prog: "date".into(),
+  args: vec!["+%s".into()],
+}
+```
+
+You should now write:
+
+```rust
+Command {
+  program: Program::Exec {
+    prog: "date".into(),
+    args: vec!["+%s".into()],
+  },
+  options: Default::default(),
+}
+```
+
+- New `Program::Shell` field `args: Vec<String>` lets you pass (trailing) arguments to the shell invocation:
+  ```rust
+  Program::Shell {
+    shell: Shell::new("sh"),
+    command: "ls".into(),
+    args: vec!["--".into(), "movies".into()],
+  }
+  ```
+  is equivalent to:
+  ```
+  sh -c "ls" -- movies
+  ```
+- The old `args` field of `Command::Shell` is now the `options` field of `Shell`.
+- `Shell` has a new field `program_option: Option<Cow<OsStr>>` which is the syntax of the option used to provide the command. Ie for most shells it's `-c` and for `CMD.EXE` it's `/C`; this makes it fully customisable (including its absence!) if you want to use weird shells or non-shell programs as shells.
+- The special-cased `Shell::Powershell` is removed.
+- On Windows, arguments are specified with [`raw_arg`](https://doc.rust-lang.org/stable/std/os/windows/process/trait.CommandExt.html#tymethod.raw_arg) instead of `arg` to avoid quoting issues.
+- `Command` can no longer take a list of programs. That was always quite a hack; now that multiple supervised commands are possible, that's how multiple programs should be handled.
+- The top-level Watchexec `command_grouped` option is now Command-level, so you can start both grouped and non-grouped programs.
+- There's a new `reset_sigmask` option to control whether commands should have their signal masks reset on Unix. By default the signal mask is inherited.
+
+### Errors
+
+- `RuntimeError::NoCommands`, `RuntimeError::Handler`, `RuntimeError::HandlerLockHeld`, and `CriticalError::MissingHandler` are removed as the relevant types/structures don't exist anymore.
+- `RuntimeError::CommandShellEmptyCommand` and `RuntimeError::CommandShellEmptyShell` are removed; you can construct `Shell` with empty shell program and `Program::Shell` with an empty command, these will at best do nothing but they won't error early through Watchexec.
+- Watchexec will now panic if locks are poisoned; we can't recover from that.
+- The filesystem watcher's "too many files", "too many handles", and other initialisation errors are removed as RuntimeErrors, and are now CriticalErrors. These being runtime, nominally recoverable errors instead of end-the-world failures is one of the most common pitfalls of using the library, and though recovery _is_ technically possible, it's better approached other ways.
+- The `on_error` handler is now sync only and no longer returns a `Result`; as such there's no longer the weird logic of "if the `on_error` handler errors, it will call itself on the error once, then crash".
+- If you were doing async work in `on_error`, you should instead use non-async calls (like `try_send()` for Tokio channels). The error handler is expected to return as fast as possible, and _not_ do blocking work if it can at all avoid it; this was always the case but is now documented more explicitly.
+- Error diagnostic codes are removed.
+
+### Action
+
+TBD
+
 ## v2.3.0 (2023-03-22)
 
 - New: `Outcome::Race` and `Outcome::race()` ([#548](https://github.com/watchexec/watchexec/pull/548))
