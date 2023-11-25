@@ -125,7 +125,7 @@ impl AsRef<Path> for WatchedPath {
 /// ```no_run
 /// use async_priority_channel as priority;
 /// use tokio::sync::mpsc;
-/// use watchexec::{Config, fs::worker};
+/// use watchexec::{Config, sources::fs::worker};
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {

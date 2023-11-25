@@ -19,7 +19,7 @@
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<()> {
-//!     let wx = Watchexec::new(|action: Action| {
+//!     let wx = Watchexec::new(|mut action: Action| {
 //!         // print any events
 //!         for event in action.events.iter() {
 //!             eprintln!("EVENT: {event:?}");
@@ -29,6 +29,8 @@
 //!         if action.signals().any(|sig| sig == Signal::Interrupt) {
 //!             action.quit();
 //!         }
+//!
+//!         action
 //!     })?;
 //!
 //!     // watch the current directory

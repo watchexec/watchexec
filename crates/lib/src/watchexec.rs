@@ -44,10 +44,12 @@ pub struct Watchexec {
 	/// ```no_run
 	/// # use watchexec::{action::Action, Watchexec};
 	/// let wx = Watchexec::default();
-	/// wx.config.on_action(|action: Action| {
+	/// wx.config.on_action(|mut action: Action| {
 	///     if action.signals().next().is_some() {
 	///         action.quit();
 	///     }
+	///
+	///     action
 	/// });
 	/// ```
 	///
@@ -55,15 +57,16 @@ pub struct Watchexec {
 	///
 	/// ```no_run
 	/// # use watchexec::{action::Action, Watchexec};
-	/// let wx = Watchexec::new(|action: Action| {
+	/// let wx = Watchexec::new(|mut action: Action| {
 	///     if action.signals().next().is_some() {
 	///         action.quit();
-	///         return;
+	///     } else {
+	///         for event in action.events.iter() {
+	///             println!("{event:?}");
+	///         }
 	///     }
 	///
-	///     for event in action.events.iter() {
-	///         println!("{event:?}");
-	///     }
+	///     action
 	/// }).unwrap();
 	///
 	/// wx.config.pathset(["."]);

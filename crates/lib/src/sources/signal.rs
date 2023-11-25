@@ -15,7 +15,8 @@ use crate::{
 
 /// Launch the signal event worker.
 ///
-/// While you _can_ run several, you **must** only have one. This may be enforced later.
+/// While you _could_ run several (it won't panic), you **must** only have one (for correctness).
+/// This may be enforced later.
 ///
 /// # Examples
 ///
@@ -24,7 +25,7 @@ use crate::{
 /// ```no_run
 /// use tokio::sync::mpsc;
 /// use async_priority_channel as priority;
-/// use watchexec::signal::worker;
+/// use watchexec::sources::signal::worker;
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {

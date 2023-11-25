@@ -5,19 +5,15 @@ use tokio::task::{JoinError, JoinHandle};
 
 /// A collection of tasks spawned on a Tokio runtime.
 ///
-/// This is a variant of Tokio's [`JoinSet`](tokio::task::JoinSet) which exposes the inner `insert`
-/// method, such that it can be given tasks after they've been spawned. As a simplification, the
-/// return type of the tasks is fixed to `()`.
-///
-/// The inner implementation skips the `IdleNotifiedSet` and uses two `Vec`s instead. This is
-/// probably not a great idea but it does work.
+/// This is conceptually a variant of Tokio's [`JoinSet`](tokio::task::JoinSet) which can attach
+/// tasks after they've been spawned.
 ///
 /// # Examples
 ///
 /// Spawn multiple tasks and wait for them.
 ///
-/// ```
-/// use watchexec::LateJoinSet;
+/// ```no_compile
+/// use crate::late_join_set::LateJoinSet;
 ///
 /// #[tokio::main]
 /// async fn main() {
@@ -41,8 +37,8 @@ use tokio::task::{JoinError, JoinHandle};
 ///
 /// Attach a task to a set after it's been spawned.
 ///
-/// ```
-/// use watchexec::LateJoinSet;
+/// ```no_compile
+/// use crate::late_join_set::LateJoinSet;
 ///
 /// #[tokio::main]
 /// async fn main() {
