@@ -113,9 +113,13 @@ version = "1.0.1"
 path = "../bosion"
 
 [features]
-default = ["pid1-withlog"]
-pid1-withlog = ["pid1"]
+default = ["pid1"]
+
+## Enables PID1 handling.
 pid1 = ["dep:pid1"]
+
+## Enables logging for PID1 handling.
+pid1-withlog = ["pid1"]
 
 ## For debugging only: enables the Tokio Console.
 dev-console = ["console-subscriber"]
