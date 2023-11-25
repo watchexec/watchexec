@@ -14,7 +14,7 @@ use tracing::{debug, error, trace};
 use watchexec_events::{Event, Priority};
 
 use crate::{
-	action::{self, Action},
+	action::{self, ActionHandler},
 	changeable::ChangeableFn,
 	error::{CriticalError, RuntimeError},
 	sources::{fs, keyboard, signal},
@@ -105,7 +105,7 @@ impl Watchexec {
 	/// [`Event`]s, to the action handler. At minimum, you should check for interrupt/ctrl-c events
 	/// and call `action.quit()` in your handler, otherwise hitting ctrl-c will do nothing.
 	pub fn new(
-		action_handler: impl (Fn(Action) -> Action) + Send + Sync + 'static,
+		action_handler: impl (Fn(ActionHandler) -> ActionHandler) + Send + Sync + 'static,
 	) -> Result<Arc<Self>, CriticalError> {
 		let config = Config::default();
 		config.on_action(action_handler);

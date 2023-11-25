@@ -9,6 +9,8 @@ use watchexec_supervisor::{
 
 use crate::id::Id;
 
+use super::QuitManner;
+
 /// The environment given to the action handler.
 ///
 /// The action handler is the heart of a Watchexec program. Within, you decide what happens when an
@@ -36,7 +38,7 @@ use crate::id::Id;
 ///    using `quit()`, the quit action is not performed until the action handler returns and the
 ///    Watchexec instance is able to see it.
 #[derive(Debug)]
-pub struct Action {
+pub struct Handler {
 	/// The collected events which triggered the action.
 	pub events: Arc<[Event]>,
 	extant: HashMap<Id, Job>,
@@ -44,22 +46,7 @@ pub struct Action {
 	pub(crate) quit: Option<QuitManner>,
 }
 
-/// How the Watchexec instance should quit.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum QuitManner {
-	/// Kill all processes and drop all jobs, then quit.
-	Abort,
-
-	/// Gracefully stop all jobs, then quit.
-	Graceful {
-		/// Signal to send immediately
-		signal: Signal,
-		/// Time to wait before forceful termination
-		grace: Duration,
-	},
-}
-
-impl Action {
+impl Handler {
 	pub(crate) fn new(events: Arc<[Event]>, jobs: HashMap<Id, Job>) -> Self {
 		Self {
 			events,

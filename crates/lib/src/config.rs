@@ -6,7 +6,7 @@ use tokio::sync::Notify;
 use tracing::{debug, trace};
 
 use crate::{
-	action::Action,
+	action::{ActionHandler, ActionReturn},
 	changeable::{Changeable, ChangeableFn},
 	filter::{ChangeableFilterer, Filterer},
 	sources::fs::{WatchedPath, Watcher},
@@ -53,7 +53,7 @@ pub struct Config {
 	/// and you'll find that the internal event queues quickly fill up and it all grinds to a halt.
 	/// Spawn threads or tasks, or use channels or other async primitives to communicate with your
 	/// expensive code.
-	pub action_handler: ChangeableFn<Action, Action>,
+	pub action_handler: ChangeableFn<ActionHandler, ActionReturn>,
 
 	/// Runtime error handler.
 	///
@@ -159,7 +159,7 @@ impl Default for Config {
 	fn default() -> Self {
 		Self {
 			change_signal: Default::default(),
-			action_handler: ChangeableFn::new(|action| action),
+			action_handler: ChangeableFn::new(ActionReturn::Sync),
 			error_handler: Default::default(),
 			pathset: Default::default(),
 			file_watcher: Default::default(),
@@ -240,9 +240,13 @@ impl Config {
 	}
 
 	/// Set the action handler.
-	pub fn on_action(&self, handler: impl (Fn(Action) -> Action) + Send + Sync + 'static) -> &Self {
+	pub fn on_action(
+		&self,
+		handler: impl (Fn(ActionHandler) -> ActionHandler) + Send + Sync + 'static,
+	) -> &Self {
 		debug!("Config: on_action");
-		self.action_handler.replace(handler);
+		self.action_handler
+			.replace(move |action| ActionReturn::Sync(handler(action)));
 		self.signal_change()
 	}
 }

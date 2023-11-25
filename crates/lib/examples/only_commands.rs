@@ -3,7 +3,6 @@ use std::time::{Duration, Instant};
 use miette::{IntoDiagnostic, Result};
 use tokio::time::sleep;
 use watchexec::{
-	action::Action,
 	command::{Command, Program},
 	Watchexec,
 };
@@ -11,7 +10,7 @@ use watchexec_events::{Event, Priority};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-	let wx = Watchexec::new(|mut action: Action| {
+	let wx = Watchexec::new(|mut action| {
 		// you don't HAVE to respond to filesystem events:
 		// here, we start a command every five seconds, unless we get a signal and quit
 

@@ -12,7 +12,7 @@ use miette::{miette, IntoDiagnostic, Report, Result};
 //use notify_rust::Notification;
 use tracing::{debug, debug_span, error};
 use watchexec::{
-	action::{Action, /*Outcome,*/ PreSpawn},
+	action::{Handler, /*Outcome,*/ PreSpawn},
 	command::{Command, Isolation, Program, Shell},
 	error::RuntimeError,
 	fs::Watcher,
@@ -83,7 +83,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 	let delay_run = args.delay_run.map(|ts| ts.0);
 	*/
 
-	config.on_action(move |_action: Action| {
+	config.on_action(move |_action: Handler| {
 		/*
 		// starts the command for the first time.
 		// TODO(Félix) is this a valid way of spawning the command?

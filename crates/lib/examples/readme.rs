@@ -4,7 +4,6 @@ use std::{
 	time::Duration,
 };
 use watchexec::{
-	action::Action,
 	command::{Command, Program, Shell},
 	job::CommandState,
 	Watchexec,
@@ -24,7 +23,7 @@ async fn main() -> Result<()> {
 	let job = Arc::new(Mutex::new(None));
 	let wx = Watchexec::new({
 		let outerjob = job.clone();
-		move |mut action: Action| {
+		move |mut action| {
 			let (_, job) = action.create_job(Command {
 				program: Program::Shell {
 					shell: Shell::new("bash"),
@@ -103,7 +102,7 @@ async fn main() -> Result<()> {
 
 	// now we change what the action does:
 	let auto_restart_abort = auto_restart.abort_handle();
-	wx.config.on_action(move |mut action: Action| {
+	wx.config.on_action(move |mut action| {
 		// if we get Ctrl-C on the Watchexec instance, we quit
 		if action.signals().any(|sig| sig == Signal::Interrupt) {
 			eprintln!("[Quitting...]");

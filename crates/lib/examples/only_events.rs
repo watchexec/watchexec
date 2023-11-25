@@ -1,9 +1,9 @@
 use miette::{IntoDiagnostic, Result};
-use watchexec::{action::Action, Watchexec};
+use watchexec::Watchexec;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-	let wx = Watchexec::new(|mut action: Action| {
+	let wx = Watchexec::new(|mut action| {
 		// you don't HAVE to spawn jobs:
 		// here, we just print out the events as they come in
 		for event in action.events.iter() {

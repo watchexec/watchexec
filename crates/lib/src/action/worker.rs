@@ -11,8 +11,9 @@ use tracing::{debug, trace};
 use watchexec_events::{Event, Priority};
 use watchexec_supervisor::job::Job;
 
+use super::{handler::Handler, quit::QuitManner};
 use crate::{
-	action::{Action, QuitManner},
+	action::ActionReturn,
 	error::{CriticalError, RuntimeError},
 	filter::Filterer,
 	id::Id,
@@ -44,10 +45,12 @@ pub async fn worker(
 		let events: Arc<[Event]> = Arc::from(take(&mut set).into_boxed_slice());
 
 		trace!("preparing action handler");
-		let action = Action::new(events.clone(), jobs.clone());
+		let action = Handler::new(events.clone(), jobs.clone());
 
 		debug!("running action handler");
-		let action = config.action_handler.call(action);
+		let action = match config.action_handler.call(action) {
+			ActionReturn::Sync(action) => action,
+		};
 
 		debug!("take control of new tasks");
 		for (id, (job, task)) in action.new {
