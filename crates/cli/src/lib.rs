@@ -7,7 +7,6 @@ use args::{Args, ShellCompletion};
 use clap::CommandFactory;
 use clap_complete::{Generator, Shell};
 use clap_mangen::Man;
-use command_group::AsyncCommandGroup;
 use is_terminal::IsTerminal;
 use miette::{IntoDiagnostic, Result};
 use tokio::{fs::metadata, io::AsyncWriteExt, process::Command};
@@ -133,12 +132,10 @@ async fn run_manpage(_args: Args) -> Result<()> {
 			.stdin(Stdio::piped())
 			.stdout(Stdio::inherit())
 			.stderr(Stdio::inherit())
-			.group()
 			.kill_on_drop(true)
 			.spawn()
 			.into_diagnostic()?;
 		child
-			.inner()
 			.stdin
 			.as_mut()
 			.unwrap()

@@ -27,7 +27,7 @@ thiserror = "1.0.44"
 normalize-path = "0.2.0"
 
 [dependencies.command-group]
-version = "4.1.0"
+version = "5.0.1"
 features = ["with-tokio"]
 
 [dependencies.watchexec-events]
