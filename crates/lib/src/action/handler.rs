@@ -80,7 +80,24 @@ impl Action {
 		(id, job)
 	}
 
-	/// Get a job given its [`Id`].
+	// exposing this is dangerous as it allows duplicate IDs which may leak jobs
+	fn create_job_with_id(&mut self, id: Id, command: Command) -> Job {
+		let (job, task) = start_job(command);
+		self.new.insert(id, (job.clone(), task));
+		job
+	}
+
+	/// Get an existing job or create a new one given an Id.
+	///
+	/// This starts the [`Job`] immediately if one with the Id doesn't exist, and stores a copy of
+	/// its handle and [`Id`] in this `Action` (and thus in the Watchexec instance, when the action
+	/// handler returns).
+	pub fn get_or_create_job(&mut self, id: Id, command: Command) -> Job {
+		self.get_job(id)
+			.unwrap_or_else(|| self.create_job_with_id(id, command))
+	}
+
+	/// Get a job given its Id.
 	///
 	/// This returns a job handle, if it existed when this handler was called.
 	pub fn get_job(&self, id: Id) -> Option<Job> {

@@ -120,6 +120,9 @@ async fn main() -> Result<()> {
 				eprintln!("[Asking program to stop...]");
 				job.stop_with_signal(Signal::Terminate, Duration::from_secs(5));
 			}
+
+			// we could also use `action.get_or_create_job` initially and store its Id to use here,
+			// see the CHANGELOG.md for an example under "3.0.0 > Action".
 		}
 
 		action

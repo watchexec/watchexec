@@ -100,10 +100,10 @@ pub struct Config {
 	/// });
 	/// ```
 	///
-	/// Just like other handlers, it is important for this to return quickly: avoid performing
-	/// blocking work. However, there should be a lot less errors than events, so it's less critical
-	/// than, say, the action handler. Locking and writing to stdio is fine, for example. Of course,
-	/// an asynchronous log writer or separate UI thread is always a good idea.
+	/// It is important for this to return quickly: avoid performing blocking work. Locking and
+	/// writing to stdio is fine, but waiting on the network is a bad idea. Of course, an
+	/// asynchronous log writer or separate UI thread is always a better idea than `println!` if
+	/// have that ability.
 	pub error_handler: ChangeableFn<ErrorHook, ()>,
 
 	/// The set of filesystem paths to be watched.
