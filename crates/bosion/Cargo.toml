@@ -15,11 +15,11 @@ rust-version = "1.64.0"
 edition = "2021"
 
 [dependencies.time]
-version = "0.3.20"
+version = "0.3.30"
 features = ["macros", "formatting"]
 
 [dependencies.gix]
-version = "0.55"
+version = "0.55.2"
 optional = true
 default-features = false
 

@@ -1,7 +1,4 @@
-use std::{
-	env::var,
-	path::{Path, PathBuf},
-};
+use std::{env::var, path::PathBuf};
 
 use time::{format_description::FormatItem, macros::format_description, OffsetDateTime};
 
@@ -153,6 +150,7 @@ pub struct GitInfo {
 #[cfg(feature = "git")]
 impl GitInfo {
 	fn gather() -> Result<Self, String> {
+		use std::path::Path;
 		let (path, _) = gix::discover::upwards(Path::new(".")).err_string()?;
 		let repo = gix::discover(path).err_string()?;
 		let head = repo.head_commit().err_string()?;
