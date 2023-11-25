@@ -32,11 +32,22 @@ use super::QuitManner;
 /// 1. The action handler is called with the supervisor set _as of when the handler was called_.
 ///    This is particularly important when multiple action handlers might be running at the same
 ///    time: they might have incomplete views of the supervisor set.
+///
 /// 2. The way the action handler communicates with the Watchexec handler is through the return
 ///    value of the handler. That is, when you add a job with `create_job()`, the job is not added
 ///    to the Watchexec instance's supervisor set until the action handler returns. Similarly, when
 ///    using `quit()`, the quit action is not performed until the action handler returns and the
 ///    Watchexec instance is able to see it.
+///
+/// 3. The action handler blocks the action main loop. This means that if you have a long-running
+///    action handler, the Watchexec instance will not be able to process events until the handler
+///    returns. That will cause events to accumulate and then get dropped once the channel reaches
+///    capacity, which will impact your ability to receive signals (such as a Ctrl-C), and may spew
+///    [`EventChannelTrySend` errors](crate::error::RuntimeError::EventChannelTrySend).
+///
+///    If you want to do something long-running, you should either ignore that error, and accept
+///    events may be dropped, or preferrably spawn a task to do it, and return from the action
+///    handler as soon as possible.
 #[derive(Debug)]
 pub struct Handler {
 	/// The collected events which triggered the action.
