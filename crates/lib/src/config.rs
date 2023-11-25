@@ -136,22 +136,7 @@ pub struct Config {
 	/// The filterer implementation to use when filtering events.
 	///
 	/// The default is a no-op, which will always pass every event.
-	///
-	/// _Unlike_ handlers, filters may (and frequently do) do blocking work. Something to keep in
-	/// mind is that blocking or variable-time filters will reorder the events: events come to the
-	/// filterer as they come out of the event source, but they are only passed on to the action
-	/// once filtering is complete. This means that if you have a filter that takes between 10 and
-	/// 100ms to run, events that pass the filter quicker will arrive before events that take longer
-	/// to clear your conditions.
-	///
-	/// Additionally, Watchexec will only spawn up to `max_filterer_tasks` filterer tasks at a time;
-	/// events beyond that limit will queue.
 	pub filterer: ChangeableFilterer,
-
-	/// The maximum number of filterer tasks to run at a time.
-	///
-	/// The default is 10.
-	pub max_filterer_tasks: Changeable<usize>,
 
 	/// The buffer size of the channel which carries runtime errors.
 	///
@@ -181,7 +166,6 @@ impl Default for Config {
 			keyboard_events: Default::default(),
 			throttle: Changeable::new(Duration::from_millis(50)),
 			filterer: Default::default(),
-			max_filterer_tasks: Changeable::new(10),
 			error_channel_size: 64,
 			event_channel_size: 4096,
 		}
@@ -259,13 +243,6 @@ impl Config {
 	pub fn on_action(&self, handler: impl (Fn(Action) -> Action) + Send + Sync + 'static) -> &Self {
 		debug!("Config: on_action");
 		self.action_handler.replace(handler);
-		self.signal_change()
-	}
-
-	/// Set the maximum number of filterer tasks to run at a time.
-	pub fn max_filterer_tasks(&self, max_filterer_tasks: usize) -> &Self {
-		debug!(?max_filterer_tasks, "Config: max_filterer_tasks");
-		self.max_filterer_tasks.replace(max_filterer_tasks);
 		self.signal_change()
 	}
 }
