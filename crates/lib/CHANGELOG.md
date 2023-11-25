@@ -179,6 +179,8 @@ Watchexec::new(|mut action| {
 });
 ```
 
+`Outcome::Clear` and `Outcome::Reset` are gone, and there's no equivalent on `Job`: that's because these are screen control actions, not job control. You should use the [clearscreen](https://docs.rs/clearscreen) crate directly in your action handler, in conjunction with job control, to achieve the desired effect.
+
 ## v2.3.0 (2023-03-22)
 
 - New: `Outcome::Race` and `Outcome::race()` ([#548](https://github.com/watchexec/watchexec/pull/548))
