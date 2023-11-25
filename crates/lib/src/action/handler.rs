@@ -71,7 +71,7 @@ impl Handler {
 	///
 	/// This starts the [`Job`] immediately, and stores a copy of its handle and [`Id`] in this
 	/// `Action` (and thus in the Watchexec instance, when the action handler returns).
-	pub fn create_job(&mut self, command: Command) -> (Id, Job) {
+	pub fn create_job(&mut self, command: Arc<Command>) -> (Id, Job) {
 		let id = Id::default();
 		let (job, task) = start_job(command);
 		self.new.insert(id, (job.clone(), task));
@@ -79,7 +79,7 @@ impl Handler {
 	}
 
 	// exposing this is dangerous as it allows duplicate IDs which may leak jobs
-	fn create_job_with_id(&mut self, id: Id, command: Command) -> Job {
+	fn create_job_with_id(&mut self, id: Id, command: Arc<Command>) -> Job {
 		let (job, task) = start_job(command);
 		self.new.insert(id, (job.clone(), task));
 		job
@@ -90,7 +90,7 @@ impl Handler {
 	/// This starts the [`Job`] immediately if one with the Id doesn't exist, and stores a copy of
 	/// its handle and [`Id`] in this `Action` (and thus in the Watchexec instance, when the action
 	/// handler returns).
-	pub fn get_or_create_job(&mut self, id: Id, command: fn() -> Command) -> Job {
+	pub fn get_or_create_job(&mut self, id: Id, command: impl Fn() -> Arc<Command>) -> Job {
 		self.get_job(id)
 			.unwrap_or_else(|| self.create_job_with_id(id, command()))
 	}

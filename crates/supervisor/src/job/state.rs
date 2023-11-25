@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::{sync::Arc, time::Instant};
 
 #[cfg(not(test))]
 use command_group::{tokio::ErasedChild, AsyncCommandGroup};
@@ -70,7 +70,7 @@ impl CommandState {
 	#[cfg_attr(test, allow(unused_mut, unused_variables))]
 	pub(crate) async fn spawn(
 		&mut self,
-		command: Command,
+		command: Arc<Command>,
 		mut spawnable: TokioCommand,
 	) -> std::io::Result<bool> {
 		if let Self::Running { .. } = self {

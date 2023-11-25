@@ -16,14 +16,14 @@ use crate::command::{Command, Program};
 #[derive(Debug, Clone)]
 pub struct TestChild {
 	pub grouped: bool,
-	pub command: Command,
+	pub command: Arc<Command>,
 	pub calls: Arc<boxcar::Vec<TestChildCall>>,
 	pub output: Arc<Mutex<Option<Output>>>,
 	pub spawned: Instant,
 }
 
 impl TestChild {
-	pub fn new(command: Command) -> std::io::Result<Self> {
+	pub fn new(command: Arc<Command>) -> std::io::Result<Self> {
 		if let Program::Exec { prog, .. } = &command.program {
 			if prog == Path::new("/does/not/exist") {
 				return Err(std::io::Error::new(

@@ -22,44 +22,44 @@ use super::{Control, Job, Priority, TestChild};
 
 const GRACE: u64 = 10; // millis
 
-fn erroring_command() -> Command {
-	Command {
+fn erroring_command() -> Arc<Command> {
+	Arc::new(Command {
 		program: Program::Exec {
 			prog: "/does/not/exist".into(),
 			args: Vec::new(),
 		},
 		options: Default::default(),
-	}
+	})
 }
 
-fn working_command() -> Command {
-	Command {
+fn working_command() -> Arc<Command> {
+	Arc::new(Command {
 		program: Program::Exec {
 			prog: "/does/not/run".into(),
 			args: Vec::new(),
 		},
 		options: Default::default(),
-	}
+	})
 }
 
-fn ungraceful_command() -> Command {
-	Command {
+fn ungraceful_command() -> Arc<Command> {
+	Arc::new(Command {
 		program: Program::Exec {
 			prog: "sleep".into(),
 			args: vec![(GRACE * 2).to_string()],
 		},
 		options: Default::default(),
-	}
+	})
 }
 
-fn graceful_command() -> Command {
-	Command {
+fn graceful_command() -> Arc<Command> {
+	Arc::new(Command {
 		program: Program::Exec {
 			prog: "sleep".into(),
 			args: vec![(2 * GRACE / 3).to_string()],
 		},
 		options: Default::default(),
-	}
+	})
 }
 
 #[tokio::test]

@@ -176,10 +176,6 @@ pub enum RuntimeError {
 	#[error("empty shell program")]
 	CommandShellEmptyShell,
 
-	/// Error received when clearing the screen.
-	#[error("clear screen: {0}")]
-	Clearscreen(#[from] clearscreen::Error),
-
 	/// Error received from the [`ignore-files`](ignore_files) crate.
 	#[error("ignore files: {0}")]
 	IgnoreFiles(

@@ -1,4 +1,7 @@
-use std::time::{Duration, Instant};
+use std::{
+	sync::Arc,
+	time::{Duration, Instant},
+};
 
 use miette::{IntoDiagnostic, Result};
 use tokio::time::sleep;
@@ -18,7 +21,7 @@ async fn main() -> Result<()> {
 			eprintln!("[Quitting...]");
 			action.quit();
 		} else {
-			let (_, job) = action.create_job(Command {
+			let (_, job) = action.create_job(Arc::new(Command {
 				program: Program::Exec {
 					prog: "echo".into(),
 					args: vec![
@@ -28,7 +31,7 @@ async fn main() -> Result<()> {
 					],
 				},
 				options: Default::default(),
-			});
+			}));
 			job.start();
 		}
 

@@ -1,8 +1,9 @@
-use miette::{IntoDiagnostic, Result};
 use std::{
 	sync::{Arc, Mutex},
 	time::Duration,
 };
+
+use miette::{IntoDiagnostic, Result};
 use watchexec::{
 	command::{Command, Program, Shell},
 	job::CommandState,
@@ -24,7 +25,7 @@ async fn main() -> Result<()> {
 	let wx = Watchexec::new({
 		let outerjob = job.clone();
 		move |mut action| {
-			let (_, job) = action.create_job(Command {
+			let (_, job) = action.create_job(Arc::new(Command {
 				program: Program::Shell {
 					shell: Shell::new("bash"),
 					command: "
@@ -36,7 +37,7 @@ async fn main() -> Result<()> {
 					args: Vec::new(),
 				},
 				options: Default::default(),
-			});
+			}));
 
 			// store the job outside this closure too
 			*outerjob.lock().unwrap() = Some(job.clone());

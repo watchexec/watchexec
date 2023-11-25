@@ -20,7 +20,7 @@ use super::{
 /// Spawn a job task and return a [`Job`] handle and a [`JoinHandle`].
 ///
 /// The job task immediately starts in the background: it does not need polling.
-pub fn start_job(command: Command) -> (Job, JoinHandle<()>) {
+pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 	let (sender, mut receiver) = priority::new();
 
 	let gone = Flag::default();
@@ -28,7 +28,7 @@ pub fn start_job(command: Command) -> (Job, JoinHandle<()>) {
 
 	(
 		Job {
-			command: Arc::new(command.clone()),
+			command: command.clone(),
 			control_queue: sender,
 			gone,
 		},

@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use miette::{IntoDiagnostic, Result};
 use watchexec::{
 	command::{Command, Program, SpawnOptions},
@@ -19,23 +21,27 @@ async fn main() -> Result<()> {
 				return action;
 			}
 
-			let build = action.get_or_create_job(build_id, || Command {
-				program: Program::Exec {
-					prog: "cargo".into(),
-					args: vec!["build".into()],
-				},
-				options: Default::default(),
+			let build = action.get_or_create_job(build_id, || {
+				Arc::new(Command {
+					program: Program::Exec {
+						prog: "cargo".into(),
+						args: vec!["build".into()],
+					},
+					options: Default::default(),
+				})
 			});
 
-			let run = action.get_or_create_job(run_id, || Command {
-				program: Program::Exec {
-					prog: "cargo".into(),
-					args: vec!["run".into()],
-				},
-				options: SpawnOptions {
-					grouped: true,
-					..Default::default()
-				},
+			let run = action.get_or_create_job(run_id, || {
+				Arc::new(Command {
+					program: Program::Exec {
+						prog: "cargo".into(),
+						args: vec!["run".into()],
+					},
+					options: SpawnOptions {
+						grouped: true,
+						..Default::default()
+					},
+				})
 			});
 
 			if action.paths().next().is_some()
