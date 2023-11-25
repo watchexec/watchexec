@@ -136,7 +136,7 @@ job.stop_with_signal(Signal::Terminate, Duration::from_secs(30));
 
 The `stop()` and `start()` methods also do nothing if the process is already stopped or started, respectively, so you don't need to check the status of the job before calling them. The `try_restart()` method is available to do a restart only if the job is running, with the `try_restart_with_signal()` variant for graceful restarts.
 
-Further, all of these methods are sync (and take `&self`), but they return a `Ticket`, a future which resolves when the control has been processed. That can be dropped if you don't care about it without affecting the job, or used to perform more advanced flow control. The special `to_wait()` method returns a detached, cloneable, "wait()" future, which will resolve when the process exits, without needing to hold on to the `Job` or a reference at all.
+Further, all of these methods are non-blocking sync (and take `&self`), but they return a `Ticket`, a future which resolves when the control has been processed. That can be dropped if you don't care about it without affecting the job, or used to perform more advanced flow control. The special `to_wait()` method returns a detached, cloneable, "wait()" future, which will resolve when the process exits, without needing to hold on to the `Job` or a reference at all.
 
 Here's a simplified example which starts a job, waits for it to end, then (re)starts another job if it exited successfully:
 
