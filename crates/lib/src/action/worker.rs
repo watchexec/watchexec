@@ -79,6 +79,24 @@ pub async fn worker(
 			}
 		}
 
+		let gc: Vec<Id> = jobs
+			.iter()
+			.filter_map(|(id, job)| {
+				if job.is_dead() {
+					trace!(?id, "job is dead, gc'ing");
+					Some(*id)
+				} else {
+					None
+				}
+			})
+			.collect();
+		if !gc.is_empty() {
+			debug!("garbage collect old tasks");
+			for id in gc {
+				jobs.remove(&id);
+			}
+		}
+
 		debug!("action handler finished");
 	}
 
