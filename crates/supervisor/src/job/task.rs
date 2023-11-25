@@ -347,7 +347,7 @@ async fn signal_child(
 
 	#[cfg(windows)]
 	if signal == Signal::ForceStop {
-		child.start_kill().await?;
+		child.start_kill()?;
 	}
 
 	Ok(())

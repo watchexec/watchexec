@@ -6,6 +6,7 @@ use std::{
 	time::{Duration, Instant},
 };
 
+#[cfg(unix)]
 use command_group::Signal;
 use tokio::{sync::Mutex, time::sleep};
 use watchexec_events::ProcessEnd;
@@ -50,6 +51,7 @@ pub enum TestChildCall {
 	StartKill,
 	TryWait,
 	Wait,
+	#[cfg(unix)]
 	Signal(Signal),
 }
 
@@ -140,6 +142,7 @@ impl TestChild {
 		}
 	}
 
+	#[cfg(unix)]
 	pub fn signal(&self, sig: Signal) -> Result<()> {
 		self.calls.push(TestChildCall::Signal(sig));
 		Ok(())

@@ -13,9 +13,11 @@ use std::{
 use tokio::time::sleep;
 use watchexec_events::ProcessEnd;
 
+#[cfg(unix)]
+use crate::job::TestChildCall;
 use crate::{
 	command::{Command, Program},
-	job::{start_job, CommandState, TestChildCall},
+	job::{start_job, CommandState},
 };
 
 use super::{Control, Job, Priority, TestChild};
@@ -549,16 +551,20 @@ async fn graceful_stop_beyond_grace() {
 		Duration::from_millis(GRACE),
 	);
 
-	expect_state!(
-		job,
-		CommandState::Running { .. },
-		"after USR1 but before delayed stop"
-	);
+	#[cfg(unix)]
+	{
+		expect_state!(
+			job,
+			CommandState::Running { .. },
+			"after USR1 but before delayed stop"
+		);
 
-	let calls = get_child(&job).await.calls;
-	assert!(calls
-		.iter()
-		.any(|(_, call)| matches!(call, TestChildCall::Signal(command_group::Signal::SIGUSR1))));
+		let calls = get_child(&job).await.calls;
+		assert!(calls.iter().any(|(_, call)| matches!(
+			call,
+			TestChildCall::Signal(command_group::Signal::SIGUSR1)
+		)));
+	}
 
 	stop.await;
 
@@ -588,16 +594,20 @@ async fn graceful_restart_beyond_grace() {
 		Duration::from_millis(GRACE),
 	);
 
-	expect_state!(
-		job,
-		CommandState::Running { .. },
-		"after USR1 but before delayed restart"
-	);
+	#[cfg(unix)]
+	{
+		expect_state!(
+			job,
+			CommandState::Running { .. },
+			"after USR1 but before delayed restart"
+		);
 
-	let calls = get_child(&job).await.calls;
-	assert!(calls
-		.iter()
-		.any(|(_, call)| matches!(call, TestChildCall::Signal(command_group::Signal::SIGUSR1))));
+		let calls = get_child(&job).await.calls;
+		assert!(calls.iter().any(|(_, call)| matches!(
+			call,
+			TestChildCall::Signal(command_group::Signal::SIGUSR1)
+		)));
+	}
 
 	restart.await;
 

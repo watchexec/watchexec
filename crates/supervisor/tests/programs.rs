@@ -86,7 +86,6 @@ async fn windows_shell_none() -> Result<(), std::io::Error> {
 		options: Default::default()
 	}
 	.to_spawnable()
-	.unwrap()
 	.group_status()
 	.await?
 	.success());
@@ -105,7 +104,6 @@ async fn windows_shell_cmd() -> Result<(), std::io::Error> {
 		options: Default::default()
 	}
 	.to_spawnable()
-	.unwrap()
 	.group_status()
 	.await?
 	.success());
@@ -124,7 +122,6 @@ async fn windows_shell_powershell() -> Result<(), std::io::Error> {
 		options: Default::default()
 	}
 	.to_spawnable()
-	.unwrap()
 	.group_status()
 	.await?
 	.success());

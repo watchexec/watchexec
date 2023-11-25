@@ -10,6 +10,7 @@ impl Command {
 	pub fn to_spawnable(&self) -> TokioCommand {
 		trace!(program=?self.program, "constructing command");
 
+		#[cfg_attr(not(unix), allow(unused_mut))]
 		let mut cmd = match &self.program {
 			Program::Exec { prog, args, .. } => {
 				let mut c = TokioCommand::new(prog);
