@@ -75,6 +75,10 @@ paths. See the help for \--project-origin for more information.
 This option can be specified multiple times to watch multiple files or
 directories.
 
+The special value /dev/null, provided as the only path watched, will
+cause Watchexec to not watch any paths. Other event sources (like
+signals or key events) may still be used.
+
 **-c**, **\--clear**=*MODE*
 
 :   Clear screen before running command
@@ -681,6 +685,8 @@ Use \@argfile as first argument to load arguments from the file argfile
 (one argument per line) which will be inserted in place of the \@argfile
 (further arguments on the CLI will override or add onto those in the
 file).
+
+Didnt expect this much output? Use the short -h flag to get short help.
 
 # VERSION
 
