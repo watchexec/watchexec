@@ -156,11 +156,14 @@ pub async fn worker(
 		trace!("filesystem worker got a config change");
 
 		if config.pathset.get().is_empty() {
-			trace!("{}", if pathset.is_empty() {
-				"no watched paths, no watcher needed"
-			} else {
-				"no more watched paths, dropping watcher"
-			});
+			trace!(
+				"{}",
+				if pathset.is_empty() {
+					"no watched paths, no watcher needed"
+				} else {
+					"no more watched paths, dropping watcher"
+				}
+			);
 			watcher.take();
 			pathset.clear();
 			continue;

@@ -84,7 +84,12 @@ async fn main() -> Result<()> {
 		loop {
 			job.to_wait().await;
 			job.run(|context| {
-				if let CommandState::Finished { status, started, finished } = context.current {
+				if let CommandState::Finished {
+					status,
+					started,
+					finished,
+				} = context.current
+				{
 					let duration = *finished - *started;
 					eprintln!("[Program stopped with {status:?}; ran for {duration:?}]")
 				}

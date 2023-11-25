@@ -1,14 +1,9 @@
 //! Configuration and builders for [`crate::Watchexec`].
 
-use std::{
-	path::Path,
-	pin::pin,
-	sync::Arc,
-	time::Duration,
-};
+use std::{path::Path, pin::pin, sync::Arc, time::Duration};
 
 use tokio::sync::Notify;
-use tracing::{trace, debug};
+use tracing::{debug, trace};
 
 use crate::{
 	action::Action,
