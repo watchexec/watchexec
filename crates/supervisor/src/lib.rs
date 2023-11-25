@@ -43,11 +43,12 @@
 //!
 //! ```no_run
 //! # #[tokio::main(flavor = "current_thread")] async fn main() { // single-threaded for doctest only
+//! # use std::sync::Arc;
 //! # use watchexec_supervisor::Signal;
 //! # use watchexec_supervisor::command::{Command, Program};
 //! # use watchexec_supervisor::job::{CommandState, start_job};
 //! #
-//! # let (job, task) = start_job(Command { program: Program::Exec { prog: "/bin/date".into(), args: Vec::new() }.into(), grouped: true });
+//! # let (job, task) = start_job(Arc::new(Command { program: Program::Exec { prog: "/bin/date".into(), args: Vec::new() }.into(), options: Default::default() }));
 //! #
 //! job.start().await;
 //! job.signal(Signal::User1).await;
@@ -60,11 +61,12 @@
 //!
 //! ```no_run
 //! # #[tokio::main(flavor = "current_thread")] async fn main() { // single-threaded for doctest only
+//! # use std::sync::Arc;
 //! # use watchexec_supervisor::Signal;
 //! # use watchexec_supervisor::command::{Command, Program};
 //! # use watchexec_supervisor::job::{CommandState, start_job};
 //! #
-//! # let (job, task) = start_job(Command { program: Program::Exec { prog: "/bin/date".into(), args: Vec::new() }.into(), grouped: true });
+//! # let (job, task) = start_job(Arc::new(Command { program: Program::Exec { prog: "/bin/date".into(), args: Vec::new() }.into(), options: Default::default() }));
 //! #
 //! job.start();
 //! job.signal(Signal::User1);
@@ -77,13 +79,14 @@
 //!
 //! ```no_run
 //! # #[tokio::main(flavor = "current_thread")] async fn main() { // single-threaded for doctest only
+//! # use std::sync::Arc;
 //! # use std::time::Duration;
 //! # use tokio::time::sleep;
 //! # use watchexec_supervisor::Signal;
 //! # use watchexec_supervisor::command::{Command, Program};
 //! # use watchexec_supervisor::job::{CommandState, start_job};
 //! #
-//! # let (job, task) = start_job(Command { program: Program::Exec { prog: "/bin/date".into(), args: Vec::new() }.into(), grouped: true });
+//! # let (job, task) = start_job(Arc::new(Command { program: Program::Exec { prog: "/bin/date".into(), args: Vec::new() }.into(), options: Default::default() }));
 //! #
 //! job.start().await;
 //! println!("program started!");
@@ -104,17 +107,18 @@
 //!
 //! ```no_run
 //! # #[tokio::main(flavor = "current_thread")] async fn main() { // single-threaded for doctest only
+//! # use std::sync::Arc;
 //! use watchexec_supervisor::Signal;
 //! use watchexec_supervisor::command::{Command, Program};
 //! use watchexec_supervisor::job::{CommandState, start_job};
 //!
-//! let (job, task) = start_job(Command {
+//! let (job, task) = start_job(Arc::new(Command {
 //!     program: Program::Exec {
 //!         prog: "/bin/date".into(),
 //!         args: Vec::new(),
 //!     }.into(),
-//!     grouped: true,
-//! });
+//!     options: Default::default(),
+//! }));
 //!
 //! job.start().await;
 //! job.signal(Signal::User1).await;

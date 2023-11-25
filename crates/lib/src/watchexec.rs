@@ -42,9 +42,9 @@ pub struct Watchexec {
 	/// Change the action handler:
 	///
 	/// ```no_run
-	/// # use watchexec::{action::Action, Watchexec};
+	/// # use watchexec::Watchexec;
 	/// let wx = Watchexec::default();
-	/// wx.config.on_action(|mut action: Action| {
+	/// wx.config.on_action(|mut action| {
 	///     if action.signals().next().is_some() {
 	///         action.quit();
 	///     }
@@ -56,8 +56,8 @@ pub struct Watchexec {
 	/// Set paths to be watched:
 	///
 	/// ```no_run
-	/// # use watchexec::{action::Action, Watchexec};
-	/// let wx = Watchexec::new(|mut action: Action| {
+	/// # use watchexec::Watchexec;
+	/// let wx = Watchexec::new(|mut action| {
 	///     if action.signals().next().is_some() {
 	///         action.quit();
 	///     } else {

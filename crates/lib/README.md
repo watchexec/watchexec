@@ -15,7 +15,9 @@ _The library which powers [Watchexec CLI](https://watchexec.github.io) and other
 [license]: ../../LICENSE
 
 
-## Quick start
+## Examples
+
+Here's a complete example showing some of the library's features:
 
 ```rust ,no_run
 use miette::{IntoDiagnostic, Result};
@@ -44,7 +46,7 @@ async fn main() -> Result<()> {
     let wx = Watchexec::new({
         let outerjob = job.clone();
         move |mut action| {
-            let (_, job) = action.create_job(Command {
+            let (_, job) = action.create_job(Arc::new(Command {
                 program: Program::Shell {
                     shell: Shell::new("bash"),
                     command: "
@@ -56,7 +58,7 @@ async fn main() -> Result<()> {
                     args: Vec::new(),
                 },
                 options: Default::default(),
-            });
+            }));
 
             // store the job outside this closure too
             *outerjob.lock().unwrap() = Some(job.clone());
@@ -153,6 +155,11 @@ async fn main() -> Result<()> {
     Ok(())
 }
 ```
+
+Other examples:
+- [Only Commands](./examples/only_commands.rs): skip watching files, only use the supervisor.
+- [Only Events](./examples/only_events.rs): never start any processes, only print events.
+- [Restart `cargo run` only when `cargo build` succeeds](./examples/restart_run_on_successful_build.rs)
 
 
 ## Kitchen sink

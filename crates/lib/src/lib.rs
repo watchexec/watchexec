@@ -15,11 +15,11 @@
 //! ```no_run
 //! use miette::{IntoDiagnostic, Result};
 //! use watchexec_signals::Signal;
-//! use watchexec::{action::Action, Watchexec};
+//! use watchexec::Watchexec;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<()> {
-//!     let wx = Watchexec::new(|mut action: Action| {
+//!     let wx = Watchexec::new(|mut action| {
 //!         // print any events
 //!         for event in action.events.iter() {
 //!             eprintln!("EVENT: {event:?}");
