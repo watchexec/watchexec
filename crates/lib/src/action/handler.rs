@@ -24,6 +24,17 @@ use crate::id::Id;
 /// process supervision, and is triggered entirely by synthetic events. Conversely, you are also not
 /// obligated to use the job handles: you can build a Watchexec which only does something with the
 /// events, and never actually starts any processes.
+///
+/// There are some important considerations to keep in mind when writing an action handler:
+///
+/// 1. The action handler is called with the supervisor set _as of when the handler was called_.
+///    This is particularly important when multiple action handlers might be running at the same
+///    time: they might have incomplete views of the supervisor set.
+/// 2. The way the action handler communicates with the Watchexec handler is through the return
+///    value of the handler. That is, when you add a job with `create_job()`, the job is not added
+///    to the Watchexec instance's supervisor set until the action handler returns. Similarly, when
+///    using `quit()`, the quit action is not performed until the action handler returns and the
+///    Watchexec instance is able to see it.
 #[derive(Debug)]
 pub struct Action {
 	/// The collected events which triggered the action.
@@ -40,7 +51,12 @@ pub enum QuitManner {
 	Abort,
 
 	/// Gracefully stop all jobs, then quit.
-	Graceful { signal: Signal, grace: Duration },
+	Graceful {
+		/// Signal to send immediately
+		signal: Signal,
+		/// Time to wait before forceful termination
+		grace: Duration,
+	},
 }
 
 impl Action {
@@ -56,13 +72,27 @@ impl Action {
 	/// Create a new job and return its handle.
 	///
 	/// This starts the [`Job`] immediately, and stores a copy of its handle and [`Id`] in this
-	/// `Action`. Remember to return the `Action` from the action handler, so that Watchexec can
-	/// store the new job to make available to future handlers.
+	/// `Action` (and thus in the Watchexec instance, when the action handler returns).
 	pub fn create_job(&mut self, command: Command) -> (Id, Job) {
 		let id = Id::default();
 		let (job, task) = start_job(command);
-		self.new.insert(id.clone(), (job.clone(), task));
+		self.new.insert(id, (job.clone(), task));
 		(id, job)
+	}
+
+	/// Get a job given its [`Id`].
+	///
+	/// This returns a job handle, if it existed when this handler was called.
+	pub fn get_job(&self, id: Id) -> Option<Job> {
+		self.extant.get(&id).cloned()
+	}
+
+	/// List all jobs currently supervised by Watchexec.
+	///
+	/// This returns an iterator over all jobs, in no particular order, as of when this handler was
+	/// called.
+	pub fn list_jobs(&self) -> impl Iterator<Item = (Id, Job)> + '_ {
+		self.extant.iter().map(|(id, job)| (*id, job.clone()))
 	}
 
 	/// Shut down the Watchexec instance immediately.
@@ -71,7 +101,7 @@ impl Action {
 	///
 	/// Use `graceful_quit()` to wait for processes to finish before quitting.
 	///
-	/// Remember that you need to return the `Action` after calling this method, for it to apply.
+	/// The quit is initiated once the action handler returns, not when this method is called.
 	pub fn quit(&mut self) {
 		self.quit = Some(QuitManner::Abort);
 	}
@@ -82,7 +112,14 @@ impl Action {
 	///
 	/// Use `quit()` to quit more abruptly.
 	///
-	/// Remember that you need to return the `Action` after calling this method, for it to apply.
+	/// If you want to wait for all other actions to finish and for jobs to get cleaned up, but not
+	/// gracefully delay for processes, you can do:
+	///
+	/// ```no_compile
+	/// action.quit_gracefully(Signal::ForceStop, Duration::ZERO);
+	/// ```
+	///
+	/// The quit is initiated once the action handler returns, not when this method is called.
 	pub fn quit_gracefully(&mut self, signal: Signal, grace: Duration) {
 		self.quit = Some(QuitManner::Graceful { signal, grace });
 	}
