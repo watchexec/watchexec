@@ -138,48 +138,9 @@ The `stop()` and `start()` methods also do nothing if the process is already sto
 
 Further, all of these methods are non-blocking sync (and take `&self`), but they return a `Ticket`, a future which resolves when the control has been processed. That can be dropped if you don't care about it without affecting the job, or used to perform more advanced flow control. The special `to_wait()` method returns a detached, cloneable, "wait()" future, which will resolve when the process exits, without needing to hold on to the `Job` or a reference at all.
 
-Here's a simplified example which starts a job, waits for it to end, then (re)starts another job if it exited successfully:
+See the [`restart_run_on_successful_build` example](./examples/restart_run_on_successful_build.rs) which starts a `cargo build`, waits for it to end, and then (re)starts `cargo run` if the build exited successfully.
 
-```rust
-let build_id = Id::default();
-let run_id = Id::default();
-Watchexec::new(|mut action| {
-    // omitted: signal handling, quit on ctrl-c, etc
-
-    let build = action.get_or_create_job(build_id, Command {
-        program: Program::Exec {
-            program: "cargo".into(),
-            args: vec!["build".into()],
-        },
-        options: Default::default(),
-    });
-
-    let run = action.get_or_create_job(run_id, Command {
-        program: Program::Exec {
-            program: "cargo".into(),
-            args: vec!["run".into()],
-        },
-        options: {
-            grouped: true,
-            ..Default::default()
-        },
-    });
-
-    build.restart();
-    tokio::spawn(async move {
-        build.to_wait().await;
-        build.run(|context| {
-            if let CommandState::Finished { status: ProcessEnd::Success, .. } = context.current {
-                run.restart();
-            }
-        }).await;
-    });
-
-    action
-});
-```
-
-`Outcome::Clear` and `Outcome::Reset` are gone, and there's no equivalent on `Job`: that's because these are screen control actions, not job control. You should use the [clearscreen](https://docs.rs/clearscreen) crate directly in your action handler, in conjunction with job control, to achieve the desired effect.
+Finally: `Outcome::Clear` and `Outcome::Reset` are gone, and there's no equivalent on `Job`: that's because these are screen control actions, not job control. You should use the [clearscreen](https://docs.rs/clearscreen) crate directly in your action handler, in conjunction with job control, to achieve the desired effect.
 
 ## v2.3.0 (2023-03-22)
 
