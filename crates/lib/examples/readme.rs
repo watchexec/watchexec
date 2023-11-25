@@ -1,7 +1,12 @@
 use miette::{IntoDiagnostic, Result};
+use std::{
+	sync::{Arc, Mutex},
+	time::Duration,
+};
 use watchexec::{
-	action::{Action, EventSet, Outcome},
-	command::{Program, Shell},
+	action::Action,
+	command::{Command, Program, Shell},
+	job::CommandState,
 	Watchexec,
 };
 use watchexec_events::{Event, Priority};
@@ -11,25 +16,53 @@ use watchexec_signals::Signal;
 async fn main() -> Result<()> {
 	// this is okay to start with, but Watchexec logs a LOT of data,
 	// even at error level. you will quickly want to filter it down.
-	tracing_subscriber::fmt::init();
+	tracing_subscriber::fmt()
+		.with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+		.init();
 
 	// initialise Watchexec with a simple initial action handler
-	let wx = Watchexec::new(|action: Action| {
-		let id = action.create(
-			Program::Shell {
-				shell: Shell::new("bash"),
-				command: "
-                    echo 'Hello world';
-                    trap INT 'echo Not quitting yet!';
-                    read
-                "
-				.into(),
-				args: Vec::new(),
-			}
-			.into(),
-		);
-		action.apply(id, Outcome::Start, EventSet::All);
+	let job = Arc::new(Mutex::new(None));
+	let wx = Watchexec::new({
+		let outerjob = job.clone();
+		move |mut action: Action| {
+			let (_, job) = action.create_job(Command {
+				program: Program::Shell {
+					shell: Shell::new("bash"),
+					command: "
+						echo 'Hello world'
+						trap 'echo Not quitting yet!' TERM
+						read
+					"
+					.into(),
+					args: Vec::new(),
+				},
+				options: Default::default(),
+			});
+
+			// store the job outside this closure too
+			*outerjob.lock().unwrap() = Some(job.clone());
+
+			// block SIGINT
+			#[cfg(unix)]
+			job.set_spawn_hook(|cmd, _| {
+				use nix::sys::signal::{sigprocmask, SigSet, SigmaskHow, Signal};
+				unsafe {
+					cmd.pre_exec(|| {
+						let mut newset = SigSet::empty();
+						newset.add(Signal::SIGINT);
+						sigprocmask(SigmaskHow::SIG_BLOCK, Some(&newset), None)?;
+						Ok(())
+					});
+				}
+			});
+
+			// start the command
+			job.start();
+
+			action
+		}
 	})?;
+
 	// start the engine
 	let main = wx.main();
 
@@ -38,43 +71,53 @@ async fn main() -> Result<()> {
 		.await
 		.unwrap();
 	// ^ this will cause the action handler we've defined above to run,
-	//   creating and starting our little bash program
+	//   creating and starting our little bash program, and storing it in the mutex
+
+	// spin until we've got the job
+	while job.lock().unwrap().is_none() {
+		tokio::task::yield_now().await;
+	}
+
+	// watch the job and restart it when it exits
+	let job = job.lock().unwrap().clone().unwrap();
+	let auto_restart = tokio::spawn(async move {
+		loop {
+			job.to_wait().await;
+			job.run(|context| {
+				if let CommandState::Finished { status, started, finished } = context.current {
+					let duration = *finished - *started;
+					eprintln!("[Program stopped with {status:?}; ran for {duration:?}]")
+				}
+			})
+			.await;
+
+			eprintln!("[Restarting...]");
+			job.start().await;
+		}
+	});
 
 	// now we change what the action does:
-	wx.config.on_action(|action: Action| {
+	let auto_restart_abort = auto_restart.abort_handle();
+	wx.config.on_action(move |mut action: Action| {
 		// if we get Ctrl-C on the Watchexec instance, we quit
 		if action.signals().any(|sig| sig == Signal::Interrupt) {
-			action.quit();
-			return;
+			eprintln!("[Quitting...]");
+			auto_restart_abort.abort();
+			action.quit_gracefully(Signal::ForceStop, Duration::ZERO);
+			return action;
 		}
 
-		// if the action was triggered by file events,
-		// send a SIGINT to the program
+		// if the action was triggered by file events, gracefully stop the program
 		if action.paths().next().is_some() {
 			// watchexec can manage ("supervise") more than one program;
-			// here we only have one but it's simpler to just iterate:
-			for id in action.supervisors.iter().copied() {
-				action.apply(id, Outcome::Signal(Signal::Interrupt), EventSet::All);
-				// when there's more than one program, the EventSet argument ^
-				// lets you indicate which subset of events influenced the
-				// outcome you're applying to a particular program
+			// here we only have one but we don't know its Id so we grab it out of the iterator
+			if let Some(job) = action.list_jobs().next().map(|(_, job)| job.clone()) {
+				eprintln!("[Asking program to stop...]");
+				job.stop_with_signal(Signal::Terminate, Duration::from_secs(5));
 			}
 		}
 
-		// if the program stopped, print a message and start it again
-		if let Some(completion) = action.completions().next() {
-			eprintln!("[Program stopped! {completion:?}]\n[Restarting...]");
-			for id in action.supervisors.iter().copied() {
-				action.apply(
-					id,
-					// outcomes are not applied immediately, so the program might already
-					// have restarted by the time Watchexec gets to processing this outcome.
-					// just in case, tell Watchexec to do nothing if the program is running:
-					Outcome::if_running(Outcome::DoNothing, Outcome::Start),
-					EventSet::All,
-				);
-			}
-		}
+		action
 	});
 
 	// and watch all files in the current directory:
@@ -82,5 +125,6 @@ async fn main() -> Result<()> {
 
 	// then keep running until Watchexec quits!
 	let _ = main.await.into_diagnostic()?;
+	auto_restart.abort();
 	Ok(())
 }
