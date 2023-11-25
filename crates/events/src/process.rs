@@ -119,7 +119,7 @@ impl ProcessEnd {
 		use std::os::windows::process::ExitStatusExt;
 		match self {
 			Self::Success => ExitStatus::from_raw(0),
-			Self::ExitError(code) => ExitStatus::from_raw(code.get()),
+			Self::ExitError(code) => ExitStatus::from_raw(code.get().try_into().unwrap()),
 			_ => unimplemented!(),
 		}
 	}
