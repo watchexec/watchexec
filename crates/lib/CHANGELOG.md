@@ -43,8 +43,8 @@ If you had:
 
 ```rust
 Command::Exec {
-  prog: "date".into(),
-  args: vec!["+%s".into()],
+    prog: "date".into(),
+    args: vec!["+%s".into()],
 }
 ```
 
@@ -52,26 +52,30 @@ You should now write:
 
 ```rust
 Command {
-  program: Program::Exec {
-    prog: "date".into(),
-    args: vec!["+%s".into()],
-  },
-  options: Default::default(),
+    program: Program::Exec {
+        prog: "date".into(),
+        args: vec!["+%s".into()],
+    },
+    options: Default::default(),
 }
 ```
 
-- New `Program::Shell` field `args: Vec<String>` lets you pass (trailing) arguments to the shell invocation:
-  ```rust
-  Program::Shell {
+The new `Program::Shell` field `args: Vec<String>` lets you pass (trailing) arguments to the shell invocation:
+
+```rust
+Program::Shell {
     shell: Shell::new("sh"),
     command: "ls".into(),
     args: vec!["--".into(), "movies".into()],
-  }
-  ```
-  is equivalent to:
-  ```
-  sh -c "ls" -- movies
-  ```
+}
+```
+
+is equivalent to:
+
+```console
+$ sh -c "ls" -- movies
+```
+
 - The old `args` field of `Command::Shell` is now the `options` field of `Shell`.
 - `Shell` has a new field `program_option: Option<Cow<OsStr>>` which is the syntax of the option used to provide the command. Ie for most shells it's `-c` and for `CMD.EXE` it's `/C`; this makes it fully customisable (including its absence!) if you want to use weird shells or non-shell programs as shells.
 - The special-cased `Shell::Powershell` is removed.
@@ -85,14 +89,95 @@ Command {
 - `RuntimeError::NoCommands`, `RuntimeError::Handler`, `RuntimeError::HandlerLockHeld`, and `CriticalError::MissingHandler` are removed as the relevant types/structures don't exist anymore.
 - `RuntimeError::CommandShellEmptyCommand` and `RuntimeError::CommandShellEmptyShell` are removed; you can construct `Shell` with empty shell program and `Program::Shell` with an empty command, these will at best do nothing but they won't error early through Watchexec.
 - Watchexec will now panic if locks are poisoned; we can't recover from that.
-- The filesystem watcher's "too many files", "too many handles", and other initialisation errors are removed as RuntimeErrors, and are now CriticalErrors. These being runtime, nominally recoverable errors instead of end-the-world failures is one of the most common pitfalls of using the library, and though recovery _is_ technically possible, it's better approached other ways.
+- The filesystem watcher's "too many files", "too many handles", and other initialisation errors are removed as `RuntimeErrors`, and are now `CriticalErrors`. These being runtime, nominally recoverable errors instead of end-the-world failures is one of the most common pitfalls of using the library, and though recovery _is_ technically possible, it's better approached other ways.
 - The `on_error` handler is now sync only and no longer returns a `Result`; as such there's no longer the weird logic of "if the `on_error` handler errors, it will call itself on the error once, then crash".
 - If you were doing async work in `on_error`, you should instead use non-async calls (like `try_send()` for Tokio channels). The error handler is expected to return as fast as possible, and _not_ do blocking work if it can at all avoid it; this was always the case but is now documented more explicitly.
 - Error diagnostic codes are removed.
 
 ### Action
 
-TBD
+The process supervision system is entirely reworked. Instead of "applying `Outcome`s", there's now a `Job` type which is a single supervised command, provided by the separate [`watchexec-supervisor`](https://docs.rs/watchexec-supervisor) crate. The Action handler itself can only create new jobs and list existing ones, and interaction with commands is done through the `Job` type.
+
+The controls available on `Job` are now modeled on "real" supervisors like systemd, and are both more and less powerful than the old `Outcome` system. This can be seen clearly in how a "restart" is specified. Previously, this was an `Outcome` combinator:
+
+```rust
+Outcome::if_running(
+    Outcome::both(Outcome::stop(), Outcome::start()),
+    Outcome::start(),
+)
+```
+
+Now, it's a discrete method:
+
+```rust
+job.restart();
+```
+
+Previously, a graceful stop was a mess:
+
+```rust
+Outcome::if_running(
+    Outcome::both(
+        Outcome::both(
+            Outcome::signal(Signal::Terminate),
+            Outcome::wait_timeout(Duration::from_secs(30)),
+        ),
+        Outcome::both(Outcome::stop(), Outcome::start()),
+    ),
+    Outcome::DoNothing,
+)
+```
+
+Now, it's again a discrete method:
+
+```rust
+job.stop_with_signal(Signal::Terminate, Duration::from_secs(30));
+```
+
+The `stop()` and `start()` methods also do nothing if the process is already stopped or started, respectively, so you don't need to check the status of the job before calling them. The `try_restart()` method is available to do a restart only if the job is running, with the `try_restart_with_signal()` variant for graceful restarts.
+
+Further, all of these methods are sync (and take `&self`), but they return a `Ticket`, a future which resolves when the control has been processed. That can be dropped if you don't care about it without affecting the job, or used to perform more advanced flow control. The special `to_wait()` method returns a detached, cloneable, "wait()" future, which will resolve when the process exits, without needing to hold on to the `Job` or a reference at all.
+
+Here's a simplified example which starts a job, waits for it to end, then (re)starts another job if it exited successfully:
+
+```rust
+let build_id = Id::default();
+let run_id = Id::default();
+Watchexec::new(|mut action| {
+    // omitted: signal handling, quit on ctrl-c, etc
+
+    let build = action.get_or_create_job(build_id, Command {
+        program: Program::Exec {
+            program: "cargo".into(),
+            args: vec!["build".into()],
+        },
+        options: Default::default(),
+    });
+
+    let run = action.get_or_create_job(run_id, Command {
+        program: Program::Exec {
+            program: "cargo".into(),
+            args: vec!["run".into()],
+        },
+        options: {
+            grouped: true,
+            ..Default::default()
+        },
+    });
+
+    build.restart();
+    tokio::spawn(async move {
+        build.to_wait().await;
+        build.run(|context| {
+            if let CommandState::Finished { status: ProcessEnd::Success, .. } = context.current {
+                run.restart();
+            }
+        }).await;
+    });
+
+    action
+});
+```
 
 ## v2.3.0 (2023-03-22)
 
