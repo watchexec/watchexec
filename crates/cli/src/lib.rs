@@ -7,15 +7,12 @@ use args::{Args, ShellCompletion};
 use clap::CommandFactory;
 use clap_complete::{Generator, Shell};
 use clap_mangen::Man;
-use command_group::AsyncCommandGroup;
 use is_terminal::IsTerminal;
 use miette::{IntoDiagnostic, Result};
 use tokio::{fs::metadata, io::AsyncWriteExt, process::Command};
 use tracing::{debug, info, warn};
-use watchexec::{
-	event::{Event, Priority},
-	Watchexec,
-};
+use watchexec::Watchexec;
+use watchexec_events::{Event, Priority};
 
 pub mod args;
 mod config;
@@ -102,14 +99,12 @@ async fn init() -> Result<Args> {
 async fn run_watchexec(args: Args) -> Result<()> {
 	info!(version=%env!("CARGO_PKG_VERSION"), "constructing Watchexec from CLI");
 
-	let init = config::init(&args);
-
 	let state = state::State::new()?;
-	let mut runtime = config::runtime(&args, &state)?;
-	runtime.filterer(filterer::globset(&args).await?);
+	let config = config::make_config(&args, &state)?;
+	config.filterer(filterer::globset(&args).await?);
 
 	info!("initialising Watchexec runtime");
-	let wx = Watchexec::new(init, runtime)?;
+	let wx = Watchexec::with_config(config)?;
 
 	if !args.postpone {
 		debug!("kicking off with empty event");
@@ -137,12 +132,10 @@ async fn run_manpage(_args: Args) -> Result<()> {
 			.stdin(Stdio::piped())
 			.stdout(Stdio::inherit())
 			.stderr(Stdio::inherit())
-			.group()
 			.kill_on_drop(true)
 			.spawn()
 			.into_diagnostic()?;
 		child
-			.inner()
 			.stdin
 			.as_mut()
 			.unwrap()

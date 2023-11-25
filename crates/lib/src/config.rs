@@ -1,226 +1,300 @@
 //! Configuration and builders for [`crate::Watchexec`].
 
-use std::{fmt, path::Path, sync::Arc, time::Duration};
+use std::{future::Future, path::Path, pin::pin, sync::Arc, time::Duration};
 
-use tracing::debug;
+use tokio::sync::Notify;
+use tracing::{debug, trace};
 
 use crate::{
-	action::{Action, PostSpawn, PreSpawn},
-	command::Command,
-	filter::Filterer,
-	fs::Watcher,
-	handler::{Handler, HandlerLock},
+	action::{ActionHandler, ActionReturn},
+	changeable::{Changeable, ChangeableFn},
+	filter::{ChangeableFilterer, Filterer},
+	sources::fs::{WatchedPath, Watcher},
 	ErrorHook,
 };
 
-/// Runtime configuration for [`Watchexec`][crate::Watchexec].
+/// Configuration for [`Watchexec`][crate::Watchexec].
 ///
-/// This is used both when constructing the instance (as initial configuration) and to reconfigure
-/// it at runtime via [`Watchexec::reconfigure()`][crate::Watchexec::reconfigure()].
+/// Almost every field is a [`Changeable`], such that its value can be changed from a `&self`.
 ///
-/// Use [`RuntimeConfig::default()`] to build a new one, or modify an existing one. This struct is
-/// marked non-exhaustive such that new options may be added without breaking change. You can make
-/// changes through the fields directly, or use the convenience (chainable!) methods instead.
+/// Fields are public for advanced use, but in most cases changes should be made through the
+/// methods provided: not only are they more convenient, each calls `debug!` on the new value,
+/// providing a quick insight into what your application sets.
 ///
-/// Another advantage of using the convenience methods is that each one contains a call to the
-/// [`debug!`] macro, providing insight into what config your application sets for "free".
-///
-/// You should see the detailed documentation on [`fs::WorkingData`][crate::fs::WorkingData] and
-/// [`action::WorkingData`][crate::action::WorkingData] for important information and particulars
-/// about each field, especially the handlers.
-#[derive(Clone, Debug, Default)]
+/// The methods also set the "change signal" of the Config: this notifies some parts of Watchexec
+/// they should re-read the config. If you modify values via the fields directly, you should call
+/// `signal_change()` yourself. Note that this doesn't mean that changing values _without_ calling
+/// this will prevent Watchexec changing until it's called: most parts of Watchexec take a
+/// "just-in-time" approach and read a config item immediately before it's needed, every time it's
+/// needed, and thus don't need to listen for the change signal.
+#[derive(Clone, Debug)]
 #[non_exhaustive]
-pub struct RuntimeConfig {
-	/// Working data for the filesystem event source.
+pub struct Config {
+	/// This is set by the change methods whenever they're called, and notifies Watchexec that it
+	/// should read the configuration again.
+	pub(crate) change_signal: Arc<Notify>,
+
+	/// The main handler to define: what to do when an action is triggered.
 	///
-	/// This notably includes the path set to be watched.
-	pub fs: crate::fs::WorkingData,
-
-	/// Working data for keyboard event sources.
-	pub keyboard: crate::keyboard::WorkingData,
-
-	/// Working data for the action processing.
+	/// This handler is called with the [`Action`] environment, look at its doc for more detail.
 	///
-	/// This is the task responsible for scheduling the actions in response to events, applying the
-	/// filtering, etc.
-	pub action: crate::action::WorkingData,
-}
-
-impl RuntimeConfig {
-	/// Set the pathset to be watched.
-	pub fn pathset<I, P>(&mut self, pathset: I) -> &mut Self
-	where
-		I: IntoIterator<Item = P>,
-		P: AsRef<Path>,
-	{
-		self.fs.pathset = pathset.into_iter().map(|p| p.as_ref().into()).collect();
-		debug!(pathset=?self.fs.pathset, "RuntimeConfig: pathset");
-		self
-	}
-
-	/// Set the file watcher type to use.
-	pub fn file_watcher(&mut self, watcher: Watcher) -> &mut Self {
-		debug!(?watcher, "RuntimeConfig: watcher");
-		self.fs.watcher = watcher;
-		self
-	}
-
-	/// Enable monitoring of 'end of file' from stdin
-	pub fn keyboard_emit_eof(&mut self, enable: bool) -> &mut Self {
-		self.keyboard.eof = enable;
-		self
-	}
-
-	/// Set the action throttle.
-	pub fn action_throttle(&mut self, throttle: impl Into<Duration>) -> &mut Self {
-		self.action.throttle = throttle.into();
-		debug!(throttle=?self.action.throttle, "RuntimeConfig: throttle");
-		self
-	}
-
-	/// Toggle whether to use process groups or not.
-	pub fn command_grouped(&mut self, grouped: bool) -> &mut Self {
-		debug!(?grouped, "RuntimeConfig: command_grouped");
-		self.action.grouped = grouped;
-		self
-	}
-
-	/// Set a single command to run on action.
+	/// If this handler is not provided, or does nothing, Watchexec in turn will do nothing, not
+	/// even quit. Hence, you really need to provide a handler. This is enforced when using
+	/// [`Watchexec::new()`], but not when using [`Watchexec::default()`].
 	///
-	/// This is a convenience for `.commands(vec![Command...])`.
-	pub fn command(&mut self, command: Command) -> &mut Self {
-		debug!(?command, "RuntimeConfig: command");
-		self.action.commands = vec![command];
-		self
-	}
+	/// It is possible to change the handler or any other configuration inside the previous handler.
+	/// This and other handlers are fetched "just in time" when needed, so changes to handlers can
+	/// appear instant, or may lag a little depending on lock contention, but a handler being called
+	/// does not hold its lock. A handler changing while it's being called doesn't affect the run of
+	/// a previous version of the handler: it will neither be stopped nor retried with the new code.
+	///
+	/// It is important for this handler to return quickly: avoid performing blocking work in it.
+	/// This is true for all handlers, but especially for this one, as it will block the event loop
+	/// and you'll find that the internal event queues quickly fill up and it all grinds to a halt.
+	/// Spawn threads or tasks, or use channels or other async primitives to communicate with your
+	/// expensive code.
+	pub action_handler: ChangeableFn<ActionHandler, ActionReturn>,
 
-	/// Set the commands to run on action.
-	pub fn commands(&mut self, commands: impl Into<Vec<Command>>) -> &mut Self {
-		self.action.commands = commands.into();
-		debug!(commands=?self.action.commands, "RuntimeConfig: commands");
-		self
-	}
-
-	/// Set the filterer implementation to use.
-	pub fn filterer(&mut self, filterer: Arc<dyn Filterer>) -> &mut Self {
-		debug!(?filterer, "RuntimeConfig: filterer");
-		self.action.filterer = filterer;
-		self
-	}
-
-	/// Set the action handler.
-	pub fn on_action(&mut self, handler: impl Handler<Action> + Send + 'static) -> &mut Self {
-		debug!("RuntimeConfig: on_action");
-		self.action.action_handler = HandlerLock::new(Box::new(handler));
-		self
-	}
-
-	/// Set the pre-spawn handler.
-	pub fn on_pre_spawn(&mut self, handler: impl Handler<PreSpawn> + Send + 'static) -> &mut Self {
-		debug!("RuntimeConfig: on_pre_spawn");
-		self.action.pre_spawn_handler = HandlerLock::new(Box::new(handler));
-		self
-	}
-
-	/// Set the post-spawn handler.
-	pub fn on_post_spawn(
-		&mut self,
-		handler: impl Handler<PostSpawn> + Send + 'static,
-	) -> &mut Self {
-		debug!("RuntimeConfig: on_post_spawn");
-		self.action.post_spawn_handler = HandlerLock::new(Box::new(handler));
-		self
-	}
-}
-
-/// Initialisation configuration for [`Watchexec`][crate::Watchexec].
-///
-/// This is used only for constructing the instance.
-///
-/// Use [`InitConfig::default()`] to build a new one, and the inherent methods to change values.
-/// This struct is marked non-exhaustive such that new options may be added without breaking change.
-#[non_exhaustive]
-pub struct InitConfig {
 	/// Runtime error handler.
 	///
-	/// This is run on every runtime error that occurs within watchexec. By default the placeholder
-	/// `()` handler is used, which discards all errors.
-	///
-	/// If the handler errors, [_that_ error][crate::error::RuntimeError::Handler] is immediately
-	/// given to the handler. If this second handler call errors as well, its error is ignored.
-	///
-	/// Also see the [`ErrorHook`] documentation for returning critical errors from this handler.
+	/// This is run on every runtime error that occurs within Watchexec. The default handler
+	/// is a no-op.
 	///
 	/// # Examples
 	///
+	/// Set the error handler:
+	///
 	/// ```
-	/// # use std::convert::Infallible;
-	/// # use watchexec::{config::InitConfig, ErrorHook};
-	/// let mut init = InitConfig::default();
-	/// init.on_error(|err: ErrorHook| async move {
+	/// # use watchexec::{config::Config, ErrorHook};
+	/// let mut config = Config::default();
+	/// config.on_error(|err: ErrorHook| {
 	///     tracing::error!("{}", err.error);
-	///     Ok::<(), Infallible>(())
 	/// });
 	/// ```
-	pub error_handler: Box<dyn Handler<ErrorHook> + Send>,
+	///
+	/// Output a critical error (which will terminate Watchexec):
+	///
+	/// ```
+	/// # use watchexec::{config::Config, ErrorHook, error::{CriticalError, RuntimeError}};
+	/// let mut config = Config::default();
+	/// config.on_error(|err: ErrorHook| {
+	///     tracing::error!("{}", err.error);
+	///
+	///     if matches!(err.error, RuntimeError::FsWatcher { .. }) {
+	///         err.critical(CriticalError::External("fs watcher failed".into()));
+	///     }
+	/// });
+	/// ```
+	///
+	/// Elevate a runtime error to critical (will preserve the error information):
+	///
+	/// ```
+	/// # use watchexec::{config::Config, ErrorHook, error::RuntimeError};
+	/// let mut config = Config::default();
+	/// config.on_error(|err: ErrorHook| {
+	///     tracing::error!("{}", err.error);
+	///
+	///     if matches!(err.error, RuntimeError::FsWatcher { .. }) {
+	///            err.elevate();
+	///     }
+	/// });
+	/// ```
+	///
+	/// It is important for this to return quickly: avoid performing blocking work. Locking and
+	/// writing to stdio is fine, but waiting on the network is a bad idea. Of course, an
+	/// asynchronous log writer or separate UI thread is always a better idea than `println!` if
+	/// have that ability.
+	pub error_handler: ChangeableFn<ErrorHook, ()>,
 
-	/// Internal: the buffer size of the channel which carries runtime errors.
+	/// The set of filesystem paths to be watched.
+	///
+	/// If this is non-empty, the filesystem event source is started and configured to provide
+	/// events for these paths. If it becomes empty, the filesystem event source is shut down.
+	pub pathset: Changeable<Vec<WatchedPath>>,
+
+	/// The kind of filesystem watcher to be used.
+	pub file_watcher: Changeable<Watcher>,
+
+	/// Watch stdin and emit events when input comes in over the keyboard.
+	///
+	/// If this is true, the keyboard event source is started and configured to report when input
+	/// is received on stdin. If it becomes false, the keyboard event source is shut down and stdin
+	/// may flow to commands again.
+	///
+	/// Currently only EOF is watched for and emitted.
+	pub keyboard_events: Changeable<bool>,
+
+	/// How long to wait for events to build up before executing an action.
+	///
+	/// This is sometimes called "debouncing." We debounce on the trailing edge: an action is
+	/// triggered only after that amount of time has passed since the first event in the cycle. The
+	/// action is called with all the collected events in the cycle.
+	///
+	/// Default is 50ms.
+	pub throttle: Changeable<Duration>,
+
+	/// The filterer implementation to use when filtering events.
+	///
+	/// The default is a no-op, which will always pass every event.
+	pub filterer: ChangeableFilterer,
+
+	/// The buffer size of the channel which carries runtime errors.
 	///
 	/// The default (64) is usually fine. If you expect a much larger throughput of runtime errors,
 	/// or if your `error_handler` is slow, adjusting this value may help.
+	///
+	/// This is unchangeable at runtime and must be set before Watchexec instantiation.
 	pub error_channel_size: usize,
 
-	/// Internal: the buffer size of the channel which carries events.
+	/// The buffer size of the channel which carries events.
 	///
-	/// The default (1024) is usually fine. If you expect a much larger throughput of events,
+	/// The default (4096) is usually fine. If you expect a much larger throughput of events,
 	/// adjusting this value may help.
+	///
+	/// This is unchangeable at runtime and must be set before Watchexec instantiation.
 	pub event_channel_size: usize,
 }
 
-impl Default for InitConfig {
+impl Default for Config {
 	fn default() -> Self {
 		Self {
-			error_handler: Box::new(()) as _,
+			change_signal: Default::default(),
+			action_handler: ChangeableFn::new(ActionReturn::Sync),
+			error_handler: Default::default(),
+			pathset: Default::default(),
+			file_watcher: Default::default(),
+			keyboard_events: Default::default(),
+			throttle: Changeable::new(Duration::from_millis(50)),
+			filterer: Default::default(),
 			error_channel_size: 64,
-			event_channel_size: 1024,
+			event_channel_size: 4096,
 		}
 	}
 }
 
-impl InitConfig {
+impl Config {
+	/// Signal that the configuration has changed.
+	///
+	/// This is called automatically by all other methods here, so most of the time calling this
+	/// isn't needed, but it can be useful for some advanced uses.
+	pub fn signal_change(&self) -> &Self {
+		self.change_signal.notify_waiters();
+		self
+	}
+
+	/// Watch the config for a change, but run once first.
+	///
+	/// This returns a Stream where the first value is available immediately, and then every
+	/// subsequent one is from a change signal for this Config.
+	#[must_use]
+	pub(crate) fn watch(&self) -> ConfigWatched {
+		ConfigWatched::new(self.change_signal.clone())
+	}
+
+	/// Set the pathset to be watched.
+	pub fn pathset<I, P>(&self, pathset: I) -> &Self
+	where
+		I: IntoIterator<Item = P>,
+		P: AsRef<Path>,
+	{
+		let pathset = pathset.into_iter().map(|p| p.as_ref().into()).collect();
+		debug!(?pathset, "Config: pathset");
+		self.pathset.replace(pathset);
+		self.signal_change()
+	}
+
+	/// Set the file watcher type to use.
+	pub fn file_watcher(&self, watcher: Watcher) -> &Self {
+		debug!(?watcher, "Config: file watcher");
+		self.file_watcher.replace(watcher);
+		self.signal_change()
+	}
+
+	/// Enable keyboard/stdin event source.
+	pub fn keyboard_events(&self, enable: bool) -> &Self {
+		debug!(?enable, "Config: keyboard");
+		self.keyboard_events.replace(enable);
+		self.signal_change()
+	}
+
+	/// Set the throttle.
+	pub fn throttle(&self, throttle: impl Into<Duration>) -> &Self {
+		let throttle = throttle.into();
+		debug!(?throttle, "Config: throttle");
+		self.throttle.replace(throttle);
+		self.signal_change()
+	}
+
+	/// Set the filterer implementation to use.
+	pub fn filterer(&self, filterer: impl Filterer + Send + Sync + 'static) -> &Self {
+		debug!(?filterer, "Config: filterer");
+		self.filterer.replace(filterer);
+		self.signal_change()
+	}
+
 	/// Set the runtime error handler.
-	///
-	/// See the [documentation on the field](InitConfig#structfield.error_handler) for more details.
-	pub fn on_error(&mut self, handler: impl Handler<ErrorHook> + Send + 'static) -> &mut Self {
-		debug!("InitConfig: on_error");
-		self.error_handler = Box::new(handler) as _;
-		self
+	pub fn on_error(&self, handler: impl Fn(ErrorHook) + Send + Sync + 'static) -> &Self {
+		debug!("Config: on_error");
+		self.error_handler.replace(handler);
+		self.signal_change()
 	}
 
-	/// Set the buffer size of the channel which carries runtime errors.
-	///
-	/// See the [documentation on the field](InitConfig#structfield.error_channel_size) for more details.
-	pub fn error_channel_size(&mut self, size: usize) -> &mut Self {
-		debug!(?size, "InitConfig: error_channel_size");
-		self.error_channel_size = size;
-		self
+	/// Set the action handler.
+	pub fn on_action(
+		&self,
+		handler: impl (Fn(ActionHandler) -> ActionHandler) + Send + Sync + 'static,
+	) -> &Self {
+		debug!("Config: on_action");
+		self.action_handler
+			.replace(move |action| ActionReturn::Sync(handler(action)));
+		self.signal_change()
 	}
 
-	/// Set the buffer size of the channel which carries events.
-	///
-	/// See the [documentation on the field](InitConfig#structfield.event_channel_size) for more details.
-	pub fn event_channel_size(&mut self, size: usize) -> &mut Self {
-		debug!(?size, "InitConfig: event_channel_size");
-		self.event_channel_size = size;
-		self
+	/// Set the action handler to a future-returning closure.
+	pub fn on_action_async(
+		&self,
+		handler: impl (Fn(ActionHandler) -> Box<dyn Future<Output = ActionHandler> + Send + Sync>)
+			+ Send
+			+ Sync
+			+ 'static,
+	) -> &Self {
+		debug!("Config: on_action_async");
+		self.action_handler
+			.replace(move |action| ActionReturn::Async(handler(action)));
+		self.signal_change()
 	}
 }
 
-impl fmt::Debug for InitConfig {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		f.debug_struct("InitConfig")
-			.field("error_channel_size", &self.error_channel_size)
-			.field("event_channel_size", &self.event_channel_size)
-			.finish_non_exhaustive()
+#[derive(Debug)]
+pub(crate) struct ConfigWatched {
+	first_run: bool,
+	notify: Arc<Notify>,
+}
+
+impl ConfigWatched {
+	fn new(notify: Arc<Notify>) -> Self {
+		let notified = notify.notified();
+		pin!(notified).as_mut().enable();
+
+		Self {
+			first_run: true,
+			notify,
+		}
+	}
+
+	pub async fn next(&mut self) {
+		let notified = self.notify.notified();
+		let mut notified = pin!(notified);
+		notified.as_mut().enable();
+
+		if self.first_run {
+			trace!("ConfigWatched: first run");
+			self.first_run = false;
+		} else {
+			trace!(?notified, "ConfigWatched: waiting for change");
+			// there's a bit of a gotcha where any config changes made after a Notified resolves
+			// but before a new one is issued will not be caught. not sure how to fix that yet.
+			notified.await;
+		}
 	}
 }

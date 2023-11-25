@@ -9,10 +9,9 @@ use std::{
 use ignore_files::{IgnoreFile, IgnoreFilter};
 use project_origins::ProjectType;
 use tokio::fs::canonicalize;
-use watchexec::{
-	error::RuntimeError,
-	event::{filekind::FileEventKind, Event, FileType, Priority, ProcessEnd, Source, Tag},
-	filter::Filterer,
+use watchexec::{error::RuntimeError, filter::Filterer};
+use watchexec_events::{
+	filekind::FileEventKind, Event, FileType, Priority, ProcessEnd, Source, Tag,
 };
 use watchexec_filterer_ignore::IgnoreFilterer;
 use watchexec_filterer_tagged::{Filter, FilterFile, Matcher, Op, Pattern, TaggedFilterer};
@@ -26,7 +25,7 @@ pub mod tagged {
 	pub use super::PathHarness;
 	pub use super::TaggedHarness;
 	pub use super::{filter, glob_filter, notglob_filter};
-	pub use watchexec::event::Priority;
+	pub use watchexec_events::Priority;
 }
 
 pub mod tagged_ff {

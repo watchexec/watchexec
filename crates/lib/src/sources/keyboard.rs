@@ -1,26 +1,19 @@
 //! Event source for keyboard input and related events
+use std::sync::Arc;
+
 use async_priority_channel as priority;
 use tokio::{
 	io::AsyncReadExt,
-	sync::{mpsc, oneshot, watch},
+	select, spawn,
+	sync::{mpsc, oneshot},
 };
 use tracing::trace;
-pub use watchexec_events::Keyboard;
+use watchexec_events::{Event, Keyboard, Priority, Source, Tag};
 
 use crate::{
-	error::{CriticalError, KeyboardWatcherError, RuntimeError},
-	event::{Event, Priority, Source, Tag},
+	error::{CriticalError, RuntimeError},
+	Config,
 };
-
-/// The configuration of the [keyboard][self] worker.
-///
-/// This is marked non-exhaustive so new configuration can be added without breaking.
-#[derive(Debug, Clone, Default)]
-#[non_exhaustive]
-pub struct WorkingData {
-	/// Whether or not to watch for 'end of file' on stdin
-	pub eof: bool,
-}
 
 /// Launch the filesystem event worker.
 ///
@@ -28,41 +21,36 @@ pub struct WorkingData {
 ///
 /// Sends keyboard events via to the provided 'events' channel
 pub async fn worker(
-	mut working: watch::Receiver<WorkingData>,
+	config: Arc<Config>,
 	errors: mpsc::Sender<RuntimeError>,
 	events: priority::Sender<Event, Priority>,
 ) -> Result<(), CriticalError> {
 	let mut send_close = None;
-	while working.changed().await.is_ok() {
-		let watch_for_eof = { working.borrow().eof };
-		match (watch_for_eof, &send_close) {
-			// If we want to watch stdin and we're not already watching it then spawn a task to watch it
+	let mut config_watch = config.watch();
+	loop {
+		config_watch.next().await;
+		match (config.keyboard_events.get(), &send_close) {
+			// if we want to watch stdin and we're not already watching it then spawn a task to watch it
 			(true, None) => {
-				let (close_s, close_r) = tokio::sync::oneshot::channel::<()>();
+				let (close_s, close_r) = oneshot::channel::<()>();
 
 				send_close = Some(close_s);
-				tokio::spawn(watch_stdin(errors.clone(), events.clone(), close_r));
+				spawn(watch_stdin(errors.clone(), events.clone(), close_r));
 			}
-			// If we don't want to watch stdin but we are already watching it then send a close signal to end the
-			// watching
+			// if we don't want to watch stdin but we are already watching it then send a close signal to end
+			// the watching
 			(false, Some(_)) => {
-				// Repeat match using 'take'
-				if let Some(close_s) = send_close.take() {
-					if close_s.send(()).is_err() {
-						errors
-							.send(RuntimeError::KeyboardWatcher {
-								err: KeyboardWatcherError::StdinShutdown,
-							})
-							.await?;
-					}
-				}
+				// ignore send error as if channel is closed watch is already gone
+				send_close
+					.take()
+					.expect("unreachable due to match")
+					.send(())
+					.ok();
 			}
-			// Otherwise no action is required
+			// otherwise no action is required
 			_ => {}
 		}
 	}
-
-	Ok(())
 }
 
 async fn watch_stdin(
@@ -73,7 +61,7 @@ async fn watch_stdin(
 	let mut stdin = tokio::io::stdin();
 	let mut buffer = [0; 10];
 	loop {
-		tokio::select! {
+		select! {
 			result = stdin.read(&mut buffer[..]) => {
 				// Read from stdin and if we've read 0 bytes then we assume stdin has received an 'eof' so
 				// we send that event into the system and break out of the loop as 'eof' means that there will

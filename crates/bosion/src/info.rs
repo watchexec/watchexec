@@ -77,7 +77,7 @@ impl Info {
 			#[cfg(feature = "git")]
 			git: GitInfo::gather()
 				.map_err(|e| {
-					println!("cargo:warning=git info gathering failed: {}", e);
+					println!("cargo:warning=git info gathering failed: {e}");
 				})
 				.ok(),
 			#[cfg(not(feature = "git"))]
@@ -150,7 +150,8 @@ pub struct GitInfo {
 #[cfg(feature = "git")]
 impl GitInfo {
 	fn gather() -> Result<Self, String> {
-		let (path, _) = gix::discover::upwards(".").err_string()?;
+		use std::path::Path;
+		let (path, _) = gix::discover::upwards(Path::new(".")).err_string()?;
 		let repo = gix::discover(path).err_string()?;
 		let head = repo.head_commit().err_string()?;
 		let time = head.time().err_string()?;

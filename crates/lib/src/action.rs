@@ -1,14 +1,15 @@
 //! Processor responsible for receiving events, filtering them, and scheduling actions in response.
 
 #[doc(inline)]
-pub use outcome::Outcome;
+pub use handler::Handler as ActionHandler;
+#[doc(inline)]
+pub use quit::QuitManner;
+#[doc(inline)]
+pub use r#return::ActionReturn;
 #[doc(inline)]
 pub use worker::worker;
-#[doc(inline)]
-pub use workingdata::*;
 
-mod outcome;
-mod outcome_worker;
-mod process_holder;
+mod handler;
+mod quit;
+mod r#return;
 mod worker;
-mod workingdata;

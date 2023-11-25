@@ -20,31 +20,28 @@ name = "watchexec"
 path = "src/main.rs"
 
 [dependencies]
-argfile = "0.1.5"
-chrono = "0.4.23"
-clap_complete = "4.1.4"
-clap_complete_nushell = "4.3.1"
-clap_mangen = "0.2.9"
+argfile = "0.1.6"
+chrono = "0.4.31"
+clap_complete = "4.4.4"
+clap_complete_nushell = "4.4.2"
+clap_mangen = "0.2.15"
+clearscreen = "2.0.1"
 dirs = "5.0.0"
-futures = "0.3.17"
+futures = "0.3.29"
 humantime = "2.1.0"
 is-terminal = "0.4.4"
-notify-rust = "4.5.2"
-serde_json = "1.0.94"
-tempfile = "3.4.0"
-tracing = "0.1.26"
-which = "4.4.0"
-
-[dependencies.command-group]
-version = "2.1.0"
-features = ["with-tokio"]
+notify-rust = "4.9.0"
+serde_json = "1.0.107"
+tempfile = "3.8.1"
+tracing = "0.1.40"
+which = "5.0.0"
 
 [dependencies.console-subscriber]
-version = "0.1.0"
+version = "0.2.0"
 optional = true
 
 [dependencies.clap]
-version = "4.1.8"
+version = "4.4.7"
 features = ["cargo", "derive", "env", "wrap_help"]
 
 [dependencies.ignore-files]
@@ -54,6 +51,10 @@ path = "../ignore-files"
 [dependencies.miette]
 version = "5.3.0"
 features = ["fancy"]
+
+[dependencies.pid1]
+version = "0.1.1"
+optional = true
 
 [dependencies.project-origins]
 version = "1.2.0"
@@ -77,7 +78,7 @@ version = "1.2.0"
 path = "../filterer/globset"
 
 [dependencies.tokio]
-version = "1.24.2"
+version = "1.33.0"
 features = [
 	"fs",
 	"io-std",
@@ -98,22 +99,24 @@ features = [
 ]
 
 [target.'cfg(target_env = "musl")'.dependencies]
-mimalloc = "0.1.26"
-
-[target.'cfg(target_os = "linux")'.dependencies]
-shadow-rs = "0.22.0"
-
-[target.'cfg(target_os = "linux")'.build-dependencies]
-shadow-rs = "0.22.0"
+mimalloc = "0.1.39"
 
 [build-dependencies]
-embed-resource = "2.1.1"
+embed-resource = "2.4.0"
 
 [build-dependencies.bosion]
 version = "1.0.1"
 path = "../bosion"
 
 [features]
+default = ["pid1"]
+
+## Enables PID1 handling.
+pid1 = ["dep:pid1"]
+
+## Enables logging for PID1 handling.
+pid1-withlog = ["pid1"]
+
 ## For debugging only: enables the Tokio Console.
 dev-console = ["console-subscriber"]
 

@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+- Add `ProcessEnd::into_exitstatus` testing-only utility method.
+
 ## v1.0.0 (2023-03-18)
 
 - Split off new `watchexec-events` crate (this one), to have a lightweight library that can parse

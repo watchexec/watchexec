@@ -16,11 +16,8 @@ use std::{
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use ignore_files::{Error, IgnoreFile, IgnoreFilter};
 use tracing::{debug, trace, trace_span};
-use watchexec::{
-	error::RuntimeError,
-	event::{Event, FileType, Priority},
-	filter::Filterer,
-};
+use watchexec::{error::RuntimeError, filter::Filterer};
+use watchexec_events::{Event, FileType, Priority};
 use watchexec_filterer_ignore::IgnoreFilterer;
 
 /// A simple filterer in the style of the watchexec v1.17 filter.

@@ -1,33 +1,24 @@
-use std::{
-	fmt,
-	future::Future,
-	mem::{replace, take},
-	ops::{Deref, DerefMut},
-	pin::Pin,
-	sync::Arc,
-	task::{Context, Poll},
-};
+use std::{fmt, future::Future, sync::Arc};
 
 use async_priority_channel as priority;
 use atomic_take::AtomicTake;
+use futures::TryFutureExt;
 use miette::Diagnostic;
 use once_cell::sync::OnceCell;
 use tokio::{
 	spawn,
-	sync::{mpsc, watch, Notify},
-	task::JoinHandle,
-	try_join,
+	sync::{mpsc, Notify},
+	task::{JoinHandle, JoinSet},
 };
 use tracing::{debug, error, trace};
+use watchexec_events::{Event, Priority};
 
 use crate::{
-	action,
-	config::{InitConfig, RuntimeConfig},
-	error::{CriticalError, ReconfigError, RuntimeError},
-	event::{Event, Priority},
-	fs,
-	handler::{rte, Handler},
-	keyboard, signal,
+	action::{self, ActionHandler},
+	changeable::ChangeableFn,
+	error::{CriticalError, RuntimeError},
+	sources::{fs, keyboard, signal},
+	Config,
 };
 
 /// The main watchexec runtime.
@@ -38,14 +29,63 @@ use crate::{
 /// error hook, and provides an interface to change the runtime configuration during the runtime,
 /// inject synthetic events, and wait for graceful shutdown.
 pub struct Watchexec {
-	handle: Arc<AtomicTake<JoinHandle<Result<(), CriticalError>>>>,
+	/// The configuration of this Watchexec instance.
+	///
+	/// Configuration can be changed at any time using the provided methods on [`Config`].
+	///
+	/// Treat this field as readonly: replacing it with a different instance of `Config` will not do
+	/// anything except potentially lose you access to the actual Watchexec config. In normal use
+	/// you'll have obtained `Watchexec` behind an `Arc` so that won't be an issue.
+	///
+	/// # Examples
+	///
+	/// Change the action handler:
+	///
+	/// ```no_run
+	/// # use watchexec::Watchexec;
+	/// let wx = Watchexec::default();
+	/// wx.config.on_action(|mut action| {
+	///     if action.signals().next().is_some() {
+	///         action.quit();
+	///     }
+	///
+	///     action
+	/// });
+	/// ```
+	///
+	/// Set paths to be watched:
+	///
+	/// ```no_run
+	/// # use watchexec::Watchexec;
+	/// let wx = Watchexec::new(|mut action| {
+	///     if action.signals().next().is_some() {
+	///         action.quit();
+	///     } else {
+	///         for event in action.events.iter() {
+	///             println!("{event:?}");
+	///         }
+	///     }
+	///
+	///     action
+	/// }).unwrap();
+	///
+	/// wx.config.pathset(["."]);
+	/// ```
+	pub config: Arc<Config>,
 	start_lock: Arc<Notify>,
-
-	action_watch: watch::Sender<action::WorkingData>,
-	fs_watch: watch::Sender<fs::WorkingData>,
-	keyboard_watch: watch::Sender<keyboard::WorkingData>,
-
 	event_input: priority::Sender<Event, Priority>,
+	handle: Arc<AtomicTake<JoinHandle<Result<(), CriticalError>>>>,
+}
+
+impl Default for Watchexec {
+	/// Instantiate with default config.
+	///
+	/// Note that this will panic if the constructor errors.
+	///
+	/// Prefer calling `new()` instead.
+	fn default() -> Self {
+		Self::with_config(Default::default()).expect("Use Watchexec::new() to avoid this panic")
+	}
 }
 
 impl fmt::Debug for Watchexec {
@@ -55,109 +95,106 @@ impl fmt::Debug for Watchexec {
 }
 
 impl Watchexec {
-	/// Instantiates a new `Watchexec` runtime from configuration.
+	/// Instantiates a new `Watchexec` runtime given an initial action handler.
 	///
 	/// Returns an [`Arc`] for convenience; use [`try_unwrap`][Arc::try_unwrap()] to get the value
-	/// directly if needed.
+	/// directly if needed, or use `new_with_config`.
 	///
-	/// Note that `RuntimeConfig` is not a "live" or "shared" instance: if using reconfiguration,
-	/// you'll usually pass a `clone()` of your `RuntimeConfig` instance to this function; changes
-	/// made to the instance you _keep_ will not automatically be used by Watchexec, you need to
-	/// call [`reconfigure()`](Watchexec::reconfigure) with your updated config to apply the changes.
-	///
+	/// Look at the [`Config`] documentation for more on the required action handler.
 	/// Watchexec will subscribe to most signals sent to the process it runs in and send them, as
 	/// [`Event`]s, to the action handler. At minimum, you should check for interrupt/ctrl-c events
-	/// and return an [`Outcome::Exit`], otherwise hitting ctrl-c will do nothing.
-	///
-	/// [`Outcome::Exit`]: crate::action::Outcome::Exit
+	/// and call `action.quit()` in your handler, otherwise hitting ctrl-c will do nothing.
 	pub fn new(
-		mut init: InitConfig,
-		mut runtime: RuntimeConfig,
+		action_handler: impl (Fn(ActionHandler) -> ActionHandler) + Send + Sync + 'static,
 	) -> Result<Arc<Self>, CriticalError> {
-		debug!(?init, ?runtime, pid=%std::process::id(), version=%env!("CARGO_PKG_VERSION"), "initialising");
+		let config = Config::default();
+		config.on_action(action_handler);
+		Self::with_config(config).map(Arc::new)
+	}
 
-		let (ev_s, ev_r) = priority::bounded(init.event_channel_size);
-		let (ac_s, ac_r) = watch::channel(take(&mut runtime.action));
-		let (fs_s, fs_r) = watch::channel(fs::WorkingData::default());
-		let (keyboard_s, keyboard_r) = watch::channel(keyboard::WorkingData::default());
+	/// Instantiates a new `Watchexec` runtime given an initial async action handler.
+	///
+	/// This is the same as [`new`](fn@Self::new) except the action handler is async.
+	pub fn new_async(
+		action_handler: impl (Fn(ActionHandler) -> Box<dyn Future<Output = ActionHandler> + Send + Sync>)
+			+ Send
+			+ Sync
+			+ 'static,
+	) -> Result<Arc<Self>, CriticalError> {
+		let config = Config::default();
+		config.on_action_async(action_handler);
+		Self::with_config(config).map(Arc::new)
+	}
 
-		let event_input = ev_s.clone();
+	/// Instantiates a new `Watchexec` runtime with a config.
+	///
+	/// This is generally not needed: the config can be changed after instantiation (before and
+	/// after _starting_ Watchexec with `main()`). The only time this should be used is to set the
+	/// "unchangeable" configuration items for internal details like buffer sizes for queues, or to
+	/// obtain Self unwrapped by an Arc like `new()` does.
+	pub fn with_config(config: Config) -> Result<Self, CriticalError> {
+		debug!(?config, pid=%std::process::id(), version=%env!("CARGO_PKG_VERSION"), "initialising");
+		let config = Arc::new(config);
+		let outer_config = config.clone();
 
-		// TODO: figure out how to do this (aka start the fs work) after the main task start lock
-		trace!("sending initial config to fs worker");
-		fs_s.send(take(&mut runtime.fs))
-			.expect("cannot send to just-created fs watch (bug)");
-
-		trace!("sending initial config to keyboard worker");
-		keyboard_s
-			.send(take(&mut runtime.keyboard))
-			.expect("cannot send to just-created keyboard watch (bug)");
-
-		trace!("creating main task");
 		let notify = Arc::new(Notify::new());
 		let start_lock = notify.clone();
+
+		let (ev_s, ev_r) = priority::bounded(config.event_channel_size);
+		let event_input = ev_s.clone();
+
+		trace!("creating main task");
 		let handle = spawn(async move {
 			trace!("waiting for start lock");
 			notify.notified().await;
 			debug!("starting main task");
 
-			let (er_s, er_r) = mpsc::channel(init.error_channel_size);
+			let (er_s, er_r) = mpsc::channel(config.error_channel_size);
 
-			let eh = replace(&mut init.error_handler, Box::new(()) as _);
+			let mut tasks = JoinSet::new();
 
-			let action = SubTask::spawn(
-				"action",
-				action::worker(ac_r, er_s.clone(), ev_s.clone(), ev_r),
+			tasks.spawn(action::worker(config.clone(), er_s.clone(), ev_r).map_ok(|_| "action"));
+			tasks.spawn(fs::worker(config.clone(), er_s.clone(), ev_s.clone()).map_ok(|_| "fs"));
+			tasks.spawn(
+				signal::worker(config.clone(), er_s.clone(), ev_s.clone()).map_ok(|_| "signal"),
 			);
-			let fs = SubTask::spawn("fs", fs::worker(fs_r, er_s.clone(), ev_s.clone()));
-			let signal =
-				SubTask::spawn("signal", signal::source::worker(er_s.clone(), ev_s.clone()));
-			let keyboard = SubTask::spawn(
-				"keyboard",
-				keyboard::worker(keyboard_r, er_s.clone(), ev_s.clone()),
+			tasks.spawn(
+				keyboard::worker(config.clone(), er_s.clone(), ev_s.clone()).map_ok(|_| "keyboard"),
 			);
+			tasks.spawn(error_hook(er_r, config.error_handler.clone()).map_ok(|_| "error"));
 
-			let error_hook = SubTask::spawn("error_hook", error_hook(er_r, eh));
-
-			// Use Tokio TaskSet when that lands
-			try_join!(action, error_hook, fs, signal, keyboard)
-				.map(drop)
-				.or_else(|e| {
-					// Close event channel to signal worker task to stop
-					ev_s.close();
-
-					if matches!(e, CriticalError::Exit) {
-						trace!("got graceful exit request via critical error, erasing the error");
-						Ok(())
-					} else {
-						Err(e)
+			while let Some(Ok(res)) = tasks.join_next().await {
+				match res {
+					Ok("action") => {
+						debug!("action worker exited, ending watchexec");
+						break;
 					}
-				})
-				.map(|_| {
-					debug!("main task graceful exit");
-				})
+					Ok(task) => {
+						debug!(task, "worker exited");
+					}
+					Err(CriticalError::Exit) => {
+						trace!("got graceful exit request via critical error, erasing the error");
+						// Close event channel to signal worker task to stop
+						ev_s.close();
+					}
+					Err(e) => {
+						return Err(e);
+					}
+				}
+			}
+
+			debug!("main task graceful exit");
+			tasks.shutdown().await;
+			Ok(())
 		});
 
 		trace!("done with setup");
-		Ok(Arc::new(Self {
-			handle: Arc::new(AtomicTake::new(handle)),
+		Ok(Self {
+			config: outer_config,
 			start_lock,
-
-			action_watch: ac_s,
-			fs_watch: fs_s,
-			keyboard_watch: keyboard_s,
-
 			event_input,
-		}))
-	}
-
-	/// Applies a new [`RuntimeConfig`] to the runtime.
-	pub fn reconfigure(&self, config: RuntimeConfig) -> Result<(), ReconfigError> {
-		debug!(?config, "reconfiguring");
-		self.action_watch.send(config.action)?;
-		self.fs_watch.send(config.fs)?;
-		self.keyboard_watch.send(config.keyboard)?;
-		Ok(())
+			handle: Arc::new(AtomicTake::new(handle)),
+		})
 	}
 
 	/// Inputs an [`Event`] directly.
@@ -190,7 +227,7 @@ impl Watchexec {
 
 async fn error_hook(
 	mut errors: mpsc::Receiver<RuntimeError>,
-	mut handler: Box<dyn Handler<ErrorHook> + Send>,
+	handler: ChangeableFn<ErrorHook, ()>,
 ) -> Result<(), CriticalError> {
 	while let Some(err) = errors.recv().await {
 		if matches!(err, RuntimeError::Exit) {
@@ -199,20 +236,10 @@ async fn error_hook(
 		}
 
 		error!(%err, "runtime error");
-
-		let hook = ErrorHook::new(err);
-		let crit = hook.critical.clone();
-		if let Err(err) = handler.handle(hook) {
-			error!(%err, "error while handling error");
-			let rehook = ErrorHook::new(rte("error hook", err.as_ref()));
-			let recrit = rehook.critical.clone();
-			handler.handle(rehook).unwrap_or_else(|err| {
-				error!(%err, "error while handling error of handling error");
-			});
-			ErrorHook::handle_crit(recrit, "error handler error handler")?;
-		} else {
-			ErrorHook::handle_crit(crit, "error handler")?;
-		}
+		let payload = ErrorHook::new(err);
+		let crit = payload.critical.clone();
+		handler.call(payload);
+		ErrorHook::handle_crit(crit)?;
 	}
 
 	Ok(())
@@ -242,19 +269,16 @@ impl ErrorHook {
 		}
 	}
 
-	fn handle_crit(
-		crit: Arc<OnceCell<CriticalError>>,
-		name: &'static str,
-	) -> Result<(), CriticalError> {
+	fn handle_crit(crit: Arc<OnceCell<CriticalError>>) -> Result<(), CriticalError> {
 		match Arc::try_unwrap(crit) {
 			Err(err) => {
-				error!(?err, "{name} hook has an outstanding ref");
+				error!(?err, "error handler hook has an outstanding ref");
 				Ok(())
 			}
 			Ok(crit) => crit.into_inner().map_or_else(
 				|| Ok(()),
 				|crit| {
-					debug!(%crit, "{name} output a critical error");
+					debug!(%crit, "error handler output a critical error");
 					Err(crit)
 				},
 			),
@@ -280,64 +304,5 @@ impl ErrorHook {
 				err: error,
 			})
 			.ok();
-	}
-}
-
-#[derive(Debug)]
-struct SubTask {
-	name: &'static str,
-	handle: JoinHandle<Result<(), CriticalError>>,
-}
-
-impl SubTask {
-	pub fn spawn(
-		name: &'static str,
-		task: impl Future<Output = Result<(), CriticalError>> + Send + 'static,
-	) -> Self {
-		debug!(subtask=%name, "spawning subtask");
-		Self {
-			name,
-			handle: spawn(task),
-		}
-	}
-}
-
-impl Drop for SubTask {
-	fn drop(&mut self) {
-		debug!(subtask=%self.name, "aborting subtask");
-		self.handle.abort();
-	}
-}
-
-impl Deref for SubTask {
-	type Target = JoinHandle<Result<(), CriticalError>>;
-
-	fn deref(&self) -> &Self::Target {
-		&self.handle
-	}
-}
-
-impl DerefMut for SubTask {
-	fn deref_mut(&mut self) -> &mut Self::Target {
-		&mut self.handle
-	}
-}
-
-impl Future for SubTask {
-	type Output = Result<(), CriticalError>;
-
-	fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-		let subtask = self.name;
-		match Pin::new(&mut Pin::into_inner(self).handle).poll(cx) {
-			Poll::Pending => Poll::Pending,
-			Poll::Ready(join_res) => {
-				debug!(%subtask, "finishing subtask");
-				Poll::Ready(
-					join_res
-						.map_err(CriticalError::MainTaskJoin)
-						.and_then(|x| x),
-				)
-			}
-		}
 	}
 }

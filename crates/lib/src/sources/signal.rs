@@ -1,41 +1,22 @@
 //! Event source for signals / notifications sent to the main process.
 
+use std::sync::Arc;
+
 use async_priority_channel as priority;
 use tokio::{select, sync::mpsc};
 use tracing::{debug, trace};
+use watchexec_events::{Event, Priority, Source, Tag};
 use watchexec_signals::Signal;
 
 use crate::{
 	error::{CriticalError, RuntimeError},
-	event::{Event, Priority, Source, Tag},
+	Config,
 };
-
-/// Compatibility shim for the old `watchexec::signal::process` module.
-pub mod process {
-	#[deprecated(
-		note = "use the `watchexec-signals` crate directly instead",
-		since = "2.2.0"
-	)]
-	pub use watchexec_signals::Signal as SubSignal;
-}
-
-/// Compatibility shim for the old `watchexec::signal::source` module.
-pub mod source {
-	#[deprecated(
-		note = "use `watchexec::signal::worker` directly instead",
-		since = "2.2.0"
-	)]
-	pub use super::worker;
-	#[deprecated(
-		note = "use the `watchexec-signals` crate directly instead",
-		since = "2.2.0"
-	)]
-	pub use watchexec_signals::Signal as MainSignal;
-}
 
 /// Launch the signal event worker.
 ///
-/// While you _can_ run several, you **must** only have one. This may be enforced later.
+/// While you _could_ run several (it won't panic), you **must** only have one (for correctness).
+/// This may be enforced later.
 ///
 /// # Examples
 ///
@@ -44,26 +25,28 @@ pub mod source {
 /// ```no_run
 /// use tokio::sync::mpsc;
 /// use async_priority_channel as priority;
-/// use watchexec::signal::source::worker;
+/// use watchexec::sources::signal::worker;
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let (ev_s, _) = priority::bounded(1024);
 ///     let (er_s, _) = mpsc::channel(64);
 ///
-///     worker(er_s, ev_s).await?;
+///     worker(Default::default(), er_s, ev_s).await?;
 ///     Ok(())
 /// }
 /// ```
 pub async fn worker(
+	config: Arc<Config>,
 	errors: mpsc::Sender<RuntimeError>,
 	events: priority::Sender<Event, Priority>,
 ) -> Result<(), CriticalError> {
-	imp_worker(errors, events).await
+	imp_worker(config, errors, events).await
 }
 
 #[cfg(unix)]
 async fn imp_worker(
+	_config: Arc<Config>,
 	errors: mpsc::Sender<RuntimeError>,
 	events: priority::Sender<Event, Priority>,
 ) -> Result<(), CriticalError> {
@@ -72,12 +55,12 @@ async fn imp_worker(
 	debug!("launching unix signal worker");
 
 	macro_rules! listen {
-	($sig:ident) => {{
-		trace!(kind=%stringify!($sig), "listening for unix signal");
-		signal(SignalKind::$sig()).map_err(|err| CriticalError::IoError {
-		about: concat!("setting ", stringify!($sig), " signal listener"), err
-	})?
-	}}
+    ($sig:ident) => {{
+        trace!(kind=%stringify!($sig), "listening for unix signal");
+        signal(SignalKind::$sig()).map_err(|err| CriticalError::IoError {
+        about: concat!("setting ", stringify!($sig), " signal listener"), err
+    })?
+    }}
 }
 
 	let mut s_hangup = listen!(hangup);
@@ -104,6 +87,7 @@ async fn imp_worker(
 
 #[cfg(windows)]
 async fn imp_worker(
+	_config: Arc<Config>,
 	errors: mpsc::Sender<RuntimeError>,
 	events: priority::Sender<Event, Priority>,
 ) -> Result<(), CriticalError> {
@@ -112,12 +96,12 @@ async fn imp_worker(
 	debug!("launching windows signal worker");
 
 	macro_rules! listen {
-	($sig:ident) => {{
-		trace!(kind=%stringify!($sig), "listening for windows process notification");
-		$sig().map_err(|err| CriticalError::IoError {
-			about: concat!("setting ", stringify!($sig), " signal listener"), err
-		})?
-	}}
+    ($sig:ident) => {{
+        trace!(kind=%stringify!($sig), "listening for windows process notification");
+        $sig().map_err(|err| CriticalError::IoError {
+            about: concat!("setting ", stringify!($sig), " signal listener"), err
+        })?
+    }}
 }
 
 	let mut sigint = listen!(ctrl_c);

@@ -1,0 +1,45 @@
+[package]
+name = "watchexec-supervisor"
+version = "0.1.0"
+
+authors = ["Félix Saparelli <felix@passcod.name>"]
+license = "Apache-2.0 OR MIT"
+description = "Watchexec's process supervisor component"
+keywords = ["process", "command", "supervisor", "watchexec"]
+
+documentation = "https://docs.rs/watchexec-supervisor"
+repository = "https://github.com/watchexec/watchexec"
+readme = "README.md"
+
+rust-version = "1.58.0"
+edition = "2021"
+
+[dependencies]
+futures = "0.3.29"
+tracing = "0.1.40"
+
+[dependencies.command-group]
+version = "5.0.1"
+features = ["with-tokio"]
+
+[dependencies.tokio]
+version = "1.33.0"
+default-features = false
+features = ["macros", "process", "rt", "sync", "time"]
+
+[dependencies.watchexec-events]
+version = "1.0.0"
+default-features = false
+path = "../events"
+
+[dependencies.watchexec-signals]
+version = "1.0.0"
+default-features = false
+path = "../signals"
+
+[target.'cfg(unix)'.dependencies.nix]
+version = "0.27.1"
+features = ["signal"]
+
+[dev-dependencies]
+boxcar = "0.2.4"

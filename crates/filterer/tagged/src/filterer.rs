@@ -10,11 +10,8 @@ use ignore::{
 use ignore_files::{IgnoreFile, IgnoreFilter};
 use tokio::fs::canonicalize;
 use tracing::{debug, trace, trace_span};
-use watchexec::{
-	error::RuntimeError,
-	event::{Event, FileType, Priority, ProcessEnd, Tag},
-	filter::Filterer,
-};
+use watchexec::{error::RuntimeError, filter::Filterer};
+use watchexec_events::{Event, FileType, Priority, ProcessEnd, Tag};
 use watchexec_filterer_ignore::IgnoreFilterer;
 use watchexec_signals::Signal;
 

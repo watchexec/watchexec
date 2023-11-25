@@ -5,11 +5,8 @@ use std::{
 
 use ignore_files::IgnoreFile;
 use project_origins::ProjectType;
-use watchexec::{
-	error::RuntimeError,
-	event::{Event, FileType, Priority, Tag},
-	filter::Filterer,
-};
+use watchexec::{error::RuntimeError, filter::Filterer};
+use watchexec_events::{Event, FileType, Priority, Tag};
 use watchexec_filterer_globset::GlobsetFilterer;
 use watchexec_filterer_ignore::IgnoreFilterer;
 
@@ -17,7 +14,7 @@ pub mod globset {
 	pub use super::globset_filt as filt;
 	pub use super::Applies;
 	pub use super::PathHarness;
-	pub use watchexec::event::Priority;
+	pub use watchexec_events::Priority;
 }
 
 pub trait PathHarness: Filterer {

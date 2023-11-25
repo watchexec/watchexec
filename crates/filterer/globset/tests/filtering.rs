@@ -374,10 +374,8 @@ async fn extensions_fail_extensionless() {
 
 #[tokio::test]
 async fn multipath_allow_on_any_one_pass() {
-	use watchexec::{
-		event::{Event, FileType, Tag},
-		filter::Filterer,
-	};
+	use watchexec::filter::Filterer;
+	use watchexec_events::{Event, FileType, Tag};
 
 	let filterer = filt(&[], &[], &["py"]).await;
 	let origin = tokio::fs::canonicalize(".").await.unwrap();
@@ -442,10 +440,8 @@ async fn leading_single_glob_file() {
 
 #[tokio::test]
 async fn nonpath_event_passes() {
-	use watchexec::{
-		event::{Event, Source, Tag},
-		filter::Filterer,
-	};
+	use watchexec::filter::Filterer;
+	use watchexec_events::{Event, Source, Tag};
 
 	let filterer = filt(&[], &[], &["py"]).await;
 

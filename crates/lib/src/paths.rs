@@ -6,7 +6,7 @@ use std::{
 	path::{Path, PathBuf},
 };
 
-use crate::event::{Event, FileType, Tag};
+use watchexec_events::{Event, FileType, Tag};
 
 /// The separator for paths used in environment variables.
 #[cfg(unix)]

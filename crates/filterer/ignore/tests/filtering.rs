@@ -235,7 +235,7 @@ async fn scopes() {
 	#[cfg(not(windows))]
 	filterer.file_does_pass("/local.b");
 	// FIXME flaky
-	//filterer.file_doesnt_pass("tests/local.c");
+	// filterer.file_doesnt_pass("tests/local.c");
 
 	filterer.file_does_pass("sublocal.a");
 	// #[cfg(windows)] FIXME should work

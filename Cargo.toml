@@ -5,6 +5,7 @@ members = [
 	"crates/cli",
 	"crates/events",
 	"crates/signals",
+	"crates/supervisor",
 	"crates/filterer/globset",
 	"crates/filterer/ignore",
 	"crates/filterer/tagged",

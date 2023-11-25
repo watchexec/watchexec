@@ -51,7 +51,7 @@ pub async fn from_origin(path: impl AsRef<Path> + Send) -> (Vec<IgnoreFile>, Vec
 	match find_file(base.join(".git/config")).await {
 		Err(err) => errors.push(err),
 		Ok(None) => {}
-		Ok(Some(path)) => match path.parent().map(File::from_git_dir) {
+		Ok(Some(path)) => match path.parent().map(|path| File::from_git_dir(path.into())) {
 			None => errors.push(Error::new(
 				ErrorKind::Other,
 				"unreachable: .git/config must have a parent",

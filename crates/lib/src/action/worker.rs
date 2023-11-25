@@ -1,26 +1,25 @@
 use std::{
+	collections::HashMap,
 	mem::take,
 	sync::Arc,
 	time::{Duration, Instant},
 };
 
 use async_priority_channel as priority;
-use tokio::{
-	sync::{
-		mpsc,
-		watch::{self},
-	},
-	time::timeout,
-};
-use tracing::{debug, info, trace};
+use tokio::{sync::mpsc, time::timeout};
+use tracing::{debug, trace};
+use watchexec_events::{Event, Priority};
+use watchexec_supervisor::job::Job;
 
+use super::{handler::Handler, quit::QuitManner};
 use crate::{
+	action::ActionReturn,
 	error::{CriticalError, RuntimeError},
-	event::{Event, Priority},
-	handler::rte,
+	filter::Filterer,
+	id::Id,
+	late_join_set::LateJoinSet,
+	Config,
 };
-
-use super::{outcome_worker::OutcomeWorker, process_holder::ProcessHolder, Action, WorkingData};
 
 /// The main worker of a Watchexec process.
 ///
@@ -28,27 +27,105 @@ use super::{outcome_worker::OutcomeWorker, process_holder::ProcessHolder, Action
 /// debounces them, obtains the desired outcome of an actioned event, calls the appropriate handlers
 /// and schedules processes as needed.
 pub async fn worker(
-	working: watch::Receiver<WorkingData>,
+	config: Arc<Config>,
 	errors: mpsc::Sender<RuntimeError>,
-	events_tx: priority::Sender<Event, Priority>,
 	events: priority::Receiver<Event, Priority>,
 ) -> Result<(), CriticalError> {
-	let mut last = Instant::now();
-	let mut set = Vec::new();
-	let process = ProcessHolder::default();
-	let outcome_gen = OutcomeWorker::newgen();
+	let mut jobtasks = LateJoinSet::default();
+	let mut jobs = HashMap::<Id, Job>::new();
 
-	loop {
-		if events.is_closed() {
-			trace!("events channel closed, stopping");
-			break;
+	while let Some(mut set) = throttle_collect(
+		config.clone(),
+		events.clone(),
+		errors.clone(),
+		Instant::now(),
+	)
+	.await?
+	{
+		let events: Arc<[Event]> = Arc::from(take(&mut set).into_boxed_slice());
+
+		trace!("preparing action handler");
+		let action = Handler::new(events.clone(), jobs.clone());
+
+		debug!("running action handler");
+		let action = match config.action_handler.call(action) {
+			ActionReturn::Sync(action) => action,
+			ActionReturn::Async(action) => Box::into_pin(action).await,
+		};
+
+		debug!("take control of new tasks");
+		for (id, (job, task)) in action.new {
+			trace!(?id, "taking control of new task");
+			jobtasks.insert(task);
+			jobs.insert(id, job);
 		}
 
+		if let Some(manner) = action.quit {
+			debug!(?manner, "quitting worker");
+			match manner {
+				QuitManner::Abort => break,
+				QuitManner::Graceful { signal, grace } => {
+					debug!(?signal, ?grace, "quitting worker gracefully");
+					let mut tasks = LateJoinSet::default();
+					for (id, job) in jobs.drain() {
+						trace!(?id, "quitting job");
+						tasks.spawn(async move {
+							job.stop_with_signal(signal, grace);
+							job.delete().await;
+						});
+					}
+					debug!("waiting for graceful shutdown tasks");
+					tasks.join_all().await;
+					debug!("waiting for job tasks to end");
+					jobtasks.join_all().await;
+					break;
+				}
+			}
+		}
+
+		let gc: Vec<Id> = jobs
+			.iter()
+			.filter_map(|(id, job)| {
+				if job.is_dead() {
+					trace!(?id, "job is dead, gc'ing");
+					Some(*id)
+				} else {
+					None
+				}
+			})
+			.collect();
+		if !gc.is_empty() {
+			debug!("garbage collect old tasks");
+			for id in gc {
+				jobs.remove(&id);
+			}
+		}
+
+		debug!("action handler finished");
+	}
+
+	debug!("action worker finished");
+	Ok(())
+}
+
+pub async fn throttle_collect(
+	config: Arc<Config>,
+	events: priority::Receiver<Event, Priority>,
+	errors: mpsc::Sender<RuntimeError>,
+	mut last: Instant,
+) -> Result<Option<Vec<Event>>, CriticalError> {
+	if events.is_closed() {
+		trace!("events channel closed, stopping");
+		return Ok(None);
+	}
+
+	let mut set: Vec<Event> = vec![];
+	loop {
 		let maxtime = if set.is_empty() {
 			trace!("nothing in set, waiting forever for next event");
 			Duration::from_secs(u64::MAX)
 		} else {
-			working.borrow().throttle.saturating_sub(last.elapsed())
+			config.throttle.get().saturating_sub(last.elapsed())
 		};
 
 		if maxtime.is_zero() {
@@ -64,7 +141,7 @@ pub async fn worker(
 			let maybe_event = timeout(maxtime, events.recv()).await;
 			if events.is_closed() {
 				trace!("events channel closed during timeout, stopping");
-				break;
+				return Ok(None);
 			}
 
 			match maybe_event {
@@ -72,7 +149,7 @@ pub async fn worker(
 					trace!("timed out, cycling");
 					continue;
 				}
-				Ok(Err(_empty)) => break,
+				Ok(Err(_empty)) => return Ok(None),
 				Ok(Ok((event, priority))) => {
 					trace!(?event, ?priority, "got event");
 
@@ -81,7 +158,7 @@ pub async fn worker(
 					} else if event.is_empty() {
 						trace!("empty event, by-passing filters");
 					} else {
-						let filtered = working.borrow().filterer.check_event(&event, priority);
+						let filtered = config.filterer.check_event(&event, priority);
 						match filtered {
 							Err(err) => {
 								trace!(%err, "filter errored on event");
@@ -109,7 +186,7 @@ pub async fn worker(
 						trace!("urgent event, by-passing throttle");
 					} else {
 						let elapsed = last.elapsed();
-						if elapsed < working.borrow().throttle {
+						if elapsed < config.throttle.get() {
 							trace!(?elapsed, "still within throttle window, cycling");
 							continue;
 						}
@@ -118,49 +195,6 @@ pub async fn worker(
 			}
 		}
 
-		trace!("out of throttle, starting action process");
-		last = Instant::now();
-
-		#[allow(clippy::iter_with_drain)]
-		let events = Arc::from(take(&mut set).into_boxed_slice());
-		let action = Action::new(Arc::clone(&events));
-		info!(?action, "action constructed");
-
-		debug!("running action handler");
-		let action_handler = {
-			let wrk = working.borrow();
-			wrk.action_handler.clone()
-		};
-
-		let outcome = action.outcome.clone();
-		let err = action_handler
-			.call(action)
-			.await
-			.map_err(|e| rte("action worker", e.as_ref()));
-		if let Err(err) = err {
-			errors.send(err).await?;
-			debug!("action handler errored, skipping");
-			continue;
-		}
-
-		let outcome = outcome.get().cloned().unwrap_or_default();
-		debug!(?outcome, "action handler finished");
-
-		let outcome = outcome.resolve(process.is_running().await);
-		info!(?outcome, "outcome resolved");
-
-		OutcomeWorker::spawn(
-			outcome,
-			events,
-			working.clone(),
-			process.clone(),
-			outcome_gen.clone(),
-			errors.clone(),
-			events_tx.clone(),
-		);
-		debug!("action process done");
+		return Ok(Some(set));
 	}
-
-	debug!("action worker finished");
-	Ok(())
 }

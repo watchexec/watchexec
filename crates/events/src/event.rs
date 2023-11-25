@@ -53,7 +53,7 @@ pub enum Tag {
 	/// The event is about a signal being delivered to the main process.
 	Signal(Signal),
 
-	/// The event is about the subprocess ending.
+	/// The event is about a subprocess ending.
 	ProcessCompletion(Option<ProcessEnd>),
 
 	#[cfg(feature = "serde")]

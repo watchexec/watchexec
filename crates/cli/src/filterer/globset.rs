@@ -7,13 +7,10 @@ use std::{
 use miette::{IntoDiagnostic, Result};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tracing::{info, trace, trace_span};
-use watchexec::{
-	error::RuntimeError,
-	event::{
-		filekind::{FileEventKind, ModifyKind},
-		Event, Priority, Tag,
-	},
-	filter::Filterer,
+use watchexec::{error::RuntimeError, filter::Filterer};
+use watchexec_events::{
+	filekind::{FileEventKind, ModifyKind},
+	Event, Priority, Tag,
 };
 use watchexec_filterer_globset::GlobsetFilterer;
 

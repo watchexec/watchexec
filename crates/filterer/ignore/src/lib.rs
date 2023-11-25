@@ -14,12 +14,8 @@
 use ignore::Match;
 use ignore_files::IgnoreFilter;
 use tracing::{trace, trace_span};
-
-use watchexec::{
-	error::RuntimeError,
-	event::{Event, FileType, Priority},
-	filter::Filterer,
-};
+use watchexec::{error::RuntimeError, filter::Filterer};
+use watchexec_events::{Event, FileType, Priority};
 
 /// A Watchexec [`Filterer`] implementation for [`IgnoreFilter`].
 #[derive(Clone, Debug)]
