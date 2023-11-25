@@ -1,3 +1,5 @@
+use std::future::Future;
+
 use super::ActionHandler;
 
 /// The return type of an action.
@@ -8,5 +10,9 @@ use super::ActionHandler;
 /// [`Config::on_action_async`](crate::Config::on_action_async) as that takes care of wrapping the
 /// return type from the specialised signature on these methods.
 pub enum ActionReturn {
+	/// The action handler is synchronous and here's its return value.
 	Sync(ActionHandler),
+
+	/// The action handler is asynchronous: this is the future that will resolve to its return value.
+	Async(Box<dyn Future<Output = ActionHandler> + Send + Sync>),
 }

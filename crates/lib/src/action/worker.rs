@@ -50,6 +50,7 @@ pub async fn worker(
 		debug!("running action handler");
 		let action = match config.action_handler.call(action) {
 			ActionReturn::Sync(action) => action,
+			ActionReturn::Async(action) => Box::into_pin(action).await,
 		};
 
 		debug!("take control of new tasks");

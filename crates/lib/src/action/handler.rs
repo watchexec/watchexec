@@ -79,9 +79,9 @@ impl Handler {
 	/// This starts the [`Job`] immediately if one with the Id doesn't exist, and stores a copy of
 	/// its handle and [`Id`] in this `Action` (and thus in the Watchexec instance, when the action
 	/// handler returns).
-	pub fn get_or_create_job(&mut self, id: Id, command: Command) -> Job {
+	pub fn get_or_create_job(&mut self, id: Id, command: fn() -> Command) -> Job {
 		self.get_job(id)
-			.unwrap_or_else(|| self.create_job_with_id(id, command))
+			.unwrap_or_else(|| self.create_job_with_id(id, command()))
 	}
 
 	/// Get a job given its Id.

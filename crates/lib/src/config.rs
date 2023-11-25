@@ -1,6 +1,6 @@
 //! Configuration and builders for [`crate::Watchexec`].
 
-use std::{path::Path, pin::pin, sync::Arc, time::Duration};
+use std::{future::Future, path::Path, pin::pin, sync::Arc, time::Duration};
 
 use tokio::sync::Notify;
 use tracing::{debug, trace};
@@ -247,6 +247,20 @@ impl Config {
 		debug!("Config: on_action");
 		self.action_handler
 			.replace(move |action| ActionReturn::Sync(handler(action)));
+		self.signal_change()
+	}
+
+	/// Set the action handler to a future-returning closure.
+	pub fn on_action_async(
+		&self,
+		handler: impl (Fn(ActionHandler) -> Box<dyn Future<Output = ActionHandler> + Send + Sync>)
+			+ Send
+			+ Sync
+			+ 'static,
+	) -> &Self {
+		debug!("Config: on_action_async");
+		self.action_handler
+			.replace(move |action| ActionReturn::Async(handler(action)));
 		self.signal_change()
 	}
 }

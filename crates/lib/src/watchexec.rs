@@ -1,4 +1,4 @@
-use std::{fmt, sync::Arc};
+use std::{fmt, future::Future, sync::Arc};
 
 use async_priority_channel as priority;
 use atomic_take::AtomicTake;
@@ -109,6 +109,20 @@ impl Watchexec {
 	) -> Result<Arc<Self>, CriticalError> {
 		let config = Config::default();
 		config.on_action(action_handler);
+		Self::with_config(config).map(Arc::new)
+	}
+
+	/// Instantiates a new `Watchexec` runtime given an initial async action handler.
+	///
+	/// This is the same as [`new`](fn@Self::new) except the action handler is async.
+	pub fn new_async(
+		action_handler: impl (Fn(ActionHandler) -> Box<dyn Future<Output = ActionHandler> + Send + Sync>)
+			+ Send
+			+ Sync
+			+ 'static,
+	) -> Result<Arc<Self>, CriticalError> {
+		let config = Config::default();
+		config.on_action_async(action_handler);
 		Self::with_config(config).map(Arc::new)
 	}
 
