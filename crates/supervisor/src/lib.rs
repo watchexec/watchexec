@@ -20,11 +20,10 @@
 //! # Theory of Operation
 //!
 //! A [`Job`](job::Job) is, properly speaking, a handle which lets one control a Tokio task. That
-//! task is spawned on a [`JoinSet`](tokio::task::JoinSet), which is a Tokio construct that allows
-//! for a set of tasks to be held together and waited on or cancelled collectively. A `Job` takes as
-//! input a [`Command`](command::Command), which describes how to start a single process, through
-//! either a shell command or a direct executable invocation, and if the process should be grouped
-//! (using [`command-group`](command_group)) or not.
+//! task is spawned on the Tokio runtime, and so runs in the background. A `Job` takes as input a
+//! [`Command`](command::Command), which describes how to start a single process, through either a
+//! shell command or a direct executable invocation, and if the process should be grouped (using
+//! [`command-group`](command_group)) or not.
 //!
 //! The job's task runs an event loop on two sources: the process's `wait()` (i.e. when the process
 //! ends) and the job's control queue. The control queue is a hybrid MPSC queue, with three priority
@@ -44,17 +43,16 @@
 //!
 //! ```no_run
 //! # #[tokio::main(flavor = "current_thread")] async fn main() { // single-threaded for doctest only
-//! # use tokio::task::JoinSet;
 //! # use watchexec_supervisor::Signal;
 //! # use watchexec_supervisor::command::{Command, Program};
 //! # use watchexec_supervisor::job::{CommandState, start_job};
 //! #
-//! # let mut joinset = JoinSet::new();
-//! # let job = start_job(&mut joinset, Command { program: Program::Exec { prog: "/bin/date".into(), args: Vec::new() }.into(), grouped: true });
+//! # let (job, task) = start_job(Command { program: Program::Exec { prog: "/bin/date".into(), args: Vec::new() }.into(), grouped: true });
 //! #
 //! job.start().await;
 //! job.signal(Signal::User1).await;
 //! job.stop().await;
+//! # task.abort();
 //! # }
 //! ```
 //!
@@ -62,17 +60,16 @@
 //!
 //! ```no_run
 //! # #[tokio::main(flavor = "current_thread")] async fn main() { // single-threaded for doctest only
-//! # use tokio::task::JoinSet;
 //! # use watchexec_supervisor::Signal;
 //! # use watchexec_supervisor::command::{Command, Program};
 //! # use watchexec_supervisor::job::{CommandState, start_job};
 //! #
-//! # let mut joinset = JoinSet::new();
-//! # let job = start_job(&mut joinset, Command { program: Program::Exec { prog: "/bin/date".into(), args: Vec::new() }.into(), grouped: true });
+//! # let (job, task) = start_job(Command { program: Program::Exec { prog: "/bin/date".into(), args: Vec::new() }.into(), grouped: true });
 //! #
 //! job.start();
 //! job.signal(Signal::User1);
 //! job.stop().await; // here, all of start(), signal(), and stop() will have run in order
+//! # task.abort();
 //! # }
 //! ```
 //!
@@ -81,13 +78,12 @@
 //! ```no_run
 //! # #[tokio::main(flavor = "current_thread")] async fn main() { // single-threaded for doctest only
 //! # use std::time::Duration;
-//! # use tokio::{task::JoinSet, time::sleep};
+//! # use tokio::time::sleep;
 //! # use watchexec_supervisor::Signal;
 //! # use watchexec_supervisor::command::{Command, Program};
 //! # use watchexec_supervisor::job::{CommandState, start_job};
 //! #
-//! # let mut joinset = JoinSet::new();
-//! # let job = start_job(&mut joinset, Command { program: Program::Exec { prog: "/bin/date".into(), args: Vec::new() }.into(), grouped: true });
+//! # let (job, task) = start_job(Command { program: Program::Exec { prog: "/bin/date".into(), args: Vec::new() }.into(), grouped: true });
 //! #
 //! job.start().await;
 //! println!("program started!");
@@ -99,6 +95,8 @@
 //!
 //! job.stop().await;
 //! println!("program stopped");
+//! #
+//! # task.abort();
 //! # }
 //! ```
 //!
@@ -106,13 +104,11 @@
 //!
 //! ```no_run
 //! # #[tokio::main(flavor = "current_thread")] async fn main() { // single-threaded for doctest only
-//! use tokio::task::JoinSet;
 //! use watchexec_supervisor::Signal;
 //! use watchexec_supervisor::command::{Command, Program};
 //! use watchexec_supervisor::job::{CommandState, start_job};
 //!
-//! let mut joinset = JoinSet::new();
-//! let job = start_job(&mut joinset, Command {
+//! let (job, task) = start_job(Command {
 //!     program: Program::Exec {
 //!         prog: "/bin/date".into(),
 //!         args: Vec::new(),
@@ -126,7 +122,7 @@
 //!
 //! job.delete_now().await;
 //!
-//! joinset.abort_all();
+//! task.await; // make sure the task is fully cleaned up
 //! # }
 //! ```
 

@@ -15,10 +15,10 @@ use tokio::sync::Notify;
 use tracing::debug;
 
 use crate::{
-	action::{Action, PreSpawn},
+	action::Action,
 	changeable::{Changeable, ChangeableFn},
 	filter::{ChangeableFilterer, Filterer},
-	fs::{WatchedPath, Watcher},
+	sources::fs::{WatchedPath, Watcher},
 	ErrorHook,
 };
 
@@ -47,12 +47,6 @@ pub struct Config {
 	///
 	/// This handler is called with the [`Action`] environment, look at its doc for more detail.
 	///
-	/// Watchexec waits until the handler is done, and then performs any actions the handler
-	/// told it to. "Doneness" is determined by the handler returning, or resolving in case of
-	/// an async handler. You'll get unexpected results using eg a channel as the handler, as
-	/// the handler implementation will immediately return after sending to the channel, and
-	/// act as a no-op.
-	///
 	/// If this handler is not provided, or does nothing, Watchexec in turn will do nothing, not
 	/// even quit. Hence, you really need to provide a handler. This is enforced when using
 	/// [`Watchexec::new()`], but not when using [`Watchexec::default()`].
@@ -68,7 +62,7 @@ pub struct Config {
 	/// and you'll find that the internal event queues quickly fill up and it all grinds to a halt.
 	/// Spawn threads or tasks, or use channels or other async primitives to communicate with your
 	/// expensive code.
-	pub action_handler: ChangeableFn<Action>,
+	pub action_handler: ChangeableFn<Action, Action>,
 
 	/// Runtime error handler.
 	///
@@ -119,7 +113,7 @@ pub struct Config {
 	/// blocking work. However, there should be a lot less errors than events, so it's less critical
 	/// than, say, the action handler. Locking and writing to stdio is fine, for example. Of course,
 	/// an asynchronous log writer or separate UI thread is always a good idea.
-	pub error_handler: ChangeableFn<ErrorHook>,
+	pub error_handler: ChangeableFn<ErrorHook, ()>,
 
 	/// The set of filesystem paths to be watched.
 	///
@@ -147,20 +141,6 @@ pub struct Config {
 	///
 	/// Default is 50ms.
 	pub throttle: Changeable<Duration>,
-
-	/// A handler triggered before a command is spawned.
-	///
-	/// This handler is called with the [`PreSpawn`] environment, which provides mutable access to
-	/// the [`Command`](TokioCommand) which is about to be run. See the notes on the
-	/// [`PreSpawn::command()`] method for important information on what you can do with it.
-	///
-	/// The default is a no-op.
-	///
-	/// Just like other handlers, it is important for this to return quickly: avoid performing
-	/// blocking work. However, process supervision work (such as spawns) is handled off the main
-	/// thread/task. Blocking here will delay spawning the command, and will prevent other actions
-	/// being applied to the command's supervisor, but will not block the rest of Watchexec.
-	pub pre_spawn_handler: ChangeableFn<PreSpawn>,
 
 	/// The filterer implementation to use when filtering events.
 	///
@@ -203,13 +183,12 @@ impl Default for Config {
 	fn default() -> Self {
 		Self {
 			change_signal: Default::default(),
-			action_handler: Default::default(),
+			action_handler: ChangeableFn::new(|action| action),
 			error_handler: Default::default(),
 			pathset: Default::default(),
 			file_watcher: Default::default(),
 			keyboard_events: Default::default(),
 			throttle: Changeable::new(Duration::from_millis(50)),
-			pre_spawn_handler: Default::default(),
 			filterer: Default::default(),
 			max_filterer_tasks: Changeable::new(10),
 			error_channel_size: 64,
@@ -287,16 +266,9 @@ impl Config {
 	}
 
 	/// Set the action handler.
-	pub fn on_action(&self, handler: impl Fn(Action) + Send + Sync + 'static) -> &Self {
+	pub fn on_action(&self, handler: impl (Fn(Action) -> Action) + Send + Sync + 'static) -> &Self {
 		debug!("Config: on_action");
 		self.action_handler.replace(handler);
-		self.signal_change()
-	}
-
-	/// Set the pre-spawn handler.
-	pub fn on_pre_spawn(&self, handler: impl Fn(PreSpawn) + Send + Sync + 'static) -> &Self {
-		debug!("Config: on_pre_spawn");
-		self.pre_spawn_handler.replace(handler);
 		self.signal_change()
 	}
 

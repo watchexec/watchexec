@@ -4,7 +4,7 @@ use tokio::{sync::mpsc, task::JoinError};
 use watchexec_events::{Event, Priority};
 
 use super::{FsWatcherError, RuntimeError};
-use crate::fs::Watcher;
+use crate::sources::fs::Watcher;
 
 /// Errors which are not recoverable and stop watchexec execution.
 #[derive(Debug, Diagnostic, Error)]

@@ -238,12 +238,11 @@ impl Job {
 	/// For example, this won't compile:
 	///
 	/// ```compile_fail
-	/// # use tokio::{sync::mpsc, task::JoinSet};
+	/// # use tokio::sync::mpsc;
 	/// # use watchexec_supervisor::command::{Command, Program};
 	/// # use watchexec_supervisor::job::{CommandState, start_job};
 	/// #
-	/// # let mut joinset = JoinSet::new();
-	/// # let job = start_job(&mut joinset, Command { program: Program::Exec { prog: "/bin/date".into(), args: Vec::new() }.into(), grouped: true });
+	/// # let (job, _task) = start_job(Command { program: Program::Exec { prog: "/bin/date".into(), args: Vec::new() }.into(), grouped: true });
 	/// let (channel, receiver) = mpsc::channel(10);
 	/// job.run_async(|context| Box::new(async move {
 	///     if let CommandState::Finished { status, .. } = context.current {
@@ -255,12 +254,11 @@ impl Job {
 	/// But this does:
 	///
 	/// ```no_run
-	/// # use tokio::{sync::mpsc, task::JoinSet};
+	/// # use tokio::sync::mpsc;
 	/// # use watchexec_supervisor::command::{Command, Program};
 	/// # use watchexec_supervisor::job::{CommandState, start_job};
 	/// #
-	/// # let mut joinset = JoinSet::new();
-	/// # let job = start_job(&mut joinset, Command { program: Program::Exec { prog: "/bin/date".into(), args: Vec::new() }.into(), grouped: true });
+	/// # let (job, _task) = start_job(Command { program: Program::Exec { prog: "/bin/date".into(), args: Vec::new() }.into(), grouped: true });
 	/// let (channel, receiver) = mpsc::channel(10);
 	/// job.run_async(|context| {
 	///     let status = if let CommandState::Finished { status, .. } = context.current {

@@ -3587,6 +3587,7 @@ dependencies = [
  "tracing-subscriber",
  "watchexec-events",
  "watchexec-signals",
+ "watchexec-supervisor",
 ]
 
 [[package]]

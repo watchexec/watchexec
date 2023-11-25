@@ -55,13 +55,11 @@
 
 // the toolkit to make your own
 pub mod action;
-pub mod command;
 pub mod error;
 pub mod filter;
-pub mod fs;
-pub mod keyboard;
+pub mod id;
 pub mod paths;
-pub mod signal;
+pub mod sources;
 
 // the core experience
 pub mod changeable;
@@ -79,3 +77,5 @@ pub mod readme_doc_check {
 	#[doc = include_str!("../README.md")]
 	pub struct Readme;
 }
+
+mod late_join_set;

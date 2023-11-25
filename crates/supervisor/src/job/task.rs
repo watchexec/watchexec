@@ -1,6 +1,6 @@
 use std::{future::Future, sync::Arc, time::Instant};
 
-use tokio::{process::Command as TokioCommand, select, task::JoinSet};
+use tokio::{process::Command as TokioCommand, select, task::JoinHandle};
 use watchexec_signals::Signal;
 
 use crate::{
@@ -17,145 +17,92 @@ use super::{
 	state::CommandState,
 };
 
-/// Spawn a job task onto a [`JoinSet`] and return a [`Job`] handle.
+/// Spawn a job task and return a [`Job`] handle and a [`JoinHandle`].
 ///
 /// The job task immediately starts in the background: it does not need polling.
-pub fn start_job(joinset: &mut JoinSet<()>, command: Command) -> Job {
+pub fn start_job(command: Command) -> (Job, JoinHandle<()>) {
 	let (sender, mut receiver) = priority::new();
 
 	let gone = Flag::default();
 	let done = gone.clone();
 
-	let job = Job {
-		command: Arc::new(command.clone()),
-		control_queue: sender,
-		gone,
-	};
+	(
+		Job {
+			command: Arc::new(command.clone()),
+			control_queue: sender,
+			gone,
+		},
+		tokio::spawn(async move {
+			let mut error_handler = ErrorHandler::None;
+			let mut spawn_hook = SpawnHook::None;
+			let mut command_state = CommandState::Pending;
+			let mut previous_run = None;
+			let mut stop_timer = None;
+			let mut on_end: Vec<Flag> = Vec::new();
+			let mut on_end_restart: Option<Flag> = None;
 
-	joinset.spawn(async move {
-		let mut error_handler = ErrorHandler::None;
-		let mut spawn_hook = SpawnHook::None;
-		let mut command_state = CommandState::Pending;
-		let mut previous_run = None;
-		let mut stop_timer = None;
-		let mut on_end: Vec<Flag> = Vec::new();
-		let mut on_end_restart: Option<Flag> = None;
+			'main: loop {
+				select! {
+					result = command_state.wait(), if command_state.is_running() => {
+						eprintln!("[{:?}] waited: {result:?}", Instant::now());
 
-		'main: loop {
-			select! {
-				result = command_state.wait(), if command_state.is_running() => {
-					eprintln!("[{:?}] waited: {result:?}", Instant::now());
-
-					match result {
-						Err(err) => {
-							let fut = error_handler.call(sync_io_error(err));
-							fut.await;
-							continue 'main;
-						}
-						Ok(true) => {
-							stop_timer = None;
-							for done in on_end.drain(..) {
-								done.raise();
-							}
-
-							if let Some(flag) = on_end_restart.take() {
-								let mut spawnable = command.to_spawnable();
-								previous_run = Some(command_state.reset());
-								spawn_hook
-									.call(
-										&mut spawnable,
-										&JobTaskContext {
-											command: &command,
-											current: &command_state,
-											previous: previous_run.as_ref(),
-										},
-									)
-									.await;
-								if let Err(err) = command_state.spawn(command.clone(), spawnable).await {
-									let fut = error_handler.call(sync_io_error(err));
-									fut.await;
-									continue 'main;
-								}
-								flag.raise();
-							}
-						}
-						Ok(false) => {}
-					}
-				}
-				Some(ControlMessage { control, done }) = receiver.recv(&mut stop_timer) => {
-					macro_rules! try_with_handler {
-						($erroring:expr) => {
-							match $erroring {
-								Err(err) => {
-									let fut = error_handler.call(sync_io_error(err));
-									fut.await;
-									done.raise();
-									continue 'main;
-								}
-								Ok(value) => value,
-							}
-						};
-					}
-
-					eprintln!("[{:?}] control: {control:?}", Instant::now());
-
-					match control {
-						Control::Start => {
-							let mut spawnable = command.to_spawnable();
-							previous_run = Some(command_state.reset());
-							spawn_hook
-								.call(
-									&mut spawnable,
-									&JobTaskContext {
-										command: &command,
-										current: &command_state,
-										previous: previous_run.as_ref(),
-									},
-								)
-								.await;
-							try_with_handler!(command_state.spawn(command.clone(), spawnable).await);
-						}
-						Control::Stop => {
-							if let CommandState::Running { child, started, .. } = &mut command_state {
-								try_with_handler!(child.kill().await);
-								let status = try_with_handler!(child.wait().await);
-
-								command_state = CommandState::Finished {
-									status: status.into(),
-									started: *started,
-									finished: Instant::now(),
-								};
-
-								for done in on_end.drain(..) {
-									done.raise();
-								}
-							}
-						}
-						Control::GracefulStop { signal, grace } => {
-							if let CommandState::Running { child, .. } = &mut command_state {
-								try_with_handler!(signal_child(signal, child).await);
-
-								stop_timer.replace(Timer::stop(grace, done));
+						match result {
+							Err(err) => {
+								let fut = error_handler.call(sync_io_error(err));
+								fut.await;
 								continue 'main;
 							}
-						}
-						Control::TryRestart => {
-							if let CommandState::Running { child, started, .. } = &mut command_state {
-								try_with_handler!(child.kill().await);
-								let status = try_with_handler!(child.wait().await);
-
-								command_state = CommandState::Finished {
-									status: status.into(),
-									started: *started,
-									finished: Instant::now(),
-								};
-								previous_run = Some(command_state.reset());
-
+							Ok(true) => {
+								stop_timer = None;
 								for done in on_end.drain(..) {
 									done.raise();
 								}
 
+								if let Some(flag) = on_end_restart.take() {
+									let mut spawnable = command.to_spawnable();
+									previous_run = Some(command_state.reset());
+									spawn_hook
+										.call(
+											&mut spawnable,
+											&JobTaskContext {
+												command: &command,
+												current: &command_state,
+												previous: previous_run.as_ref(),
+											},
+										)
+										.await;
+									if let Err(err) = command_state.spawn(command.clone(), spawnable).await {
+										let fut = error_handler.call(sync_io_error(err));
+										fut.await;
+										continue 'main;
+									}
+									flag.raise();
+								}
+							}
+							Ok(false) => {}
+						}
+					}
+					Some(ControlMessage { control, done }) = receiver.recv(&mut stop_timer) => {
+						macro_rules! try_with_handler {
+							($erroring:expr) => {
+								match $erroring {
+									Err(err) => {
+										let fut = error_handler.call(sync_io_error(err));
+										fut.await;
+										done.raise();
+										continue 'main;
+									}
+									Ok(value) => value,
+								}
+							};
+						}
+
+						eprintln!("[{:?}] control: {control:?}", Instant::now());
+
+						match control {
+							Control::Start => {
 								let mut spawnable = command.to_spawnable();
+								previous_run = Some(command_state.reset());
 								spawn_hook
 									.call(
 										&mut spawnable,
@@ -168,108 +115,160 @@ pub fn start_job(joinset: &mut JoinSet<()>, command: Command) -> Job {
 									.await;
 								try_with_handler!(command_state.spawn(command.clone(), spawnable).await);
 							}
-						}
-						Control::TryGracefulRestart { signal, grace } => {
-							if let CommandState::Running { child, .. } = &mut command_state {
-								try_with_handler!(signal_child(signal, child).await);
+							Control::Stop => {
+								if let CommandState::Running { child, started, .. } = &mut command_state {
+									try_with_handler!(child.kill().await);
+									let status = try_with_handler!(child.wait().await);
 
-								stop_timer.replace(Timer::restart(grace, done.clone()));
-								on_end_restart = Some(done);
-								continue 'main;
+									command_state = CommandState::Finished {
+										status: status.into(),
+										started: *started,
+										finished: Instant::now(),
+									};
+
+									for done in on_end.drain(..) {
+										done.raise();
+									}
+								}
 							}
-						}
-						Control::ContinueTryGracefulRestart => {
-							if let CommandState::Running { child, started, .. } = &mut command_state {
-								try_with_handler!(child.kill().await);
-								let status = try_with_handler!(child.wait().await);
+							Control::GracefulStop { signal, grace } => {
+								if let CommandState::Running { child, .. } = &mut command_state {
+									try_with_handler!(signal_child(signal, child).await);
 
-								command_state = CommandState::Finished {
-									status: status.into(),
-									started: *started,
-									finished: Instant::now(),
-								};
+									stop_timer.replace(Timer::stop(grace, done));
+									continue 'main;
+								}
+							}
+							Control::TryRestart => {
+								if let CommandState::Running { child, started, .. } = &mut command_state {
+									try_with_handler!(child.kill().await);
+									let status = try_with_handler!(child.wait().await);
 
-								for done in on_end.drain(..) {
-									done.raise();
+									command_state = CommandState::Finished {
+										status: status.into(),
+										started: *started,
+										finished: Instant::now(),
+									};
+									previous_run = Some(command_state.reset());
+
+									for done in on_end.drain(..) {
+										done.raise();
+									}
+
+									let mut spawnable = command.to_spawnable();
+									spawn_hook
+										.call(
+											&mut spawnable,
+											&JobTaskContext {
+												command: &command,
+												current: &command_state,
+												previous: previous_run.as_ref(),
+											},
+										)
+										.await;
+									try_with_handler!(command_state.spawn(command.clone(), spawnable).await);
+								}
+							}
+							Control::TryGracefulRestart { signal, grace } => {
+								if let CommandState::Running { child, .. } = &mut command_state {
+									try_with_handler!(signal_child(signal, child).await);
+
+									stop_timer.replace(Timer::restart(grace, done.clone()));
+									on_end_restart = Some(done);
+									continue 'main;
+								}
+							}
+							Control::ContinueTryGracefulRestart => {
+								if let CommandState::Running { child, started, .. } = &mut command_state {
+									try_with_handler!(child.kill().await);
+									let status = try_with_handler!(child.wait().await);
+
+									command_state = CommandState::Finished {
+										status: status.into(),
+										started: *started,
+										finished: Instant::now(),
+									};
+
+									for done in on_end.drain(..) {
+										done.raise();
+									}
+								}
+
+								let mut spawnable = command.to_spawnable();
+								previous_run = Some(command_state.reset());
+								spawn_hook
+									.call(
+										&mut spawnable,
+										&JobTaskContext {
+											command: &command,
+											current: &command_state,
+											previous: previous_run.as_ref(),
+										},
+									)
+									.await;
+								try_with_handler!(command_state.spawn(command.clone(), spawnable).await);
+							}
+							Control::Signal(signal) => {
+								if let CommandState::Running { child, .. } = &mut command_state {
+									try_with_handler!(signal_child(signal, child).await);
+								}
+							}
+							Control::Delete => {
+								done.raise();
+								break 'main;
+							}
+
+							Control::NextEnding => {
+								if !matches!(command_state, CommandState::Finished { .. }) {
+									on_end.push(done);
+									continue 'main;
 								}
 							}
 
-							let mut spawnable = command.to_spawnable();
-							previous_run = Some(command_state.reset());
-							spawn_hook
-								.call(
-									&mut spawnable,
-									&JobTaskContext {
-										command: &command,
-										current: &command_state,
-										previous: previous_run.as_ref(),
-									},
-								)
+							Control::SyncFunc(f) => {
+								f(&JobTaskContext {
+									command: &command,
+									current: &command_state,
+									previous: previous_run.as_ref(),
+								});
+							}
+							Control::AsyncFunc(f) => {
+								Box::into_pin(f(&JobTaskContext {
+									command: &command,
+									current: &command_state,
+									previous: previous_run.as_ref(),
+								}))
 								.await;
-							try_with_handler!(command_state.spawn(command.clone(), spawnable).await);
-						}
-						Control::Signal(signal) => {
-							if let CommandState::Running { child, .. } = &mut command_state {
-								try_with_handler!(signal_child(signal, child).await);
+							}
+
+							Control::SetSyncErrorHandler(f) => {
+								error_handler = ErrorHandler::Sync(f);
+							}
+							Control::SetAsyncErrorHandler(f) => {
+								error_handler = ErrorHandler::Async(f);
+							}
+							Control::UnsetErrorHandler => {
+								error_handler = ErrorHandler::None;
+							}
+							Control::SetSyncSpawnHook(f) => {
+								spawn_hook = SpawnHook::Sync(f);
+							}
+							Control::SetAsyncSpawnHook(f) => {
+								spawn_hook = SpawnHook::Async(f);
+							}
+							Control::UnsetSpawnHook => {
+								spawn_hook = SpawnHook::None;
 							}
 						}
-						Control::Delete => {
-							done.raise();
-							break 'main;
-						}
 
-						Control::NextEnding => {
-							if !matches!(command_state, CommandState::Finished { .. }) {
-								on_end.push(done);
-								continue 'main;
-							}
-						}
-
-						Control::SyncFunc(f) => {
-							f(&JobTaskContext {
-								command: &command,
-								current: &command_state,
-								previous: previous_run.as_ref(),
-							});
-						}
-						Control::AsyncFunc(f) => {
-							Box::into_pin(f(&JobTaskContext {
-								command: &command,
-								current: &command_state,
-								previous: previous_run.as_ref(),
-							}))
-							.await;
-						}
-
-						Control::SetSyncErrorHandler(f) => {
-							error_handler = ErrorHandler::Sync(f);
-						}
-						Control::SetAsyncErrorHandler(f) => {
-							error_handler = ErrorHandler::Async(f);
-						}
-						Control::UnsetErrorHandler => {
-							error_handler = ErrorHandler::None;
-						}
-						Control::SetSyncSpawnHook(f) => {
-							spawn_hook = SpawnHook::Sync(f);
-						}
-						Control::SetAsyncSpawnHook(f) => {
-							spawn_hook = SpawnHook::Async(f);
-						}
-						Control::UnsetSpawnHook => {
-							spawn_hook = SpawnHook::None;
-						}
+						done.raise();
 					}
-
-					done.raise();
 				}
 			}
-		}
 
-		done.raise();
-	});
-
-	job
+			done.raise();
+		}),
+	)
 }
 
 macro_rules! sync_async_callbox {

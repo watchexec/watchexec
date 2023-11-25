@@ -68,45 +68,55 @@ impl<T> fmt::Debug for Changeable<T> {
 ///
 /// This is a specialisation of [`Changeable`] for the `Fn` usecase.
 ///
-/// As this is for Watchexec, only `Fn`s with a single argument and no return values are supported
+/// As this is for Watchexec, only `Fn`s with a single argument and return value are supported
 /// here; it's simple enough to make your own if you want more.
-pub struct ChangeableFn<T>(Changeable<Arc<dyn Fn(T) + Send + Sync>>);
-impl<T> ChangeableFn<T>
+pub struct ChangeableFn<T, U>(Changeable<Arc<dyn (Fn(T) -> U) + Send + Sync>>);
+impl<T, U> ChangeableFn<T, U>
 where
 	T: Send,
+	U: Send,
 {
+	pub(crate) fn new(f: impl (Fn(T) -> U) + Send + Sync + 'static) -> Self {
+		Self(Changeable::new(Arc::new(f)))
+	}
+
 	/// Replace the fn with a new one.
 	///
 	/// Panics if the lock was poisoned.
-	pub fn replace(&self, new: impl Fn(T) + Send + Sync + 'static) {
+	pub fn replace(&self, new: impl (Fn(T) -> U) + Send + Sync + 'static) {
 		self.0.replace(Arc::new(new));
 	}
 
 	/// Call the fn.
 	///
 	/// Panics if the lock was poisoned.
-	pub fn call(&self, data: T) {
-		(self.0.get())(data);
+	pub fn call(&self, data: T) -> U {
+		(self.0.get())(data)
 	}
 }
 
 // the derive adds a T: Clone bound
-impl<T> Clone for ChangeableFn<T> {
+impl<T, U> Clone for ChangeableFn<T, U> {
 	fn clone(&self) -> Self {
 		Self(Changeable::clone(&self.0))
 	}
 }
 
-impl<T> Default for ChangeableFn<T> {
+impl<T, U> Default for ChangeableFn<T, U>
+where
+	T: Send,
+	U: Send + Default,
+{
 	fn default() -> Self {
-		Self(Changeable::new(Arc::new(|_| {})))
+		Self::new(|_| U::default())
 	}
 }
 
-impl<T> fmt::Debug for ChangeableFn<T> {
+impl<T, U> fmt::Debug for ChangeableFn<T, U> {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		f.debug_struct("ChangeableFn")
 			.field("payload type", &type_name::<T>())
+			.field("return type", &type_name::<U>())
 			.finish_non_exhaustive()
 	}
 }

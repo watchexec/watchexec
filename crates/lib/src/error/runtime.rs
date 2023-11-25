@@ -3,7 +3,7 @@ use thiserror::Error;
 use watchexec_events::{Event, Priority};
 use watchexec_signals::Signal;
 
-use crate::fs::Watcher;
+use crate::sources::fs::Watcher;
 
 /// Errors which _may_ be recoverable, transient, or only affect a part of the operation, and should
 /// be reported to the user and/or acted upon programmatically, but will not outright stop watchexec.

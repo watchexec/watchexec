@@ -24,7 +24,8 @@ use crate::{
 	action::{self, Action},
 	changeable::ChangeableFn,
 	error::{CriticalError, RuntimeError},
-	fs, keyboard, signal, Config,
+	sources::{fs, keyboard, signal},
+	Config,
 };
 
 /// The main watchexec runtime.
@@ -108,7 +109,7 @@ impl Watchexec {
 	/// [`Event`]s, to the action handler. At minimum, you should check for interrupt/ctrl-c events
 	/// and call `action.quit()` in your handler, otherwise hitting ctrl-c will do nothing.
 	pub fn new(
-		action_handler: impl Fn(Action) + Send + Sync + 'static,
+		action_handler: impl (Fn(Action) -> Action) + Send + Sync + 'static,
 	) -> Result<Arc<Self>, CriticalError> {
 		let config = Config::default();
 		config.on_action(action_handler);
@@ -140,10 +141,8 @@ impl Watchexec {
 
 			let (er_s, er_r) = mpsc::channel(config.error_channel_size);
 
-			let action = SubTask::spawn(
-				"action",
-				action::worker(config.clone(), er_s.clone(), ev_s.clone(), ev_r),
-			);
+			let action =
+				SubTask::spawn("action", action::worker(config.clone(), er_s.clone(), ev_r));
 			let fs = SubTask::spawn("fs", fs::worker(config.clone(), er_s.clone(), ev_s.clone()));
 			let signal = SubTask::spawn(
 				"signal",
@@ -215,7 +214,7 @@ impl Watchexec {
 
 async fn error_hook(
 	mut errors: mpsc::Receiver<RuntimeError>,
-	handler: ChangeableFn<ErrorHook>,
+	handler: ChangeableFn<ErrorHook, ()>,
 ) -> Result<(), CriticalError> {
 	while let Some(err) = errors.recv().await {
 		if matches!(err, RuntimeError::Exit) {

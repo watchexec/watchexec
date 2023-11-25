@@ -10,7 +10,7 @@ use std::{
 	time::{Duration, Instant},
 };
 
-use tokio::{task::JoinSet, time::sleep};
+use tokio::time::sleep;
 use watchexec_events::ProcessEnd;
 
 use crate::{
@@ -64,8 +64,7 @@ fn graceful_command() -> Command {
 
 #[tokio::test]
 async fn sync_error_handler() {
-	let mut joinset = JoinSet::new();
-	let job = start_job(&mut joinset, erroring_command());
+	let (job, task) = start_job(erroring_command());
 	let error_handler_called = Arc::new(AtomicBool::new(false));
 
 	job.set_error_handler({
@@ -83,13 +82,12 @@ async fn sync_error_handler() {
 		"called on start"
 	);
 
-	joinset.abort_all();
+	task.abort();
 }
 
 #[tokio::test]
 async fn async_error_handler() {
-	let mut joinset = JoinSet::new();
-	let job = start_job(&mut joinset, erroring_command());
+	let (job, task) = start_job(erroring_command());
 	let error_handler_called = Arc::new(AtomicBool::new(false));
 
 	job.set_async_error_handler({
@@ -110,13 +108,12 @@ async fn async_error_handler() {
 		"called on start"
 	);
 
-	joinset.abort_all();
+	task.abort();
 }
 
 #[tokio::test]
 async fn unset_error_handler() {
-	let mut joinset = JoinSet::new();
-	let job = start_job(&mut joinset, erroring_command());
+	let (job, task) = start_job(erroring_command());
 	let error_handler_called = Arc::new(AtomicBool::new(false));
 
 	job.set_error_handler({
@@ -136,13 +133,12 @@ async fn unset_error_handler() {
 		"not called even after start"
 	);
 
-	joinset.abort_all();
+	task.abort();
 }
 
 #[tokio::test]
 async fn queue_ordering() {
-	let mut joinset = JoinSet::new();
-	let job = start_job(&mut joinset, working_command());
+	let (job, task) = start_job(working_command());
 	let error_handler_called = Arc::new(AtomicBool::new(false));
 
 	job.set_error_handler({
@@ -163,13 +159,12 @@ async fn queue_ordering() {
 		"called after queue await"
 	);
 
-	joinset.abort_all();
+	task.abort();
 }
 
 #[tokio::test]
 async fn sync_func() {
-	let mut joinset = JoinSet::new();
-	let job = start_job(&mut joinset, working_command());
+	let (job, task) = start_job(working_command());
 	let func_called = Arc::new(AtomicBool::new(false));
 
 	let ticket = job.run({
@@ -190,13 +185,12 @@ async fn sync_func() {
 		"after it's been processed"
 	);
 
-	joinset.abort_all();
+	task.abort();
 }
 
 #[tokio::test]
 async fn async_func() {
-	let mut joinset = JoinSet::new();
-	let job = start_job(&mut joinset, working_command());
+	let (job, task) = start_job(working_command());
 	let func_called = Arc::new(AtomicBool::new(false));
 
 	let ticket = job.run_async({
@@ -220,7 +214,7 @@ async fn async_func() {
 		"after it's been processed"
 	);
 
-	joinset.abort_all();
+	task.abort();
 }
 
 // TODO: figure out how to test spawn hooks
@@ -318,8 +312,7 @@ async fn get_child(job: &Job) -> TestChild {
 
 #[tokio::test]
 async fn start() {
-	let mut joinset = JoinSet::new();
-	let job = start_job(&mut joinset, working_command());
+	let (job, task) = start_job(working_command());
 
 	expect_state!(job, CommandState::Pending);
 
@@ -327,14 +320,13 @@ async fn start() {
 
 	expect_state!(job, CommandState::Running { .. });
 
-	joinset.abort_all();
+	task.abort();
 }
 
 #[cfg(unix)]
 #[tokio::test]
 async fn signal_unix() {
-	let mut joinset = JoinSet::new();
-	let job = start_job(&mut joinset, working_command());
+	let (job, task) = start_job(working_command());
 
 	expect_state!(job, CommandState::Pending);
 
@@ -346,13 +338,12 @@ async fn signal_unix() {
 		.iter()
 		.any(|(_, call)| matches!(call, TestChildCall::Signal(command_group::Signal::SIGUSR1))));
 
-	joinset.abort_all();
+	task.abort();
 }
 
 #[tokio::test]
 async fn stop() {
-	let mut joinset = JoinSet::new();
-	let job = start_job(&mut joinset, working_command());
+	let (job, task) = start_job(working_command());
 
 	expect_state!(job, CommandState::Pending);
 
@@ -372,13 +363,12 @@ async fn stop() {
 		}
 	);
 
-	joinset.abort_all();
+	task.abort();
 }
 
 #[tokio::test]
 async fn stop_when_running() {
-	let mut joinset = JoinSet::new();
-	let job = start_job(&mut joinset, working_command());
+	let (job, task) = start_job(working_command());
 
 	expect_state!(job, CommandState::Pending);
 
@@ -390,13 +380,12 @@ async fn stop_when_running() {
 
 	expect_state!(job, CommandState::Running { .. });
 
-	joinset.abort_all();
+	task.abort();
 }
 
 #[tokio::test]
 async fn stop_fail() {
-	let mut joinset = JoinSet::new();
-	let job = start_job(&mut joinset, working_command());
+	let (job, task) = start_job(working_command());
 
 	expect_state!(job, CommandState::Pending);
 
@@ -420,13 +409,12 @@ async fn stop_fail() {
 		}
 	);
 
-	joinset.abort_all();
+	task.abort();
 }
 
 #[tokio::test]
 async fn restart() {
-	let mut joinset = JoinSet::new();
-	let job = start_job(&mut joinset, working_command());
+	let (job, task) = start_job(working_command());
 
 	expect_state!(job, CommandState::Pending);
 
@@ -464,13 +452,12 @@ async fn restart() {
 		}
 	);
 
-	joinset.abort_all();
+	task.abort();
 }
 
 #[tokio::test]
 async fn graceful_stop() {
-	let mut joinset = JoinSet::new();
-	let job = start_job(&mut joinset, working_command());
+	let (job, task) = start_job(working_command());
 
 	expect_state!(job, CommandState::Pending);
 
@@ -497,13 +484,12 @@ async fn graceful_stop() {
 
 	expect_state!(job, CommandState::Finished { .. });
 
-	joinset.abort_all();
+	task.abort();
 }
 
 #[tokio::test]
 async fn graceful_restart() {
-	let mut joinset = JoinSet::new();
-	let job = start_job(&mut joinset, working_command());
+	let (job, task) = start_job(working_command());
 
 	expect_state!(job, CommandState::Pending);
 
@@ -543,13 +529,12 @@ async fn graceful_restart() {
 		}
 	);
 
-	joinset.abort_all();
+	task.abort();
 }
 
 #[tokio::test]
 async fn graceful_stop_beyond_grace() {
-	let mut joinset = JoinSet::new();
-	let job = start_job(&mut joinset, ungraceful_command());
+	let (job, task) = start_job(ungraceful_command());
 
 	expect_state!(job, CommandState::Pending);
 
@@ -579,13 +564,12 @@ async fn graceful_stop_beyond_grace() {
 
 	expect_state!(job, CommandState::Finished { .. });
 
-	joinset.abort_all();
+	task.abort();
 }
 
 #[tokio::test]
 async fn graceful_restart_beyond_grace() {
-	let mut joinset = JoinSet::new();
-	let job = start_job(&mut joinset, ungraceful_command());
+	let (job, task) = start_job(ungraceful_command());
 
 	expect_state!(job, CommandState::Pending);
 
@@ -637,13 +621,12 @@ async fn graceful_restart_beyond_grace() {
 		}
 	);
 
-	joinset.abort_all();
+	task.abort();
 }
 
 #[tokio::test]
 async fn try_restart() {
-	let mut joinset = JoinSet::new();
-	let job = start_job(&mut joinset, graceful_command());
+	let (job, task) = start_job(graceful_command());
 
 	expect_state!(job, CommandState::Pending);
 
@@ -675,13 +658,12 @@ async fn try_restart() {
 
 	expect_state!(job, CommandState::Finished { .. });
 
-	joinset.abort_all();
+	task.abort();
 }
 
 #[tokio::test]
 async fn try_graceful_restart() {
-	let mut joinset = JoinSet::new();
-	let job = start_job(&mut joinset, graceful_command());
+	let (job, task) = start_job(graceful_command());
 
 	expect_state!(job, CommandState::Pending);
 
@@ -740,13 +722,12 @@ async fn try_graceful_restart() {
 		}
 	);
 
-	joinset.abort_all();
+	task.abort();
 }
 
 #[tokio::test]
 async fn try_restart_beyond_grace() {
-	let mut joinset = JoinSet::new();
-	let job = start_job(&mut joinset, ungraceful_command());
+	let (job, task) = start_job(ungraceful_command());
 
 	expect_state!(job, CommandState::Pending);
 
@@ -792,13 +773,12 @@ async fn try_restart_beyond_grace() {
 		}
 	);
 
-	joinset.abort_all();
+	task.abort();
 }
 
 #[tokio::test]
 async fn try_graceful_restart_beyond_grace() {
-	let mut joinset = JoinSet::new();
-	let job = start_job(&mut joinset, ungraceful_command());
+	let (job, task) = start_job(ungraceful_command());
 
 	expect_state!(job, CommandState::Pending);
 
@@ -855,5 +835,5 @@ async fn try_graceful_restart_beyond_grace() {
 		}
 	);
 
-	joinset.abort_all();
+	task.abort();
 }
