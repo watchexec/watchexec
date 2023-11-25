@@ -65,7 +65,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 										.call(
 											&mut spawnable,
 											&JobTaskContext {
-												command: &command,
+												command: command.clone(),
 												current: &command_state,
 												previous: previous_run.as_ref(),
 											},
@@ -107,7 +107,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 									.call(
 										&mut spawnable,
 										&JobTaskContext {
-											command: &command,
+											command: command.clone(),
 											current: &command_state,
 											previous: previous_run.as_ref(),
 										},
@@ -160,7 +160,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 										.call(
 											&mut spawnable,
 											&JobTaskContext {
-												command: &command,
+												command: command.clone(),
 												current: &command_state,
 												previous: previous_run.as_ref(),
 											},
@@ -200,7 +200,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 									.call(
 										&mut spawnable,
 										&JobTaskContext {
-											command: &command,
+											command: command.clone(),
 											current: &command_state,
 											previous: previous_run.as_ref(),
 										},
@@ -227,14 +227,14 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 
 							Control::SyncFunc(f) => {
 								f(&JobTaskContext {
-									command: &command,
+									command: command.clone(),
 									current: &command_state,
 									previous: previous_run.as_ref(),
 								});
 							}
 							Control::AsyncFunc(f) => {
 								Box::into_pin(f(&JobTaskContext {
-									command: &command,
+									command: command.clone(),
 									current: &command_state,
 									previous: previous_run.as_ref(),
 								}))
@@ -295,7 +295,7 @@ macro_rules! sync_async_callbox {
 #[derive(Debug)]
 pub struct JobTaskContext<'task> {
 	/// The job's [`Command`].
-	pub command: &'task Command,
+	pub command: Arc<Command>,
 
 	/// The current state of the job.
 	pub current: &'task CommandState,
