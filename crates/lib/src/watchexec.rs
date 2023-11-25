@@ -1,21 +1,14 @@
-use std::{
-	fmt,
-	future::Future,
-	ops::{Deref, DerefMut},
-	pin::Pin,
-	sync::Arc,
-	task::{Context, Poll},
-};
+use std::{fmt, sync::Arc};
 
 use async_priority_channel as priority;
 use atomic_take::AtomicTake;
+use futures::TryFutureExt;
 use miette::Diagnostic;
 use once_cell::sync::OnceCell;
 use tokio::{
 	spawn,
 	sync::{mpsc, Notify},
-	task::JoinHandle,
-	try_join,
+	task::{JoinHandle, JoinSet},
 };
 use tracing::{debug, error, trace};
 use watchexec_events::{Event, Priority};
@@ -141,38 +134,41 @@ impl Watchexec {
 
 			let (er_s, er_r) = mpsc::channel(config.error_channel_size);
 
-			let action =
-				SubTask::spawn("action", action::worker(config.clone(), er_s.clone(), ev_r));
-			let fs = SubTask::spawn("fs", fs::worker(config.clone(), er_s.clone(), ev_s.clone()));
-			let signal = SubTask::spawn(
-				"signal",
-				signal::worker(config.clone(), er_s.clone(), ev_s.clone()),
+			let mut tasks = JoinSet::new();
+
+			tasks.spawn(action::worker(config.clone(), er_s.clone(), ev_r).map_ok(|_| "action"));
+			tasks.spawn(fs::worker(config.clone(), er_s.clone(), ev_s.clone()).map_ok(|_| "fs"));
+			tasks.spawn(
+				signal::worker(config.clone(), er_s.clone(), ev_s.clone()).map_ok(|_| "signal"),
 			);
-			let keyboard = SubTask::spawn(
-				"keyboard",
-				keyboard::worker(config.clone(), er_s.clone(), ev_s.clone()),
+			tasks.spawn(
+				keyboard::worker(config.clone(), er_s.clone(), ev_s.clone()).map_ok(|_| "keyboard"),
 			);
+			tasks.spawn(error_hook(er_r, config.error_handler.clone()).map_ok(|_| "error"));
 
-			let error_hook =
-				SubTask::spawn("error_hook", error_hook(er_r, config.error_handler.clone()));
-
-			// Use Tokio TaskSet when that lands
-			try_join!(action, error_hook, fs, signal, keyboard)
-				.map(drop)
-				.or_else(|e| {
-					// Close event channel to signal worker task to stop
-					ev_s.close();
-
-					if matches!(e, CriticalError::Exit) {
-						trace!("got graceful exit request via critical error, erasing the error");
-						Ok(())
-					} else {
-						Err(e)
+			while let Some(Ok(res)) = tasks.join_next().await {
+				match res {
+					Ok("action") => {
+						debug!("action worker exited, ending watchexec");
+						break;
 					}
-				})
-				.map(|_| {
-					debug!("main task graceful exit");
-				})
+					Ok(task) => {
+						debug!(task, "worker exited");
+					}
+					Err(CriticalError::Exit) => {
+						trace!("got graceful exit request via critical error, erasing the error");
+						// Close event channel to signal worker task to stop
+						ev_s.close();
+					}
+					Err(e) => {
+						return Err(e);
+					}
+				}
+			}
+
+			debug!("main task graceful exit");
+			tasks.shutdown().await;
+			Ok(())
 		});
 
 		trace!("done with setup");
@@ -291,64 +287,5 @@ impl ErrorHook {
 				err: error,
 			})
 			.ok();
-	}
-}
-
-#[derive(Debug)]
-struct SubTask {
-	name: &'static str,
-	handle: JoinHandle<Result<(), CriticalError>>,
-}
-
-impl SubTask {
-	pub fn spawn(
-		name: &'static str,
-		task: impl Future<Output = Result<(), CriticalError>> + Send + 'static,
-	) -> Self {
-		debug!(subtask=%name, "spawning subtask");
-		Self {
-			name,
-			handle: spawn(task),
-		}
-	}
-}
-
-impl Drop for SubTask {
-	fn drop(&mut self) {
-		debug!(subtask=%self.name, "aborting subtask");
-		self.handle.abort();
-	}
-}
-
-impl Deref for SubTask {
-	type Target = JoinHandle<Result<(), CriticalError>>;
-
-	fn deref(&self) -> &Self::Target {
-		&self.handle
-	}
-}
-
-impl DerefMut for SubTask {
-	fn deref_mut(&mut self) -> &mut Self::Target {
-		&mut self.handle
-	}
-}
-
-impl Future for SubTask {
-	type Output = Result<(), CriticalError>;
-
-	fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-		let subtask = self.name;
-		match Pin::new(&mut Pin::into_inner(self).handle).poll(cx) {
-			Poll::Pending => Poll::Pending,
-			Poll::Ready(join_res) => {
-				debug!(%subtask, "finishing subtask");
-				Poll::Ready(
-					join_res
-						.map_err(CriticalError::MainTaskJoin)
-						.and_then(|x| x),
-				)
-			}
-		}
 	}
 }
