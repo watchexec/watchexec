@@ -57,19 +57,27 @@
 pub mod action;
 pub mod error;
 pub mod filter;
-pub mod id;
 pub mod paths;
 pub mod sources;
 
 // the core experience
 pub mod changeable;
 pub mod config;
+
+mod id;
+mod late_join_set;
 mod watchexec;
 
 #[doc(inline)]
-pub use crate::watchexec::{ErrorHook, Watchexec};
+pub use crate::{
+	id::Id,
+	watchexec::{ErrorHook, Watchexec},
+};
 
+#[doc(no_inline)]
 pub use crate::config::Config;
+#[doc(no_inline)]
+pub use watchexec_supervisor::{command, job};
 
 #[cfg(debug_assertions)]
 #[doc(hidden)]
@@ -78,4 +86,3 @@ pub mod readme_doc_check {
 	pub struct Readme;
 }
 
-mod late_join_set;

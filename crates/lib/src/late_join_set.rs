@@ -92,17 +92,6 @@ impl LateJoinSet {
 		self.tasks.clear();
 	}
 
-	/// Aborts all tasks and waits for them to finish shutting down.
-	///
-	/// Calling this method is equivalent to calling [`abort_all`] and then calling [`join_all`].
-	///
-	/// [`abort_all`]: fn@Self::abort_all
-	/// [`join_all`]: fn@Self::join_all
-	pub async fn shutdown(&mut self) {
-		self.abort_all();
-		self.join_all().await;
-	}
-
 	/// Aborts all tasks on this `LateJoinSet`.
 	///
 	/// This does not remove the tasks from the `LateJoinSet`. To wait for the tasks to complete
