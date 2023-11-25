@@ -44,7 +44,7 @@ pub fn start_job(command: Command) -> (Job, JoinHandle<()>) {
 			'main: loop {
 				select! {
 					result = command_state.wait(), if command_state.is_running() => {
-						eprintln!("[{:?}] waited: {result:?}", Instant::now());
+						#[cfg(test)] eprintln!("[{:?}] waited: {result:?}", Instant::now());
 
 						match result {
 							Err(err) => {
@@ -97,7 +97,7 @@ pub fn start_job(command: Command) -> (Job, JoinHandle<()>) {
 							};
 						}
 
-						// eprintln!("[{:?}] control: {control:?}", Instant::now());
+						#[cfg(test)] eprintln!("[{:?}] control: {control:?}", Instant::now());
 
 						match control {
 							Control::Start => {
