@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v1.2.1 (2023-11-26)
+
 - Deps: upgrade Tokio requirement to 1.33.0
 
 ## v1.2.0 (2023-01-08)

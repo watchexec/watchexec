@@ -57,7 +57,7 @@ version = "0.1.1"
 optional = true
 
 [dependencies.project-origins]
-version = "1.2.0"
+version = "1.2.1"
 path = "../project-origins"
 
 [dependencies.watchexec]
