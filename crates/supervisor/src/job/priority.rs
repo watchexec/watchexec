@@ -11,21 +11,21 @@ use crate::flag::Flag;
 use super::{messages::ControlMessage, Control};
 
 #[derive(Debug, Copy, Clone)]
-pub(crate) enum Priority {
+pub enum Priority {
 	Normal,
 	High,
 	Urgent,
 }
 
 #[derive(Debug)]
-pub(crate) struct PriorityReceiver {
+pub struct PriorityReceiver {
 	pub normal: UnboundedReceiver<ControlMessage>,
 	pub high: UnboundedReceiver<ControlMessage>,
 	pub urgent: UnboundedReceiver<ControlMessage>,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct PrioritySender {
+pub struct PrioritySender {
 	pub normal: UnboundedSender<ControlMessage>,
 	pub high: UnboundedSender<ControlMessage>,
 	pub urgent: UnboundedSender<ControlMessage>,
@@ -82,7 +82,7 @@ impl PriorityReceiver {
 	}
 }
 
-pub(crate) fn new() -> (PrioritySender, PriorityReceiver) {
+pub fn new() -> (PrioritySender, PriorityReceiver) {
 	let (normal_tx, normal_rx) = unbounded_channel();
 	let (high_tx, high_rx) = unbounded_channel();
 	let (urgent_tx, urgent_rx) = unbounded_channel();
@@ -102,7 +102,7 @@ pub(crate) fn new() -> (PrioritySender, PriorityReceiver) {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Timer {
+pub struct Timer {
 	pub until: Instant,
 	pub done: Flag,
 	pub is_restart: bool,

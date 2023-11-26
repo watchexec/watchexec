@@ -378,14 +378,14 @@ mod serde_support {
 	impl From<SerdeSignal> for Signal {
 		fn from(signal: SerdeSignal) -> Self {
 			match signal {
-				SerdeSignal::Named(NamedSignal::Hangup) => Signal::Hangup,
-				SerdeSignal::Named(NamedSignal::ForceStop) => Signal::ForceStop,
-				SerdeSignal::Named(NamedSignal::Interrupt) => Signal::Interrupt,
-				SerdeSignal::Named(NamedSignal::Quit) => Signal::Quit,
-				SerdeSignal::Named(NamedSignal::Terminate) => Signal::Terminate,
-				SerdeSignal::Named(NamedSignal::User1) => Signal::User1,
-				SerdeSignal::Named(NamedSignal::User2) => Signal::User2,
-				SerdeSignal::Number(number) => Signal::Custom(number),
+				SerdeSignal::Named(NamedSignal::Hangup) => Self::Hangup,
+				SerdeSignal::Named(NamedSignal::ForceStop) => Self::ForceStop,
+				SerdeSignal::Named(NamedSignal::Interrupt) => Self::Interrupt,
+				SerdeSignal::Named(NamedSignal::Quit) => Self::Quit,
+				SerdeSignal::Named(NamedSignal::Terminate) => Self::Terminate,
+				SerdeSignal::Named(NamedSignal::User1) => Self::User1,
+				SerdeSignal::Named(NamedSignal::User2) => Self::User2,
+				SerdeSignal::Number(number) => Self::Custom(number),
 			}
 		}
 	}

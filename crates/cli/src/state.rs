@@ -29,16 +29,13 @@ impl RotatingTempFile {
 	}
 
 	pub fn rotate(&self) -> Result<()> {
-		let mut file = self.0.lock().unwrap();
-		*file = NamedTempFile::new().into_diagnostic()?;
 		// implicitly drops the old file
+		*self.0.lock().unwrap() = NamedTempFile::new().into_diagnostic()?;
 		Ok(())
 	}
 
 	pub fn write(&self, data: &[u8]) -> Result<()> {
-		let mut file = self.0.lock().unwrap();
-		file.write_all(data).into_diagnostic()?;
-		Ok(())
+		self.0.lock().unwrap().write_all(data).into_diagnostic()
 	}
 
 	pub fn path(&self) -> PathBuf {
