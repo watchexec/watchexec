@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v1.3.2 (2023-11-26)
+
 - Remove error diagnostic codes.
 - Deps: upgrade to gix-config 0.31.0
 - Deps: upgrade Tokio requirement to 1.33.0
