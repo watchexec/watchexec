@@ -24,7 +24,7 @@ use watchexec::{
 use watchexec_events::{Event, Keyboard, ProcessEnd, Tag};
 use watchexec_signals::Signal;
 
-use crate::state::State;
+use crate::{state::State, emits::events_to_simple_format};
 use crate::{
 	args::{Args, ClearMode, EmitEvents, OnBusyUpdate},
 	state::RotatingTempFile,
@@ -73,7 +73,58 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 		config.file_watcher(Watcher::Poll(interval.0));
 	}
 
+	let once = args.once;
 	let clear = args.screen_clear;
+
+	let emit_events_to = args.emit_events_to;
+	let emit_file = state.emit_file.clone();
+
+	if args.only_emit_events {
+		config.on_action(move |mut action| {
+			// if we got a terminate or interrupt signal, quit
+			if action.signals().any(|sig| sig == Signal::Terminate || sig == Signal::Interrupt) {
+				action.quit();
+				return action;
+			}
+
+			// clear the screen before printing events
+			if let Some(mode) = clear {
+				match mode {
+					ClearMode::Clear => {
+						clearscreen::clear().ok();
+					}
+					ClearMode::Reset => {
+						for cs in [
+							ClearScreen::WindowsCooked,
+							ClearScreen::WindowsVt,
+							ClearScreen::VtLeaveAlt,
+							ClearScreen::VtWellDone,
+							ClearScreen::default(),
+						] {
+							cs.clear().ok();
+						}
+					}
+				}
+			}
+
+			match emit_events_to {
+				EmitEvents::Stdin => {
+					println!("{}", events_to_simple_format(action.events.as_ref()).unwrap_or_default());
+				}
+				EmitEvents::JsonStdin => {
+					for event in action.events.iter().filter(|e| !e.is_empty()) {
+						println!("{}", serde_json::to_string(event).unwrap_or_default());
+					}
+				}
+				other => unreachable!("emit_events_to should have been validated earlier: {:?}", other),
+			}
+
+			action
+		});
+
+		return Ok(config);
+	}
+
 	let delay_run = args.delay_run.map(|ts| ts.0);
 	let on_busy = args.on_busy_update;
 
@@ -81,12 +132,9 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 	let stop_signal = args.stop_signal;
 	let stop_timeout = args.stop_timeout.0;
 
-	let once = args.once;
 	let notif = args.notify;
 	let print_events = args.print_events;
 
-	let emit_events_to = args.emit_events_to;
-	let emit_file = state.emit_file.clone();
 	let workdir = Arc::new(args.workdir.clone());
 
 	let mut add_envs = HashMap::new();

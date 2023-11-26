@@ -1,6 +1,6 @@
 use std::{path::PathBuf, str::FromStr, time::Duration};
 
-use clap::{ArgAction, Parser, ValueEnum, ValueHint};
+use clap::{error::ErrorKind, ArgAction, CommandFactory, Parser, ValueEnum, ValueHint};
 use watchexec::paths::PATH_SEPARATOR;
 use watchexec_signals::Signal;
 
@@ -88,7 +88,7 @@ pub struct Args {
 		num_args = 1..,
 		value_hint = ValueHint::CommandString,
 		value_name = "COMMAND",
-		required_unless_present_any = ["completions", "manual"],
+		required_unless_present_any = ["completions", "manual", "only_emit_events"],
 	)]
 	pub command: Vec<String>,
 
@@ -576,8 +576,25 @@ pub struct Args {
 		default_value = "environment",
 		hide_default_value = true,
 		value_name = "MODE",
+		required_if_eq("only_emit_events", "true"),
 	)]
 	pub emit_events_to: EmitEvents,
+
+	/// Only emit events to stdout, run no commands.
+	///
+	/// This is a convenience option for using Watchexec as a file watcher, without running any
+	/// commands. It is almost equivalent to using `cat` as the command, except that it will not
+	/// spawn a new process for each event.
+	///
+	/// This option requires `--emit-events-to` to be set, and restricts the available modes to
+	/// `stdin` and `json-stdin`, modifying their behaviour to write to stdout instead of the stdin
+	/// of the command.
+	#[arg(
+		long,
+		help_heading = OPTSET_COMMAND,
+		conflicts_with_all = ["command", "completions", "manual"],
+	)]
+	pub only_emit_events: bool,
 
 	/// Add env vars to the command
 	///
@@ -934,6 +951,19 @@ pub fn get_args() -> Args {
 			FsEvent::Rename,
 			FsEvent::Modify,
 		];
+	}
+
+	if args.only_emit_events
+		&& !matches!(
+			args.emit_events_to,
+			EmitEvents::JsonStdin | EmitEvents::Stdin
+		) {
+		Args::command()
+			.error(
+				ErrorKind::InvalidValue,
+				"only-emit-events requires --emit-events-to=stdin or --emit-events-to=json-stdin",
+			)
+			.exit();
 	}
 
 	debug!(?args, "got arguments");
