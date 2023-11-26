@@ -28,7 +28,7 @@ default-features = false
 features = ["macros", "process", "rt", "sync", "time"]
 
 [dependencies.watchexec-events]
-version = "1.0.0"
+version = "1.1.0"
 default-features = false
 path = "../events"
 
