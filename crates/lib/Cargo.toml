@@ -39,7 +39,7 @@ version = "1.0.1"
 path = "../signals"
 
 [dependencies.watchexec-supervisor]
-version = "0.1.0"
+version = "1.0.0"
 path = "../supervisor"
 
 [dependencies.ignore-files]
