@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v3.0.0 (2023-11-26)
+
 ### General
 
 - Crate is more oriented around `Watchexec` the core experience rather than providing the kitchensink / components so you could build your own from the pieces; that helps the cohesion of the whole and simplifies many patterns.
