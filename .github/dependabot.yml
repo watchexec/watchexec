@@ -7,44 +7,44 @@ updates:
     # default location of `.github/workflows`
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
   - package-ecosystem: "cargo"
     directory: "/crates/cli"
     schedule:
-      interval: "daily"
+      interval: "weekly"
   - package-ecosystem: "cargo"
     directory: "/crates/lib"
     schedule:
-      interval: "daily"
+      interval: "weekly"
   - package-ecosystem: "cargo"
     directory: "/crates/events"
     schedule:
-      interval: "daily"
+      interval: "weekly"
   - package-ecosystem: "cargo"
     directory: "/crates/signals"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+  - package-ecosystem: "cargo"
+    directory: "/crates/supervisor"
+    schedule:
+      interval: "weekly"
   - package-ecosystem: "cargo"
     directory: "/crates/filterer/ignore"
     schedule:
-      interval: "daily"
+      interval: "weekly"
   - package-ecosystem: "cargo"
     directory: "/crates/filterer/globset"
     schedule:
-      interval: "daily"
-  - package-ecosystem: "cargo"
-    directory: "/crates/filterer/tagged"
-    schedule:
-      interval: "daily"
+      interval: "weekly"
   - package-ecosystem: "cargo"
     directory: "/crates/bosion"
     schedule:
-      interval: "daily"
+      interval: "weekly"
   - package-ecosystem: "cargo"
     directory: "/crates/ignore-files"
     schedule:
-      interval: "daily"
+      interval: "weekly"
   - package-ecosystem: "cargo"
     directory: "/crates/project-origins"
     schedule:
-      interval: "daily"
+      interval: "weekly"
