@@ -172,6 +172,7 @@ impl From<Tag> for SerdeTag {
 	}
 }
 
+#[allow(clippy::fallible_impl_from)] // due to the unwraps
 impl From<SerdeTag> for Tag {
 	fn from(value: SerdeTag) -> Self {
 		match value {
@@ -314,6 +315,7 @@ impl From<SerdeTag> for Tag {
 				..
 			} if code != 0 && i32::try_from(code).is_ok() => {
 				Self::ProcessCompletion(Some(ProcessEnd::ExitStop(unsafe {
+					// SAFETY&UNWRAP: checked above
 					NonZeroI32::new_unchecked(code.try_into().unwrap())
 				})))
 			}
@@ -324,6 +326,7 @@ impl From<SerdeTag> for Tag {
 				..
 			} if exc != 0 && i32::try_from(exc).is_ok() => {
 				Self::ProcessCompletion(Some(ProcessEnd::Exception(unsafe {
+					// SAFETY&UNWRAP: checked above
 					NonZeroI32::new_unchecked(exc.try_into().unwrap())
 				})))
 			}

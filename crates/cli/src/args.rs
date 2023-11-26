@@ -881,11 +881,12 @@ impl<const UNITLESS_NANOS_MULTIPLIER: u64> FromStr for TimeSpan<UNITLESS_NANOS_M
 	type Err = humantime::DurationError;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		match s.parse::<u64>() {
-			Ok(unitless) => Ok(Duration::from_nanos(unitless * UNITLESS_NANOS_MULTIPLIER)),
-			Err(_) => humantime::parse_duration(s),
-		}
-		.map(TimeSpan)
+		s.parse::<u64>()
+			.map_or_else(
+				|_| humantime::parse_duration(s),
+				|unitless| Ok(Duration::from_nanos(unitless * UNITLESS_NANOS_MULTIPLIER)),
+			)
+			.map(TimeSpan)
 	}
 }
 

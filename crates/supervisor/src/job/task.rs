@@ -1,4 +1,4 @@
-use std::{future::Future, sync::Arc, time::Instant};
+use std::{future::Future, mem::take, sync::Arc, time::Instant};
 
 use tokio::{process::Command as TokioCommand, select, task::JoinHandle};
 use watchexec_signals::Signal;
@@ -20,6 +20,7 @@ use super::{
 /// Spawn a job task and return a [`Job`] handle and a [`JoinHandle`].
 ///
 /// The job task immediately starts in the background: it does not need polling.
+#[must_use]
 pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 	let (sender, mut receiver) = priority::new();
 
@@ -54,7 +55,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 							}
 							Ok(true) => {
 								stop_timer = None;
-								for done in on_end.drain(..) {
+								for done in take(&mut on_end).into_iter() {
 									done.raise();
 								}
 
@@ -126,7 +127,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 										finished: Instant::now(),
 									};
 
-									for done in on_end.drain(..) {
+									for done in take(&mut on_end).into_iter() {
 										done.raise();
 									}
 								}
@@ -151,7 +152,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 									};
 									previous_run = Some(command_state.reset());
 
-									for done in on_end.drain(..) {
+									for done in take(&mut on_end).into_iter() {
 										done.raise();
 									}
 
@@ -189,7 +190,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 										finished: Instant::now(),
 									};
 
-									for done in on_end.drain(..) {
+									for done in take(&mut on_end).into_iter() {
 										done.raise();
 									}
 								}
@@ -273,7 +274,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 
 macro_rules! sync_async_callbox {
 	($name:ident, $synct:ty, $asynct:ty, ($($argname:ident : $argtype:ty),*)) => {
-		pub(crate) enum $name {
+		pub enum $name {
 			None,
 			Sync($synct),
 			Async($asynct),
@@ -306,17 +307,17 @@ pub struct JobTaskContext<'task> {
 	pub previous: Option<&'task CommandState>,
 }
 
-pub(crate) type SyncFunc = Box<dyn FnOnce(&JobTaskContext<'_>) + Send + Sync + 'static>;
-pub(crate) type AsyncFunc = Box<
+pub type SyncFunc = Box<dyn FnOnce(&JobTaskContext<'_>) + Send + Sync + 'static>;
+pub type AsyncFunc = Box<
 	dyn (FnOnce(&JobTaskContext<'_>) -> Box<dyn Future<Output = ()> + Send + Sync>)
 		+ Send
 		+ Sync
 		+ 'static,
 >;
 
-pub(crate) type SyncSpawnHook =
+pub type SyncSpawnHook =
 	Arc<dyn Fn(&mut TokioCommand, &JobTaskContext<'_>) + Send + Sync + 'static>;
-pub(crate) type AsyncSpawnHook = Arc<
+pub type AsyncSpawnHook = Arc<
 	dyn (Fn(&mut TokioCommand, &JobTaskContext<'_>) -> Box<dyn Future<Output = ()> + Send + Sync>)
 		+ Send
 		+ Sync
@@ -325,13 +326,14 @@ pub(crate) type AsyncSpawnHook = Arc<
 
 sync_async_callbox!(SpawnHook, SyncSpawnHook, AsyncSpawnHook, (command: &mut TokioCommand, context: &JobTaskContext<'_>));
 
-pub(crate) type SyncErrorHandler = Arc<dyn Fn(SyncIoError) + Send + Sync + 'static>;
-pub(crate) type AsyncErrorHandler = Arc<
+pub type SyncErrorHandler = Arc<dyn Fn(SyncIoError) + Send + Sync + 'static>;
+pub type AsyncErrorHandler = Arc<
 	dyn (Fn(SyncIoError) -> Box<dyn Future<Output = ()> + Send + Sync>) + Send + Sync + 'static,
 >;
 
 sync_async_callbox!(ErrorHandler, SyncErrorHandler, AsyncErrorHandler, (error: SyncIoError));
 
+#[cfg_attr(not(windows), allow(clippy::needless_pass_by_ref_mut))] // needed for start_kill()
 async fn signal_child(
 	signal: Signal,
 	#[cfg(test)] child: &mut super::TestChild,

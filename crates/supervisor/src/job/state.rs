@@ -53,17 +53,17 @@ pub enum CommandState {
 
 impl CommandState {
 	/// Whether the command is pending, i.e. not running or finished.
-	pub fn is_pending(&self) -> bool {
+	pub const fn is_pending(&self) -> bool {
 		matches!(self, Self::Pending)
 	}
 
 	/// Whether the command is running.
-	pub fn is_running(&self) -> bool {
+	pub const fn is_running(&self) -> bool {
 		matches!(self, Self::Running { .. })
 	}
 
 	/// Whether the command is finished.
-	pub fn is_finished(&self) -> bool {
+	pub const fn is_finished(&self) -> bool {
 		matches!(self, Self::Finished { .. })
 	}
 

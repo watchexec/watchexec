@@ -319,7 +319,7 @@ impl TaggedFilterer {
 	fn match_tag(&self, filter: &Filter, tag: &Tag) -> Result<Option<bool>, TaggedFiltererError> {
 		trace!(matcher=?filter.on, "matching filter to tag");
 
-		fn sig_match(sig: Signal) -> (&'static str, i32) {
+		const fn sig_match(sig: Signal) -> (&'static str, i32) {
 			match sig {
 				Signal::Hangup | Signal::Custom(1) => ("HUP", 1),
 				Signal::ForceStop | Signal::Custom(9) => ("KILL", 9),

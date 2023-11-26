@@ -112,7 +112,7 @@ impl std::fmt::Debug for Control {
 }
 
 #[derive(Debug)]
-pub(crate) struct ControlMessage {
+pub struct ControlMessage {
 	pub control: Control,
 	pub done: Flag,
 }
