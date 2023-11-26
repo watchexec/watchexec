@@ -13,9 +13,10 @@ watchexec - Execute commands when watched files change
 \[**\--no-discover-ignore**\] \[**-p**\|**\--postpone**\]
 \[**\--delay-run**\] \[**\--poll**\] \[**\--shell**\] \[**-n **\]
 \[**\--no-environment**\] \[**\--emit-events-to**\]
-\[**-E**\|**\--env**\] \[**\--no-process-group**\]
-\[**-N**\|**\--notify**\] \[**\--project-origin**\] \[**\--workdir**\]
-\[**-e**\|**\--exts**\] \[**-f**\|**\--filter**\] \[**\--filter-file**\]
+\[**\--only-emit-events**\] \[**-E**\|**\--env**\]
+\[**\--no-process-group**\] \[**-N**\|**\--notify**\]
+\[**\--project-origin**\] \[**\--workdir**\] \[**-e**\|**\--exts**\]
+\[**-f**\|**\--filter**\] \[**\--filter-file**\]
 \[**-i**\|**\--ignore**\] \[**\--ignore-file**\] \[**\--fs-events**\]
 \[**\--no-meta**\] \[**\--print-events**\]
 \[**-v**\|**\--verbose**\]\... \[**\--log-file**\] \[**\--manual**\]
@@ -457,6 +458,19 @@ a temporary file, write the events to it, and provide the path to the
 file with the \$WATCHEXEC_EVENTS_FILE environment variable.
 
 Finally, the special none mode will disable event emission entirely.
+
+**\--only-emit-events**
+
+:   Only emit events to stdout, run no commands.
+
+This is a convenience option for using Watchexec as a file watcher,
+without running any commands. It is almost equivalent to using \`cat\`
+as the command, except that it will not spawn a new process for each
+event.
+
+This option requires \`\--emit-events-to\` to be set, and restricts the
+available modes to \`stdin\` and \`json-stdin\`, modifying their
+behaviour to write to stdout instead of the stdin of the command.
 
 **-E**, **\--env**=*KEY=VALUE*
 

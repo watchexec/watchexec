@@ -47,6 +47,7 @@ module completions {
     --no-shell-long           # Don't use a shell
     --no-environment          # Shorthand for '--emit-events=none'
     --emit-events-to: string@"nu-complete watchexec emit_events_to" # Configure event emission
+    --only-emit-events        # Only emit events to stdout, run no commands
     --env(-E): string         # Add env vars to the command
     --no-process-group        # Don't use a process group
     -1                        # Testing only: exit Watchexec after the first run
