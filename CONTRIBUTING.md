@@ -59,14 +59,11 @@ A release goes like this:
 
 ### Release order
 
-When all crates need releasing, the order is:
+Use this command to see the tree of workspace dependencies:
 
-- project-origins (depends on nothing)
-- ignore-files (depends on project-origins)
-- watchexec lib
-- ignore filterer (depends on watchexec lib)
-- other filterers (depends on ignore filterer)
-- watchexec cli
+```console
+$ cargo tree -p watchexec-cli | rg -F '(/' --color=never | sed 's/ v[0-9].*//'
+```
 
 ## Overview
 
