@@ -40,7 +40,7 @@ features = [
 ]
 
 [dependencies.watchexec]
-version = "2.3.0"
+version = "3.0.0"
 path = "../../lib"
 
 [dependencies.watchexec-events]
