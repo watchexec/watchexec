@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+- Depend on `watchexec-events` instead of the `watchexec` re-export.
+
 ## v1.2.1 (2023-05-14)
 
 - Use IO-free dunce::simplify to normalise paths on Windows.

@@ -2,7 +2,13 @@
 
 ## Next (YYYY-MM-DD)
 
+- Remove error diagnostic codes.
+- Deps: upgrade to gix-config 0.31.0
+- Deps: upgrade Tokio requirement to 1.33.0
+
 ## v1.3.1 (2023-06-03)
+
+- Use Tokio's canonicalize instead of dunce::simplified.
 
 ## v1.3.0 (2023-05-14)
 

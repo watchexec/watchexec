@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+- Deps: upgrade Tokio requirement to 1.33.0
+
 ## v1.2.0 (2023-01-08)
 
 - Add `const` qualifier to `ProjectType::is_vcs` and `::is_soft`.
