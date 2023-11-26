@@ -40,7 +40,7 @@ path = "../../signals"
 tracing-subscriber = "0.3.6"
 
 [dev-dependencies.project-origins]
-version = "1.2.0"
+version = "1.2.1"
 path = "../../project-origins"
 
 [dev-dependencies.tokio]

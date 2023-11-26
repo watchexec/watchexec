@@ -2563,7 +2563,7 @@ checksum = "794b5bf8e2d19b53dcdcec3e4bba628e20f5b6062503ba89281fa7037dd7bbcf"
 
 [[package]]
 name = "project-origins"
-version = "1.2.0"
+version = "1.2.1"
 dependencies = [
  "futures",
  "miette",
