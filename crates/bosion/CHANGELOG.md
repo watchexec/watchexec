@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v1.0.2 (2023-11-26)
+
 - Deps: upgrade to gix 0.55
 
 ## v1.0.1 (2023-07-02)

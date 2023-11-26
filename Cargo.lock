@@ -451,7 +451,7 @@ dependencies = [
 
 [[package]]
 name = "bosion"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "gix",
  "time",
