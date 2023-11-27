@@ -33,6 +33,7 @@ is-terminal = "0.4.4"
 notify-rust = "4.9.0"
 serde_json = "1.0.107"
 tempfile = "3.8.1"
+termcolor = "1.4.0"
 tracing = "0.1.40"
 which = "5.0.0"
 
