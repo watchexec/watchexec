@@ -39,6 +39,7 @@ module completions {
     --no-global-ignore        # Don't load global ignores
     --no-default-ignore       # Don't use internal default ignores
     --no-discover-ignore      # Don't discover ignore files at all
+    --ignore-nothing          # Don't ignore anything at all
     --postpone(-p)            # Wait until first change before running command
     --delay-run: string       # Sleep before running the command
     --poll: string            # Poll for filesystem changes

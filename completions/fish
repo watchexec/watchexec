@@ -29,6 +29,7 @@ complete -c watchexec -l no-project-ignore -d 'Don\'t load project-local ignores
 complete -c watchexec -l no-global-ignore -d 'Don\'t load global ignores'
 complete -c watchexec -l no-default-ignore -d 'Don\'t use internal default ignores'
 complete -c watchexec -l no-discover-ignore -d 'Don\'t discover ignore files at all'
+complete -c watchexec -l ignore-nothing -d 'Don\'t ignore anything at all'
 complete -c watchexec -s p -l postpone -d 'Wait until first change before running command'
 complete -c watchexec -s n -d 'Don\'t use a shell'
 complete -c watchexec -l no-shell-long -d 'Don\'t use a shell'
