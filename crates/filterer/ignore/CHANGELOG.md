@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v2.0.0 (2023-11-27)
+
 - Depend on `watchexec-events` instead of the `watchexec` re-export.
 
 ## v1.2.1 (2023-05-14)
