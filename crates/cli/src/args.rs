@@ -7,6 +7,7 @@ use watchexec_signals::Signal;
 const OPTSET_FILTERING: &str = "Filtering";
 const OPTSET_COMMAND: &str = "Command";
 const OPTSET_DEBUGGING: &str = "Debugging";
+const OPTSET_OUTPUT: &str = "Output";
 
 include!(env!("BOSION_PATH"));
 
@@ -122,6 +123,7 @@ pub struct Args {
 	#[arg(
 		short = 'c',
 		long = "clear",
+		help_heading = OPTSET_OUTPUT,
 		num_args = 0..=1,
 		default_missing_value = "clear",
 		value_name = "MODE",
@@ -603,7 +605,7 @@ pub struct Args {
 	/// of the command.
 	#[arg(
 		long,
-		help_heading = OPTSET_COMMAND,
+		help_heading = OPTSET_OUTPUT,
 		conflicts_with_all = ["command", "completions", "manual"],
 	)]
 	pub only_emit_events: bool,
@@ -641,8 +643,50 @@ pub struct Args {
 	///
 	/// With this, Watchexec will emit a desktop notification when a command starts and ends, on
 	/// supported platforms. On unsupported platforms, it may silently do nothing, or log a warning.
-	#[arg(long, short = 'N')]
+	#[arg(
+		short = 'N',
+		long,
+		help_heading = OPTSET_OUTPUT,
+	)]
 	pub notify: bool,
+
+	/// When to use terminal colours
+	#[arg(
+		long,
+		help_heading = OPTSET_OUTPUT,
+		default_value = "auto",
+		value_name = "MODE",
+		alias = "colour",
+	)]
+	pub color: ColourMode,
+
+	/// Print how long the command took to run
+	///
+	/// This may not be exactly accurate, as it includes some overhead from Watchexec itself. Use
+	/// the `time` utility, high-precision timers, or benchmarking tools for more accurate results.
+	#[arg(
+		long,
+		help_heading = OPTSET_OUTPUT,
+	)]
+	pub timings: bool,
+
+	/// Don't print starting and stopping messages
+	///
+	/// By default Watchexec will print a message when the command starts and stops. This option
+	/// disables this behaviour, so only the command's output, warnings, and errors will be printed.
+	#[arg(
+		short,
+		long,
+		help_heading = OPTSET_OUTPUT,
+	)]
+	pub quiet: bool,
+
+	/// Ring the terminal bell on command completion
+	#[arg(
+		long,
+		help_heading = OPTSET_OUTPUT,
+	)]
+	pub bell: bool,
 
 	/// Set the project origin
 	///
@@ -893,7 +937,7 @@ pub enum FsEvent {
 	Metadata,
 }
 
-#[derive(Clone, Copy, Debug, ValueEnum)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
 pub enum ShellCompletion {
 	Bash,
 	Elvish,
@@ -901,6 +945,13 @@ pub enum ShellCompletion {
 	Nu,
 	Powershell,
 	Zsh,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
+pub enum ColourMode {
+	Auto,
+	Always,
+	Never,
 }
 
 #[derive(Clone, Copy, Debug)]

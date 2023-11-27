@@ -15,10 +15,11 @@ watchexec - Execute commands when watched files change
 \[**\--shell**\] \[**-n **\] \[**\--no-environment**\]
 \[**\--emit-events-to**\] \[**\--only-emit-events**\]
 \[**-E**\|**\--env**\] \[**\--no-process-group**\]
-\[**-N**\|**\--notify**\] \[**\--project-origin**\] \[**\--workdir**\]
-\[**-e**\|**\--exts**\] \[**-f**\|**\--filter**\] \[**\--filter-file**\]
-\[**-i**\|**\--ignore**\] \[**\--ignore-file**\] \[**\--fs-events**\]
-\[**\--no-meta**\] \[**\--print-events**\]
+\[**-N**\|**\--notify**\] \[**\--color**\] \[**\--timings**\]
+\[**-q**\|**\--quiet**\] \[**\--bell**\] \[**\--project-origin**\]
+\[**\--workdir**\] \[**-e**\|**\--exts**\] \[**-f**\|**\--filter**\]
+\[**\--filter-file**\] \[**-i**\|**\--ignore**\] \[**\--ignore-file**\]
+\[**\--fs-events**\] \[**\--no-meta**\] \[**\--print-events**\]
 \[**-v**\|**\--verbose**\]\... \[**\--log-file**\] \[**\--manual**\]
 \[**\--completions**\] \[**-h**\|**\--help**\]
 \[**-V**\|**\--version**\] \[*COMMAND*\]
@@ -507,6 +508,30 @@ with this option.
 With this, Watchexec will emit a desktop notification when a command
 starts and ends, on supported platforms. On unsupported platforms, it
 may silently do nothing, or log a warning.
+
+**\--color**=*MODE* \[default: auto\]
+
+:   When to use terminal colours
+
+**\--timings**
+
+:   Print how long the command took to run
+
+This may not be exactly accurate, as it includes some overhead from
+Watchexec itself. Use the \`time\` utility, high-precision timers, or
+benchmarking tools for more accurate results.
+
+**-q**, **\--quiet**
+
+:   Dont print starting and stopping messages
+
+By default Watchexec will print a message when the command starts and
+stops. This option disables this behaviour, so only the commands output,
+warnings, and errors will be printed.
+
+**\--bell**
+
+:   Ring the terminal bell on command completion
 
 **\--project-origin**=*DIRECTORY*
 

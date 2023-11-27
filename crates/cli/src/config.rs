@@ -4,6 +4,7 @@ use std::{
 	env::current_dir,
 	ffi::{OsStr, OsString},
 	fs::File,
+	io::{stderr, IsTerminal, Write},
 	path::Path,
 	process::Stdio,
 	sync::Arc,
@@ -12,6 +13,7 @@ use std::{
 use clearscreen::ClearScreen;
 use miette::{miette, IntoDiagnostic, Report, Result};
 use notify_rust::Notification;
+use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use tokio::{process::Command as TokioCommand, time::sleep};
 use tracing::{debug, debug_span, error};
 use watchexec::{
@@ -24,11 +26,20 @@ use watchexec::{
 use watchexec_events::{Event, Keyboard, ProcessEnd, Tag};
 use watchexec_signals::Signal;
 
-use crate::{state::State, emits::events_to_simple_format};
 use crate::{
-	args::{Args, ClearMode, EmitEvents, OnBusyUpdate},
+	args::{Args, ClearMode, ColourMode, EmitEvents, OnBusyUpdate},
 	state::RotatingTempFile,
 };
+use crate::{emits::events_to_simple_format, state::State};
+
+#[derive(Clone, Copy)]
+struct OutputFlags {
+	quiet: bool,
+	colour: ColorChoice,
+	timings: bool,
+	bell: bool,
+	toast: bool,
+}
 
 pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 	let _span = debug_span!("args-runtime").entered();
@@ -82,7 +93,10 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 	if args.only_emit_events {
 		config.on_action(move |mut action| {
 			// if we got a terminate or interrupt signal, quit
-			if action.signals().any(|sig| sig == Signal::Terminate || sig == Signal::Interrupt) {
+			if action
+				.signals()
+				.any(|sig| sig == Signal::Terminate || sig == Signal::Interrupt)
+			{
 				action.quit();
 				return action;
 			}
@@ -109,14 +123,20 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 
 			match emit_events_to {
 				EmitEvents::Stdin => {
-					println!("{}", events_to_simple_format(action.events.as_ref()).unwrap_or_default());
+					println!(
+						"{}",
+						events_to_simple_format(action.events.as_ref()).unwrap_or_default()
+					);
 				}
 				EmitEvents::JsonStdin => {
 					for event in action.events.iter().filter(|e| !e.is_empty()) {
 						println!("{}", serde_json::to_string(event).unwrap_or_default());
 					}
 				}
-				other => unreachable!("emit_events_to should have been validated earlier: {:?}", other),
+				other => unreachable!(
+					"emit_events_to should have been validated earlier: {:?}",
+					other
+				),
 			}
 
 			action
@@ -132,8 +152,19 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 	let stop_signal = args.stop_signal;
 	let stop_timeout = args.stop_timeout.0;
 
-	let notif = args.notify;
 	let print_events = args.print_events;
+	let outflags = OutputFlags {
+		quiet: args.quiet,
+		colour: match args.color {
+			ColourMode::Auto if !std::io::stdin().is_terminal() => ColorChoice::Never,
+			ColourMode::Auto => ColorChoice::Auto,
+			ColourMode::Always => ColorChoice::Always,
+			ColourMode::Never => ColorChoice::Never,
+		},
+		timings: args.timings,
+		bell: args.bell,
+		toast: args.notify,
+	};
 
 	let workdir = Arc::new(args.workdir.clone());
 
@@ -282,7 +313,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 										setup_process(
 											innerjob.clone(),
 											context.command.clone(),
-											notif,
+											outflags,
 										)
 									});
 								}
@@ -295,7 +326,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 										setup_process(
 											innerjob.clone(),
 											context.command.clone(),
-											notif,
+											outflags,
 										)
 									});
 								}
@@ -308,7 +339,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 											setup_process(
 												innerjob.clone(),
 												context.command.clone(),
-												notif,
+												outflags,
 											)
 										});
 									});
@@ -317,7 +348,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 						} else {
 							job.start();
 							job.run(move |context| {
-								setup_process(innerjob.clone(), context.command.clone(), notif)
+								setup_process(innerjob.clone(), context.command.clone(), outflags)
 							});
 						}
 					})
@@ -396,11 +427,12 @@ fn interpret_command_args(args: &Args) -> Result<Arc<Command>> {
 
 #[cfg(windows)]
 fn available_powershell() -> String {
+	// TODO
 	todo!("figure out if powershell.exe is available, and use that, otherwise use pwsh.exe")
 }
 
-fn setup_process(job: Job, command: Arc<Command>, notif: bool) {
-	if notif {
+fn setup_process(job: Job, command: Arc<Command>, outflags: OutputFlags) {
+	if outflags.toast {
 		Notification::new()
 			.summary("Watchexec: change detected")
 			.body(&format!("Running {command}"))
@@ -413,13 +445,23 @@ fn setup_process(job: Job, command: Arc<Command>, notif: bool) {
 			);
 	}
 
+	if !outflags.quiet {
+		let mut stderr = StandardStream::stderr(outflags.colour);
+		stderr.reset().ok();
+		stderr
+			.set_color(ColorSpec::new().set_fg(Some(Color::Green)))
+			.ok();
+		writeln!(&mut stderr, "[Running: {command}]").ok();
+		stderr.reset().ok();
+	}
+
 	tokio::spawn(async move {
 		job.to_wait().await;
-		job.run(move |context| end_of_process(context.current, notif));
+		job.run(move |context| end_of_process(context.current, outflags));
 	});
 }
 
-fn end_of_process(state: &CommandState, notif: bool) {
+fn end_of_process(state: &CommandState, outflags: OutputFlags) {
 	let CommandState::Finished {
 		status,
 		started,
@@ -430,24 +472,26 @@ fn end_of_process(state: &CommandState, notif: bool) {
 	};
 
 	let duration = *finished - *started;
-	let msg = match status {
-		ProcessEnd::ExitError(code) => {
-			format!("Command exited with {code}, lasted {duration:?}")
-		}
+	let timing = if outflags.timings {
+		format!(", lasted {duration:?}")
+	} else {
+		String::new()
+	};
+	let (msg, fg) = match status {
+		ProcessEnd::ExitError(code) => (format!("Command exited with {code}{timing}"), Color::Red),
 		ProcessEnd::ExitSignal(sig) => {
-			format!("Command killed by {sig:?}, lasted {duration:?}")
+			(format!("Command killed by {sig:?}{timing}"), Color::Magenta)
 		}
-		ProcessEnd::ExitStop(sig) => {
-			format!("Command stopped by {sig:?}, lasted {duration:?}")
-		}
-		ProcessEnd::Continued => format!("Command continued, lasted {duration:?}"),
-		ProcessEnd::Exception(ex) => {
-			format!("Command ended by exception {ex:#x}, lasted {duration:?}")
-		}
-		ProcessEnd::Success => format!("Command was successful, lasted {duration:?}"),
+		ProcessEnd::ExitStop(sig) => (format!("Command stopped by {sig:?}{timing}"), Color::Blue),
+		ProcessEnd::Continued => (format!("Command continued{timing}"), Color::Cyan),
+		ProcessEnd::Exception(ex) => (
+			format!("Command ended by exception {ex:#x}{timing}"),
+			Color::Yellow,
+		),
+		ProcessEnd::Success => (format!("Command was successful{timing}"), Color::Green),
 	};
 
-	if notif {
+	if outflags.toast {
 		Notification::new()
 			.summary("Watchexec: command ended")
 			.body(&msg)
@@ -458,6 +502,19 @@ fn end_of_process(state: &CommandState, notif: bool) {
 				},
 				drop,
 			);
+	}
+
+	if !outflags.quiet {
+		let mut stderr = StandardStream::stderr(outflags.colour);
+		stderr.reset().ok();
+		stderr.set_color(ColorSpec::new().set_fg(Some(fg))).ok();
+		writeln!(&mut stderr, "[{msg}]").ok();
+		stderr.reset().ok();
+	}
+
+	if outflags.bell {
+		eprint!("\x07");
+		stderr().flush().ok();
 	}
 }
 

@@ -3079,6 +3079,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "termcolor"
+version = "1.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ff1bc3d3f05aff0403e8ac0d92ced918ec05b666a43f83297ccef5bea8a3d449"
+dependencies = [
+ "winapi-util",
+]
+
+[[package]]
 name = "terminal_size"
 version = "0.1.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3697,6 +3706,7 @@ dependencies = [
  "project-origins",
  "serde_json",
  "tempfile",
+ "termcolor",
  "tokio",
  "tracing",
  "tracing-subscriber",
