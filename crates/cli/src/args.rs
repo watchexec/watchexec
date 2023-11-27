@@ -352,6 +352,18 @@ pub struct Args {
 	)]
 	pub no_discover_ignore: bool,
 
+	/// Don't ignore anything at all
+	///
+	/// This is a shorthand for '--no-discover-ignore', '--no-default-ignore'.
+	///
+	/// Note that ignores explicitly loaded via other command line options, such as '--ignore' or
+	/// '--ignore-file', will still be used.
+	#[arg(
+		long,
+		help_heading = OPTSET_FILTERING,
+	)]
+	pub ignore_nothing: bool,
+
 	/// Wait until first change before running command
 	///
 	/// By default, Watchexec will run the command once immediately. With this option, it will
@@ -927,6 +939,14 @@ pub fn get_args() -> Args {
 
 	debug!("parsing arguments");
 	let mut args = Args::parse_from(args);
+
+	if args.ignore_nothing {
+		args.no_global_ignore = true;
+		args.no_vcs_ignore = true;
+		args.no_project_ignore = true;
+		args.no_default_ignore = true;
+		args.no_discover_ignore = true;
+	}
 
 	if args.kill {
 		args.signal = Some(Signal::ForceStop);
