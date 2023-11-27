@@ -66,6 +66,7 @@ set edit:completion:arg-completer[watchexec] = {|@words|
             cand -n 'Don''t use a shell'
             cand --no-shell-long 'Don''t use a shell'
             cand --no-environment 'Shorthand for ''--emit-events=none'''
+            cand --only-emit-events 'Only emit events to stdout, run no commands'
             cand --no-process-group 'Don''t use a process group'
             cand -1 'Testing only: exit Watchexec after the first run'
             cand -N 'Alert when commands start and end'

@@ -12,7 +12,7 @@ pub fn emits_to_environment(events: &[Event]) -> impl Iterator<Item = (String, O
 		.map(|(k, v)| (format!("WATCHEXEC_{k}_PATH"), v))
 }
 
-fn events_to_simple_format(events: &[Event]) -> Result<String> {
+pub fn events_to_simple_format(events: &[Event]) -> Result<String> {
 	let mut buf = String::new();
 	for event in events {
 		let feks = event
