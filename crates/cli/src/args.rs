@@ -412,8 +412,7 @@ pub struct Args {
 	/// If the value has spaces, it is parsed as a command line, and the first word used as the
 	/// shell program, with the rest as arguments to the shell.
 	///
-	/// The command is run with the '-c' flag (except for 'cmd' and 'powershell' on Windows, where
-	/// the '/C' option is used).
+	/// The command is run with the '-c' flag (except for 'cmd' on Windows, where it's '/C').
 	///
 	/// Note that the default shell will change at the next major release: the value of '$SHELL'
 	/// will be respected, falling back to 'sh' on unix and to PowerShell on Windows.
@@ -424,8 +423,8 @@ pub struct Args {
 	/// and may not work as expected in all cases.
 	///
 	/// Using 'none' is a little more efficient and can enable a stricter interpretation of the
-	/// input, but it also means that you can't use shell features like globbing, redirection, or
-	/// pipes.
+	/// input, but it also means that you can't use shell features like globbing, redirection,
+	/// control flow, logic, or pipes.
 	///
 	/// Examples:
 	///
@@ -433,11 +432,11 @@ pub struct Args {
 	///
 	///   $ watchexec -n -- zsh -x -o shwordsplit scr
 	///
-	/// Use with powershell:
+	/// Use with powershell core:
 	///
-	///   $ watchexec --shell=powershell -- test-connection localhost
+	///   $ watchexec --shell=pwsh -- Test-Connection localhost
 	///
-	/// Use with cmd:
+	/// Use with cmd (default on Windows):
 	///
 	///   $ watchexec --shell=cmd -- dir
 	///
@@ -583,6 +582,7 @@ pub struct Args {
 	/// environment variable.
 	///
 	/// Finally, the special 'none' mode will disable event emission entirely.
+	// TODO: when deprecating, make the none mode the default.
 	#[arg(
 		long,
 		help_heading = OPTSET_COMMAND,

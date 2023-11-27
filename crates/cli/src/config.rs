@@ -385,9 +385,6 @@ fn interpret_command_args(args: &Args) -> Result<Arc<Command>> {
 		#[cfg(not(windows))]
 		Some("default") => Some(Shell::new("sh")),
 
-		#[cfg(windows)]
-		Some("powershell") => Some(Shell::new(available_powershell())),
-
 		Some(other) => {
 			let sh = other.split_ascii_whitespace().collect::<Vec<_>>();
 
@@ -423,12 +420,6 @@ fn interpret_command_args(args: &Args) -> Result<Arc<Command>> {
 			..Default::default()
 		},
 	}))
-}
-
-#[cfg(windows)]
-fn available_powershell() -> String {
-	// TODO
-	todo!("figure out if powershell.exe is available, and use that, otherwise use pwsh.exe")
 }
 
 fn setup_process(job: Job, command: Arc<Command>, outflags: OutputFlags) {
