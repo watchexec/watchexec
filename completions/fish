@@ -10,6 +10,7 @@ complete -c watchexec -l poll -d 'Poll for filesystem changes' -r
 complete -c watchexec -l shell -d 'Use a different shell' -r
 complete -c watchexec -l emit-events-to -d 'Configure event emission' -r -f -a "{environment	'',stdin	'',file	'',json-stdin	'',json-file	'',none	''}"
 complete -c watchexec -s E -l env -d 'Add env vars to the command' -r
+complete -c watchexec -l color -d 'When to use terminal colours' -r -f -a "{auto	'',always	'',never	''}"
 complete -c watchexec -l project-origin -d 'Set the project origin' -r -f -a "(__fish_complete_directories)"
 complete -c watchexec -l workdir -d 'Set the working directory' -r -f -a "(__fish_complete_directories)"
 complete -c watchexec -s e -l exts -d 'Filename extensions to filter to' -r
@@ -38,6 +39,9 @@ complete -c watchexec -l only-emit-events -d 'Only emit events to stdout, run no
 complete -c watchexec -l no-process-group -d 'Don\'t use a process group'
 complete -c watchexec -s 1 -d 'Testing only: exit Watchexec after the first run'
 complete -c watchexec -s N -l notify -d 'Alert when commands start and end'
+complete -c watchexec -l timings -d 'Print how long the command took to run'
+complete -c watchexec -s q -l quiet -d 'Don\'t print starting and stopping messages'
+complete -c watchexec -l bell -d 'Ring the terminal bell on command completion'
 complete -c watchexec -l no-meta -d 'Don\'t emit fs events for metadata changes'
 complete -c watchexec -l print-events -d 'Print events that trigger actions'
 complete -c watchexec -s v -l verbose -d 'Set diagnostic log level'

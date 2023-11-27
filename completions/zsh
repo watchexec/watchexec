@@ -33,6 +33,7 @@ _watchexec() {
 '--emit-events-to=[Configure event emission]:MODE:(environment stdin file json-stdin json-file none)' \
 '*-E+[Add env vars to the command]:KEY=VALUE: ' \
 '*--env=[Add env vars to the command]:KEY=VALUE: ' \
+'--color=[When to use terminal colours]:MODE:(auto always never)' \
 '--project-origin=[Set the project origin]:DIRECTORY:_files -/' \
 '--workdir=[Set the working directory]:DIRECTORY:_files -/' \
 '*-e+[Filename extensions to filter to]:EXTENSIONS: ' \
@@ -69,6 +70,10 @@ _watchexec() {
 '-1[Testing only\: exit Watchexec after the first run]' \
 '-N[Alert when commands start and end]' \
 '--notify[Alert when commands start and end]' \
+'--timings[Print how long the command took to run]' \
+'-q[Don'\''t print starting and stopping messages]' \
+'--quiet[Don'\''t print starting and stopping messages]' \
+'--bell[Ring the terminal bell on command completion]' \
 '(--fs-events)--no-meta[Don'\''t emit fs events for metadata changes]' \
 '--print-events[Print events that trigger actions]' \
 '*-v[Set diagnostic log level]' \

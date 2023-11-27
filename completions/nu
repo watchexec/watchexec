@@ -12,6 +12,10 @@ module completions {
     [ "environment" "stdin" "file" "json-stdin" "json-file" "none" ]
   }
 
+  def "nu-complete watchexec color" [] {
+    [ "auto" "always" "never" ]
+  }
+
   def "nu-complete watchexec filter_fs_events" [] {
     [ "access" "create" "remove" "rename" "modify" "metadata" ]
   }
@@ -53,6 +57,10 @@ module completions {
     --no-process-group        # Don't use a process group
     -1                        # Testing only: exit Watchexec after the first run
     --notify(-N)              # Alert when commands start and end
+    --color: string@"nu-complete watchexec color" # When to use terminal colours
+    --timings                 # Print how long the command took to run
+    --quiet(-q)               # Don't print starting and stopping messages
+    --bell                    # Ring the terminal bell on command completion
     --project-origin: string  # Set the project origin
     --workdir: string         # Set the working directory
     --exts(-e): string        # Filename extensions to filter to
