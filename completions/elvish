@@ -61,6 +61,7 @@ set edit:completion:arg-completer[watchexec] = {|@words|
             cand --no-global-ignore 'Don''t load global ignores'
             cand --no-default-ignore 'Don''t use internal default ignores'
             cand --no-discover-ignore 'Don''t discover ignore files at all'
+            cand --ignore-nothing 'Don''t ignore anything at all'
             cand -p 'Wait until first change before running command'
             cand --postpone 'Wait until first change before running command'
             cand -n 'Don''t use a shell'

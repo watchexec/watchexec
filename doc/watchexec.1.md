@@ -10,13 +10,13 @@ watchexec - Execute commands when watched files change
 \[**-d**\|**\--debounce**\] \[**\--stdin-quit**\]
 \[**\--no-vcs-ignore**\] \[**\--no-project-ignore**\]
 \[**\--no-global-ignore**\] \[**\--no-default-ignore**\]
-\[**\--no-discover-ignore**\] \[**-p**\|**\--postpone**\]
-\[**\--delay-run**\] \[**\--poll**\] \[**\--shell**\] \[**-n **\]
-\[**\--no-environment**\] \[**\--emit-events-to**\]
-\[**\--only-emit-events**\] \[**-E**\|**\--env**\]
-\[**\--no-process-group**\] \[**-N**\|**\--notify**\]
-\[**\--project-origin**\] \[**\--workdir**\] \[**-e**\|**\--exts**\]
-\[**-f**\|**\--filter**\] \[**\--filter-file**\]
+\[**\--no-discover-ignore**\] \[**\--ignore-nothing**\]
+\[**-p**\|**\--postpone**\] \[**\--delay-run**\] \[**\--poll**\]
+\[**\--shell**\] \[**-n **\] \[**\--no-environment**\]
+\[**\--emit-events-to**\] \[**\--only-emit-events**\]
+\[**-E**\|**\--env**\] \[**\--no-process-group**\]
+\[**-N**\|**\--notify**\] \[**\--project-origin**\] \[**\--workdir**\]
+\[**-e**\|**\--exts**\] \[**-f**\|**\--filter**\] \[**\--filter-file**\]
 \[**-i**\|**\--ignore**\] \[**\--ignore-file**\] \[**\--fs-events**\]
 \[**\--no-meta**\] \[**\--print-events**\]
 \[**-v**\|**\--verbose**\]\... \[**\--log-file**\] \[**\--manual**\]
@@ -273,6 +273,15 @@ This is a shorthand for \--no-global-ignore, \--no-vcs-ignore,
 ignore discovery mechanisms from the get go.
 
 Note that default ignores are still loaded, see \--no-default-ignore.
+
+**\--ignore-nothing**
+
+:   Dont ignore anything at all
+
+This is a shorthand for \--no-discover-ignore, \--no-default-ignore.
+
+Note that ignores explicitly loaded via other command line options, such
+as \--ignore or \--ignore-file, will still be used.
 
 **-p**, **\--postpone**
 

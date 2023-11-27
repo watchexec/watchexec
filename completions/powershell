@@ -64,6 +64,7 @@ Register-ArgumentCompleter -Native -CommandName 'watchexec' -ScriptBlock {
             [CompletionResult]::new('--no-global-ignore', 'no-global-ignore', [CompletionResultType]::ParameterName, 'Don''t load global ignores')
             [CompletionResult]::new('--no-default-ignore', 'no-default-ignore', [CompletionResultType]::ParameterName, 'Don''t use internal default ignores')
             [CompletionResult]::new('--no-discover-ignore', 'no-discover-ignore', [CompletionResultType]::ParameterName, 'Don''t discover ignore files at all')
+            [CompletionResult]::new('--ignore-nothing', 'ignore-nothing', [CompletionResultType]::ParameterName, 'Don''t ignore anything at all')
             [CompletionResult]::new('-p', 'p', [CompletionResultType]::ParameterName, 'Wait until first change before running command')
             [CompletionResult]::new('--postpone', 'postpone', [CompletionResultType]::ParameterName, 'Wait until first change before running command')
             [CompletionResult]::new('-n', 'n', [CompletionResultType]::ParameterName, 'Don''t use a shell')
