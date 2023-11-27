@@ -33,7 +33,7 @@ include!(env!("BOSION_PATH"));
 
 fn main() {
     // default output, like rustc -Vv
-    println!("{}", Bosion::long_version());
+    println!("{}", Bosion::LONG_VERSION);
 
     // with additional fields
     println!("{}", Bosion::long_version_with(&[
