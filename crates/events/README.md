@@ -16,7 +16,7 @@ Fundamentally, events in watchexec have three purposes:
 3. To carry information about what caused the event, which may be provided to the process.
 
 Outside of Watchexec, this library is particularly useful if you're building a tool that runs under
-it, and want to easily read its events (with `--emit-events-to=json-file` and `--emit-events-to=json-stdin`).
+it, and want to easily read its events (with `--emit-events-to=json-file` and `--emit-events-to=json-stdio`).
 
 ```rust ,no_run
 use std::io::{stdin, Result};

@@ -30,7 +30,7 @@ _watchexec() {
 '--delay-run=[Sleep before running the command]:DURATION: ' \
 '--poll=[Poll for filesystem changes]' \
 '--shell=[Use a different shell]:SHELL: ' \
-'--emit-events-to=[Configure event emission]:MODE:(environment stdin file json-stdin json-file none)' \
+'--emit-events-to=[Configure event emission]:MODE:(environment stdio file json-stdio json-file none)' \
 '*-E+[Add env vars to the command]:KEY=VALUE: ' \
 '*--env=[Add env vars to the command]:KEY=VALUE: ' \
 '--color=[When to use terminal colours]:MODE:(auto always never)' \

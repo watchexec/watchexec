@@ -86,7 +86,7 @@ _watchexec() {
                     return 0
                     ;;
                 --emit-events-to)
-                    COMPREPLY=($(compgen -W "environment stdin file json-stdin json-file none" -- "${cur}"))
+                    COMPREPLY=($(compgen -W "environment stdio file json-stdio json-file none" -- "${cur}"))
                     return 0
                     ;;
                 --env)

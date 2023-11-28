@@ -122,13 +122,13 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 			}
 
 			match emit_events_to {
-				EmitEvents::Stdin => {
+				EmitEvents::Stdio => {
 					println!(
 						"{}",
 						events_to_simple_format(action.events.as_ref()).unwrap_or_default()
 					);
 				}
-				EmitEvents::JsonStdin => {
+				EmitEvents::JsonStdio => {
 					for event in action.events.iter().filter(|e| !e.is_empty()) {
 						println!("{}", serde_json::to_string(event).unwrap_or_default());
 					}
@@ -524,7 +524,7 @@ fn emit_events_to_command(
 		EmitEvents::Environment => {
 			add_envs.extend(emits_to_environment(&events));
 		}
-		EmitEvents::Stdin => match emits_to_file(&emit_file, &events)
+		EmitEvents::Stdio => match emits_to_file(&emit_file, &events)
 			.and_then(|path| File::open(path).into_diagnostic())
 		{
 			Ok(file) => {
@@ -542,7 +542,7 @@ fn emit_events_to_command(
 				error!("Failed to write WATCHEXEC_EVENTS_FILE, continuing without it: {err}");
 			}
 		},
-		EmitEvents::JsonStdin => match emits_to_json_file(&emit_file, &events)
+		EmitEvents::JsonStdio => match emits_to_json_file(&emit_file, &events)
 			.and_then(|path| File::open(path).into_diagnostic())
 		{
 			Ok(file) => {

@@ -521,7 +521,7 @@ pub struct Args {
 	/// Large numbers of files will either cause the environment to be truncated, or may error or
 	/// crash the process entirely.
 	///
-	/// Two new modes are available: 'stdin' writes absolute paths to the stdin of the command,
+	/// Two new modes are available: 'stdio' writes absolute paths to the stdin of the command,
 	/// one per line, each prefixed with `create:`, `remove:`, `rename:`, `modify:`, or `other:`,
 	/// then closes the handle; 'file' writes the same thing to a temporary file, and its path is
 	/// given with the $WATCHEXEC_EVENTS_FILE environment variable.
@@ -576,7 +576,7 @@ pub struct Args {
 	///       + `code`, the exit, signal, stop, or exception code.
 	///   - `metadata`, additional information about the event.
 	///
-	/// The 'json-stdin' mode will emit JSON events to the standard input of the command, one per
+	/// The 'json-stdio' mode will emit JSON events to the standard input of the command, one per
 	/// line, then close stdin. The 'json-file' mode will create a temporary file, write the
 	/// events to it, and provide the path to the file with the $WATCHEXEC_EVENTS_FILE
 	/// environment variable.
@@ -601,7 +601,7 @@ pub struct Args {
 	/// spawn a new process for each event.
 	///
 	/// This option requires `--emit-events-to` to be set, and restricts the available modes to
-	/// `stdin` and `json-stdin`, modifying their behaviour to write to stdout instead of the stdin
+	/// `stdio` and `json-stdio`, modifying their behaviour to write to stdout instead of the stdin
 	/// of the command.
 	#[arg(
 		long,
@@ -904,9 +904,11 @@ pub struct Args {
 pub enum EmitEvents {
 	#[default]
 	Environment,
-	Stdin,
+	#[value(alias("stdin"))]
+	Stdio,
 	File,
-	JsonStdin,
+	#[value(alias("json-stdin"))]
+	JsonStdio,
 	JsonFile,
 	None,
 }
@@ -1027,12 +1029,12 @@ pub fn get_args() -> Args {
 	if args.only_emit_events
 		&& !matches!(
 			args.emit_events_to,
-			EmitEvents::JsonStdin | EmitEvents::Stdin
+			EmitEvents::JsonStdio | EmitEvents::Stdio
 		) {
 		Args::command()
 			.error(
 				ErrorKind::InvalidValue,
-				"only-emit-events requires --emit-events-to=stdin or --emit-events-to=json-stdin",
+				"only-emit-events requires --emit-events-to=stdio or --emit-events-to=json-stdio",
 			)
 			.exit();
 	}

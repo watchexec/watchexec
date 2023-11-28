@@ -45,7 +45,7 @@ Example use cases:
 * Not tied to Git or the presence of a repository/project
 * Does not require a cryptic command line involving `xargs`
 
-## Simple Usage Examples
+## Usage Examples
 
 Watch all JavaScript, CSS and HTML files in the current directory and all subdirectories for changes, running `make` when a change is detected:
 
@@ -65,11 +65,11 @@ Call/restart `python server.py` when any Python file in the current directory (a
 
 Call/restart `my_server` when any file in the current directory (and all subdirectories) changes, sending `SIGKILL` to stop the command:
 
-    $ watchexec -r -s SIGKILL my_server
+    $ watchexec -r --stop-signal SIGKILL my_server
 
 Send a SIGHUP to the command upon changes (Note: using `-n` here we're executing `my_server` directly, instead of wrapping it in a shell:
 
-    $ watchexec -n -s SIGHUP my_server
+    $ watchexec -n --signal SIGHUP my_server
 
 Run `make` when any file changes, using the `.gitignore` file in the current directory to filter:
 
@@ -87,38 +87,40 @@ Run two commands:
 
     $ watchexec 'date; make'
 
+Get desktop ("toast") notifications when the command starts and finishes:
+
+    $ watchexec -N go build
+
+Only run when files are created:
+
+    $ watchexec --fs-events create -- s3 sync . s3://my-bucket
+
 If you come from `entr`, note that the watchexec command is run in a shell by default. You can use `-n` or `--shell=none` to not do that:
 
     $ watchexec -n -- echo ';' lorem ipsum
 
 On Windows, you may prefer to use Powershell:
 
-    $ watchexec --shell=powershell -- test-connection localhost
+    $ watchexec --shell=pwsh -- Test-Connection example.com
 
-## Complex Usage Examples
+You can eschew running commands entirely and get a stream of events to process on your own:
 
-Turn a plain converter tool like PlantUML or Pandoc into a powerful live-editing tool, either as a script
+```console
+$ watchexec --emit-events-to=json-stdio --only-emit-events
 
-    #!/usr/bin/env bash
-    set -Eeuo pipefail
+{"tags":[{"kind":"source","source":"filesystem"},{"kind":"fs","simple":"modify","full":"Modify(Data(Any))"},{"kind":"path","absolute":"/home/code/rust/watchexec/crates/cli/README.md","filetype":"file"}]}
+{"tags":[{"kind":"source","source":"filesystem"},{"kind":"fs","simple":"modify","full":"Modify(Data(Any))"},{"kind":"path","absolute":"/home/code/rust/watchexec/crates/lib/Cargo.toml","filetype":"file"}]}
+{"tags":[{"kind":"source","source":"filesystem"},{"kind":"fs","simple":"modify","full":"Modify(Data(Any))"},{"kind":"path","absolute":"/home/code/rust/watchexec/crates/cli/src/args.rs","filetype":"file"}]}
+```
 
-    SOURCE="test.puml"            # Define source file
-    TARGET="test.png"             # Define conversion target file
-    CONVERT="plantuml $SOURCE"    # Define how to convert source to target
-    VIEW="feh $TARGET"            # Define how to open target file
-    if [ ! -f $TARGET ]; then $CONVERT; fi # Ensure target file exists for opening
-    $VIEW &                                # Open target file in viewer in the background
-    watchexec --filter $SOURCE -- $CONVERT    # Update target file on any source file change
+Print the time commands take to run:
 
-or condensed as a single line
-
-    # Bash
-    $ SOURCE="test.puml"; TARGET="test.png"; CONVERT="plantuml $SOURCE"; VIEW="feh $TARGET"; if [ ! -f $TARGET ]; then $CONVERT; fi; ($VIEW &); watchexec -f $SOURCE -- $CONVERT
-    # Zsh
-    $ SOURCE="test.puml"; TARGET="test.png"; CONVERT="plantuml $SOURCE"; VIEW="feh $TARGET"; if [ ! -f $TARGET ]; then $CONVERT; fi; ($=VIEW &); watchexec -f $SOURCE -- $CONVERT
-
-Replace [PlantUML](https://plantuml.com/) with another converter like [Pandoc](https://pandoc.org/):  `plantuml $SOURCE` turns into `pandoc $SOURCE --output $TARGET`.
-Similarly, replace the [Feh](https://feh.finalrewind.org/) image viewer with another viewer for your target file like the PDF viewer [Evince](https://wiki.gnome.org/Apps/Evince): `feh $TARGET` turns into `evince $TARGET`.
+```console
+$ watchexec --timings -- make
+[Running: make]
+...
+[Command was successful, lasted 52.748081074s]
+```
 
 ## Installation
 
@@ -175,3 +177,5 @@ There's a manual page at `doc/watchexec.1`. Install it to `/usr/share/man/man1/`
 If not bundled, you can generate a manual page with `watchexec --manual > /path/to/watchexec.1`, or view it inline with `watchexec --manual` (requires `man`).
 
 You can also [read a text version](../../doc/watchexec.1.md) or a [PDF](../../doc/watchexec.1.pdf).
+
+Note that it is automatically generated from the help text, so it is not as pretty as a carefully hand-written one.
