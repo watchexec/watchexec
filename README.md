@@ -4,7 +4,7 @@
 
 Software development often involves running the same commands over and over. Boring!
 
-`watchexec` is a **simple**, standalone tool that watches a path and runs a command whenever it detects modifications.
+`watchexec` is a simple, standalone tool that watches a path and runs a command whenever it detects modifications.
 
 Example use cases:
 
@@ -21,7 +21,7 @@ Example use cases:
 * Coalesces multiple filesystem events into one, for editors that use swap/backup files during saving
 * Loads `.gitignore` and `.ignore` files
 * Uses process groups to keep hold of forking programs
-* Provides the paths that changed in environment variables
+* Provides the paths that changed in environment variables or STDIN
 * Does not require a language runtime, not tied to any particular language or ecosystem
 * [And more!](./crates/cli/#features)
 
@@ -62,11 +62,23 @@ Watchexec pairs well with:
 
 ## Extend
 
-- [watchexec library](./crates/lib/): to create more specialised watchexec-powered tools! such as:
-  - [cargo watch](https://github.com/watchexec/cargo-watch): for Rust/Cargo projects.
+- [watchexec library](./crates/lib/): to create more specialised watchexec-powered tools.
+  - [watchexec-events](./crates/events/): event types for watchexec.
+  - [watchexec-signals](./crates/signals/): signal types for watchexec.
+  - [watchexec-supervisor](./crates/supervisor/): process lifecycle manager (the _exec_ part of watchexec).
 - [clearscreen](https://github.com/watchexec/clearscreen): to clear the (terminal) screen on every platform.
 - [command group](https://github.com/watchexec/command-group): to run commands in process groups.
 - [ignore files](./crates/ignore-files/): to find, parse, and interpret ignore files.
 - [project origins](./crates/project-origins/): to find the origin(s) directory of a project.
 - [notify](https://github.com/notify-rs/notify): to respond to file modifications (third-party).
-- [globset](https://crates.io/crates/globset): to match globs (third-party).
+
+### Downstreams
+
+Selected downstreams of watchexec and associated crates:
+
+- [cargo watch](https://github.com/watchexec/cargo-watch): a specialised watcher for Rust/Cargo projects.
+- [cargo lambda](https://github.com/cargo-lambda/cargo-lambda): a dev tool for Rust-powered AWS Lambda functions.
+- [create-rust-app](https://create-rust-app.dev): a template for Rust+React web apps.
+- [dotter](https://github.com/supercuber/dotter): a dotfile manager.
+- [ghciwatch](https://github.com/mercurytechnologies/ghciwatch): a specialised watcher for Haskell projects.
+- [tectonic](https://tectonic-typesetting.github.io/book/latest/): a TeX/LaTeX typesetting system.

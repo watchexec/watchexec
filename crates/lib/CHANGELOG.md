@@ -11,7 +11,6 @@
 - Watchexec can now supervise multiple commands at once. See [Action](#Action) below, the [Action docs](https://docs.rs/watchexec/latest/watchexec/action/struct.Action.html), and the [Supervisor docs](https://docs.rs/watchexec-supervisor) for more.
 - Because of this new feature, the one where multiple commands could be set under the one supervisor is removed.
 - Watchexec's supervisor was split up into its own crate, [`watchexec-supervisor`](https://docs.rs/watchexec-supervisor).
-- Running as PID1 (e.g. in Docker) is now fully handled, with support from the [`pid1`](https://www.fpcomplete.com/blog/announcing-pid1-crate-for-easier-rust-docker-images/) crate.
 - Tokio requirement is now 1.33.
 - Notify was upgraded to 6.0.
 - Nix was upgraded to 0.27.
