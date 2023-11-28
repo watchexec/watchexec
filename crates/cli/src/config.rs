@@ -4,7 +4,7 @@ use std::{
 	env::current_dir,
 	ffi::{OsStr, OsString},
 	fs::File,
-	io::{stderr, IsTerminal, Write},
+	io::{IsTerminal, Write},
 	path::Path,
 	process::Stdio,
 	sync::Arc,
@@ -561,8 +561,9 @@ fn end_of_process(state: &CommandState, outflags: OutputFlags) {
 	}
 
 	if outflags.bell {
-		eprint!("\x07");
-		stderr().flush().ok();
+		let mut stdout = std::io::stdout();
+		stdout.write_all(b"\x07").ok();
+		stdout.flush().ok();
 	}
 }
 
