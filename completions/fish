@@ -8,7 +8,7 @@ complete -c watchexec -s d -l debounce -d 'Time to wait for new events before ta
 complete -c watchexec -l delay-run -d 'Sleep before running the command' -r
 complete -c watchexec -l poll -d 'Poll for filesystem changes' -r
 complete -c watchexec -l shell -d 'Use a different shell' -r
-complete -c watchexec -l emit-events-to -d 'Configure event emission' -r -f -a "{environment	'',stdin	'',file	'',json-stdin	'',json-file	'',none	''}"
+complete -c watchexec -l emit-events-to -d 'Configure event emission' -r -f -a "{environment	'',stdio	'',file	'',json-stdio	'',json-file	'',none	''}"
 complete -c watchexec -s E -l env -d 'Add env vars to the command' -r
 complete -c watchexec -l color -d 'When to use terminal colours' -r -f -a "{auto	'',always	'',never	''}"
 complete -c watchexec -l project-origin -d 'Set the project origin' -r -f -a "(__fish_complete_directories)"

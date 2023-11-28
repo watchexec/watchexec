@@ -9,7 +9,7 @@ module completions {
   }
 
   def "nu-complete watchexec emit_events_to" [] {
-    [ "environment" "stdin" "file" "json-stdin" "json-file" "none" ]
+    [ "environment" "stdio" "file" "json-stdio" "json-file" "none" ]
   }
 
   def "nu-complete watchexec color" [] {

@@ -428,7 +428,7 @@ also limited in what it can usefully represent. Large numbers of files
 will either cause the environment to be truncated, or may error or crash
 the process entirely.
 
-Two new modes are available: stdin writes absolute paths to the stdin of
+Two new modes are available: stdio writes absolute paths to the stdin of
 the command, one per line, each prefixed with \`create:\`, \`remove:\`,
 \`rename:\`, \`modify:\`, or \`other:\`, then closes the handle; file
 writes the same thing to a temporary file, and its path is given with
@@ -462,7 +462,7 @@ ends: + \`disposition\`, the exit disposition (success, error, signal,
 stop, exception, continued). + \`code\`, the exit, signal, stop, or
 exception code. - \`metadata\`, additional information about the event.
 
-The json-stdin mode will emit JSON events to the standard input of the
+The json-stdio mode will emit JSON events to the standard input of the
 command, one per line, then close stdin. The json-file mode will create
 a temporary file, write the events to it, and provide the path to the
 file with the \$WATCHEXEC_EVENTS_FILE environment variable.
@@ -479,7 +479,7 @@ as the command, except that it will not spawn a new process for each
 event.
 
 This option requires \`\--emit-events-to\` to be set, and restricts the
-available modes to \`stdin\` and \`json-stdin\`, modifying their
+available modes to \`stdio\` and \`json-stdio\`, modifying their
 behaviour to write to stdout instead of the stdin of the command.
 
 **-E**, **\--env**=*KEY=VALUE*
