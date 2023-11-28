@@ -106,7 +106,7 @@ On Windows, you may prefer to use Powershell:
 You can eschew running commands entirely and get a stream of events to process on your own:
 
 ```console
-$ watchexec --emit-events-to=json-stdin --only-emit-events
+$ watchexec --emit-events-to=json-stdio --only-emit-events
 
 {"tags":[{"kind":"source","source":"filesystem"},{"kind":"fs","simple":"modify","full":"Modify(Data(Any))"},{"kind":"path","absolute":"/home/code/rust/watchexec/crates/cli/README.md","filetype":"file"}]}
 {"tags":[{"kind":"source","source":"filesystem"},{"kind":"fs","simple":"modify","full":"Modify(Data(Any))"},{"kind":"path","absolute":"/home/code/rust/watchexec/crates/lib/Cargo.toml","filetype":"file"}]}
