@@ -2,15 +2,20 @@
 
 ## Next (YYYY-MM-DD)
 
-## v2.0.0 (2023-11-29)
+## v2.0.1 (2023-11-29)
 
 - Add `ProcessEnd::into_exitstatus` testing-only utility method.
 - Deps: upgrade to Notify 6.0
 - Deps: upgrade to nix 0.27
+- Deps: upgrade to watchexec-signals 2.0.0
+
+## v2.0.0 (2023-11-29)
+
+Same as 2.0.1, but yanked.
 
 ## v1.1.0 (2023-11-26)
 
-Same as 2.0.0, but yanked.
+Same as 2.0.1, but yanked.
 
 ## v1.0.0 (2023-03-18)
 
