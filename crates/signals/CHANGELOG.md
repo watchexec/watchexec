@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v2.0.0 (2023-11-29)
+
 ## v1.0.1 (2023-11-26)
 
 - Deps: upgrade nix to 0.27

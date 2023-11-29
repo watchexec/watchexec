@@ -35,7 +35,7 @@ version = "1.1.0"
 path = "../events"
 
 [dependencies.watchexec-signals]
-version = "1.0.1"
+version = "2.0.0"
 path = "../signals"
 
 [dependencies.watchexec-supervisor]
