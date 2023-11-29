@@ -72,6 +72,12 @@ jobs:
     - name: Check that CLI runs
       run: cargo run ${{ env.flags }} -p watchexec-cli -- -1 echo
 
+    - name: Run watchexec integration tests
+      run: crates/cli/run-tests.sh
+      shell: bash
+      env:
+        WATCHEXEC_BIN: target/debug/watchexec
+
     - name: Run bosion integration tests
       run: ./run-tests.sh
       working-directory: crates/bosion
