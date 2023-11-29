@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v2.0.0 (2023-11-29)
+
 ## v1.1.0 (2023-11-26)
 
 - Add `ProcessEnd::into_exitstatus` testing-only utility method.
