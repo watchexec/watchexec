@@ -122,15 +122,14 @@ jobs:
     - run: cross check --target x86_64-unknown-freebsd
     - run: cross check --target x86_64-unknown-netbsd
 
-  # Dummy job to have a stable name for the "all tests pass" requirement
   tests-pass:
-    if: always() # always run even if dependencies fail
+    if: always()
     name: Tests pass
     needs:
     - test
     - cross-checks
     runs-on: ubuntu-latest
     steps:
-    # fail if ANY dependency has failed or been skipped or cancelled
-    - if: "contains(needs.*.result, 'failure') || contains(needs.*.result, 'skipped') || contains(needs.*.result, 'cancelled')"
-      run: exit 1
+    - uses: re-actors/alls-green@release/v1
+      with:
+        jobs: ${{ toJSON(needs) }}
