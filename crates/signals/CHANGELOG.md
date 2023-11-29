@@ -4,9 +4,11 @@
 
 ## v2.0.0 (2023-11-29)
 
+- Deps: upgrade nix to 0.27
+
 ## v1.0.1 (2023-11-26)
 
-- Deps: upgrade nix to 0.27
+Same as 2.0.0, but yanked.
 
 ## v1.0.0 (2023-03-18)
 
