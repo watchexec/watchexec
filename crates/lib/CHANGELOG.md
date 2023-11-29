@@ -2,6 +2,10 @@
 
 ## Next (YYYY-MM-DD)
 
+## v3.0.1 (2023-11-29)
+
+- Deps: watchexec-events and watchexec-signals after major bump and yank
+
 ## v3.0.0 (2023-11-26)
 
 ### General
