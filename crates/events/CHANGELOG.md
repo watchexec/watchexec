@@ -4,11 +4,13 @@
 
 ## v2.0.0 (2023-11-29)
 
-## v1.1.0 (2023-11-26)
-
 - Add `ProcessEnd::into_exitstatus` testing-only utility method.
 - Deps: upgrade to Notify 6.0
 - Deps: upgrade to nix 0.27
+
+## v1.1.0 (2023-11-26)
+
+Same as 2.0.0, but yanked.
 
 ## v1.0.0 (2023-03-18)
 
