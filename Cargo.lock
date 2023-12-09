@@ -3786,7 +3786,7 @@ dependencies = [
 
 [[package]]
 name = "watchexec-signals"
-version = "2.0.0"
+version = "2.1.0"
 dependencies = [
  "miette",
  "nix 0.27.1",

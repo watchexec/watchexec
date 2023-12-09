@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v2.1.0 (2023-12-09)
+
 - Derive `Hash` for `Signal`.
 
 ## v2.0.0 (2023-11-29)

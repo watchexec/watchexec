@@ -71,7 +71,7 @@ path = "../events"
 features = ["serde"]
 
 [dependencies.watchexec-signals]
-version = "2.0.0"
+version = "2.1.0"
 path = "../signals"
 
 [dependencies.watchexec-filterer-globset]
