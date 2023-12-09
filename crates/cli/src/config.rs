@@ -265,6 +265,12 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 			// pass all other signals on
 			for signal in signals {
 				job.signal(signal);
+
+				// only filesystem events below here (or empty synthetic events)
+				if action.paths().next().is_none() && !action.events.iter().any(|e| e.is_empty()) {
+					debug!("no filesystem or synthetic events, skip without doing more");
+					show_events();
+					return action;
 			}
 
 			// clear the screen before printing events
