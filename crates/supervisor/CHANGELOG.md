@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v1.0.2 (2023-12-09)
+
 - Add `trace`-level logging to Job task.
 
 ## v1.0.1 (2023-11-29)
