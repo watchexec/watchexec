@@ -242,7 +242,11 @@ pub struct Args {
 	/// Takes a pair of signal names, separated by a colon, such as "TERM:INT" to map SIGTERM to
 	/// SIGINT. The first signal is the one received by watchexec, and the second is the one sent to
 	/// the command. The second can be omitted to discard the first signal, such as "TERM:" to
-	/// not do anything on SIGTERM. Note this can make it hard to quit watchexec itself.
+	/// not do anything on SIGTERM.
+	///
+	/// If SIGINT or SIGTERM are mapped, then they no longer quit Watchexec. Besides making it hard
+	/// to quit Watchexec itself, this is useful to send pass a Ctrl-C to the command without also
+	/// terminating Watchexec and the underlying program with it, e.g. with "INT:INT".
 	///
 	/// This option can be specified multiple times to map multiple signals.
 	///
