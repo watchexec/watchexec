@@ -252,8 +252,8 @@ pub struct Args {
 	///
 	/// Signal syntax is case-insensitive for short names (like "TERM", "USR2") and long names (like
 	/// "SIGKILL", "SIGHUP"). Signal numbers are also supported (like "15", "31"). On Windows, the
-	/// forms "STOP", "CTRL+C", "CTRL+BREAK", and "CTRL+CLOSE" are also supported to parse, but will
-	/// not actually do anything as Watchexec cannot yet deliver nor receive those events.
+	/// forms "STOP", "CTRL+C", and "CTRL+BREAK" are also supported to receive, but Watchexec cannot
+	/// yet deliver other "signals" than a STOP.
 	#[arg(long = "map-signal", value_name = "SIGNAL:SIGNAL", value_parser = SignalMappingValueParser)]
 	pub signal_map: Vec<SignalMapping>,
 
