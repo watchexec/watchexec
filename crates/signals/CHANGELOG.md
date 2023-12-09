@@ -22,6 +22,7 @@
 ## v2.1.0 (2023-12-09)
 
 - Derive `Hash` for `Signal`.
+- Add `Continue`, `Suspend`, and `TerminalSuspend` as first-class signals.
 
 ## v2.0.0 (2023-11-29)
 
