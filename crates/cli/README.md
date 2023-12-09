@@ -176,6 +176,6 @@ If not bundled, you can generate completions for your shell with `watchexec --co
 There's a manual page at `doc/watchexec.1`. Install it to `/usr/share/man/man1/`.
 If not bundled, you can generate a manual page with `watchexec --manual > /path/to/watchexec.1`, or view it inline with `watchexec --manual` (requires `man`).
 
-You can also [read a text version](../../doc/watchexec.1.md) or a [PDF](../../doc/watchexec.1.pdf).
+You can also [read a text version](../../doc/watchexec.1.md).
 
 Note that it is automatically generated from the help text, so it is not as pretty as a carefully hand-written one.

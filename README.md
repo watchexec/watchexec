@@ -49,7 +49,7 @@ More usage examples: [in the CLI README](./crates/cli/#usage-examples)!
 
 All options in detail: [in the CLI README](./crates/cli/#installation),
 in the online help (`watchexec -h`, `watchexec --help`, or `watchexec --manual`),
-and [in the manual page](./doc/watchexec.1.md) ([PDF](./doc/watchexec.1.pdf)).
+and [in the manual page](./doc/watchexec.1.md).
 
 
 ## Augment
