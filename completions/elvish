@@ -28,6 +28,7 @@ set edit:completion:arg-completer[watchexec] = {|@words|
             cand --signal 'Send a signal to the process when it''s still running'
             cand --stop-signal 'Signal to send to stop the command'
             cand --stop-timeout 'Time to wait for the command to exit gracefully'
+            cand --map-signal 'Translate signals from the OS to signals to send to the command'
             cand -d 'Time to wait for new events before taking action'
             cand --debounce 'Time to wait for new events before taking action'
             cand --delay-run 'Sleep before running the command'

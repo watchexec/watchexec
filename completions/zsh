@@ -25,6 +25,7 @@ _watchexec() {
 '(-r --restart -W --watch-when-idle)--signal=[Send a signal to the process when it'\''s still running]:SIGNAL: ' \
 '--stop-signal=[Signal to send to stop the command]:SIGNAL: ' \
 '--stop-timeout=[Time to wait for the command to exit gracefully]:TIMEOUT: ' \
+'*--map-signal=[Translate signals from the OS to signals to send to the command]:SIGNAL:SIGNAL: ' \
 '-d+[Time to wait for new events before taking action]:TIMEOUT: ' \
 '--debounce=[Time to wait for new events before taking action]:TIMEOUT: ' \
 '--delay-run=[Sleep before running the command]:DURATION: ' \

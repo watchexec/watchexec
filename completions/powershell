@@ -31,6 +31,7 @@ Register-ArgumentCompleter -Native -CommandName 'watchexec' -ScriptBlock {
             [CompletionResult]::new('--signal', 'signal', [CompletionResultType]::ParameterName, 'Send a signal to the process when it''s still running')
             [CompletionResult]::new('--stop-signal', 'stop-signal', [CompletionResultType]::ParameterName, 'Signal to send to stop the command')
             [CompletionResult]::new('--stop-timeout', 'stop-timeout', [CompletionResultType]::ParameterName, 'Time to wait for the command to exit gracefully')
+            [CompletionResult]::new('--map-signal', 'map-signal', [CompletionResultType]::ParameterName, 'Translate signals from the OS to signals to send to the command')
             [CompletionResult]::new('-d', 'd', [CompletionResultType]::ParameterName, 'Time to wait for new events before taking action')
             [CompletionResult]::new('--debounce', 'debounce', [CompletionResultType]::ParameterName, 'Time to wait for new events before taking action')
             [CompletionResult]::new('--delay-run', 'delay-run', [CompletionResultType]::ParameterName, 'Sleep before running the command')

@@ -7,7 +7,7 @@ watchexec - Execute commands when watched files change
 **watchexec** \[**-w**\|**\--watch**\] \[**-c**\|**\--clear**\]
 \[**-o**\|**\--on-busy-update**\] \[**-r**\|**\--restart**\]
 \[**-s**\|**\--signal**\] \[**\--stop-signal**\] \[**\--stop-timeout**\]
-\[**-d**\|**\--debounce**\] \[**\--stdin-quit**\]
+\[**\--map-signal**\] \[**-d**\|**\--debounce**\] \[**\--stdin-quit**\]
 \[**\--no-vcs-ignore**\] \[**\--no-project-ignore**\]
 \[**\--no-global-ignore**\] \[**\--no-default-ignore**\]
 \[**\--no-discover-ignore**\] \[**\--ignore-nothing**\]
@@ -161,6 +161,26 @@ command.
 
 This has no practical effect on Windows as the command is always
 forcefully terminated; see \--stop-signal for why.
+
+**\--map-signal**=*SIGNAL:SIGNAL*
+
+:   Translate signals from the OS to signals to send to the command
+
+Takes a pair of signal names, separated by a colon, such as \"TERM:INT\"
+to map SIGTERM to SIGINT. The first signal is the one received by
+watchexec, and the second is the one sent to the command. The second can
+be omitted to discard the first signal, such as \"TERM:\" to not do
+anything on SIGTERM. Note this can make it hard to quit watchexec
+itself.
+
+This option can be specified multiple times to map multiple signals.
+
+Signal syntax is case-insensitive for short names (like \"TERM\",
+\"USR2\") and long names (like \"SIGKILL\", \"SIGHUP\"). Signal numbers
+are also supported (like \"15\", \"31\"). On Windows, the forms
+\"STOP\", \"CTRL+C\", \"CTRL+BREAK\", and \"CTRL+CLOSE\" are also
+supported to parse, but will not actually do anything as Watchexec
+cannot yet deliver nor receive those events.
 
 **-d**, **\--debounce**=*TIMEOUT*
 
