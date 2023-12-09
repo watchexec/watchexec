@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+- Derive `Hash` for `Signal`.
+
 ## v2.0.0 (2023-11-29)
 
 - Deps: upgrade nix to 0.27
