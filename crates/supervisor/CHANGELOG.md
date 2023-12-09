@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+- Add `trace`-level logging to Job task.
+
 ## v1.0.1 (2023-11-29)
 
 - Deps: watchexec-events 2.0.1

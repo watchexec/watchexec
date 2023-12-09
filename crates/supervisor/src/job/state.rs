@@ -3,6 +3,7 @@ use std::{sync::Arc, time::Instant};
 #[cfg(not(test))]
 use command_group::{tokio::ErasedChild, AsyncCommandGroup};
 use tokio::process::Command as TokioCommand;
+use tracing::trace;
 use watchexec_events::ProcessEnd;
 
 use crate::command::Command;
@@ -74,8 +75,11 @@ impl CommandState {
 		mut spawnable: TokioCommand,
 	) -> std::io::Result<bool> {
 		if let Self::Running { .. } = self {
+			trace!("command running, not spawning again");
 			return Ok(false);
 		}
+
+		trace!(?command, "spawning command");
 
 		#[cfg(test)]
 		let child = super::TestChild::new(command)?;
@@ -96,6 +100,7 @@ impl CommandState {
 
 	#[must_use]
 	pub(crate) fn reset(&mut self) -> Self {
+		trace!(?self, "resetting command state");
 		match self {
 			Self::Pending => Self::Pending,
 			Self::Finished {
