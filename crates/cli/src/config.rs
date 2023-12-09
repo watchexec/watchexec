@@ -4,7 +4,7 @@ use std::{
 	env::current_dir,
 	ffi::{OsStr, OsString},
 	fs::File,
-	io::{stderr, IsTerminal, Write},
+	io::{IsTerminal, Write},
 	path::Path,
 	process::Stdio,
 	sync::Arc,
@@ -147,6 +147,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 
 	let delay_run = args.delay_run.map(|ts| ts.0);
 	let on_busy = args.on_busy_update;
+	let stdin_quit = args.stdin_quit;
 
 	let signal = args.signal;
 	let stop_signal = args.stop_signal;
@@ -256,7 +257,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 					.events
 					.iter()
 					.any(|e| e.tags.contains(&Tag::Keyboard(Keyboard::Eof)));
-				if is_keyboard_eof {
+				if stdin_quit && is_keyboard_eof {
 					debug!("keyboard EOF, quit");
 					show_events();
 					action.quit();
@@ -561,8 +562,9 @@ fn end_of_process(state: &CommandState, outflags: OutputFlags) {
 	}
 
 	if outflags.bell {
-		eprint!("\x07");
-		stderr().flush().ok();
+		let mut stdout = std::io::stdout();
+		stdout.write_all(b"\x07").ok();
+		stdout.flush().ok();
 	}
 }
 

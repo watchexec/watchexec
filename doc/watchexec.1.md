@@ -170,17 +170,20 @@ Takes a pair of signal names, separated by a colon, such as \"TERM:INT\"
 to map SIGTERM to SIGINT. The first signal is the one received by
 watchexec, and the second is the one sent to the command. The second can
 be omitted to discard the first signal, such as \"TERM:\" to not do
-anything on SIGTERM. Note this can make it hard to quit watchexec
-itself.
+anything on SIGTERM.
+
+If SIGINT or SIGTERM are mapped, then they no longer quit Watchexec.
+Besides making it hard to quit Watchexec itself, this is useful to send
+pass a Ctrl-C to the command without also terminating Watchexec and the
+underlying program with it, e.g. with \"INT:INT\".
 
 This option can be specified multiple times to map multiple signals.
 
 Signal syntax is case-insensitive for short names (like \"TERM\",
 \"USR2\") and long names (like \"SIGKILL\", \"SIGHUP\"). Signal numbers
 are also supported (like \"15\", \"31\"). On Windows, the forms
-\"STOP\", \"CTRL+C\", \"CTRL+BREAK\", and \"CTRL+CLOSE\" are also
-supported to parse, but will not actually do anything as Watchexec
-cannot yet deliver nor receive those events.
+\"STOP\", \"CTRL+C\", and \"CTRL+BREAK\" are also supported to receive,
+but Watchexec cannot yet deliver other \"signals\" than a STOP.
 
 **-d**, **\--debounce**=*TIMEOUT*
 
@@ -758,7 +761,7 @@ Didnt expect this much output? Use the short -h flag to get short help.
 
 # VERSION
 
-v1.23.0
+v1.24.0
 
 # AUTHORS
 
