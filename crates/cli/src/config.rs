@@ -15,7 +15,7 @@ use miette::{miette, IntoDiagnostic, Report, Result};
 use notify_rust::Notification;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use tokio::{process::Command as TokioCommand, time::sleep};
-use tracing::{debug, debug_span, error};
+use tracing::{debug, debug_span, error, instrument, trace, trace_span, Instrument};
 use watchexec::{
 	command::{Command, Program, Shell, SpawnOptions},
 	error::RuntimeError,
@@ -32,7 +32,7 @@ use crate::{
 };
 use crate::{emits::events_to_simple_format, state::State};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 struct OutputFlags {
 	quiet: bool,
 	colour: ColorChoice,
@@ -189,12 +189,16 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 		let command = command.clone();
 		let emit_file = emit_file.clone();
 		let workdir = workdir.clone();
-		Box::new(async move {
+		Box::new(
+			async move {
+				trace!(events=?action.events, "handling action");
+
 			let add_envs = add_envs.clone();
 			let command = command.clone();
 			let emit_file = emit_file.clone();
 			let workdir = workdir.clone();
 
+				trace!("set spawn hook for workdir and environment variables");
 			let job = action.get_or_create_job(id, move || command.clone());
 			let events = action.events.clone();
 			job.set_spawn_hook(move |command, _| {
@@ -212,6 +216,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 
 			let show_events = || {
 				if print_events {
+						trace!("print events to stderr");
 					for (n, event) in action.events.iter().enumerate() {
 						eprintln!("[EVENT {n}] {event}");
 					}
@@ -219,6 +224,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 			};
 
 			if once {
+					debug!("debug mode: run once and quit");
 				show_events();
 
 				if let Some(delay) = delay_run {
@@ -247,6 +253,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 			}
 
 			let signals: Vec<Signal> = action.signals().collect();
+				trace!(?signals, "received some signals");
 
 			// if we got a terminate or interrupt signal, quit
 			if signals.contains(&Signal::Terminate) || signals.contains(&Signal::Interrupt) {
@@ -265,6 +272,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 				match mode {
 					ClearMode::Clear => {
 						clearscreen::clear().ok();
+							debug!("cleared screen");
 					}
 					ClearMode::Reset => {
 						for cs in [
@@ -276,6 +284,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 						] {
 							cs.clear().ok();
 						}
+							debug!("hard-reset screen");
 					}
 				}
 			}
@@ -283,6 +292,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 			show_events();
 
 			if let Some(delay) = delay_run {
+					trace!("delaying run by sleeping inside the job");
 				job.run_async(move |_| {
 					Box::new(async move {
 						sleep(delay).await;
@@ -290,6 +300,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 				});
 			}
 
+				trace!("querying job state via run_async");
 			job.run_async({
 				let job = job.clone();
 				move |context| {
@@ -298,6 +309,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 					Box::new(async move {
 						let innerjob = job.clone();
 						if is_running {
+								trace!(?on_busy, "job is running, decide what to do");
 							match on_busy {
 								OnBusyUpdate::DoNothing => {}
 								OnBusyUpdate::Signal => {
@@ -346,9 +358,14 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 								}
 							}
 						} else {
+								trace!("job is not running, start it");
 							job.start();
 							job.run(move |context| {
-								setup_process(innerjob.clone(), context.command.clone(), outflags)
+									setup_process(
+										innerjob.clone(),
+										context.command.clone(),
+										outflags,
+									)
 							});
 						}
 					})
@@ -356,12 +373,15 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 			});
 
 			action
-		})
+			}
+			.instrument(trace_span!("action handler")),
+		)
 	});
 
 	Ok(config)
 }
 
+#[instrument(level = "debug")]
 fn interpret_command_args(args: &Args) -> Result<Arc<Command>> {
 	let mut cmd = args.command.clone();
 	if cmd.is_empty() {
@@ -422,6 +442,7 @@ fn interpret_command_args(args: &Args) -> Result<Arc<Command>> {
 	}))
 }
 
+#[instrument(level = "trace")]
 fn setup_process(job: Job, command: Arc<Command>, outflags: OutputFlags) {
 	if outflags.toast {
 		Notification::new()
@@ -452,6 +473,7 @@ fn setup_process(job: Job, command: Arc<Command>, outflags: OutputFlags) {
 	});
 }
 
+#[instrument(level = "trace")]
 fn end_of_process(state: &CommandState, outflags: OutputFlags) {
 	let CommandState::Finished {
 		status,
@@ -509,6 +531,7 @@ fn end_of_process(state: &CommandState, outflags: OutputFlags) {
 	}
 }
 
+#[instrument(level = "trace")]
 fn emit_events_to_command(
 	command: &mut TokioCommand,
 	events: Arc<[Event]>,
