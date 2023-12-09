@@ -124,6 +124,17 @@ pub struct Config {
 	/// This maps directly to [`notify::Config::with_follow_symlinks`].
 	pub follow_symlinks: Changeable<bool>,
 
+	/// Listen for Unix job-control signals (`SIGTSTP` and `SIGCONT`).
+	///
+	/// This is disabled by default because installing a `SIGTSTP` listener suppresses the operating
+	/// system's default suspend behaviour. Applications which enable this must suspend themselves
+	/// after handling the emitted [`Signal::TerminalSuspend`](watchexec_signals::Signal) event.
+	///
+	/// This has no effect on non-Unix platforms. It is unchangeable at runtime and must be set
+	/// before Watchexec instantiation because Unix signal dispositions cannot be restored after a
+	/// Tokio signal listener is installed.
+	pub signal_job_control: bool,
+
 	/// Watch stdin and emit events when input comes in over the keyboard.
 	///
 	/// If this is true, the keyboard event source is started and stdin is switched to raw mode
@@ -179,6 +190,7 @@ impl Default for Config {
 			pathset: Default::default(),
 			file_watcher: Default::default(),
 			follow_symlinks: Changeable::new(true),
+			signal_job_control: false,
 			keyboard_events: Default::default(),
 			throttle: Changeable::new(Duration::from_millis(50)),
 			filterer: Default::default(),

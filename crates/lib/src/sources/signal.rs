@@ -46,7 +46,7 @@ pub async fn worker(
 
 #[cfg(unix)]
 async fn imp_worker(
-	_config: Arc<Config>,
+	config: Arc<Config>,
 	errors: mpsc::Sender<RuntimeError>,
 	events: priority::Sender<Event, Priority>,
 ) -> Result<(), CriticalError> {
@@ -55,13 +55,13 @@ async fn imp_worker(
 	debug!("launching unix signal worker");
 
 	macro_rules! listen {
-    ($sig:ident) => {{
-        trace!(kind=%stringify!($sig), "listening for unix signal");
-        signal(SignalKind::$sig()).map_err(|err| CriticalError::IoError {
-        about: concat!("setting ", stringify!($sig), " signal listener"), err
-    })?
-    }}
-}
+		($sig:ident) => {{
+			trace!(kind=%stringify!($sig), "listening for unix signal");
+			signal(SignalKind::$sig()).map_err(|err| CriticalError::IoError {
+				about: concat!("setting ", stringify!($sig), " signal listener"), err
+			})?
+		}};
+	}
 
 	let mut s_hangup = listen!(hangup);
 	let mut s_interrupt = listen!(interrupt);
@@ -69,6 +69,23 @@ async fn imp_worker(
 	let mut s_terminate = listen!(terminate);
 	let mut s_user1 = listen!(user_defined1);
 	let mut s_user2 = listen!(user_defined2);
+
+	let (mut s_tstp, mut s_cont) = if config.signal_job_control {
+		debug!("configuring unix job-control signals");
+		let tstp =
+			signal(SignalKind::from_raw(libc::SIGTSTP)).map_err(|err| CriticalError::IoError {
+				about: "setting SIGTSTP signal listener",
+				err,
+			})?;
+		let cont =
+			signal(SignalKind::from_raw(libc::SIGCONT)).map_err(|err| CriticalError::IoError {
+				about: "setting SIGCONT signal listener",
+				err,
+			})?;
+		(Some(tstp), Some(cont))
+	} else {
+		(None, None)
+	};
 
 	loop {
 		let sig = select!(
@@ -78,6 +95,18 @@ async fn imp_worker(
 			_ = s_terminate.recv() => Signal::Terminate,
 			_ = s_user1.recv() => Signal::User1,
 			_ = s_user2.recv() => Signal::User2,
+			_ = async {
+				match &mut s_tstp {
+					Some(signal) => signal.recv().await,
+					None => std::future::pending().await,
+				}
+			} => Signal::TerminalSuspend,
+			_ = async {
+				match &mut s_cont {
+					Some(signal) => signal.recv().await,
+					None => std::future::pending().await,
+				}
+			} => Signal::Continue,
 		);
 
 		debug!(?sig, "received unix signal");

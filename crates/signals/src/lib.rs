@@ -192,8 +192,15 @@ impl Signal {
 impl From<i32> for Signal {
 	/// Converts from a raw signal number.
 	///
-	/// This uses hardcoded numbers for the first-class signals.
+	/// On Unix this uses the platform's signal table. Elsewhere it uses Linux signal numbers as a
+	/// portable approximation.
 	fn from(raw: i32) -> Self {
+		#[cfg(unix)]
+		if let Ok(signal) = NixSignal::try_from(raw) {
+			return Self::from_nix(signal);
+		}
+
+		#[cfg(not(unix))]
 		match raw {
 			1 => Self::Hangup,
 			2 => Self::Interrupt,
@@ -207,6 +214,9 @@ impl From<i32> for Signal {
 			20 => Self::TerminalSuspend,
 			_ => Self::Custom(raw),
 		}
+
+		#[cfg(unix)]
+		Self::Custom(raw)
 	}
 }
 
@@ -439,6 +449,39 @@ mod serde_support {
 				SerdeSignal::Named(NamedSignal::TerminalSuspend) => Self::TerminalSuspend,
 				SerdeSignal::Number(number) => Self::Custom(number),
 			}
+		}
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::Signal;
+
+	#[test]
+	fn parses_and_displays_job_control_signals() {
+		for (name, signal) in [
+			("SIGCONT", Signal::Continue),
+			("SIGSTOP", Signal::Suspend),
+			("SIGTSTP", Signal::TerminalSuspend),
+		] {
+			assert_eq!(Signal::from_unix_str(name).unwrap(), signal);
+			assert_eq!(signal.to_string(), name);
+		}
+	}
+
+	#[cfg(unix)]
+	#[test]
+	fn converts_job_control_signals_to_and_from_nix() {
+		use nix::sys::signal::Signal as NixSignal;
+
+		for (nix, signal) in [
+			(NixSignal::SIGCONT, Signal::Continue),
+			(NixSignal::SIGSTOP, Signal::Suspend),
+			(NixSignal::SIGTSTP, Signal::TerminalSuspend),
+		] {
+			assert_eq!(signal.to_nix(), Some(nix));
+			assert_eq!(Signal::from_nix(nix), signal);
+			assert_eq!(Signal::from(nix as i32), signal);
 		}
 	}
 }
