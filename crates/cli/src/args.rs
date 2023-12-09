@@ -1,6 +1,9 @@
-use std::{path::PathBuf, str::FromStr, time::Duration};
+use std::{ffi::OsStr, path::PathBuf, str::FromStr, time::Duration};
 
-use clap::{error::ErrorKind, ArgAction, CommandFactory, Parser, ValueEnum, ValueHint};
+use clap::{
+	builder::TypedValueParser, error::ErrorKind, Arg, ArgAction, Command, CommandFactory, Parser,
+	ValueEnum, ValueHint,
+};
 use watchexec::paths::PATH_SEPARATOR;
 use watchexec_signals::Signal;
 
@@ -233,6 +236,22 @@ pub struct Args {
 		value_name = "TIMEOUT"
 	)]
 	pub stop_timeout: TimeSpan,
+
+	/// Translate signals from the OS to signals to send to the command
+	///
+	/// Takes a pair of signal names, separated by a colon, such as "TERM:INT" to map SIGTERM to
+	/// SIGINT. The first signal is the one received by watchexec, and the second is the one sent to
+	/// the command. The second can be omitted to discard the first signal, such as "TERM:" to
+	/// not do anything on SIGTERM. Note this can make it hard to quit watchexec itself.
+	///
+	/// This option can be specified multiple times to map multiple signals.
+	///
+	/// Signal syntax is case-insensitive for short names (like "TERM", "USR2") and long names (like
+	/// "SIGKILL", "SIGHUP"). Signal numbers are also supported (like "15", "31"). On Windows, the
+	/// forms "STOP", "CTRL+C", "CTRL+BREAK", and "CTRL+CLOSE" are also supported to parse, but will
+	/// not actually do anything as Watchexec cannot yet deliver nor receive those events.
+	#[arg(long = "map-signal", value_name = "SIGNAL:SIGNAL", value_parser = SignalMappingValueParser)]
+	pub signal_map: Vec<SignalMapping>,
 
 	/// Time to wait for new events before taking action
 	///
@@ -969,6 +988,46 @@ impl<const UNITLESS_NANOS_MULTIPLIER: u64> FromStr for TimeSpan<UNITLESS_NANOS_M
 				|unitless| Ok(Duration::from_nanos(unitless * UNITLESS_NANOS_MULTIPLIER)),
 			)
 			.map(TimeSpan)
+	}
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct SignalMapping {
+	pub from: Signal,
+	pub to: Option<Signal>,
+}
+
+#[derive(Clone)]
+struct SignalMappingValueParser;
+
+impl TypedValueParser for SignalMappingValueParser {
+	type Value = SignalMapping;
+
+	fn parse_ref(
+		&self,
+		_cmd: &Command,
+		_arg: Option<&Arg>,
+		value: &OsStr,
+	) -> Result<Self::Value, clap::error::Error> {
+		let value = value
+			.to_str()
+			.ok_or_else(|| clap::error::Error::raw(ErrorKind::ValueValidation, "invalid UTF-8"))?;
+		let (from, to) = value
+			.split_once(':')
+			.ok_or_else(|| clap::error::Error::raw(ErrorKind::ValueValidation, "missing ':'"))?;
+
+		let from = from
+			.parse::<Signal>()
+			.map_err(|sigparse| clap::error::Error::raw(ErrorKind::ValueValidation, sigparse))?;
+		let to = if to.is_empty() {
+			None
+		} else {
+			Some(to.parse::<Signal>().map_err(|sigparse| {
+				clap::error::Error::raw(ErrorKind::ValueValidation, sigparse)
+			})?)
+		};
+
+		Ok(Self::Value { from, to })
 	}
 }
 
