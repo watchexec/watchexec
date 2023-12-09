@@ -3732,7 +3732,7 @@ dependencies = [
 
 [[package]]
 name = "watchexec-filterer-globset"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "ignore",
  "ignore-files",
@@ -3747,7 +3747,7 @@ dependencies = [
 
 [[package]]
 name = "watchexec-filterer-ignore"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "dunce",
  "ignore",
