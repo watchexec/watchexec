@@ -72,7 +72,12 @@ jobs:
     - name: Check that CLI runs
       run: cargo run ${{ env.flags }} -p watchexec-cli -- -1 echo
 
-    - name: Run watchexec integration tests
+    - name: Install coreutils on mac
+      if: ${{ matrix.platform == 'macos' }}
+      run: brew install coreutils
+
+    - name: Run watchexec integration tests (unix)
+      if: ${{ matrix.platform != 'windows' }}
       run: crates/cli/run-tests.sh
       shell: bash
       env:
