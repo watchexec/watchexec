@@ -1,4 +1,3 @@
 #!/bin/sh
 cargo run -p watchexec-cli -- --manual > doc/watchexec.1
-roff2pdf < doc/watchexec.1 > doc/watchexec.1.pdf
 pandoc doc/watchexec.1 -t markdown > doc/watchexec.1.md

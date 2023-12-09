@@ -27,7 +27,7 @@ use watchexec_events::{Event, Keyboard, ProcessEnd, Tag};
 use watchexec_signals::Signal;
 
 use crate::{
-	args::{Args, ClearMode, ColourMode, EmitEvents, OnBusyUpdate},
+	args::{Args, ClearMode, ColourMode, EmitEvents, OnBusyUpdate, SignalMapping},
 	state::RotatingTempFile,
 };
 use crate::{emits::events_to_simple_format, state::State};
@@ -184,50 +184,150 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 	let id = Id::default();
 	let command = interpret_command_args(args)?;
 
+	let signal_map: Arc<HashMap<Signal, Option<Signal>>> = Arc::new(
+		args.signal_map
+			.iter()
+			.copied()
+			.map(|SignalMapping { from, to }| (from, to))
+			.collect(),
+	);
+
 	config.on_action_async(move |mut action| {
 		let add_envs = add_envs.clone();
 		let command = command.clone();
 		let emit_file = emit_file.clone();
+		let signal_map = signal_map.clone();
 		let workdir = workdir.clone();
 		Box::new(
 			async move {
 				trace!(events=?action.events, "handling action");
 
-			let add_envs = add_envs.clone();
-			let command = command.clone();
-			let emit_file = emit_file.clone();
-			let workdir = workdir.clone();
+				let add_envs = add_envs.clone();
+				let command = command.clone();
+				let emit_file = emit_file.clone();
+				let signal_map = signal_map.clone();
+				let workdir = workdir.clone();
 
 				trace!("set spawn hook for workdir and environment variables");
-			let job = action.get_or_create_job(id, move || command.clone());
-			let events = action.events.clone();
-			job.set_spawn_hook(move |command, _| {
-				let add_envs = add_envs.clone();
-				let emit_file = emit_file.clone();
-				let events = events.clone();
+				let job = action.get_or_create_job(id, move || command.clone());
+				let events = action.events.clone();
+				job.set_spawn_hook(move |command, _| {
+					let add_envs = add_envs.clone();
+					let emit_file = emit_file.clone();
+					let events = events.clone();
 
-				if let Some(ref workdir) = workdir.as_ref() {
-					debug!(?workdir, "set command workdir");
-					command.current_dir(workdir);
+					if let Some(ref workdir) = workdir.as_ref() {
+						debug!(?workdir, "set command workdir");
+						command.current_dir(workdir);
+					}
+
+					emit_events_to_command(command, events, emit_file, emit_events_to, add_envs);
+				});
+
+				let show_events = || {
+					if print_events {
+						trace!("print events to stderr");
+						for (n, event) in action.events.iter().enumerate() {
+							eprintln!("[EVENT {n}] {event}");
+						}
+					}
+				};
+
+				if once {
+					debug!("debug mode: run once and quit");
+					show_events();
+
+					if let Some(delay) = delay_run {
+						job.run_async(move |_| {
+							Box::new(async move {
+								sleep(delay).await;
+							})
+						});
+					}
+
+					// this blocks the event loop, but also this is a debug feature so i don't care
+					job.start().await;
+					job.to_wait().await;
+					action.quit();
+					return action;
 				}
 
-				emit_events_to_command(command, events, emit_file, emit_events_to, add_envs);
-			});
+				let is_keyboard_eof = action
+					.events
+					.iter()
+					.any(|e| e.tags.contains(&Tag::Keyboard(Keyboard::Eof)));
+				if is_keyboard_eof {
+					debug!("keyboard EOF, quit");
+					show_events();
+					action.quit();
+					return action;
+				}
 
-			let show_events = || {
-				if print_events {
-						trace!("print events to stderr");
-					for (n, event) in action.events.iter().enumerate() {
-						eprintln!("[EVENT {n}] {event}");
+				let signals: Vec<Signal> = action.signals().collect();
+				trace!(?signals, "received some signals");
+
+				// if we got a terminate or interrupt signal and they're not mapped, quit
+				if (signals.contains(&Signal::Terminate)
+					&& !signal_map.contains_key(&Signal::Terminate))
+					|| (signals.contains(&Signal::Interrupt)
+						&& !signal_map.contains_key(&Signal::Interrupt))
+				{
+					debug!("unmapped terminate or interrupt signal, quit");
+					show_events();
+					action.quit();
+					return action;
+				}
+
+				// pass all other signals on
+				for signal in signals {
+					match signal_map.get(&signal) {
+						Some(Some(mapped)) => {
+							debug!(?signal, ?mapped, "passing mapped signal");
+							job.signal(*mapped);
+						}
+						Some(None) => {
+							debug!(?signal, "discarding signal");
+						}
+						None => {
+							debug!(?signal, "passing signal on");
+							job.signal(signal);
+						}
 					}
 				}
-			};
 
-			if once {
-					debug!("debug mode: run once and quit");
+				// only filesystem events below here (or empty synthetic events)
+				if action.paths().next().is_none() && !action.events.iter().any(|e| e.is_empty()) {
+					debug!("no filesystem or synthetic events, skip without doing more");
+					show_events();
+					return action;
+				}
+
+				// clear the screen before printing events
+				if let Some(mode) = clear {
+					match mode {
+						ClearMode::Clear => {
+							clearscreen::clear().ok();
+							debug!("cleared screen");
+						}
+						ClearMode::Reset => {
+							for cs in [
+								ClearScreen::WindowsCooked,
+								ClearScreen::WindowsVt,
+								ClearScreen::VtLeaveAlt,
+								ClearScreen::VtWellDone,
+								ClearScreen::default(),
+							] {
+								cs.clear().ok();
+							}
+							debug!("hard-reset screen");
+						}
+					}
+				}
+
 				show_events();
 
 				if let Some(delay) = delay_run {
+					trace!("delaying run by sleeping inside the job");
 					job.run_async(move |_| {
 						Box::new(async move {
 							sleep(delay).await;
@@ -235,118 +335,27 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 					});
 				}
 
-				// this blocks the event loop, but also this is a debug feature so i don't care
-				job.start().await;
-				job.to_wait().await;
-				action.quit();
-				return action;
-			}
-
-			let is_keyboard_eof = action
-				.events
-				.iter()
-				.any(|e| e.tags.contains(&Tag::Keyboard(Keyboard::Eof)));
-			if is_keyboard_eof {
-				show_events();
-				action.quit();
-				return action;
-			}
-
-			let signals: Vec<Signal> = action.signals().collect();
-				trace!(?signals, "received some signals");
-
-			// if we got a terminate or interrupt signal, quit
-			if signals.contains(&Signal::Terminate) || signals.contains(&Signal::Interrupt) {
-				show_events();
-				action.quit();
-				return action;
-			}
-
-			// pass all other signals on
-			for signal in signals {
-				job.signal(signal);
-			}
-
-			// clear the screen before printing events
-			if let Some(mode) = clear {
-				match mode {
-					ClearMode::Clear => {
-						clearscreen::clear().ok();
-							debug!("cleared screen");
-					}
-					ClearMode::Reset => {
-						for cs in [
-							ClearScreen::WindowsCooked,
-							ClearScreen::WindowsVt,
-							ClearScreen::VtLeaveAlt,
-							ClearScreen::VtWellDone,
-							ClearScreen::default(),
-						] {
-							cs.clear().ok();
-						}
-							debug!("hard-reset screen");
-					}
-				}
-			}
-
-			show_events();
-
-			if let Some(delay) = delay_run {
-					trace!("delaying run by sleeping inside the job");
-				job.run_async(move |_| {
-					Box::new(async move {
-						sleep(delay).await;
-					})
-				});
-			}
-
 				trace!("querying job state via run_async");
-			job.run_async({
-				let job = job.clone();
-				move |context| {
+				job.run_async({
 					let job = job.clone();
-					let is_running = matches!(context.current, CommandState::Running { .. });
-					Box::new(async move {
-						let innerjob = job.clone();
-						if is_running {
+					move |context| {
+						let job = job.clone();
+						let is_running = matches!(context.current, CommandState::Running { .. });
+						Box::new(async move {
+							let innerjob = job.clone();
+							if is_running {
 								trace!(?on_busy, "job is running, decide what to do");
-							match on_busy {
-								OnBusyUpdate::DoNothing => {}
-								OnBusyUpdate::Signal => {
-									job.signal(if cfg!(windows) {
-										Signal::ForceStop
-									} else {
-										stop_signal.or(signal).unwrap_or(Signal::Terminate)
-									});
-								}
-								OnBusyUpdate::Restart if cfg!(windows) => {
-									job.restart();
-									job.run(move |context| {
-										setup_process(
-											innerjob.clone(),
-											context.command.clone(),
-											outflags,
-										)
-									});
-								}
-								OnBusyUpdate::Restart => {
-									job.restart_with_signal(
-										stop_signal.unwrap_or(Signal::Terminate),
-										stop_timeout,
-									);
-									job.run(move |context| {
-										setup_process(
-											innerjob.clone(),
-											context.command.clone(),
-											outflags,
-										)
-									});
-								}
-								OnBusyUpdate::Queue => {
-									let job = job.clone();
-									tokio::spawn(async move {
-										job.to_wait().await;
-										job.start();
+								match on_busy {
+									OnBusyUpdate::DoNothing => {}
+									OnBusyUpdate::Signal => {
+										job.signal(if cfg!(windows) {
+											Signal::ForceStop
+										} else {
+											stop_signal.or(signal).unwrap_or(Signal::Terminate)
+										});
+									}
+									OnBusyUpdate::Restart if cfg!(windows) => {
+										job.restart();
 										job.run(move |context| {
 											setup_process(
 												innerjob.clone(),
@@ -354,25 +363,51 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 												outflags,
 											)
 										});
-									});
+									}
+									OnBusyUpdate::Restart => {
+										job.restart_with_signal(
+											stop_signal.unwrap_or(Signal::Terminate),
+											stop_timeout,
+										);
+										job.run(move |context| {
+											setup_process(
+												innerjob.clone(),
+												context.command.clone(),
+												outflags,
+											)
+										});
+									}
+									OnBusyUpdate::Queue => {
+										let job = job.clone();
+										tokio::spawn(async move {
+											job.to_wait().await;
+											job.start();
+											job.run(move |context| {
+												setup_process(
+													innerjob.clone(),
+													context.command.clone(),
+													outflags,
+												)
+											});
+										});
+									}
 								}
-							}
-						} else {
+							} else {
 								trace!("job is not running, start it");
-							job.start();
-							job.run(move |context| {
+								job.start();
+								job.run(move |context| {
 									setup_process(
 										innerjob.clone(),
 										context.command.clone(),
 										outflags,
 									)
-							});
-						}
-					})
-				}
-			});
+								});
+							}
+						})
+					}
+				});
 
-			action
+				action
 			}
 			.instrument(trace_span!("action handler")),
 		)
