@@ -3,6 +3,7 @@
 ## Next (YYYY-MM-DD)
 
 - Derive `Hash` for `Signal`.
+- Add `Continue`, `Suspend`, and `TerminalSuspend` as first-class signals.
 
 ## v2.0.0 (2023-11-29)
 
