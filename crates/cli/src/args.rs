@@ -1051,7 +1051,8 @@ pub fn get_args() -> Args {
 	}
 
 	debug!("expanding @argfile arguments if any");
-	let args = argfile::expand_args(argfile::parse_fromfile, argfile::PREFIX).unwrap();
+	let args = argfile::expand_args(argfile::parse_fromfile, argfile::PREFIX)
+		.expect("while expanding @argfile");
 
 	debug!("parsing arguments");
 	let mut args = Args::parse_from(args);
