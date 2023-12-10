@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v1.0.0 (2023-12-10)
+
 - Officially deprecate (crate is now unmaintained).
 - Depend on `watchexec-events` instead of the `watchexec` re-export.
 - Remove error diagnostic codes.
