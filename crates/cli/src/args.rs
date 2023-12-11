@@ -1,4 +1,9 @@
-use std::{ffi::OsStr, path::PathBuf, str::FromStr, time::Duration};
+use std::{
+	ffi::{OsStr, OsString},
+	path::PathBuf,
+	str::FromStr,
+	time::Duration,
+};
 
 use clap::{
 	builder::TypedValueParser, error::ErrorKind, Arg, ArgAction, Command, CommandFactory, Parser,
@@ -1035,6 +1040,48 @@ impl TypedValueParser for SignalMappingValueParser {
 	}
 }
 
+fn expand_args_up_to_doubledash() -> Result<Vec<OsString>, std::io::Error> {
+	use argfile::Argument;
+	use std::collections::VecDeque;
+
+	let args = std::env::args_os();
+	let mut expanded_args = Vec::with_capacity(args.size_hint().0);
+
+	let mut todo: VecDeque<_> = args.map(|a| Argument::parse(a, argfile::PREFIX)).collect();
+	while let Some(next) = todo.pop_front() {
+		match next {
+			Argument::PassThrough(arg) => {
+				expanded_args.push(arg.clone());
+				if arg == "--" {
+					break;
+				}
+			}
+			Argument::Path(path) => {
+				let content = std::fs::read_to_string(path)?;
+				let new_args = argfile::parse_fromfile(&content, argfile::PREFIX);
+				todo.reserve(new_args.len());
+				for (i, arg) in new_args.into_iter().enumerate() {
+					todo.insert(i, arg);
+				}
+			}
+		}
+	}
+
+	while let Some(next) = todo.pop_front() {
+		expanded_args.push(match next {
+			Argument::PassThrough(arg) => arg,
+			Argument::Path(path) => {
+				let path = path.as_os_str();
+				let mut restored = OsString::with_capacity(path.len() + 1);
+				restored.push(OsStr::new("@"));
+				restored.push(path);
+				restored
+			}
+		});
+	}
+	Ok(expanded_args)
+}
+
 #[inline]
 pub fn get_args() -> Args {
 	use tracing::{debug, warn};
@@ -1051,7 +1098,7 @@ pub fn get_args() -> Args {
 	}
 
 	debug!("expanding @argfile arguments if any");
-	let args = argfile::expand_args(argfile::parse_fromfile, argfile::PREFIX).unwrap();
+	let args = expand_args_up_to_doubledash().expect("while expanding @argfile");
 
 	debug!("parsing arguments");
 	let mut args = Args::parse_from(args);
