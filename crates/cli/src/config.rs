@@ -7,7 +7,11 @@ use std::{
 	io::{IsTerminal, Write},
 	path::Path,
 	process::Stdio,
-	sync::Arc,
+	sync::{
+		atomic::{AtomicU8, Ordering},
+		Arc,
+	},
+	time::Duration,
 };
 
 use clearscreen::ClearScreen;
@@ -17,6 +21,7 @@ use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use tokio::{process::Command as TokioCommand, time::sleep};
 use tracing::{debug, debug_span, error, instrument, trace, trace_span, Instrument};
 use watchexec::{
+	action::ActionHandler,
 	command::{Command, Program, Shell, SpawnOptions},
 	error::RuntimeError,
 	job::{CommandState, Job},
@@ -97,6 +102,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 				.signals()
 				.any(|sig| sig == Signal::Terminate || sig == Signal::Interrupt)
 			{
+				// no need to be graceful as there's no commands
 				action.quit();
 				return action;
 			}
@@ -193,10 +199,13 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 			.collect(),
 	);
 
+	let quit_again = Arc::new(AtomicU8::new(0));
+
 	config.on_action_async(move |mut action| {
 		let add_envs = add_envs.clone();
 		let command = command.clone();
 		let emit_file = emit_file.clone();
+		let quit_again = quit_again.clone();
 		let signal_map = signal_map.clone();
 		let workdir = workdir.clone();
 		Box::new(
@@ -206,6 +215,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 				let add_envs = add_envs.clone();
 				let command = command.clone();
 				let emit_file = emit_file.clone();
+				let quit_again = quit_again.clone();
 				let signal_map = signal_map.clone();
 				let workdir = workdir.clone();
 
@@ -234,6 +244,28 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 					}
 				};
 
+				let quit = |mut action: ActionHandler| {
+					match quit_again.fetch_add(1, Ordering::Relaxed) {
+						0 => {
+							eprintln!("[Waiting {stop_timeout:?} for processes to exit before stopping...]");
+							// eprintln!("[Waiting {stop_timeout:?} for processes to exit before stopping... Ctrl-C again to exit faster]");
+							// see TODO in action/worker.rs
+							action.quit_gracefully(
+								stop_signal.unwrap_or(Signal::Terminate),
+								stop_timeout,
+							);
+						}
+						1 => {
+							action.quit_gracefully(Signal::ForceStop, Duration::ZERO);
+						}
+						_ => {
+							action.quit();
+						}
+					}
+
+					action
+				};
+
 				if once {
 					debug!("debug mode: run once and quit");
 					show_events();
@@ -249,8 +281,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 					// this blocks the event loop, but also this is a debug feature so i don't care
 					job.start().await;
 					job.to_wait().await;
-					action.quit();
-					return action;
+					return quit(action);
 				}
 
 				let is_keyboard_eof = action
@@ -260,8 +291,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 				if stdin_quit && is_keyboard_eof {
 					debug!("keyboard EOF, quit");
 					show_events();
-					action.quit();
-					return action;
+					return quit(action);
 				}
 
 				let signals: Vec<Signal> = action.signals().collect();
@@ -275,8 +305,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 				{
 					debug!("unmapped terminate or interrupt signal, quit");
 					show_events();
-					action.quit();
-					return action;
+					return quit(action);
 				}
 
 				// pass all other signals on
