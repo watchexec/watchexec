@@ -74,6 +74,8 @@ pub async fn worker(
 							job.delete().await;
 						});
 					}
+					// TODO: spawn to process actions, and allow events to come in while
+					//       waiting for graceful shutdown, e.g. a second Ctrl-C to hasten
 					debug!("waiting for graceful shutdown tasks");
 					tasks.join_all().await;
 					debug!("waiting for job tasks to end");
