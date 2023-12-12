@@ -179,3 +179,19 @@ If not bundled, you can generate a manual page with `watchexec --manual > /path/
 You can also [read a text version](../../doc/watchexec.1.md).
 
 Note that it is automatically generated from the help text, so it is not as pretty as a carefully hand-written one.
+
+## Advanced builds
+
+These are additional options available with custom builds by setting features:
+
+### PID1
+
+If you're using Watchexec as PID1 (most frequently in containers or namespaces), and it's not doing what you expect, you can create a build with PID1 early logging: `--features pid1-withlog`.
+
+If you don't need PID1 support, or if you're doing something that conflicts with this program's PID1 support, you can disable it with `--no-default-features`.
+
+### Eyra
+
+[Eyra](https://github.com/sunfishcode/eyra) is a system to build Linux programs with no dependency on C code (in the libc path). To build Watchexec like this, use `--features eyra` and a Nightly compiler.
+
+This feature also lets you get early logging into program startup, with `RUST_LOG=trace`.
