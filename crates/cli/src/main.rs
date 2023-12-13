@@ -1,3 +1,6 @@
+#[cfg(feature = "eyra")]
+extern crate eyra;
+
 use miette::IntoDiagnostic;
 
 #[cfg(target_env = "musl")]
