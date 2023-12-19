@@ -184,6 +184,8 @@ jobs:
             ${{ runner.os }}-cargo-${{ matrix.target }}-
             ${{ runner.os }}-cargo-
 
+      - run: apt update
+        if: startsWith(matrix.os, 'ubuntu-')
       - name: Add musl tools
         run: sudo apt install -y musl musl-dev musl-tools
         if: endsWith(matrix.target, '-musl')
