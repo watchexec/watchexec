@@ -2,6 +2,9 @@
 
 ## Next (YYYY-MM-DD)
 
+- Fix Start executing even when the job is running.
+- Add kill-on-drop to guarantee no two processes run at the same time.
+
 ## v1.0.2 (2023-12-09)
 
 - Add `trace`-level logging to Job task.
