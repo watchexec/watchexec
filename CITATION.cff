@@ -3,8 +3,8 @@ message: |
   If you use this software, please cite it using these metadata.
 title: "Watchexec: a tool to react to filesystem changes, and a crate ecosystem to power it"
 
-version: "1.24.1"
-date-released: 2023-12-11
+version: "1.24.2"
+date-released: 2023-12-19
 
 repository-code: https://github.com/watchexec/watchexec
 license: Apache-2.0
