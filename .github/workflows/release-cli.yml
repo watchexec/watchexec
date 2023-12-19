@@ -44,7 +44,7 @@ jobs:
           GITHUB_REPO: ${{ github.repository }}
           release_commit: ${{ github.event.head_commit.message }}
         run: |
-          set -euxo pipefail
+          set -x
           release_pr=$(head -n1 <<< "${release_commit:-}" | grep -oP '(?<=[(]#)\d+(?=[)])')
           if [[ -z "$release_pr" ]]; then
             echo "notes_json=null" >> $GITHUB_OUTPUT
