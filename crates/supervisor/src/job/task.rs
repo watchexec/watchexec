@@ -136,19 +136,23 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 
 							match control {
 								Control::Start => {
-									let mut spawnable = command.to_spawnable();
-									previous_run = Some(command_state.reset());
-									spawn_hook
-										.call(
-											&mut spawnable,
-											&JobTaskContext {
-												command: command.clone(),
-												current: &command_state,
-												previous: previous_run.as_ref(),
-											},
-										)
-										.await;
-									try_with_handler!(command_state.spawn(command.clone(), spawnable).await);
+									if command_state.is_running() {
+										trace!("child is running, skip");
+									} else {
+										let mut spawnable = command.to_spawnable();
+										previous_run = Some(command_state.reset());
+										spawn_hook
+											.call(
+												&mut spawnable,
+												&JobTaskContext {
+													command: command.clone(),
+													current: &command_state,
+													previous: previous_run.as_ref(),
+												},
+											)
+											.await;
+										try_with_handler!(command_state.spawn(command.clone(), spawnable).await);
+									}
 								}
 								Control::Stop => {
 									if let CommandState::Running { child, started, .. } = &mut command_state {

@@ -86,9 +86,9 @@ impl CommandState {
 
 		#[cfg(not(test))]
 		let child = if command.options.grouped {
-			ErasedChild::Grouped(spawnable.group().spawn()?)
+			ErasedChild::Grouped(spawnable.group().kill_on_drop(true).spawn()?)
 		} else {
-			ErasedChild::Ungrouped(spawnable.spawn()?)
+			ErasedChild::Ungrouped(spawnable.kill_on_drop(true).spawn()?)
 		};
 
 		*self = Self::Running {

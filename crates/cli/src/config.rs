@@ -8,7 +8,7 @@ use std::{
 	path::Path,
 	process::Stdio,
 	sync::{
-		atomic::{AtomicU8, Ordering},
+		atomic::{AtomicBool, AtomicU8, Ordering},
 		Arc,
 	},
 	time::Duration,
@@ -199,12 +199,14 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 			.collect(),
 	);
 
+	let queued = Arc::new(AtomicBool::new(false));
 	let quit_again = Arc::new(AtomicU8::new(0));
 
 	config.on_action_async(move |mut action| {
 		let add_envs = add_envs.clone();
 		let command = command.clone();
 		let emit_file = emit_file.clone();
+		let queued = queued.clone();
 		let quit_again = quit_again.clone();
 		let signal_map = signal_map.clone();
 		let workdir = workdir.clone();
@@ -215,6 +217,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 				let add_envs = add_envs.clone();
 				let command = command.clone();
 				let emit_file = emit_file.clone();
+				let queued = queued.clone();
 				let quit_again = quit_again.clone();
 				let signal_map = signal_map.clone();
 				let workdir = workdir.clone();
@@ -409,17 +412,32 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 									}
 									OnBusyUpdate::Queue => {
 										let job = job.clone();
-										tokio::spawn(async move {
-											job.to_wait().await;
-											job.start();
-											job.run(move |context| {
-												setup_process(
-													innerjob.clone(),
-													context.command.clone(),
-													outflags,
-												)
+										let already_queued =
+											queued.fetch_or(true, Ordering::SeqCst);
+										if already_queued {
+											debug!("next start is already queued, do nothing");
+										} else {
+											debug!("queueing next start of job");
+											tokio::spawn({
+												let queued = queued.clone();
+												async move {
+													trace!("waiting for job to finish");
+													job.to_wait().await;
+													trace!("job finished, starting queued");
+													job.start();
+													job.run(move |context| {
+														setup_process(
+															innerjob.clone(),
+															context.command.clone(),
+															outflags,
+														)
+													})
+													.await;
+													trace!("resetting queued state");
+													queued.store(false, Ordering::SeqCst);
+												}
 											});
-										});
+										}
 									}
 								}
 							} else {
