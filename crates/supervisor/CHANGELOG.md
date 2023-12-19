@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v1.0.3 (2023-12-19)
+
 - Fix Start executing even when the job is running.
 - Add kill-on-drop to guarantee no two processes run at the same time.
 
