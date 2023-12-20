@@ -17,8 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       cli_version: ${{ steps.version.outputs.cli_version }}
-      release_notes: ${{ fromJSON(steps.notes.outputs.notes_json) }}
-      announce: ${{ steps.announce.outputs.announce }}
+      release_notes: ${{ fromJSON(steps.notes.outputs.notes_json || 'null') }}
+      announce: ${{ steps.announce.outputs.announce || '' }}
     steps:
       - uses: actions/checkout@v4
       - name: Extract version
@@ -37,6 +37,7 @@ jobs:
           echo "cli_version=$version" >> $GITHUB_OUTPUT
 
       - name: Extract release notes
+        if: github.event.head_commit.message
         id: notes
         shell: bash
         env:
@@ -45,7 +46,13 @@ jobs:
           release_commit: ${{ github.event.head_commit.message }}
         run: |
           set -x
-          release_pr=$(head -n1 <<< "${release_commit:-}" | grep -oP '(?<=[(]#)\d+(?=[)])')
+          set +eo pipefail
+          if [[ -z "$release_commit" ]]; then
+            echo "notes_json=null" >> $GITHUB_OUTPUT
+            exit
+          fi
+
+          release_pr=$(head -n1 <<< "$release_commit" | grep -oP '(?<=[(]#)\d+(?=[)])')
           if [[ -z "$release_pr" ]]; then
             echo "notes_json=null" >> $GITHUB_OUTPUT
             exit
@@ -184,7 +191,7 @@ jobs:
             ${{ runner.os }}-cargo-${{ matrix.target }}-
             ${{ runner.os }}-cargo-
 
-      - run: apt update
+      - run: sudo apt update
         if: startsWith(matrix.os, 'ubuntu-')
       - name: Add musl tools
         run: sudo apt install -y musl musl-dev musl-tools
@@ -308,8 +315,8 @@ jobs:
       - name: Dist manifest
         run: |
           jq -ncf .github/workflows/dist-manifest.jq \
-            --arg version "{{ needs.info.outputs.cli_version }}" \
-            --arg changelog "{{ needs.info.outputs.release_notes }}" \
+            --arg version "${{ needs.info.outputs.cli_version }}" \
+            --arg changelog "${{ needs.info.outputs.release_notes }}" \
             --arg files "$(ls watchexec-*)" \
             > dist-manifest.json
 
