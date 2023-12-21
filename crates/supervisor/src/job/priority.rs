@@ -65,7 +65,7 @@ impl PriorityReceiver {
 
 		if let Some(timer) = stop_timer.clone() {
 			select! {
-				_ = timer.to_sleep() => {
+				() = timer.to_sleep() => {
 					*stop_timer = None;
 					Some(timer.to_control())
 				}

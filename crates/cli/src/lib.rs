@@ -36,7 +36,7 @@ async fn init() -> Result<Args> {
 
 	if !log_on && var("RUST_LOG").is_ok() {
 		match tracing_subscriber::fmt::try_init() {
-			Ok(_) => {
+			Ok(()) => {
 				warn!(RUST_LOG=%var("RUST_LOG").unwrap(), "logging configured from RUST_LOG");
 				log_on = true;
 			}
@@ -88,7 +88,7 @@ async fn init() -> Result<Args> {
 		} else {
 			builder.try_init()
 		} {
-			Ok(_) => info!("logging initialised"),
+			Ok(()) => info!("logging initialised"),
 			Err(e) => eprintln!("Failed to initialise logging, continuing with none\n{e}"),
 		}
 	}
@@ -162,13 +162,14 @@ async fn run_manpage(_args: Args) -> Result<()> {
 	Ok(())
 }
 
+#[allow(clippy::unused_async)]
 async fn run_completions(shell: ShellCompletion) -> Result<()> {
-	info!(version=%env!("CARGO_PKG_VERSION"), "constructing completions");
-
 	fn generate(generator: impl Generator) {
 		let mut cmd = Args::command();
 		clap_complete::generate(generator, &mut cmd, "watchexec", &mut std::io::stdout());
 	}
+
+	info!(version=%env!("CARGO_PKG_VERSION"), "constructing completions");
 
 	match shell {
 		ShellCompletion::Bash => generate(Shell::Bash),

@@ -317,8 +317,6 @@ impl TaggedFilterer {
 	// Ok(Some(bool)) => the match was applied, bool is the result
 	// Ok(None) => for some precondition, the match was not done (mismatched tag, out of context, …)
 	fn match_tag(&self, filter: &Filter, tag: &Tag) -> Result<Option<bool>, TaggedFiltererError> {
-		trace!(matcher=?filter.on, "matching filter to tag");
-
 		const fn sig_match(sig: Signal) -> (&'static str, i32) {
 			match sig {
 				Signal::Hangup | Signal::Custom(1) => ("HUP", 1),
@@ -332,6 +330,8 @@ impl TaggedFilterer {
 				_ => ("UNK", 0),
 			}
 		}
+
+		trace!(matcher=?filter.on, "matching filter to tag");
 
 		match (tag, filter.on) {
 			(tag, Matcher::Tag) => filter.matches(tag.discriminant_name()),

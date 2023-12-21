@@ -97,11 +97,14 @@ impl ProcessEnd {
 	/// status union is platform-specific. Exit codes and signals are implemented, other variants
 	/// are not.
 	#[cfg(unix)]
+	#[must_use]
 	pub fn into_exitstatus(self) -> ExitStatus {
 		use std::os::unix::process::ExitStatusExt;
 		match self {
 			Self::Success => ExitStatus::from_raw(0),
-			Self::ExitError(code) => ExitStatus::from_raw((code.get() as u8 as i32) << 8),
+			Self::ExitError(code) => {
+				ExitStatus::from_raw(i32::from(u8::try_from(code.get()).unwrap_or_default()) << 8)
+			}
 			Self::ExitSignal(signal) => {
 				ExitStatus::from_raw(signal.to_nix().map_or(0, |sig| sig as i32))
 			}
@@ -115,6 +118,7 @@ impl ProcessEnd {
 	/// This is a testing function only! **It will panic** if the `ProcessEnd` is not representable
 	/// as an `ExitStatus` on Windows.
 	#[cfg(windows)]
+	#[must_use]
 	pub fn into_exitstatus(self) -> ExitStatus {
 		use std::os::windows::process::ExitStatusExt;
 		match self {
@@ -126,6 +130,7 @@ impl ProcessEnd {
 
 	/// Unimplemented on this platform.
 	#[cfg(not(any(unix, windows)))]
+	#[must_use]
 	pub fn into_exitstatus(self) -> ExitStatus {
 		unimplemented!()
 	}

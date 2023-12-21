@@ -93,7 +93,7 @@ pub async fn from_origin(
 		.explicit_ignores
 		.iter()
 		.map(|p| IgnoreFile {
-			path: p.to_path_buf(),
+			path: p.clone(),
 			applies_in: Some(origin.clone()),
 			applies_to: None,
 		})
@@ -172,7 +172,7 @@ pub async fn from_origin(
 	.await;
 
 	trace!("visiting child directories for ignore files");
-	match DirTourist::new(&origin, &ignore_files, &args.explicit_watches).await {
+	match DirTourist::new(origin, &ignore_files, &args.explicit_watches).await {
 		Ok(mut dirs) => {
 			loop {
 				match dirs.next().await {
@@ -487,7 +487,7 @@ impl DirTourist {
 			return Visit::Skip;
 		}
 
-		//  If explicitly watched paths were not specified, we can include any path
+		// If explicitly watched paths were not specified, we can include any path
 		//
 		// If explicitly watched paths *were* specified, then to include the path, either:
 		// - the path in question starts with an explicitly included path (/a/b starting with /a)

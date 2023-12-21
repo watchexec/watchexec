@@ -23,8 +23,7 @@ pub async fn globset(args: &Args) -> Result<Arc<WatchexecFilterer>> {
 		Vec::new()
 	} else {
 		let vcs_types = super::common::vcs_types(&project_origin).await;
-		let files = super::common::ignores(args, &vcs_types, &project_origin).await?;
-		files
+		super::common::ignores(args, &vcs_types, &project_origin).await?
 	};
 
 	let mut ignores = Vec::new();
@@ -87,8 +86,18 @@ async fn read_filter_file(path: &Path) -> Result<Vec<(String, Option<PathBuf>)>>
 
 	let file = tokio::fs::File::open(path).await.into_diagnostic()?;
 
-	let mut filters =
-		Vec::with_capacity(file.metadata().await.map(|m| m.len() as usize).unwrap_or(0) / 20);
+	let metadata_len = file
+		.metadata()
+		.await
+		.map(|m| usize::try_from(m.len()))
+		.unwrap_or(Ok(0))
+		.into_diagnostic()?;
+	let filter_capacity = if metadata_len == 0 {
+		0
+	} else {
+		metadata_len / 20
+	};
+	let mut filters = Vec::with_capacity(filter_capacity);
 
 	let reader = BufReader::new(file);
 	let mut lines = reader.lines();

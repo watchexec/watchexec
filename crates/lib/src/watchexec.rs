@@ -153,15 +153,15 @@ impl Watchexec {
 
 			let mut tasks = JoinSet::new();
 
-			tasks.spawn(action::worker(config.clone(), er_s.clone(), ev_r).map_ok(|_| "action"));
-			tasks.spawn(fs::worker(config.clone(), er_s.clone(), ev_s.clone()).map_ok(|_| "fs"));
+			tasks.spawn(action::worker(config.clone(), er_s.clone(), ev_r).map_ok(|()| "action"));
+			tasks.spawn(fs::worker(config.clone(), er_s.clone(), ev_s.clone()).map_ok(|()| "fs"));
 			tasks.spawn(
-				signal::worker(config.clone(), er_s.clone(), ev_s.clone()).map_ok(|_| "signal"),
+				signal::worker(config.clone(), er_s.clone(), ev_s.clone()).map_ok(|()| "signal"),
 			);
 			tasks.spawn(
-				keyboard::worker(config.clone(), er_s.clone(), ev_s.clone()).map_ok(|_| "keyboard"),
+				keyboard::worker(config.clone(), er_s.clone(), ev_s.clone()).map_ok(|()| "keyboard"),
 			);
-			tasks.spawn(error_hook(er_r, config.error_handler.clone()).map_ok(|_| "error"));
+			tasks.spawn(error_hook(er_r, config.error_handler.clone()).map_ok(|()| "error"));
 
 			while let Some(Ok(res)) = tasks.join_next().await {
 				match res {

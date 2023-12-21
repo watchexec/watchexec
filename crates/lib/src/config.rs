@@ -177,6 +177,7 @@ impl Config {
 	///
 	/// This is called automatically by all other methods here, so most of the time calling this
 	/// isn't needed, but it can be useful for some advanced uses.
+  #[must_use]
 	pub fn signal_change(&self) -> &Self {
 		self.change_signal.notify_waiters();
 		self

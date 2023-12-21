@@ -29,6 +29,7 @@ impl Shell {
 	}
 
 	#[cfg(windows)]
+  #[must_use]
 	/// Shorthand for the CMD.EXE shell.
 	pub fn cmd() -> Self {
 		Self {

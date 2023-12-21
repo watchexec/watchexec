@@ -38,6 +38,7 @@ use crate::{
 use crate::{emits::events_to_simple_format, state::State};
 
 #[derive(Clone, Copy, Debug)]
+#[allow(clippy::struct_excessive_bools)]
 struct OutputFlags {
 	quiet: bool,
 	colour: ColorChoice,
@@ -236,7 +237,8 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 					}
 
 					emit_events_to_command(command, events, emit_file, emit_events_to, add_envs);
-				});
+				})
+				.await;
 
 				let show_events = || {
 					if print_events {
@@ -278,7 +280,8 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 							Box::new(async move {
 								sleep(delay).await;
 							})
-						});
+						})
+						.await;
 					}
 
 					// this blocks the event loop, but also this is a debug feature so i don't care
@@ -316,20 +319,20 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 					match signal_map.get(&signal) {
 						Some(Some(mapped)) => {
 							debug!(?signal, ?mapped, "passing mapped signal");
-							job.signal(*mapped);
+							job.signal(*mapped).await;
 						}
 						Some(None) => {
 							debug!(?signal, "discarding signal");
 						}
 						None => {
 							debug!(?signal, "passing signal on");
-							job.signal(signal);
+							job.signal(signal).await;
 						}
 					}
 				}
 
 				// only filesystem events below here (or empty synthetic events)
-				if action.paths().next().is_none() && !action.events.iter().any(|e| e.is_empty()) {
+				if action.paths().next().is_none() && !action.events.iter().any(Event::is_empty) {
 					debug!("no filesystem or synthetic events, skip without doing more");
 					show_events();
 					return action;
@@ -365,7 +368,8 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 						Box::new(async move {
 							sleep(delay).await;
 						})
-					});
+					})
+					.await;
 				}
 
 				trace!("querying job state via run_async");
@@ -385,30 +389,34 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 											Signal::ForceStop
 										} else {
 											stop_signal.or(signal).unwrap_or(Signal::Terminate)
-										});
+										})
+										.await;
 									}
 									OnBusyUpdate::Restart if cfg!(windows) => {
-										job.restart();
+										job.restart().await;
 										job.run(move |context| {
 											setup_process(
 												innerjob.clone(),
 												context.command.clone(),
 												outflags,
-											)
-										});
+											);
+										})
+										.await;
 									}
 									OnBusyUpdate::Restart => {
 										job.restart_with_signal(
 											stop_signal.unwrap_or(Signal::Terminate),
 											stop_timeout,
-										);
+										)
+										.await;
 										job.run(move |context| {
 											setup_process(
 												innerjob.clone(),
 												context.command.clone(),
 												outflags,
-											)
-										});
+											);
+										})
+										.await;
 									}
 									OnBusyUpdate::Queue => {
 										let job = job.clone();
@@ -424,13 +432,13 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 													trace!("waiting for job to finish");
 													job.to_wait().await;
 													trace!("job finished, starting queued");
-													job.start();
+													job.start().await;
 													job.run(move |context| {
 														setup_process(
 															innerjob.clone(),
 															context.command.clone(),
 															outflags,
-														)
+														);
 													})
 													.await;
 													trace!("resetting queued state");
@@ -442,18 +450,20 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 								}
 							} else {
 								trace!("job is not running, start it");
-								job.start();
+								job.start().await;
 								job.run(move |context| {
 									setup_process(
 										innerjob.clone(),
 										context.command.clone(),
 										outflags,
-									)
-								});
+									);
+								})
+								.await;
 							}
 						})
 					}
-				});
+				})
+				.await;
 
 				action
 			}
@@ -467,9 +477,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 #[instrument(level = "debug")]
 fn interpret_command_args(args: &Args) -> Result<Arc<Command>> {
 	let mut cmd = args.command.clone();
-	if cmd.is_empty() {
-		panic!("(clap) Bug: command is not present");
-	}
+	assert!(!cmd.is_empty(), "(clap) Bug: command is not present");
 
 	let shell = match if args.no_shell || args.no_shell_long {
 		None
@@ -481,9 +489,7 @@ fn interpret_command_args(args: &Args) -> Result<Arc<Command>> {
 		Some("none") | None => None,
 
 		#[cfg(windows)]
-		Some("default") | Some("cmd") | Some("cmd.exe") | Some("CMD") | Some("CMD.EXE") => {
-			Some(Shell::cmd())
-		}
+		Some("default" | "cmd" | "cmd.exe" | "CMD" | "CMD.EXE") => Some(Shell::cmd()),
 
 		#[cfg(not(windows))]
 		Some("default") => Some(Shell::new("sh")),
@@ -552,7 +558,8 @@ fn setup_process(job: Job, command: Arc<Command>, outflags: OutputFlags) {
 
 	tokio::spawn(async move {
 		job.to_wait().await;
-		job.run(move |context| end_of_process(context.current, outflags));
+		job.run(move |context| end_of_process(context.current, outflags))
+			.await;
 	});
 }
 
@@ -623,7 +630,7 @@ fn emit_events_to_command(
 	emit_events_to: EmitEvents,
 	mut add_envs: HashMap<String, OsString>,
 ) {
-	use crate::emits::*;
+	use crate::emits::{emits_to_environment, emits_to_file, emits_to_json_file};
 
 	let mut stdin = None;
 

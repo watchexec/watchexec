@@ -53,6 +53,6 @@ where
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
 		f.debug_struct("SwapLock")
 			.field("(watch)", &self.r)
-			.finish()
+			.finish_non_exhaustive()
 	}
 }

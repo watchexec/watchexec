@@ -64,6 +64,7 @@ include!(env!("BOSION_PATH"));
 	feature = "dev-console",
 	command(before_help = "⚠ DEV CONSOLE ENABLED ⚠")
 )]
+#[allow(clippy::struct_excessive_bools)]
 pub struct Args {
 	/// Command to run on changes
 	///

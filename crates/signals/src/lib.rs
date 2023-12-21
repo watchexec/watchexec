@@ -296,6 +296,7 @@ pub struct SignalParseError {
 
 #[cfg(feature = "fromstr")]
 impl SignalParseError {
+	#[must_use]
 	pub fn new(src: &str, err: &str) -> Self {
 		Self {
 			src: src.to_owned(),
@@ -323,7 +324,7 @@ impl fmt::Display for Signal {
 				(Self::User1, _) => "SIGUSR1",
 				(Self::User2, _) => "SIGUSR2",
 				(Self::Custom(n), _) => {
-					return write!(f, "{}", n);
+					return write!(f, "{n}");
 				}
 			}
 		)
@@ -332,7 +333,7 @@ impl fmt::Display for Signal {
 
 #[cfg(feature = "serde")]
 mod serde_support {
-	use super::*;
+	use super::Signal;
 
 	#[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize)]
 	#[serde(untagged)]

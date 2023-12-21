@@ -120,7 +120,7 @@ pub fn gather_to(filename: &str, structname: &str, public: bool) {
 			let mut output = Self::LONG_VERSION.to_string();
 
 			for (k, v) in extra {
-				output.push_str(&format!("\n{}: {}", k, v));
+				output.push_str(&format!("\n{k}: {v}"));
 			}
 
 			output

@@ -54,21 +54,25 @@ pub enum CommandState {
 
 impl CommandState {
 	/// Whether the command is pending, i.e. not running or finished.
+	#[must_use]
 	pub const fn is_pending(&self) -> bool {
 		matches!(self, Self::Pending)
 	}
 
 	/// Whether the command is running.
+	#[must_use]
 	pub const fn is_running(&self) -> bool {
 		matches!(self, Self::Running { .. })
 	}
 
 	/// Whether the command is finished.
+	#[must_use]
 	pub const fn is_finished(&self) -> bool {
 		matches!(self, Self::Finished { .. })
 	}
 
 	#[cfg_attr(test, allow(unused_mut, unused_variables))]
+	#[allow(clippy::unused_async)]
 	pub(crate) async fn spawn(
 		&mut self,
 		command: Arc<Command>,

@@ -9,6 +9,7 @@ use std::{
 pub type SyncIoError = Arc<OnceLock<Error>>;
 
 /// Make a [`SyncIoError`] from a [`std::io::Error`].
+#[must_use]
 pub fn sync_io_error(err: Error) -> SyncIoError {
 	let lock = OnceLock::new();
 	lock.set(err).expect("unreachable: lock was just created");
