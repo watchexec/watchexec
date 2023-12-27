@@ -187,24 +187,27 @@ pub async fn ignore_filt(origin: &str, ignore_files: &[IgnoreFile]) -> IgnoreFil
 }
 
 pub fn ig_file(name: &str) -> IgnoreFile {
-	let path = std::fs::canonicalize(".")
-		.unwrap()
-		.join("tests")
-		.join("ignores")
-		.join(name);
+	let origin = std::fs::canonicalize(".").unwrap();
+	let path = origin.join("tests").join("ignores").join(name);
 	IgnoreFile {
 		path,
-		applies_in: None,
+		applies_in: Some(origin),
 		applies_to: None,
 	}
 }
 
 pub trait Applies {
+	fn applies_globally(self) -> Self;
 	fn applies_in(self, origin: &str) -> Self;
 	fn applies_to(self, project_type: ProjectType) -> Self;
 }
 
 impl Applies for IgnoreFile {
+	fn applies_globally(mut self) -> Self {
+		self.applies_in = None;
+		self
+	}
+
 	fn applies_in(mut self, origin: &str) -> Self {
 		let origin = std::fs::canonicalize(".").unwrap().join(origin);
 		self.applies_in = Some(origin);
