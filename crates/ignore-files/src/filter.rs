@@ -115,14 +115,9 @@ impl IgnoreFilter {
 
 			let applies_in = get_applies_in_path(origin, &file);
 
-			let parent_ignore = ignores_trie
-				.get_ancestor_value(&applies_in.display().to_string())
-				// unwrap will always succeed because we created an entry with the root of the origin
-				.unwrap();
-
-			let mut builder = parent_ignore
-				.builder
-				.clone()
+			let mut builder = ignores_trie
+				.get(&applies_in.display().to_string())
+				.and_then(|node| node.builder.clone())
 				.unwrap_or_else(|| GitignoreBuilder::new(&applies_in));
 
 			for line in content.lines() {
