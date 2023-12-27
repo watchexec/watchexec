@@ -313,17 +313,46 @@ impl IgnoreFilter {
 	pub fn match_path(&self, path: &Path, is_dir: bool) -> Match<&Glob> {
 		let path = dunce::simplified(path);
 
-		let Some(ignores) = self.ignores.get_ancestor_value(&path.display().to_string()) else {
-			trace!(?path, "no ignores for path");
-			return Match::None;
-		};
+		let mut search_path = path;
+		loop {
+			let Some(trie_node) = self
+				.ignores
+				.get_ancestor(&search_path.display().to_string())
+			else {
+				trace!(?path, ?search_path, "no ignores for path");
+				return Match::None;
+			};
 
-		if path.strip_prefix(&self.origin).is_ok() {
-			trace!("checking against path or parents");
-			ignores.gitignore.matched_path_or_any_parents(path, is_dir)
-		} else {
-			trace!("checking against path only");
-			ignores.gitignore.matched(path, is_dir)
+			// Unwrap will always succeed because every node has an entry.
+			let ignores = trie_node.value().unwrap();
+
+			let match_ = if path.strip_prefix(&self.origin).is_ok() {
+				trace!(?path, ?search_path, "checking against path or parents");
+				ignores.gitignore.matched_path_or_any_parents(path, is_dir)
+			} else {
+				trace!(?path, ?search_path, "checking against path only");
+				ignores.gitignore.matched(path, is_dir)
+			};
+
+			match match_ {
+				Match::None => {
+					trace!(
+						?path,
+						?search_path,
+						"no match found, searching for parent ignores"
+					);
+					// Unwrap will always succeed because every node has an entry.
+					let trie_path = Path::new(trie_node.key().unwrap());
+					if let Some(trie_parent) = trie_path.parent() {
+						trace!(?path, ?search_path, "checking parent ignore");
+						search_path = trie_parent;
+					} else {
+						trace!(?path, ?search_path, "no parent ignore found");
+						return Match::None;
+					}
+				}
+				_ => return match_,
+			}
 		}
 	}
 
