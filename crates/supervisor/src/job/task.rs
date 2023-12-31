@@ -85,7 +85,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 												},
 											)
 											.await;
-										if let Err(err) = command_state.spawn(command.clone(), spawnable).await {
+										if let Err(err) = command_state.spawn(command.clone(), spawnable) {
 											let fut = error_handler.call(sync_io_error(err));
 											fut.await;
 											return Loop::Skip;
@@ -150,7 +150,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 												},
 											)
 											.await;
-										try_with_handler!(command_state.spawn(command.clone(), spawnable).await);
+										try_with_handler!(command_state.spawn(command.clone(), spawnable));
 									}
 								}
 								Control::Stop => {
@@ -216,7 +216,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 												},
 											)
 											.await;
-										try_with_handler!(command_state.spawn(command.clone(), spawnable).await);
+										try_with_handler!(command_state.spawn(command.clone(), spawnable));
 									} else {
 										trace!("child isn't running, skip");
 									}
@@ -267,7 +267,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 											},
 										)
 										.await;
-									try_with_handler!(command_state.spawn(command.clone(), spawnable).await);
+									try_with_handler!(command_state.spawn(command.clone(), spawnable));
 								}
 								Control::Signal(signal) => {
 									if let CommandState::Running { child, .. } = &mut command_state {

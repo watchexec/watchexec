@@ -72,8 +72,7 @@ impl CommandState {
 	}
 
 	#[cfg_attr(test, allow(unused_mut, unused_variables))]
-	#[allow(clippy::unused_async)]
-	pub(crate) async fn spawn(
+	pub(crate) fn spawn(
 		&mut self,
 		command: Arc<Command>,
 		mut spawnable: TokioCommand,

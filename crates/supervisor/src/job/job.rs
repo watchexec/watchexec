@@ -43,13 +43,11 @@ pub struct Job {
 
 impl Job {
 	/// The [`Command`] this job is managing.
-	#[must_use]
 	pub fn command(&self) -> Arc<Command> {
 		self.command.clone()
 	}
 
 	/// If this job is dead.
-	#[must_use]
 	pub fn is_dead(&self) -> bool {
 		self.gone.raised()
 	}
@@ -94,13 +92,11 @@ impl Job {
 	///
 	/// In general prefer using the other methods on this struct rather than sending [`Control`]s
 	/// directly.
-	#[must_use]
 	pub fn control(&self, control: Control) -> Ticket {
 		self.send_controls([control], Priority::Normal)
 	}
 
 	/// Start the command if it's not running.
-	#[must_use]
 	pub fn start(&self) -> Ticket {
 		self.control(Control::Start)
 	}
@@ -108,7 +104,6 @@ impl Job {
 	/// Stop the command if it's running and wait for completion.
 	///
 	/// If you don't want to wait for completion, use `signal(Signal::ForceStop)` instead.
-	#[must_use]
 	pub fn stop(&self) -> Ticket {
 		self.control(Control::Stop)
 	}
@@ -119,7 +114,6 @@ impl Job {
 	/// terminated. If `grace` is zero, that still happens, but the command is terminated forcefully
 	/// on the next "tick" of the supervisor loop, which doesn't leave the process a lot of time to
 	/// do anything.
-	#[must_use]
 	pub fn stop_with_signal(&self, signal: Signal, grace: Duration) -> Ticket {
 		if cfg!(unix) {
 			self.control(Control::GracefulStop { signal, grace })
@@ -129,7 +123,6 @@ impl Job {
 	}
 
 	/// Restart the command if it's running, or start it if it's not.
-	#[must_use]
 	pub fn restart(&self) -> Ticket {
 		self.send_controls([Control::Stop, Control::Start], Priority::Normal)
 	}
@@ -140,7 +133,6 @@ impl Job {
 	/// terminated. If `grace` is zero, that still happens, but the command is terminated forcefully
 	/// on the next "tick" of the supervisor loop, which doesn't leave the process a lot of time to
 	/// do anything.
-	#[must_use]
 	pub fn restart_with_signal(&self, signal: Signal, grace: Duration) -> Ticket {
 		if cfg!(unix) {
 			self.send_controls(
@@ -153,7 +145,6 @@ impl Job {
 	}
 
 	/// Restart the command if it's running, but don't start it if it's not.
-	#[must_use]
 	pub fn try_restart(&self) -> Ticket {
 		self.control(Control::TryRestart)
 	}
@@ -164,7 +155,6 @@ impl Job {
 	/// terminated. If `grace` is zero, that still happens, but the command is terminated forcefully
 	/// on the next "tick" of the supervisor loop, which doesn't leave the process a lot of time to
 	/// do anything.
-	#[must_use]
 	pub fn try_restart_with_signal(&self, signal: Signal, grace: Duration) -> Ticket {
 		if cfg!(unix) {
 			self.control(Control::TryGracefulRestart { signal, grace })
@@ -184,7 +174,6 @@ impl Job {
 	/// see [tracking issue #219](https://github.com/watchexec/watchexec/issues/219).
 	///
 	/// [GenerateConsoleCtrlEvent]: https://learn.microsoft.com/en-us/windows/console/generateconsolectrlevent
-	#[must_use]
 	pub fn signal(&self, sig: Signal) -> Ticket {
 		self.control(Control::Signal(sig))
 	}
@@ -193,7 +182,6 @@ impl Job {
 	///
 	/// The underlying control messages are sent like normal, so they wait for all pending controls
 	/// to process. If you want to delete the command immediately, use `delete_now()`.
-	#[must_use]
 	pub fn delete(&self) -> Ticket {
 		self.send_controls([Control::Stop, Control::Delete], Priority::Normal)
 	}
@@ -202,7 +190,6 @@ impl Job {
 	///
 	/// The underlying control messages are sent with higher priority than normal, so they bypass
 	/// all others. If you want to delete after all current controls are processed, use `delete()`.
-	#[must_use]
 	pub fn delete_now(&self) -> Ticket {
 		self.send_controls([Control::Stop, Control::Delete], Priority::Urgent)
 	}
@@ -215,7 +202,6 @@ impl Job {
 	/// actively running command, not the one that will be running after the rest of the controls
 	/// get done; note that may still be racy if the command ends between the time the message is
 	/// sent and the time it's processed.
-	#[must_use]
 	pub fn to_wait(&self) -> Ticket {
 		self.send_controls([Control::NextEnding], Priority::High)
 	}
@@ -230,7 +216,6 @@ impl Job {
 	/// command's [`ErasedChild`](command_group::tokio::ErasedChild), but this library recommends
 	/// against taking advantage of this, and prefer using the methods here instead, so that the
 	/// supervisor can keep track of what's going on.
-	#[must_use]
 	pub fn run(&self, fun: impl FnOnce(&JobTaskContext<'_>) + Send + Sync + 'static) -> Ticket {
 		self.control(Control::SyncFunc(Box::new(fun)))
 	}
@@ -291,7 +276,6 @@ impl Job {
 	///     })
 	/// });
 	/// ```
-	#[must_use]
 	pub fn run_async(
 		&self,
 		fun: impl (FnOnce(&JobTaskContext<'_>) -> Box<dyn Future<Output = ()> + Send + Sync>)
@@ -307,7 +291,6 @@ impl Job {
 	/// The hook will be called once per process spawned, before the process is spawned. It's given
 	/// a mutable reference to the [`tokio::process::Command`] and some context; it can modify the
 	/// command as it sees fit.
-	#[must_use]
 	pub fn set_spawn_hook(
 		&self,
 		fun: impl Fn(&mut TokioCommand, &JobTaskContext<'_>) + Send + Sync + 'static,
@@ -328,7 +311,6 @@ impl Job {
 	///
 	/// Fortunately, async spawn hooks should be exceedingly rare: there's very few things to do in
 	/// spawn hooks that can't be done in the simpler sync version.
-	#[must_use]
 	pub fn set_spawn_async_hook(
 		&self,
 		fun: impl (Fn(&mut TokioCommand, &JobTaskContext<'_>) -> Box<dyn Future<Output = ()> + Send + Sync>)
@@ -340,19 +322,16 @@ impl Job {
 	}
 
 	/// Unset any spawn hook.
-	#[must_use]
 	pub fn unset_spawn_hook(&self) -> Ticket {
 		self.control(Control::UnsetSpawnHook)
 	}
 
 	/// Set the error handler.
-	#[must_use]
 	pub fn set_error_handler(&self, fun: impl Fn(SyncIoError) + Send + Sync + 'static) -> Ticket {
 		self.control(Control::SetSyncErrorHandler(Arc::new(fun)))
 	}
 
 	/// Set the error handler (async version).
-	#[must_use]
 	pub fn set_async_error_handler(
 		&self,
 		fun: impl (Fn(SyncIoError) -> Box<dyn Future<Output = ()> + Send + Sync>)
@@ -366,7 +345,6 @@ impl Job {
 	/// Unset the error handler.
 	///
 	/// Errors will be silently ignored.
-	#[must_use]
 	pub fn unset_error_handler(&self) -> Ticket {
 		self.control(Control::UnsetErrorHandler)
 	}

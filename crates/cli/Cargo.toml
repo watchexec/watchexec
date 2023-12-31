@@ -111,7 +111,7 @@ features = [
 	"fmt",
 	"json",
 	"tracing-log",
-  "ansi",
+	"ansi",
 ]
 
 [target.'cfg(target_env = "musl")'.dependencies]
