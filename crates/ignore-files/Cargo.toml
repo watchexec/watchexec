@@ -36,3 +36,6 @@ features = [
 [dependencies.project-origins]
 version = "1.2.1"
 path = "../project-origins"
+
+[dev-dependencies]
+tracing-subscriber = "0.3.6"

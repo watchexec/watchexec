@@ -60,7 +60,7 @@ fn folders_suite(filterer: &IgnoreFilterer, name: &str) {
 
 #[tokio::test]
 async fn globs() {
-	let filterer = filt("", &[file("globs")]).await;
+	let filterer = filt("", &[file("globs").applies_globally()]).await;
 
 	// Unmatched
 	filterer.file_does_pass("FINAL-FINAL.docx");
@@ -214,8 +214,8 @@ async fn scopes() {
 	let filterer = filt(
 		"",
 		&[
-			file("scopes-global"),
-			file("scopes-local").applies_in(""),
+			file("scopes-global").applies_globally(),
+			file("scopes-local"),
 			file("scopes-sublocal").applies_in("tests"),
 			file("none-allowed").applies_in("tests/child"),
 		],
