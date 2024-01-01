@@ -24,8 +24,13 @@ use super::{
 #[must_use]
 #[instrument(level = "trace")]
 pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
-	let (sender, mut receiver) = priority::new();
+	enum Loop {
+		Normally,
+		Skip,
+		Break,
+	}
 
+	let (sender, mut receiver) = priority::new();
 	let gone = Flag::default();
 	let done = gone.clone();
 
@@ -44,12 +49,6 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 			let mut on_end: Vec<Flag> = Vec::new();
 			let mut on_end_restart: Option<Flag> = None;
 
-			enum Loop {
-				Normally,
-				Skip,
-				Break,
-			}
-
 			'main: loop {
 				select! {
 					result = command_state.wait(), if command_state.is_running() => {
@@ -67,7 +66,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 									trace!(existing=?stop_timer, "erasing stop timer");
 									stop_timer = None;
 									trace!(count=%on_end.len(), "raising all pending end flags");
-									for done in take(&mut on_end).into_iter() {
+									for done in take(&mut on_end) {
 										done.raise();
 									}
 
@@ -86,7 +85,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 												},
 											)
 											.await;
-										if let Err(err) = command_state.spawn(command.clone(), spawnable).await {
+										if let Err(err) = command_state.spawn(command.clone(), spawnable) {
 											let fut = error_handler.call(sync_io_error(err));
 											fut.await;
 											return Loop::Skip;
@@ -151,7 +150,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 												},
 											)
 											.await;
-										try_with_handler!(command_state.spawn(command.clone(), spawnable).await);
+										try_with_handler!(command_state.spawn(command.clone(), spawnable));
 									}
 								}
 								Control::Stop => {
@@ -169,7 +168,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 										};
 
 										trace!(count=%on_end.len(), "raising all pending end flags");
-										for done in take(&mut on_end).into_iter() {
+										for done in take(&mut on_end) {
 											done.raise();
 										}
 									} else {
@@ -183,9 +182,8 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 										trace!(?grace, "setting up graceful stop timer");
 										stop_timer.replace(Timer::stop(grace, done));
 										return Loop::Skip;
-									} else {
-										trace!("child isn't running, skip");
 									}
+									trace!("child isn't running, skip");
 								}
 								Control::TryRestart => {
 									if let CommandState::Running { child, started, .. } = &mut command_state {
@@ -203,7 +201,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 										previous_run = Some(command_state.reset());
 
 										trace!(count=%on_end.len(), "raising all pending end flags");
-										for done in take(&mut on_end).into_iter() {
+										for done in take(&mut on_end) {
 											done.raise();
 										}
 
@@ -218,7 +216,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 												},
 											)
 											.await;
-										try_with_handler!(command_state.spawn(command.clone(), spawnable).await);
+										try_with_handler!(command_state.spawn(command.clone(), spawnable));
 									} else {
 										trace!("child isn't running, skip");
 									}
@@ -232,9 +230,8 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 										trace!("setting up graceful restart flag");
 										on_end_restart = Some(done);
 										return Loop::Skip;
-									} else {
-										trace!("child isn't running, skip");
 									}
+									trace!("child isn't running, skip");
 								}
 								Control::ContinueTryGracefulRestart => {
 									trace!("continuing a graceful try-restart");
@@ -253,7 +250,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 										};
 
 										trace!(count=%on_end.len(), "raising all pending end flags");
-										for done in take(&mut on_end).into_iter() {
+										for done in take(&mut on_end) {
 											done.raise();
 										}
 									}
@@ -270,7 +267,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 											},
 										)
 										.await;
-									try_with_handler!(command_state.spawn(command.clone(), spawnable).await);
+									try_with_handler!(command_state.spawn(command.clone(), spawnable));
 								}
 								Control::Signal(signal) => {
 									if let CommandState::Running { child, .. } = &mut command_state {
@@ -286,15 +283,14 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 								}
 
 								Control::NextEnding => {
-									if !matches!(command_state, CommandState::Finished { .. }) {
-										trace!("queue end flag");
-										on_end.push(done);
-										return Loop::Skip;
-									} else {
+									if matches!(command_state, CommandState::Finished { .. }) {
 										trace!("child is finished, raise done flag immediately");
 										done.raise();
 										return Loop::Normally;
 									}
+										trace!("queue end flag");
+										on_end.push(done);
+										return Loop::Skip;
 								}
 
 								Control::SyncFunc(f) => {

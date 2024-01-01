@@ -6,11 +6,52 @@ use std::{
 };
 
 use gix_config::{path::interpolate::Context as InterpolateContext, File, Path as GitPath};
+use miette::{bail, Result};
 use project_origins::ProjectType;
 use tokio::fs::{canonicalize, metadata, read_dir};
 use tracing::{trace, trace_span};
 
 use crate::{IgnoreFile, IgnoreFilter};
+
+/// Arguments for finding ignored files in a given directory and subdirectories
+pub struct IgnoreFilesFromOriginArgs {
+	/// Origin from which finding ignored files will start
+	origin: PathBuf,
+
+	/// Paths that have been explicitly selected to be watched.
+	///
+	/// If this list is non-empty, all paths not on this list will be ignored
+	///
+	/// These paths *must* be absolute, and are checked upon creation
+	explicit_watches: Vec<PathBuf>,
+
+	/// Paths that have been explicitly ignored
+	///
+	/// If this list is non-empty, all paths on this list will be ignored
+	///
+	/// These paths *must* be absolute
+	explicit_ignores: Vec<PathBuf>,
+}
+
+impl IgnoreFilesFromOriginArgs {
+	pub fn new(
+		origin: impl AsRef<Path>,
+		explicit_watches: Vec<PathBuf>,
+		explicit_ignores: Vec<PathBuf>,
+	) -> Result<Self> {
+		if explicit_watches.iter().any(|p| !p.is_absolute()) {
+			bail!("explicit watch dir contains non-absolute directories");
+		}
+		if explicit_ignores.iter().any(|p| !p.is_absolute()) {
+			bail!("explicit watch dir contains non-absolute directories");
+		}
+		Ok(Self {
+			origin: PathBuf::from(origin.as_ref()),
+			explicit_watches,
+			explicit_ignores,
+		})
+	}
+}
 
 /// Finds all ignore files in the given directory and subdirectories.
 ///
@@ -43,12 +84,23 @@ use crate::{IgnoreFile, IgnoreFilter};
 ///
 /// This future is not `Send` due to [`gix_config`] internals.
 #[allow(clippy::future_not_send)]
-pub async fn from_origin(path: impl AsRef<Path> + Send) -> (Vec<IgnoreFile>, Vec<Error>) {
-	let base = path.as_ref().to_owned();
-	let mut files = Vec::new();
+pub async fn from_origin(
+	args: impl Into<IgnoreFilesFromOriginArgs>,
+) -> (Vec<IgnoreFile>, Vec<Error>) {
+	let args = args.into();
+	let origin = &args.origin;
+	let mut ignore_files = args
+		.explicit_ignores
+		.iter()
+		.map(|p| IgnoreFile {
+			path: p.clone(),
+			applies_in: Some(origin.clone()),
+			applies_to: None,
+		})
+		.collect();
 	let mut errors = Vec::new();
 
-	match find_file(base.join(".git/config")).await {
+	match find_file(origin.join(".git/config")).await {
 		Err(err) => errors.push(err),
 		Ok(None) => {}
 		Ok(Some(path)) => match path.parent().map(|path| File::from_git_dir(path.into())) {
@@ -66,7 +118,7 @@ pub async fn from_origin(path: impl AsRef<Path> + Send) -> (Vec<IgnoreFile>, Vec
 					}) {
 						Ok(e) => {
 							discover_file(
-								&mut files,
+								&mut ignore_files,
 								&mut errors,
 								None,
 								Some(ProjectType::Git),
@@ -84,51 +136,52 @@ pub async fn from_origin(path: impl AsRef<Path> + Send) -> (Vec<IgnoreFile>, Vec
 	}
 
 	discover_file(
-		&mut files,
+		&mut ignore_files,
 		&mut errors,
-		Some(base.clone()),
+		Some(origin.clone()),
 		Some(ProjectType::Bazaar),
-		base.join(".bzrignore"),
+		origin.join(".bzrignore"),
 	)
 	.await;
 
 	discover_file(
-		&mut files,
+		&mut ignore_files,
 		&mut errors,
-		Some(base.clone()),
+		Some(origin.clone()),
 		Some(ProjectType::Darcs),
-		base.join("_darcs/prefs/boring"),
+		origin.join("_darcs/prefs/boring"),
 	)
 	.await;
 
 	discover_file(
-		&mut files,
+		&mut ignore_files,
 		&mut errors,
-		Some(base.clone()),
+		Some(origin.clone()),
 		Some(ProjectType::Fossil),
-		base.join(".fossil-settings/ignore-glob"),
+		origin.join(".fossil-settings/ignore-glob"),
 	)
 	.await;
 
 	discover_file(
-		&mut files,
+		&mut ignore_files,
 		&mut errors,
-		Some(base.clone()),
+		Some(origin.clone()),
 		Some(ProjectType::Git),
-		base.join(".git/info/exclude"),
+		origin.join(".git/info/exclude"),
 	)
 	.await;
 
 	trace!("visiting child directories for ignore files");
-	match DirTourist::new(&base, &files).await {
+	match DirTourist::new(origin, &ignore_files, &args.explicit_watches).await {
 		Ok(mut dirs) => {
 			loop {
 				match dirs.next().await {
 					Visit::Done => break,
 					Visit::Skip => continue,
 					Visit::Find(dir) => {
+						// Attempt to find a .ignore file in the directory
 						if discover_file(
-							&mut files,
+							&mut ignore_files,
 							&mut errors,
 							Some(dir.clone()),
 							None,
@@ -136,11 +189,13 @@ pub async fn from_origin(path: impl AsRef<Path> + Send) -> (Vec<IgnoreFile>, Vec
 						)
 						.await
 						{
-							dirs.add_last_file_to_filter(&files, &mut errors).await;
+							dirs.add_last_file_to_filter(&ignore_files, &mut errors)
+								.await;
 						}
 
+						// Attempt to find a .gitignore file in the directory
 						if discover_file(
-							&mut files,
+							&mut ignore_files,
 							&mut errors,
 							Some(dir.clone()),
 							Some(ProjectType::Git),
@@ -148,11 +203,13 @@ pub async fn from_origin(path: impl AsRef<Path> + Send) -> (Vec<IgnoreFile>, Vec
 						)
 						.await
 						{
-							dirs.add_last_file_to_filter(&files, &mut errors).await;
+							dirs.add_last_file_to_filter(&ignore_files, &mut errors)
+								.await;
 						}
 
+						// Attempt to find a .hgignore file in the directory
 						if discover_file(
-							&mut files,
+							&mut ignore_files,
 							&mut errors,
 							Some(dir.clone()),
 							Some(ProjectType::Mercurial),
@@ -160,7 +217,8 @@ pub async fn from_origin(path: impl AsRef<Path> + Send) -> (Vec<IgnoreFile>, Vec
 						)
 						.await
 						{
-							dirs.add_last_file_to_filter(&files, &mut errors).await;
+							dirs.add_last_file_to_filter(&ignore_files, &mut errors)
+								.await;
 						}
 					}
 				}
@@ -172,7 +230,7 @@ pub async fn from_origin(path: impl AsRef<Path> + Send) -> (Vec<IgnoreFile>, Vec
 		}
 	}
 
-	(files, errors)
+	(ignore_files, errors)
 }
 
 /// Finds all ignore files that apply to the current runtime.
@@ -354,6 +412,7 @@ struct DirTourist {
 	base: PathBuf,
 	to_visit: Vec<PathBuf>,
 	to_skip: HashSet<PathBuf>,
+	to_explicitly_watch: HashSet<PathBuf>,
 	pub errors: Vec<std::io::Error>,
 	filter: IgnoreFilter,
 }
@@ -366,10 +425,14 @@ enum Visit {
 }
 
 impl DirTourist {
-	pub async fn new(base: &Path, files: &[IgnoreFile]) -> Result<Self, Error> {
+	pub async fn new(
+		base: &Path,
+		ignore_files: &[IgnoreFile],
+		watch_files: &[PathBuf],
+	) -> Result<Self, Error> {
 		let base = canonicalize(base).await?;
 		trace!("create IgnoreFilterer for visiting directories");
-		let mut filter = IgnoreFilter::new(&base, files)
+		let mut filter = IgnoreFilter::new(&base, ignore_files)
 			.await
 			.map_err(|err| Error::new(ErrorKind::Other, err))?;
 
@@ -392,6 +455,10 @@ impl DirTourist {
 			to_visit: vec![base.clone()],
 			base,
 			to_skip: HashSet::new(),
+			to_explicitly_watch: watch_files.iter().fold(HashSet::new(), |mut acc, path| {
+				acc.insert(path.clone());
+				acc
+			}),
 			errors: Vec::new(),
 			filter,
 		})
@@ -415,7 +482,25 @@ impl DirTourist {
 		}
 
 		if !self.filter.check_dir(&path) {
-			trace!("path is ignored, adding to skip list");
+			trace!(?path, "path is ignored, adding to skip list");
+			self.skip(path);
+			return Visit::Skip;
+		}
+
+		// If explicitly watched paths were not specified, we can include any path
+		//
+		// If explicitly watched paths *were* specified, then to include the path, either:
+		// - the path in question starts with an explicitly included path (/a/b starting with /a)
+		// - the path in question is *above* the explicitly included path (/a is above /a/b)
+		if self.to_explicitly_watch.is_empty()
+			|| self
+				.to_explicitly_watch
+				.iter()
+				.any(|p| path.starts_with(p) || p.starts_with(&path))
+		{
+			trace!(?path, ?self.to_explicitly_watch, "including path; it starts with one of the explicitly watched paths");
+		} else {
+			trace!(?path, ?self.to_explicitly_watch, "excluding path; it did not start with any of explicitly watched paths");
 			self.skip(path);
 			return Visit::Skip;
 		}

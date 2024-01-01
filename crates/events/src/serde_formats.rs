@@ -113,7 +113,7 @@ impl From<Tag> for SerdeTag {
 			},
 			Tag::FileEventKind(fek) => Self {
 				kind: TagKind::Fs,
-				full: Some(format!("{:?}", fek)),
+				full: Some(format!("{fek:?}")),
 				simple: Some(fek.into()),
 				..Default::default()
 			},
@@ -145,12 +145,10 @@ impl From<Tag> for SerdeTag {
 			Tag::ProcessCompletion(Some(end)) => Self {
 				kind: TagKind::Completion,
 				code: match &end {
-					ProcessEnd::Success => None,
-					ProcessEnd::ExitSignal(_) => None,
+					ProcessEnd::Success | ProcessEnd::Continued | ProcessEnd::ExitSignal(_) => None,
 					ProcessEnd::ExitError(err) => Some(err.get()),
 					ProcessEnd::ExitStop(code) => Some(code.get().into()),
 					ProcessEnd::Exception(exc) => Some(exc.get().into()),
-					ProcessEnd::Continued => None,
 				},
 				signal: if let ProcessEnd::ExitSignal(sig) = &end {
 					Some(*sig)

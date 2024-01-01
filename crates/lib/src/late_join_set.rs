@@ -93,7 +93,7 @@ impl LateJoinSet {
 	/// This does not remove the tasks from the `LateJoinSet`. To wait for the tasks to complete
 	/// cancellation, use `join_all` or call `join_next` in a loop until the `LateJoinSet` is empty.
 	pub fn abort_all(&self) {
-		self.tasks.iter().for_each(|jh| jh.abort());
+		self.tasks.iter().for_each(JoinHandle::abort);
 	}
 }
 

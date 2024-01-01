@@ -127,7 +127,7 @@ impl IgnoreFilter {
 
 				trace!(?line, "adding ignore line");
 				builder
-					.add_line(Some(applies_in.clone().to_owned()), line)
+					.add_line(Some(applies_in.clone().clone()), line)
 					.map_err(|err| Error::Glob {
 						file: Some(file.path.clone()),
 						err,
@@ -388,8 +388,7 @@ fn get_applies_in_path(origin: &Path, ignore_file: &IgnoreFile) -> PathBuf {
 	ignore_file
 		.applies_in
 		.as_ref()
-		.map(|p| PathBuf::from(dunce::simplified(p)))
-		.unwrap_or(root_path)
+		.map_or(root_path, |p| PathBuf::from(dunce::simplified(p)))
 }
 
 /// Gets the root component of a given path.
