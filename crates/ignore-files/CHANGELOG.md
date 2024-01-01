@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v2.0.0 (2024-01-01)
+
 ## v1.3.2 (2023-11-26)
 
 - Remove error diagnostic codes.
