@@ -70,7 +70,7 @@ pub async fn worker(
 					for (id, job) in jobs.drain() {
 						trace!(?id, "quitting job");
 						tasks.spawn(async move {
-							let () = job.stop_with_signal(signal, grace).await;
+							job.stop_with_signal(signal, grace);
 							job.delete().await;
 						});
 					}
