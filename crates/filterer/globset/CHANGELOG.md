@@ -2,6 +2,10 @@
 
 ## Next (YYYY-MM-DD)
 
+## v3.0.0 (2024-01-01)
+
+- Deps: `watchexec-filterer-ignore` and `ignore-files`
+
 ## v2.0.1 (2023-12-09)
 
 - Depend on `watchexec-events` instead of the `watchexec` re-export.
