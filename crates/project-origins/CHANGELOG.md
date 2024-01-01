@@ -2,6 +2,9 @@
 
 ## Next (YYYY-MM-DD)
 
+- Remove `README.md` files from detection; those were causing too many false positives and were a weak signal anyway.
+- Add Node.js package manager lockfiles.
+
 ## v1.2.1 (2023-11-26)
 
 - Deps: upgrade Tokio requirement to 1.33.0
