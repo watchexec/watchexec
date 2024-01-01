@@ -4,6 +4,8 @@
 
 ## v3.0.0 (2024-01-01)
 
+- Deps: `ignore-files` 2.0.0
+
 ## v2.0.1 (2023-12-09)
 
 - Depend on `watchexec-events` instead of the `watchexec` re-export.
