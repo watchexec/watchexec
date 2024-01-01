@@ -21,7 +21,7 @@ tracing = "0.1.40"
 dunce = "1.0.4"
 
 [dependencies.ignore-files]
-version = "1.3.2"
+version = "2.0.0"
 path = "../../ignore-files"
 
 [dependencies.watchexec]

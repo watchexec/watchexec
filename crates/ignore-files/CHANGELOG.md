@@ -2,6 +2,11 @@
 
 ## Next (YYYY-MM-DD)
 
+## v2.0.0 (2024-01-01)
+
+- A round of optimisation by @t3hmrman, improving directory traversal to avoid crawling unneeded paths ([#663](https://github.com/watchexec/watchexec/pull/663))
+- Respect `applies_in` scope when processing nested ignores, by @thislooksfun ([#746](https://github.com/watchexec/watchexec/pull/746))
+
 ## v1.3.2 (2023-11-26)
 
 - Remove error diagnostic codes.
