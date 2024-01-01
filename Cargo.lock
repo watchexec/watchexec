@@ -4098,7 +4098,7 @@ dependencies = [
 
 [[package]]
 name = "watchexec-filterer-tagged"
-version = "1.0.0"
+version = "2.0.0"
 dependencies = [
  "futures",
  "globset",
