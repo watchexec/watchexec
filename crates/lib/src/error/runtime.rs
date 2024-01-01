@@ -178,6 +178,11 @@ pub enum RuntimeError {
 
 	/// Error received from the [`ignore-files`](ignore_files) crate.
 	#[error("ignore files: {0}")]
+	#[deprecated(
+		since = "3.0.2",
+		note = "ignore-files is no longer part of Watchexec directly"
+	)]
+	// on removal, delete the dependency too
 	IgnoreFiles(
 		#[diagnostic_source]
 		#[from]
