@@ -4088,6 +4088,7 @@ dependencies = [
  "dunce",
  "ignore",
  "ignore-files",
+ "normalize-path",
  "project-origins",
  "tokio",
  "tracing",

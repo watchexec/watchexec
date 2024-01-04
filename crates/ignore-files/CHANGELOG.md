@@ -2,10 +2,14 @@
 
 ## Next (YYYY-MM-DD)
 
+- Normalise paths on all platforms (via `normalize-path`).
+- Require paths be normalised before discovery.
+- Add convenience APIs to `IgnoreFilesFromOriginArgs` for that purpose.
+
 ## v2.0.0 (2024-01-01)
 
-- A round of optimisation by @t3hmrman, improving directory traversal to avoid crawling unneeded paths ([#663](https://github.com/watchexec/watchexec/pull/663))
-- Respect `applies_in` scope when processing nested ignores, by @thislooksfun ([#746](https://github.com/watchexec/watchexec/pull/746))
+- A round of optimisation by @t3hmrman, improving directory traversal to avoid crawling unneeded paths. ([#663](https://github.com/watchexec/watchexec/pull/663))
+- Respect `applies_in` scope when processing nested ignores, by @thislooksfun. ([#746](https://github.com/watchexec/watchexec/pull/746))
 
 ## v1.3.2 (2023-11-26)
 
