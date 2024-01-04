@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v2.1.0 (2024-01-04)
+
 - Normalise paths on all platforms (via `normalize-path`).
 - Require paths be normalised before discovery.
 - Add convenience APIs to `IgnoreFilesFromOriginArgs` for that purpose.
