@@ -389,7 +389,7 @@ fn get_applies_in_path(origin: &Path, ignore_file: &IgnoreFile) -> PathBuf {
 	ignore_file
 		.applies_in
 		.as_ref()
-		.map_or(root_path, |p| PathBuf::from(simplify_path(p)))
+		.map_or(root_path, |p| simplify_path(p))
 }
 
 /// Gets the root component of a given path.

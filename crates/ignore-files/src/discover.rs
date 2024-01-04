@@ -62,14 +62,10 @@ impl IgnoreFilesFromOriginArgs {
 	pub async fn canonicalise(self) -> std::io::Result<Self> {
 		Ok(Self {
 			origin: canonicalize(&self.origin).await?,
-			explicit_watches: try_join_all(
-				self.explicit_watches.into_iter().map(|p| canonicalize(p)),
-			)
-			.await?,
-			explicit_ignores: try_join_all(
-				self.explicit_ignores.into_iter().map(|p| canonicalize(p)),
-			)
-			.await?,
+			explicit_watches: try_join_all(self.explicit_watches.into_iter().map(canonicalize))
+				.await?,
+			explicit_ignores: try_join_all(self.explicit_ignores.into_iter().map(canonicalize))
+				.await?,
 		})
 	}
 
