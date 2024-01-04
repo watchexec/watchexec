@@ -5,8 +5,10 @@ use std::{
 	path::{Path, PathBuf},
 };
 
+use futures::future::try_join_all;
 use gix_config::{path::interpolate::Context as InterpolateContext, File, Path as GitPath};
 use miette::{bail, Result};
+use normalize_path::NormalizePath;
 use project_origins::ProjectType;
 use tokio::fs::{canonicalize, metadata, read_dir};
 use tracing::{trace, trace_span};
@@ -14,42 +16,101 @@ use tracing::{trace, trace_span};
 use crate::{IgnoreFile, IgnoreFilter};
 
 /// Arguments for finding ignored files in a given directory and subdirectories
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct IgnoreFilesFromOriginArgs {
-	/// Origin from which finding ignored files will start
-	origin: PathBuf,
+	/// Origin from which finding ignored files will start.
+	pub origin: PathBuf,
 
 	/// Paths that have been explicitly selected to be watched.
 	///
-	/// If this list is non-empty, all paths not on this list will be ignored
+	/// If this list is non-empty, all paths not on this list will be ignored.
 	///
-	/// These paths *must* be absolute, and are checked upon creation
-	explicit_watches: Vec<PathBuf>,
+	/// These paths *must* be absolute and normalised (no `.` and `..` components).
+	pub explicit_watches: Vec<PathBuf>,
 
-	/// Paths that have been explicitly ignored
+	/// Paths that have been explicitly ignored.
 	///
-	/// If this list is non-empty, all paths on this list will be ignored
+	/// If this list is non-empty, all paths on this list will be ignored.
 	///
-	/// These paths *must* be absolute
-	explicit_ignores: Vec<PathBuf>,
+	/// These paths *must* be absolute and normalised (no `.` and `..` components).
+	pub explicit_ignores: Vec<PathBuf>,
 }
 
 impl IgnoreFilesFromOriginArgs {
+	/// Check that this struct is correctly-formed.
+	pub fn check(&self) -> Result<()> {
+		if self.explicit_watches.iter().any(|p| !p.is_absolute()) {
+			bail!("explicit_watches contains non-absolute paths");
+		}
+		if self.explicit_watches.iter().any(|p| !p.is_normalized()) {
+			bail!("explicit_watches contains non-normalised paths");
+		}
+		if self.explicit_ignores.iter().any(|p| !p.is_absolute()) {
+			bail!("explicit_ignores contains non-absolute paths");
+		}
+		if self.explicit_ignores.iter().any(|p| !p.is_normalized()) {
+			bail!("explicit_ignores contains non-normalised paths");
+		}
+
+		Ok(())
+	}
+
+	/// Canonicalise all paths.
+	///
+	/// The result is always well-formed.
+	pub async fn canonicalise(self) -> std::io::Result<Self> {
+		Ok(Self {
+			origin: canonicalize(&self.origin).await?,
+			explicit_watches: try_join_all(
+				self.explicit_watches.into_iter().map(|p| canonicalize(p)),
+			)
+			.await?,
+			explicit_ignores: try_join_all(
+				self.explicit_ignores.into_iter().map(|p| canonicalize(p)),
+			)
+			.await?,
+		})
+	}
+
+	/// Create args with all fields set and check that they are correctly-formed.
 	pub fn new(
 		origin: impl AsRef<Path>,
 		explicit_watches: Vec<PathBuf>,
 		explicit_ignores: Vec<PathBuf>,
 	) -> Result<Self> {
-		if explicit_watches.iter().any(|p| !p.is_absolute()) {
-			bail!("explicit watch dir contains non-absolute directories");
-		}
-		if explicit_ignores.iter().any(|p| !p.is_absolute()) {
-			bail!("explicit watch dir contains non-absolute directories");
-		}
-		Ok(Self {
+		let this = Self {
 			origin: PathBuf::from(origin.as_ref()),
 			explicit_watches,
 			explicit_ignores,
-		})
+		};
+		this.check()?;
+		Ok(this)
+	}
+
+	/// Create args without checking well-formed-ness.
+	///
+	/// Use this only if you know that the args are well-formed, or if you are about to call
+	/// [`canonicalise()`][IgnoreFilesFromOriginArgs::canonicalise()] on them.
+	pub fn new_unchecked(
+		origin: impl AsRef<Path>,
+		explicit_watches: impl IntoIterator<Item = impl Into<PathBuf>>,
+		explicit_ignores: impl IntoIterator<Item = impl Into<PathBuf>>,
+	) -> Self {
+		Self {
+			origin: origin.as_ref().into(),
+			explicit_watches: explicit_watches.into_iter().map(Into::into).collect(),
+			explicit_ignores: explicit_ignores.into_iter().map(Into::into).collect(),
+		}
+	}
+}
+
+impl From<&Path> for IgnoreFilesFromOriginArgs {
+	fn from(path: &Path) -> Self {
+		Self {
+			origin: path.into(),
+			..Default::default()
+		}
 	}
 }
 
@@ -83,11 +144,19 @@ impl IgnoreFilesFromOriginArgs {
 /// ## Async
 ///
 /// This future is not `Send` due to [`gix_config`] internals.
+///
+/// ## Panics
+///
+/// This function panics if the `args` are not correctly-formed; this can be checked beforehand
+/// without panicking with [`IgnoreFilesFromOriginArgs::check()`].
 #[allow(clippy::future_not_send)]
 pub async fn from_origin(
 	args: impl Into<IgnoreFilesFromOriginArgs>,
 ) -> (Vec<IgnoreFile>, Vec<Error>) {
 	let args = args.into();
+	args.check()
+		.expect("checking well-formedness of IgnoreFilesFromOriginArgs");
+
 	let origin = &args.origin;
 	let mut ignore_files = args
 		.explicit_ignores
@@ -455,10 +524,7 @@ impl DirTourist {
 			to_visit: vec![base.clone()],
 			base,
 			to_skip: HashSet::new(),
-			to_explicitly_watch: watch_files.iter().fold(HashSet::new(), |mut acc, path| {
-				acc.insert(path.clone());
-				acc
-			}),
+			to_explicitly_watch: watch_files.iter().cloned().collect(),
 			errors: Vec::new(),
 			filter,
 		})
