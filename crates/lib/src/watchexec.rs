@@ -159,7 +159,8 @@ impl Watchexec {
 				signal::worker(config.clone(), er_s.clone(), ev_s.clone()).map_ok(|()| "signal"),
 			);
 			tasks.spawn(
-				keyboard::worker(config.clone(), er_s.clone(), ev_s.clone()).map_ok(|()| "keyboard"),
+				keyboard::worker(config.clone(), er_s.clone(), ev_s.clone())
+					.map_ok(|()| "keyboard"),
 			);
 			tasks.spawn(error_hook(er_r, config.error_handler.clone()).map_ok(|()| "error"));
 

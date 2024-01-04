@@ -98,7 +98,7 @@ impl Handler {
 	/// Get a job given its Id.
 	///
 	/// This returns a job handle, if it existed when this handler was called.
-  #[must_use]
+	#[must_use]
 	pub fn get_job(&self, id: Id) -> Option<Job> {
 		self.extant.get(&id).cloned()
 	}
