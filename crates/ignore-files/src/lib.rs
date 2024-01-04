@@ -6,8 +6,9 @@
 //! more ignore files in _these_ subfolders, and so on. Discovering and interpreting all of these in
 //! a single context is not a simple task: this is what this crate provides.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
+use normalize_path::NormalizePath;
 use project_origins::ProjectType;
 
 #[doc(inline)]
@@ -36,4 +37,8 @@ pub struct IgnoreFile {
 
 	/// Which project type the ignore file applies to, or was found through.
 	pub applies_to: Option<ProjectType>,
+}
+
+pub(crate) fn simplify_path(path: &Path) -> PathBuf {
+	dunce::simplified(path).normalize()
 }

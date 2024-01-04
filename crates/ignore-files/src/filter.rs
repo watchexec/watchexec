@@ -9,7 +9,7 @@ use radix_trie::{Trie, TrieCommon};
 use tokio::fs::{canonicalize, read_to_string};
 use tracing::{trace, trace_span};
 
-use crate::{Error, IgnoreFile};
+use crate::{simplify_path, Error, IgnoreFile};
 
 #[derive(Clone, Debug)]
 struct Ignore {
@@ -60,7 +60,7 @@ impl IgnoreFilter {
 			.await
 			.map_err(move |err| Error::Canonicalize { path: origin, err })?;
 
-		let origin = dunce::simplified(&origin);
+		let origin = simplify_path(&origin);
 		let _span = trace_span!("build_filterer", ?origin);
 
 		trace!(files=%files.len(), "loading file contents");
@@ -100,10 +100,10 @@ impl IgnoreFilter {
 
 		// add builder for the root of the file system, so that we can handle global ignores and globs
 		ignores_trie.insert(
-			prefix(origin),
+			prefix(&origin),
 			Ignore {
 				gitignore: Gitignore::empty(),
-				builder: Some(GitignoreBuilder::new(origin)),
+				builder: Some(GitignoreBuilder::new(&origin)),
 			},
 		);
 
@@ -113,7 +113,7 @@ impl IgnoreFilter {
 		for (file, content) in files_contents.into_iter().flatten() {
 			let _span = trace_span!("loading ignore file", ?file).entered();
 
-			let applies_in = get_applies_in_path(origin, &file);
+			let applies_in = get_applies_in_path(&origin, &file);
 
 			let mut builder = ignores_trie
 				.get(&applies_in.display().to_string())
@@ -306,7 +306,8 @@ impl IgnoreFilter {
 
 	/// Match a particular path against the ignore set.
 	pub fn match_path(&self, path: &Path, is_dir: bool) -> Match<&Glob> {
-		let path = dunce::simplified(path);
+		let path = simplify_path(path);
+		let path = path.as_path();
 
 		let mut search_path = path;
 		loop {
@@ -388,7 +389,7 @@ fn get_applies_in_path(origin: &Path, ignore_file: &IgnoreFile) -> PathBuf {
 	ignore_file
 		.applies_in
 		.as_ref()
-		.map_or(root_path, |p| PathBuf::from(dunce::simplified(p)))
+		.map_or(root_path, |p| PathBuf::from(simplify_path(p)))
 }
 
 /// Gets the root component of a given path.

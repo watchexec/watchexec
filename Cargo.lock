@@ -1952,6 +1952,7 @@ dependencies = [
  "gix-config",
  "ignore",
  "miette",
+ "normalize-path",
  "project-origins",
  "radix_trie",
  "thiserror",
