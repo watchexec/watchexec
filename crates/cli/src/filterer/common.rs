@@ -1,4 +1,5 @@
 use std::{
+	borrow::Cow,
 	collections::HashSet,
 	env,
 	path::{Path, PathBuf},
@@ -102,42 +103,33 @@ pub async fn ignores(
 	vcs_types: &[ProjectType],
 	origin: &Path,
 ) -> Result<Vec<IgnoreFile>> {
+	fn higher_make_absolute_if_needed<'a>(
+		origin: &'a Path,
+	) -> impl 'a + Fn(&'a PathBuf) -> Cow<'a, Path> {
+		|path| {
+			if path.is_absolute() {
+				Cow::Borrowed(path)
+			} else {
+				Cow::Owned(origin.join(path))
+			}
+		}
+	}
+
 	let mut skip_git_global_excludes = false;
 
 	let mut ignores = if args.no_project_ignore {
 		Vec::new()
 	} else {
-		// Build list of absolute explicitly included paths
-		let include_paths = args
-			.paths
-			.iter()
-			.map(|p| {
-				if p.is_absolute() {
-					p.clone()
-				} else {
-					origin.join(p)
-				}
-			})
-			.collect();
+		let make_absolute_if_needed = higher_make_absolute_if_needed(origin);
+		let include_paths = args.paths.iter().map(&make_absolute_if_needed);
+		let ignore_files = args.ignore_files.iter().map(&make_absolute_if_needed);
 
-		// Build list of absolute explicitly ignored paths
-		let ignore_files = args
-			.ignore_files
-			.iter()
-			.map(|p| {
-				if p.is_absolute() {
-					p.clone()
-				} else {
-					origin.join(p)
-				}
-			})
-			.collect();
-
-		let (mut ignores, errors) = ignore_files::from_origin(IgnoreFilesFromOriginArgs::new(
-			origin,
-			include_paths,
-			ignore_files,
-		)?)
+		let (mut ignores, errors) = ignore_files::from_origin(
+			IgnoreFilesFromOriginArgs::new_unchecked(origin, include_paths, ignore_files)
+				.canonicalise()
+				.await
+				.into_diagnostic()?,
+		)
 		.await;
 
 		for err in errors {
