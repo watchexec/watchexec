@@ -13,6 +13,7 @@
 
 use ignore::Match;
 use ignore_files::IgnoreFilter;
+use normalize_path::NormalizePath;
 use tracing::{trace, trace_span};
 use watchexec::{error::RuntimeError, filter::Filterer};
 use watchexec_events::{Event, FileType, Priority};
@@ -31,7 +32,8 @@ impl Filterer for IgnoreFilterer {
 		let mut pass = true;
 
 		for (path, file_type) in event.paths() {
-			let path = dunce::simplified(path);
+			let path = dunce::simplified(path).normalize();
+			let path = path.as_path();
 			let _span = trace_span!("checking_against_compiled", ?path, ?file_type).entered();
 			let is_dir = file_type.map_or(false, |t| matches!(t, FileType::Dir));
 

@@ -17,8 +17,9 @@ edition = "2021"
 
 [dependencies]
 ignore = "0.4.18"
-tracing = "0.1.40"
 dunce = "1.0.4"
+normalize-path = "0.2.1"
+tracing = "0.1.40"
 
 [dependencies.ignore-files]
 version = "2.0.0"

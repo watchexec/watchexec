@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+- Normalise paths on all platforms (via `normalize-path`).
+
 ## v3.0.0 (2024-01-01)
 
 - Deps: `ignore-files` 2.0.0
