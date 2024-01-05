@@ -761,7 +761,7 @@ Didnt expect this much output? Use the short -h flag to get short help.
 
 # VERSION
 
-v1.25.0
+v1.25.1
 
 # AUTHORS
 
