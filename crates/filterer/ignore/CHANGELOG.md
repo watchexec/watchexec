@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v3.0.1 (2024-01-04)
+
 - Normalise paths on all platforms (via `normalize-path`).
 
 ## v3.0.0 (2024-01-01)
