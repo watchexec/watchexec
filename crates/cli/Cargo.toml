@@ -159,6 +159,7 @@ assets = [
 	["../../doc/watchexec.1.md", "usr/share/doc/watchexec/watchexec.1.md", "644"],
 	["../../doc/watchexec.1", "usr/share/man/man1/watchexec.1.html", "644"],
 	["../../completions/bash", "usr/share/bash-completion/completions/watchexec", "644"],
+    ["../../completions/fish", "usr/share/fish/vendor_completions.d/watchexec.fish", "644"],
 	["../../completions/zsh", "usr/share/zsh/site-functions/_watchexec", "644"],
 	["../../doc/logo.svg", "usr/share/icons/hicolor/scalable/apps/watchexec.svg", "644"],
 ]
@@ -170,6 +171,7 @@ assets = [
 	{ source = "../../doc/watchexec.1.md", dest = "/usr/share/doc/watchexec/watchexec.1.md", mode = "644", doc = true },
 	{ source = "../../doc/watchexec.1", dest = "/usr/share/man/man1/watchexec.1.html", mode = "644" },
 	{ source = "../../completions/bash", dest = "/usr/share/bash-completion/completions/watchexec", mode = "644" },
+ 	{ source = "../../completions/fish", dest = "/usr/share/fish/vendor_completions.d/watchexec.fish", mode = "644" },
 	{ source = "../../completions/zsh", dest = "/usr/share/zsh/site-functions/_watchexec", mode = "644" },
 	{ source = "../../doc/logo.svg", dest = "/usr/share/icons/hicolor/scalable/apps/watchexec.svg", mode = "644" },
 	# set conf = true for config file when that lands
