@@ -14,20 +14,18 @@ readme = "README.md"
 rust-version = "1.64.0"
 edition = "2021"
 
-[dependencies.time]
-version = "0.3.30"
-features = ["macros", "formatting"]
-
-[dependencies.gix]
-version = "0.55.2"
-optional = true
-default-features = false
+[dependencies]
+time = { version = "0.3.30", features = ["macros", "formatting"] }
+gix-features = { version = "0.37.2", features = ["rustsha1", "walkdir", "zlib-rust-backend"], optional = true }
+gix-hash = { version = "0.14.1", optional = true }
+gix-pack = { version = "0.46.1", default-features = false, optional = true }
+hex = { version = "0.4.3", optional = true }
 
 [features]
 default = ["git", "reproducible", "std"]
 
 ### Read from git repo, provide GIT_* vars
-git = ["dep:gix"]
+git = ["dep:gix-features", "dep:gix-hash", "dep:gix-pack", "dep:hex"]
 
 ### Read from SOURCE_DATE_EPOCH when available
 reproducible = []
