@@ -163,7 +163,7 @@ impl GitInfo {
 		Ok(Self {
 			git_root: repo.canonicalize().err_string()?,
 			git_hash: hash.to_hex().to_string(),
-			git_shorthash: hash.to_hex_with_len(8).to_string(),
+			git_shorthash: hash.to_hex_with_len(7).to_string(),
 			git_date: timestamp.format(DATE_FORMAT).err_string()?,
 			git_datetime: timestamp.format(DATETIME_FORMAT).err_string()?,
 		})
