@@ -456,6 +456,7 @@ dependencies = [
 name = "bosion"
 version = "1.0.2"
 dependencies = [
+ "flate2",
  "gix-features 0.37.2",
  "gix-hash 0.14.1",
  "gix-pack",

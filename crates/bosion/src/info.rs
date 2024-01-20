@@ -44,6 +44,7 @@ pub struct Info {
 
 trait ErrString<T> {
 	fn err_string(self) -> Result<T, String>;
+	fn context(self, context: impl std::fmt::Display) -> Result<T, String>;
 }
 
 impl<T, E> ErrString<T> for Result<T, E>
@@ -52,6 +53,10 @@ where
 {
 	fn err_string(self) -> Result<T, String> {
 		self.map_err(|e| e.to_string())
+	}
+
+	fn context(self, context: impl std::fmt::Display) -> Result<T, String> {
+		self.map_err(|err| format!("{context}: {err}"))
 	}
 }
 
@@ -150,10 +155,10 @@ pub struct GitInfo {
 #[cfg(feature = "git")]
 impl GitInfo {
 	fn gather() -> Result<Self, String> {
-		let repo = git::discover();
-		let hash = git::head(&repo)?;
-		let commit_file = git::read_commit(&repo, &hash)?;
-		let timestamp = git::commit_datetime(&commit_file)?;
+		let repo = git::discover().context("discover git repo")?;
+		let hash = git::head(&repo).context("read HEAD")?;
+		let commit_file = git::read_commit(&repo, &hash).context("read commit data")?;
+		let timestamp = git::commit_datetime(&commit_file).context("parse commit date")?;
 
 		Ok(Self {
 			git_root: repo.canonicalize().err_string()?,
@@ -174,6 +179,7 @@ mod git {
 		str::FromStr,
 	};
 
+	use flate2::bufread::ZlibDecoder;
 	use gix_features::{fs::WalkDir, zlib::Inflate};
 	use gix_hash::{oid, ObjectId};
 	use gix_pack::{
@@ -184,27 +190,35 @@ mod git {
 
 	use super::ErrString;
 
-	pub fn discover() -> PathBuf {
-		let mut current = PathBuf::from(".");
+	pub fn discover() -> Result<PathBuf, String> {
+		let mut current = PathBuf::from(".").canonicalize().err_string()?;
 		while let Some(parent) = current.parent() {
 			current = parent.into();
 			if current.join(".git").exists() {
-				break;
+				return Ok(current.join(".git"));
 			}
 		}
 
-		current.join(".git")
+		Err(String::from("git repo not found"))
 	}
 
 	pub fn head(repo: &Path) -> Result<ObjectId, String> {
-		let headfile = read_to_string(repo.join("HEAD")).err_string()?;
+		let headfile = repo.join("HEAD");
+		let headfile = read_to_string(&headfile).context(headfile.display())?;
+
 		let (_, headref) = headfile
 			.split_once(": ")
 			.ok_or_else(|| String::from("invalid .git/HEAD"))?;
+		let refpath = repo.join(headref.trim());
+		let reffile = read_to_string(&refpath).context(refpath.display())?;
+		let reffile = reffile.trim().to_string();
+
 		oid::try_from_bytes(
-			&hex::decode(read_to_string(repo.join(headref)).err_string()?).err_string()?,
+			&hex::decode(&reffile)
+				.context(reffile)
+				.context(refpath.display())?,
 		)
-		.err_string()
+		.context("parse oid")
 		.map(|o| o.to_owned())
 	}
 
@@ -222,7 +236,7 @@ mod git {
 
 	fn find_in_index(repo: &Path, object: &oid) -> Result<Option<(PathBuf, Offset)>, String> {
 		for file in WalkDir::new(repo.join("objects/pack")) {
-			let file = file.err_string()?;
+			let file = file.context("walk objects/pack")?;
 
 			if !file.file_type().is_file() {
 				continue;
@@ -232,7 +246,10 @@ mod git {
 				continue;
 			}
 
-			let index = IndexFile::at(file.path(), Default::default()).err_string()?;
+			let index = IndexFile::at(file.path(), Default::default())
+				.context(file.path().display())
+				.context("read index file")?;
+
 			if let Some(i) = index.lookup(object) {
 				let offset = index.pack_offset_at_index(i);
 				let mut packpath = repo.join(file.path());
@@ -245,28 +262,47 @@ mod git {
 	}
 
 	fn unpack_commit(path: &Path, offset: Offset) -> Result<Vec<u8>, String> {
-		let pack_file = PackFile::at(path, Default::default()).err_string()?;
+		let pack_file = PackFile::at(path, Default::default())
+			.context(path.display())
+			.context("read pack file")?;
+
 		let entry = pack_file.entry(offset);
 		let mut buf = Vec::with_capacity(entry.decompressed_size as _);
 		let mut flate = Inflate::default();
 		pack_file
 			.decompress_entry(&entry, &mut flate, &mut buf)
-			.err_string()?;
+			.context(offset)
+			.context("decompress commit at offset")
+			.context(path.display())?;
 
 		Ok(buf)
 	}
 
 	pub fn read_commit(repo: &Path, hash: &oid) -> Result<Vec<u8>, String> {
 		if let Some(path) = object_file(repo, hash) {
-			let mut file = File::open(path).err_string()?;
+			let mut file = File::open(&path)
+				.context(path.display())
+				.context("open file")?;
 
-			let size = file.metadata().err_string()?.len() as usize;
+			let size = file
+				.metadata()
+				.err_string()
+				.context(path.display())
+				.context("stat file")?
+				.len() as usize;
 			let mut raw = Vec::with_capacity(size);
-			file.read_to_end(&mut raw).err_string()?;
+			file.read_to_end(&mut raw)
+				.err_string()
+				.context(path.display())
+				.context("read file")?;
 
-			let mut flate = Inflate::default();
-			let mut buf = Vec::with_capacity(size * 10);
-			flate.once(&raw, &mut buf).err_string()?;
+			let mut flate = ZlibDecoder::new(&*raw);
+			let mut buf = Vec::new();
+			flate
+				.read_to_end(&mut buf)
+				.err_string()
+				.context(path.display())
+				.context("inflate file")?;
 			Ok(buf)
 		} else {
 			let (pack_path, offset) = find_in_index(repo, hash)?.ok_or_else(|| {
@@ -284,9 +320,13 @@ mod git {
 			.enumerate()
 			.find(|(_, bytes)| *bytes == COMMITTER)
 			.ok_or_else(|| String::from("HEAD has no committer"))?;
-		let date_s = &commit[committer_line_offset..]
-			.split(|b| *b == b' ')
-			.nth(3)
+		let date_line = &commit[(committer_line_offset + 1)..]
+			.split(|b| *b == b'\n')
+			.next()
+			.ok_or_else(|| String::from("splitting line failed"))?;
+		let date_s = &date_line
+			.rsplit(|b| *b == b' ')
+			.nth(1)
 			.ok_or_else(|| String::from("malformed committer in commit"))
 			.and_then(|s| std::str::from_utf8(s).err_string())
 			.and_then(|s| i64::from_str(s).err_string())?;

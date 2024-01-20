@@ -16,16 +16,17 @@ edition = "2021"
 
 [dependencies]
 time = { version = "0.3.30", features = ["macros", "formatting"] }
-gix-features = { version = "0.37.2", features = ["rustsha1", "walkdir", "zlib-rust-backend"], optional = true }
+gix-features = { version = "0.37.2", features = ["rustsha1", "walkdir", "zlib"], optional = true }
 gix-hash = { version = "0.14.1", optional = true }
 gix-pack = { version = "0.46.1", default-features = false, optional = true }
 hex = { version = "0.4.3", optional = true }
+flate2 = { version = "1.0.28", optional = true }
 
 [features]
 default = ["git", "reproducible", "std"]
 
 ### Read from git repo, provide GIT_* vars
-git = ["dep:gix-features", "dep:gix-hash", "dep:gix-pack", "dep:hex"]
+git = ["dep:flate2", "dep:gix-features", "dep:gix-hash", "dep:gix-pack", "dep:hex"]
 
 ### Read from SOURCE_DATE_EPOCH when available
 reproducible = []
