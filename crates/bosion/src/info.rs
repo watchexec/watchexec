@@ -257,7 +257,7 @@ mod git {
 	}
 
 	pub fn read_commit(repo: &Path, hash: &oid) -> Result<Vec<u8>, String> {
-		if let Some(path) = object_file(&repo, &hash) {
+		if let Some(path) = object_file(repo, hash) {
 			let mut file = File::open(path).err_string()?;
 
 			let size = file.metadata().err_string()?.len() as usize;
@@ -269,7 +269,7 @@ mod git {
 			flate.once(&raw, &mut buf).err_string()?;
 			Ok(buf)
 		} else {
-			let (pack_path, offset) = find_in_index(&repo, &hash)?.ok_or_else(|| {
+			let (pack_path, offset) = find_in_index(repo, hash)?.ok_or_else(|| {
 				String::from("HEAD is a packed ref, but can't find it in git pack")
 			})?;
 
@@ -286,8 +286,7 @@ mod git {
 			.ok_or_else(|| String::from("HEAD has no committer"))?;
 		let date_s = &commit[committer_line_offset..]
 			.split(|b| *b == b' ')
-			.skip(3)
-			.next()
+			.nth(3)
 			.ok_or_else(|| String::from("malformed committer in commit"))
 			.and_then(|s| std::str::from_utf8(s).err_string())
 			.and_then(|s| i64::from_str(s).err_string())?;
