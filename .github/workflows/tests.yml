@@ -50,7 +50,7 @@ jobs:
         echo C:\Program Files\Git\usr\bin>>"%GITHUB_PATH%"
 
     - name: Cargo caching
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cargo/registry/index/
@@ -62,7 +62,7 @@ jobs:
           ${{ runner.os }}-cargo-
 
     - name: Compilation caching
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: target/
         key: ${{ runner.os }}-target-stable-${{ hashFiles('**/Cargo.lock') }}
@@ -118,7 +118,7 @@ jobs:
         tool: cross
 
     - name: Cargo caching
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cargo/registry/index/
