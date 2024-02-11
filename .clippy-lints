@@ -1,4 +1,3 @@
--D clippy::all
 -W clippy::nursery
 -W clippy::pedantic
 -A clippy::module-name-repetitions
@@ -10,3 +9,4 @@
 -A clippy::default-trait-access
 -A clippy::enum-glob-use
 -A clippy::option-if-let-else
+-A clippy::blocks-in-conditions

@@ -536,6 +536,9 @@ may silently do nothing, or log a warning.
 
 :   When to use terminal colours
 
+Setting the environment variable \`NO_COLOR\` to any value is equivalent
+to \`\--color=never\`.
+
 **\--timings**
 
 :   Print how long the command took to run
