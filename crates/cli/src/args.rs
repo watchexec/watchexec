@@ -680,6 +680,8 @@ pub struct Args {
 	pub notify: bool,
 
 	/// When to use terminal colours
+	///
+	/// Setting the environment variable `NO_COLOR` to any value is equivalent to `--color=never`.
 	#[arg(
 		long,
 		help_heading = OPTSET_OUTPUT,
@@ -1103,6 +1105,11 @@ pub fn get_args() -> Args {
 
 	debug!("parsing arguments");
 	let mut args = Args::parse_from(args);
+
+	// https://no-color.org/
+	if args.color == ColourMode::Auto && std::env::var("NO_COLOR").is_ok() {
+		args.color = ColourMode::Never;
+	}
 
 	if args.ignore_nothing {
 		args.no_global_ignore = true;
