@@ -20,5 +20,5 @@ tokio = { version = "1.33.0", features = ["fs"] }
 tokio-stream = { version = "0.1.9", features = ["fs"] }
 
 [dev-dependencies]
-miette = "5.3.0"
+miette = "7.1.0"
 tracing-subscriber = "0.3.11"
