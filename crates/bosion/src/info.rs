@@ -44,6 +44,7 @@ pub struct Info {
 
 trait ErrString<T> {
 	fn err_string(self) -> Result<T, String>;
+	fn context(self, context: impl std::fmt::Display) -> Result<T, String>;
 }
 
 impl<T, E> ErrString<T> for Result<T, E>
@@ -52,6 +53,10 @@ where
 {
 	fn err_string(self) -> Result<T, String> {
 		self.map_err(|e| e.to_string())
+	}
+
+	fn context(self, context: impl std::fmt::Display) -> Result<T, String> {
+		self.map_err(|err| format!("{context}: {err}"))
 	}
 }
 
@@ -150,19 +155,182 @@ pub struct GitInfo {
 #[cfg(feature = "git")]
 impl GitInfo {
 	fn gather() -> Result<Self, String> {
-		use std::path::Path;
-		let (path, _) = gix::discover::upwards(Path::new(".")).err_string()?;
-		let repo = gix::discover(path).err_string()?;
-		let head = repo.head_commit().err_string()?;
-		let time = head.time().err_string()?;
-		let timestamp = OffsetDateTime::from_unix_timestamp(time.seconds as _).err_string()?;
+		let repo = git::discover().context("discover git repo")?;
+		let hash = git::head(&repo).context("read HEAD")?;
+		let commit_file = git::read_commit(&repo, &hash).context("read commit data")?;
+		let timestamp = git::commit_datetime(&commit_file).context("parse commit date")?;
 
 		Ok(Self {
-			git_root: repo.path().canonicalize().err_string()?,
-			git_hash: head.id().to_string(),
-			git_shorthash: head.short_id().err_string()?.to_string(),
+			git_root: repo.canonicalize().err_string()?,
+			git_hash: hash.to_hex().to_string(),
+			git_shorthash: hash.to_hex_with_len(7).to_string(),
 			git_date: timestamp.format(DATE_FORMAT).err_string()?,
 			git_datetime: timestamp.format(DATETIME_FORMAT).err_string()?,
 		})
+	}
+}
+
+#[cfg(feature = "git")]
+mod git {
+	use std::{
+		fs::{read_to_string, File},
+		io::Read,
+		path::{Path, PathBuf},
+		str::FromStr,
+	};
+
+	use flate2::bufread::ZlibDecoder;
+	use gix_features::{fs::WalkDir, zlib::Inflate};
+	use gix_hash::{oid, ObjectId};
+	use gix_pack::{
+		data::{File as PackFile, Offset},
+		index::File as IndexFile,
+	};
+	use time::OffsetDateTime;
+
+	use super::ErrString;
+
+	pub fn discover() -> Result<PathBuf, String> {
+		let mut current = PathBuf::from(".").canonicalize().err_string()?;
+		while let Some(parent) = current.parent() {
+			current = parent.into();
+			if current.join(".git").exists() {
+				return Ok(current.join(".git"));
+			}
+		}
+
+		Err(String::from("git repo not found"))
+	}
+
+	pub fn head(repo: &Path) -> Result<ObjectId, String> {
+		let headfile = repo.join("HEAD");
+		let headfile = read_to_string(&headfile).context(headfile.display())?;
+
+		let (_, headref) = headfile
+			.split_once(": ")
+			.ok_or_else(|| String::from("invalid .git/HEAD"))?;
+		let refpath = repo.join(headref.trim());
+		let reffile = read_to_string(&refpath).context(refpath.display())?;
+		let reffile = reffile.trim().to_string();
+
+		oid::try_from_bytes(
+			&hex::decode(&reffile)
+				.context(reffile)
+				.context(refpath.display())?,
+		)
+		.context("parse oid")
+		.map(|o| o.to_owned())
+	}
+
+	fn object_file(repo: &Path, object: &oid) -> Option<PathBuf> {
+		let path = repo
+			.join("objects")
+			.join(format!("{:02x}", object.first_byte()))
+			.join(hex::encode(&object.as_bytes()[1..]));
+		if path.exists() {
+			Some(path)
+		} else {
+			None
+		}
+	}
+
+	fn find_in_index(repo: &Path, object: &oid) -> Result<Option<(PathBuf, Offset)>, String> {
+		for file in WalkDir::new(repo.join("objects/pack")) {
+			let file = file.context("walk objects/pack")?;
+
+			if !file.file_type().is_file() {
+				continue;
+			}
+
+			if !file.path().extension().map_or(false, |ext| ext == "idx") {
+				continue;
+			}
+
+			let index = IndexFile::at(file.path(), Default::default())
+				.context(file.path().display())
+				.context("read index file")?;
+
+			if let Some(i) = index.lookup(object) {
+				let offset = index.pack_offset_at_index(i);
+				let mut packpath = repo.join(file.path());
+				packpath.set_extension("pack");
+				return Ok(Some((packpath, offset)));
+			}
+		}
+
+		Ok(None)
+	}
+
+	fn unpack_commit(path: &Path, offset: Offset) -> Result<Vec<u8>, String> {
+		let pack_file = PackFile::at(path, Default::default())
+			.context(path.display())
+			.context("read pack file")?;
+
+		let entry = pack_file.entry(offset);
+		let mut buf = Vec::with_capacity(entry.decompressed_size as _);
+		let mut flate = Inflate::default();
+		pack_file
+			.decompress_entry(&entry, &mut flate, &mut buf)
+			.context(offset)
+			.context("decompress commit at offset")
+			.context(path.display())?;
+
+		Ok(buf)
+	}
+
+	pub fn read_commit(repo: &Path, hash: &oid) -> Result<Vec<u8>, String> {
+		if let Some(path) = object_file(repo, hash) {
+			let mut file = File::open(&path)
+				.context(path.display())
+				.context("open file")?;
+
+			let size = file
+				.metadata()
+				.err_string()
+				.context(path.display())
+				.context("stat file")?
+				.len() as usize;
+			let mut raw = Vec::with_capacity(size);
+			file.read_to_end(&mut raw)
+				.err_string()
+				.context(path.display())
+				.context("read file")?;
+
+			let mut flate = ZlibDecoder::new(&*raw);
+			let mut buf = Vec::new();
+			flate
+				.read_to_end(&mut buf)
+				.err_string()
+				.context(path.display())
+				.context("inflate file")?;
+			Ok(buf)
+		} else {
+			let (pack_path, offset) = find_in_index(repo, hash)?.ok_or_else(|| {
+				String::from("HEAD is a packed ref, but can't find it in git pack")
+			})?;
+
+			unpack_commit(&pack_path, offset)
+		}
+	}
+
+	pub fn commit_datetime(commit: &[u8]) -> Result<OffsetDateTime, String> {
+		const COMMITTER: &[u8] = b"\ncommitter ";
+		let (committer_line_offset, _) = commit
+			.windows(COMMITTER.len())
+			.enumerate()
+			.find(|(_, bytes)| *bytes == COMMITTER)
+			.ok_or_else(|| String::from("HEAD has no committer"))?;
+		let date_line = &commit[(committer_line_offset + 1)..]
+			.split(|b| *b == b'\n')
+			.next()
+			.ok_or_else(|| String::from("splitting line failed"))?;
+		let date_s = &date_line
+			.rsplit(|b| *b == b' ')
+			.nth(1)
+			.ok_or_else(|| String::from("malformed committer in commit"))
+			.and_then(|s| std::str::from_utf8(s).err_string())
+			.and_then(|s| i64::from_str(s).err_string())?;
+
+		OffsetDateTime::from_unix_timestamp(*date_s).err_string()
 	}
 }
