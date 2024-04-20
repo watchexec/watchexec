@@ -24,7 +24,6 @@ complete -c watchexec -l fs-events -d 'Filesystem events to filter to' -r -f -a 
 complete -c watchexec -l log-file -d 'Write diagnostic logs to a file' -r -F
 complete -c watchexec -l completions -d 'Generate a shell completions script' -r -f -a "{bash	'',elvish	'',fish	'',nu	'',powershell	'',zsh	''}"
 complete -c watchexec -s r -l restart -d 'Restart the process if it\'s still running'
-complete -c watchexec -s k -l kill -d 'Hidden legacy shorthand for \'--signal=kill\''
 complete -c watchexec -l stdin-quit -d 'Exit when stdin closes'
 complete -c watchexec -l no-vcs-ignore -d 'Don\'t load gitignores'
 complete -c watchexec -l no-project-ignore -d 'Don\'t load project-local ignores'
@@ -33,8 +32,8 @@ complete -c watchexec -l no-default-ignore -d 'Don\'t use internal default ignor
 complete -c watchexec -l no-discover-ignore -d 'Don\'t discover ignore files at all'
 complete -c watchexec -l ignore-nothing -d 'Don\'t ignore anything at all'
 complete -c watchexec -s p -l postpone -d 'Wait until first change before running command'
-complete -c watchexec -s n -d 'Don\'t use a shell'
-complete -c watchexec -l no-environment -d 'Shorthand for \'--emit-events=none\''
+complete -c watchexec -s n -d 'Shorthand for \'--shell=none\''
+complete -c watchexec -l no-environment -d 'Deprecated shorthand for \'--emit-events=none\''
 complete -c watchexec -l only-emit-events -d 'Only emit events to stdout, run no commands'
 complete -c watchexec -l no-process-group -d 'Don\'t use a process group'
 complete -c watchexec -s 1 -d 'Testing only: exit Watchexec after the first run'

@@ -32,7 +32,6 @@ module completions {
     --on-busy-update(-o): string@"nu-complete watchexec on_busy_update" # What to do when receiving events while the command is running
     --restart(-r)             # Restart the process if it's still running
     --signal(-s): string      # Send a signal to the process when it's still running
-    --kill(-k)                # Hidden legacy shorthand for '--signal=kill'
     --stop-signal: string     # Signal to send to stop the command
     --stop-timeout: string    # Time to wait for the command to exit gracefully
     --map-signal: string      # Translate signals from the OS to signals to send to the command
@@ -48,8 +47,8 @@ module completions {
     --delay-run: string       # Sleep before running the command
     --poll: string            # Poll for filesystem changes
     --shell: string           # Use a different shell
-    -n                        # Don't use a shell
-    --no-environment          # Shorthand for '--emit-events=none'
+    -n                        # Shorthand for '--shell=none'
+    --no-environment          # Deprecated shorthand for '--emit-events=none'
     --emit-events-to: string@"nu-complete watchexec emit_events_to" # Configure event emission
     --only-emit-events        # Only emit events to stdout, run no commands
     --env(-E): string         # Add env vars to the command

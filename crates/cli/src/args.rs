@@ -193,10 +193,6 @@ pub struct Args {
 	)]
 	pub signal: Option<Signal>,
 
-	/// Hidden legacy shorthand for '--signal=kill'.
-	#[arg(short, long, hide = true)]
-	pub kill: bool,
-
 	/// Signal to send to stop the command
 	///
 	/// This is used by 'restart' and 'signal' modes of '--on-busy-update' (unless '--signal' is
@@ -223,14 +219,15 @@ pub struct Args {
 	/// it is forcefully terminated.
 	///
 	/// Takes a unit-less value in seconds, or a time span value such as "5min 20s".
+	/// Providing a unit-less value is deprecated and will warn; it will be an error in the future.
 	///
-	/// The default is 60 seconds. Set to 0 to immediately force-kill the command.
+	/// The default is 10 seconds. Set to 0 to immediately force-kill the command.
 	///
 	/// This has no practical effect on Windows as the command is always forcefully terminated; see
 	/// '--stop-signal' for why.
 	#[arg(
 		long,
-		default_value = "60",
+		default_value = "10s",
 		hide_default_value = true,
 		value_name = "TIMEOUT"
 	)]
@@ -270,12 +267,13 @@ pub struct Args {
 	/// every accumulated event will build up in memory.
 	///
 	/// Takes a unit-less value in milliseconds, or a time span value such as "5sec 20ms".
+	/// Providing a unit-less value is deprecated and will warn; it will be an error in the future.
 	///
 	/// The default is 50 milliseconds. Setting to 0 is highly discouraged.
 	#[arg(
 		long,
 		short,
-		default_value = "50",
+		default_value = "50ms",
 		hide_default_value = true,
 		value_name = "TIMEOUT"
 	)]
@@ -320,14 +318,10 @@ pub struct Args {
 	/// VCS ignore files (Git, Mercurial, Bazaar, Darcs, Fossil) are only used if the corresponding
 	/// VCS is discovered to be in use for the project/origin. For example, a .bzrignore in a Git
 	/// repository will be discarded.
-	///
-	/// Note that this was previously called '--no-ignore', but that's now deprecated and its use is
-	/// discouraged, as it may be repurposed in the future.
 	#[arg(
 		long,
 		help_heading = OPTSET_FILTERING,
 		verbatim_doc_comment,
-		alias = "no-ignore", // deprecated
 	)]
 	pub no_project_ignore: bool,
 
@@ -402,6 +396,7 @@ pub struct Args {
 	/// but portable and slightly more efficient.
 	///
 	/// Takes a unit-less value in seconds, or a time span value such as "2min 5s".
+	/// Providing a unit-less value is deprecated and will warn; it will be an error in the future.
 	#[arg(long, value_name = "DURATION")]
 	pub delay_run: Option<TimeSpan>,
 
@@ -414,6 +409,7 @@ pub struct Args {
 	///
 	/// Optionally takes a unit-less value in milliseconds, or a time span value such as "2s 500ms",
 	/// to use as the polling interval. If not specified, the default is 30 seconds.
+	/// Providing a unit-less value is deprecated and will warn; it will be an error in the future.
 	///
 	/// Aliased as '--force-poll'.
 	#[arg(
@@ -476,30 +472,28 @@ pub struct Args {
 	)]
 	pub shell: Option<String>,
 
-	/// Don't use a shell
-	///
-	/// This is a shorthand for '--shell=none'.
+	/// Shorthand for '--shell=none'
 	#[arg(
 		short = 'n',
 		help_heading = OPTSET_COMMAND,
 	)]
 	pub no_shell: bool,
 
-	/// Shorthand for '--emit-events=none'
+	/// Deprecated shorthand for '--emit-events=none'
 	///
 	/// This is the old way to disable event emission into the environment. See '--emit-events' for
-	/// more.
+	/// more. Will be removed at next major release.
 	#[arg(
 		long,
 		help_heading = OPTSET_COMMAND,
-		// TODO: deprecate then remove
+		hide = true, // deprecated
 	)]
 	pub no_environment: bool,
 
 	/// Configure event emission
 	///
-	/// Watchexec emits event information when running a command, which can be used by the command
-	/// to target specific changed files.
+	/// Watchexec can emit event information when running a command, which can be used by the child
+	/// process to target specific changed files.
 	///
 	/// One thing to take care with is assuming inherent behaviour where there is only chance.
 	/// Notably, it could appear as if the `RENAMED` variable contains both the original and the new
@@ -510,32 +504,14 @@ pub struct Args {
 	/// whether it was the old or new isn't known), rename events might split across two debouncing
 	/// boundaries, and so on.
 	///
-	/// This option controls where that information is emitted. It defaults to 'environment', which
-	/// sets environment variables with the paths of the affected files, for filesystem events:
+	/// This option controls where that information is emitted. It defaults to 'none', which doesn't
+	/// emit event information at all. The other options are 'environment' (deprecated), 'stdio',
+	/// 'file', 'json-stdio', and 'json-file'.
 	///
-	/// $WATCHEXEC_COMMON_PATH is set to the longest common path of all of the below variables,
-	/// and so should be prepended to each path to obtain the full/real path. Then:
-	///
-	///   - $WATCHEXEC_CREATED_PATH is set when files/folders were created
-	///   - $WATCHEXEC_REMOVED_PATH is set when files/folders were removed
-	///   - $WATCHEXEC_RENAMED_PATH is set when files/folders were renamed
-	///   - $WATCHEXEC_WRITTEN_PATH is set when files/folders were modified
-	///   - $WATCHEXEC_META_CHANGED_PATH is set when files/folders' metadata were modified
-	///   - $WATCHEXEC_OTHERWISE_CHANGED_PATH is set for every other kind of pathed event
-	///
-	/// Multiple paths are separated by the system path separator, ';' on Windows and ':' on unix.
-	/// Within each variable, paths are deduplicated and sorted in binary order (i.e. neither
-	/// Unicode nor locale aware).
-	///
-	/// This is the legacy mode and will be deprecated and removed in the future. The environment of
-	/// a process is a very restricted space, while also limited in what it can usefully represent.
-	/// Large numbers of files will either cause the environment to be truncated, or may error or
-	/// crash the process entirely.
-	///
-	/// Two new modes are available: 'stdio' writes absolute paths to the stdin of the command,
-	/// one per line, each prefixed with `create:`, `remove:`, `rename:`, `modify:`, or `other:`,
-	/// then closes the handle; 'file' writes the same thing to a temporary file, and its path is
-	/// given with the $WATCHEXEC_EVENTS_FILE environment variable.
+	/// The 'stdio' and 'file' modes are text-based: 'stdio' writes absolute paths to the stdin of
+	/// the command, one per line, each prefixed with `create:`, `remove:`, `rename:`, `modify:`,
+	/// or `other:`, then closes the handle; 'file' writes the same thing to a temporary file, and
+	/// its path is given with the $WATCHEXEC_EVENTS_FILE environment variable.
 	///
 	/// There are also two JSON modes, which are based on JSON objects and can represent the full
 	/// set of events Watchexec handles. Here's an example of a folder being created on Linux:
@@ -592,13 +568,33 @@ pub struct Args {
 	/// events to it, and provide the path to the file with the $WATCHEXEC_EVENTS_FILE
 	/// environment variable.
 	///
-	/// Finally, the special 'none' mode will disable event emission entirely.
-	// TODO: when deprecating, make the none mode the default.
+	/// Finally, the 'environment' mode was the default until 2.0. It sets environment variables
+	/// with the paths of the affected files, for filesystem events:
+	///
+	/// $WATCHEXEC_COMMON_PATH is set to the longest common path of all of the below variables,
+	/// and so should be prepended to each path to obtain the full/real path. Then:
+	///
+	///   - $WATCHEXEC_CREATED_PATH is set when files/folders were created
+	///   - $WATCHEXEC_REMOVED_PATH is set when files/folders were removed
+	///   - $WATCHEXEC_RENAMED_PATH is set when files/folders were renamed
+	///   - $WATCHEXEC_WRITTEN_PATH is set when files/folders were modified
+	///   - $WATCHEXEC_META_CHANGED_PATH is set when files/folders' metadata were modified
+	///   - $WATCHEXEC_OTHERWISE_CHANGED_PATH is set for every other kind of pathed event
+	///
+	/// Multiple paths are separated by the system path separator, ';' on Windows and ':' on unix.
+	/// Within each variable, paths are deduplicated and sorted in binary order (i.e. neither
+	/// Unicode nor locale aware).
+	///
+	/// This is the legacy mode, is deprecated, and will be removed in the future. The environment
+	/// is a very restricted space, while also limited in what it can usefully represent. Large
+	/// numbers of files will either cause the environment to be truncated, or may error or crash
+	/// the process entirely. The $WATCHEXEC_COMMON_PATH is also unintuitive, as demonstrated by the
+	/// multiple confused queries that have landed in my inbox over the years.
 	#[arg(
 		long,
 		help_heading = OPTSET_COMMAND,
 		verbatim_doc_comment,
-		default_value = "environment",
+		default_value = "none",
 		hide_default_value = true,
 		value_name = "MODE",
 		required_if_eq("only_emit_events", "true"),
@@ -912,7 +908,6 @@ pub struct Args {
 	/// Use '-v' when you need more diagnostic information.
 	#[arg(
 		long,
-		alias = "changes-only", // deprecated
 		help_heading = OPTSET_DEBUGGING,
 	)]
 	pub print_events: bool,
@@ -988,10 +983,8 @@ pub struct Args {
 pub enum EmitEvents {
 	#[default]
 	Environment,
-	#[value(alias("stdin"))]
 	Stdio,
 	File,
-	#[value(alias("json-stdin"))]
 	JsonStdio,
 	JsonFile,
 	None,
@@ -1050,7 +1043,10 @@ impl<const UNITLESS_NANOS_MULTIPLIER: u64> FromStr for TimeSpan<UNITLESS_NANOS_M
 		s.parse::<u64>()
 			.map_or_else(
 				|_| humantime::parse_duration(s),
-				|unitless| Ok(Duration::from_nanos(unitless * UNITLESS_NANOS_MULTIPLIER)),
+				|unitless| {
+					eprintln!("Warning: unitless time span values are deprecated and will be removed in an upcoming version");
+					Ok(Duration::from_nanos(unitless * UNITLESS_NANOS_MULTIPLIER))
+				},
 			)
 			.map(TimeSpan)
 	}
@@ -1146,13 +1142,6 @@ pub async fn get_args() -> Result<Args> {
 		warn!("⚠ RUST_LOG environment variable set, logging options have no effect");
 	}
 
-	if let Ok(filt) = std::env::var("WATCHEXEC_FILTERER") {
-		warn!("WATCHEXEC_FILTERER is deprecated");
-		if filt == "tagged" {
-			eprintln!("Tagged filterer has been removed. Open an issue if you have no workaround.");
-		}
-	}
-
 	debug!("expanding @argfile arguments if any");
 	let args = expand_args_up_to_doubledash().expect("while expanding @argfile");
 
@@ -1170,10 +1159,6 @@ pub async fn get_args() -> Result<Args> {
 		args.no_project_ignore = true;
 		args.no_default_ignore = true;
 		args.no_discover_ignore = true;
-	}
-
-	if args.kill {
-		args.signal = Some(Signal::ForceStop);
 	}
 
 	if args.signal.is_some() {

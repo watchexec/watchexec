@@ -4,7 +4,7 @@
 .SH NAME
 watchexec \- Execute commands when watched files change
 .SH SYNOPSIS
-\fBwatchexec\fR [\fB\-w\fR|\fB\-\-watch\fR] [\fB\-c\fR|\fB\-\-clear\fR] [\fB\-o\fR|\fB\-\-on\-busy\-update\fR] [\fB\-r\fR|\fB\-\-restart\fR] [\fB\-s\fR|\fB\-\-signal\fR] [\fB\-\-stop\-signal\fR] [\fB\-\-stop\-timeout\fR] [\fB\-\-map\-signal\fR] [\fB\-d\fR|\fB\-\-debounce\fR] [\fB\-\-stdin\-quit\fR] [\fB\-\-no\-vcs\-ignore\fR] [\fB\-\-no\-project\-ignore\fR] [\fB\-\-no\-global\-ignore\fR] [\fB\-\-no\-default\-ignore\fR] [\fB\-\-no\-discover\-ignore\fR] [\fB\-\-ignore\-nothing\fR] [\fB\-p\fR|\fB\-\-postpone\fR] [\fB\-\-delay\-run\fR] [\fB\-\-poll\fR] [\fB\-\-shell\fR] [\fB\-n \fR] [\fB\-\-no\-environment\fR] [\fB\-\-emit\-events\-to\fR] [\fB\-\-only\-emit\-events\fR] [\fB\-E\fR|\fB\-\-env\fR] [\fB\-\-no\-process\-group\fR] [\fB\-N\fR|\fB\-\-notify\fR] [\fB\-\-color\fR] [\fB\-\-timings\fR] [\fB\-q\fR|\fB\-\-quiet\fR] [\fB\-\-bell\fR] [\fB\-\-project\-origin\fR] [\fB\-\-workdir\fR] [\fB\-e\fR|\fB\-\-exts\fR] [\fB\-f\fR|\fB\-\-filter\fR] [\fB\-\-filter\-file\fR] [\fB\-j\fR|\fB\-\-filter\-prog\fR] [\fB\-i\fR|\fB\-\-ignore\fR] [\fB\-\-ignore\-file\fR] [\fB\-\-fs\-events\fR] [\fB\-\-no\-meta\fR] [\fB\-\-print\-events\fR] [\fB\-v\fR|\fB\-\-verbose\fR]... [\fB\-\-log\-file\fR] [\fB\-\-manual\fR] [\fB\-\-completions\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fICOMMAND\fR] 
+\fBwatchexec\fR [\fB\-w\fR|\fB\-\-watch\fR] [\fB\-c\fR|\fB\-\-clear\fR] [\fB\-o\fR|\fB\-\-on\-busy\-update\fR] [\fB\-r\fR|\fB\-\-restart\fR] [\fB\-s\fR|\fB\-\-signal\fR] [\fB\-\-stop\-signal\fR] [\fB\-\-stop\-timeout\fR] [\fB\-\-map\-signal\fR] [\fB\-d\fR|\fB\-\-debounce\fR] [\fB\-\-stdin\-quit\fR] [\fB\-\-no\-vcs\-ignore\fR] [\fB\-\-no\-project\-ignore\fR] [\fB\-\-no\-global\-ignore\fR] [\fB\-\-no\-default\-ignore\fR] [\fB\-\-no\-discover\-ignore\fR] [\fB\-\-ignore\-nothing\fR] [\fB\-p\fR|\fB\-\-postpone\fR] [\fB\-\-delay\-run\fR] [\fB\-\-poll\fR] [\fB\-\-shell\fR] [\fB\-n \fR] [\fB\-\-emit\-events\-to\fR] [\fB\-\-only\-emit\-events\fR] [\fB\-E\fR|\fB\-\-env\fR] [\fB\-\-no\-process\-group\fR] [\fB\-N\fR|\fB\-\-notify\fR] [\fB\-\-color\fR] [\fB\-\-timings\fR] [\fB\-q\fR|\fB\-\-quiet\fR] [\fB\-\-bell\fR] [\fB\-\-project\-origin\fR] [\fB\-\-workdir\fR] [\fB\-e\fR|\fB\-\-exts\fR] [\fB\-f\fR|\fB\-\-filter\fR] [\fB\-\-filter\-file\fR] [\fB\-j\fR|\fB\-\-filter\-prog\fR] [\fB\-i\fR|\fB\-\-ignore\fR] [\fB\-\-ignore\-file\fR] [\fB\-\-fs\-events\fR] [\fB\-\-no\-meta\fR] [\fB\-\-print\-events\fR] [\fB\-v\fR|\fB\-\-verbose\fR]... [\fB\-\-log\-file\fR] [\fB\-\-manual\fR] [\fB\-\-completions\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fICOMMAND\fR] 
 .SH DESCRIPTION
 Execute commands when watched files change.
 .PP
@@ -92,9 +92,9 @@ Time to wait for the command to exit gracefully
 
 This is used by the \*(Aqrestart\*(Aq mode of \*(Aq\-\-on\-busy\-update\*(Aq. After the graceful stop signal is sent, Watchexec will wait for the command to exit. If it hasn\*(Aqt exited after this time, it is forcefully terminated.
 
-Takes a unit\-less value in seconds, or a time span value such as "5min 20s".
+Takes a unit\-less value in seconds, or a time span value such as "5min 20s". Providing a unit\-less value is deprecated and will warn; it will be an error in the future.
 
-The default is 60 seconds. Set to 0 to immediately force\-kill the command.
+The default is 10 seconds. Set to 0 to immediately force\-kill the command.
 
 This has no practical effect on Windows as the command is always forcefully terminated; see \*(Aq\-\-stop\-signal\*(Aq for why.
 .TP
@@ -116,7 +116,7 @@ When an event is received, Watchexec will wait for up to this amount of time bef
 
 An alternative use is to set a high value (like "30min" or longer), to save power or bandwidth on intensive tasks, like an ad\-hoc backup script. In those use cases, note that every accumulated event will build up in memory.
 
-Takes a unit\-less value in milliseconds, or a time span value such as "5sec 20ms".
+Takes a unit\-less value in milliseconds, or a time span value such as "5sec 20ms". Providing a unit\-less value is deprecated and will warn; it will be an error in the future.
 
 The default is 50 milliseconds. Setting to 0 is highly discouraged.
 .TP
@@ -152,9 +152,6 @@ Supported project ignore files:
 VCS ignore files (Git, Mercurial, Bazaar, Darcs, Fossil) are only used if the corresponding
 VCS is discovered to be in use for the project/origin. For example, a .bzrignore in a Git
 repository will be discarded.
-
-Note that this was previously called \*(Aq\-\-no\-ignore\*(Aq, but that\*(Aqs now deprecated and its use is
-discouraged, as it may be repurposed in the future.
 .TP
 \fB\-\-no\-global\-ignore\fR
 Don\*(Aqt load global ignores
@@ -202,14 +199,14 @@ Sleep before running the command
 
 This option will cause Watchexec to sleep for the specified amount of time before running the command, after an event is detected. This is like using "sleep 5 && command" in a shell, but portable and slightly more efficient.
 
-Takes a unit\-less value in seconds, or a time span value such as "2min 5s".
+Takes a unit\-less value in seconds, or a time span value such as "2min 5s". Providing a unit\-less value is deprecated and will warn; it will be an error in the future.
 .TP
 \fB\-\-poll\fR=\fIINTERVAL\fR
 Poll for filesystem changes
 
 By default, and where available, Watchexec uses the operating system\*(Aqs native file system watching capabilities. This option disables that and instead uses a polling mechanism, which is less efficient but can work around issues with some file systems (like network shares) or edge cases.
 
-Optionally takes a unit\-less value in milliseconds, or a time span value such as "2s 500ms", to use as the polling interval. If not specified, the default is 30 seconds.
+Optionally takes a unit\-less value in milliseconds, or a time span value such as "2s 500ms", to use as the polling interval. If not specified, the default is 30 seconds. Providing a unit\-less value is deprecated and will warn; it will be an error in the future.
 
 Aliased as \*(Aq\-\-force\-poll\*(Aq.
 .TP
@@ -251,20 +248,13 @@ Use with a unix shell and options:
 $ watchexec \-\-shell=\*(Aqzsh \-x \-o shwordsplit\*(Aq \-\- scr
 .TP
 \fB\-n\fR
-Don\*(Aqt use a shell
-
-This is a shorthand for \*(Aq\-\-shell=none\*(Aq.
-.TP
-\fB\-\-no\-environment\fR
-Shorthand for \*(Aq\-\-emit\-events=none\*(Aq
-
-This is the old way to disable event emission into the environment. See \*(Aq\-\-emit\-events\*(Aq for more.
+Shorthand for \*(Aq\-\-shell=none\*(Aq
 .TP
 \fB\-\-emit\-events\-to\fR=\fIMODE\fR
 Configure event emission
 
-Watchexec emits event information when running a command, which can be used by the command
-to target specific changed files.
+Watchexec can emit event information when running a command, which can be used by the child
+process to target specific changed files.
 
 One thing to take care with is assuming inherent behaviour where there is only chance.
 Notably, it could appear as if the `RENAMED` variable contains both the original and the new
@@ -275,32 +265,14 @@ reliably and portably know which changed path is the old or new, "half" renames 
 whether it was the old or new isn\*(Aqt known), rename events might split across two debouncing
 boundaries, and so on.
 
-This option controls where that information is emitted. It defaults to \*(Aqenvironment\*(Aq, which
-sets environment variables with the paths of the affected files, for filesystem events:
+This option controls where that information is emitted. It defaults to \*(Aqnone\*(Aq, which doesn\*(Aqt
+emit event information at all. The other options are \*(Aqenvironment\*(Aq (deprecated), \*(Aqstdio\*(Aq,
+\*(Aqfile\*(Aq, \*(Aqjson\-stdio\*(Aq, and \*(Aqjson\-file\*(Aq.
 
-$WATCHEXEC_COMMON_PATH is set to the longest common path of all of the below variables,
-and so should be prepended to each path to obtain the full/real path. Then:
-
-  \- $WATCHEXEC_CREATED_PATH is set when files/folders were created
-  \- $WATCHEXEC_REMOVED_PATH is set when files/folders were removed
-  \- $WATCHEXEC_RENAMED_PATH is set when files/folders were renamed
-  \- $WATCHEXEC_WRITTEN_PATH is set when files/folders were modified
-  \- $WATCHEXEC_META_CHANGED_PATH is set when files/folders\*(Aq metadata were modified
-  \- $WATCHEXEC_OTHERWISE_CHANGED_PATH is set for every other kind of pathed event
-
-Multiple paths are separated by the system path separator, \*(Aq;\*(Aq on Windows and \*(Aq:\*(Aq on unix.
-Within each variable, paths are deduplicated and sorted in binary order (i.e. neither
-Unicode nor locale aware).
-
-This is the legacy mode and will be deprecated and removed in the future. The environment of
-a process is a very restricted space, while also limited in what it can usefully represent.
-Large numbers of files will either cause the environment to be truncated, or may error or
-crash the process entirely.
-
-Two new modes are available: \*(Aqstdio\*(Aq writes absolute paths to the stdin of the command,
-one per line, each prefixed with `create:`, `remove:`, `rename:`, `modify:`, or `other:`,
-then closes the handle; \*(Aqfile\*(Aq writes the same thing to a temporary file, and its path is
-given with the $WATCHEXEC_EVENTS_FILE environment variable.
+The \*(Aqstdio\*(Aq and \*(Aqfile\*(Aq modes are text\-based: \*(Aqstdio\*(Aq writes absolute paths to the stdin of
+the command, one per line, each prefixed with `create:`, `remove:`, `rename:`, `modify:`,
+or `other:`, then closes the handle; \*(Aqfile\*(Aq writes the same thing to a temporary file, and
+its path is given with the $WATCHEXEC_EVENTS_FILE environment variable.
 
 There are also two JSON modes, which are based on JSON objects and can represent the full
 set of events Watchexec handles. Here\*(Aqs an example of a folder being created on Linux:
@@ -357,7 +329,28 @@ line, then close stdin. The \*(Aqjson\-file\*(Aq mode will create a temporary fi
 events to it, and provide the path to the file with the $WATCHEXEC_EVENTS_FILE
 environment variable.
 
-Finally, the special \*(Aqnone\*(Aq mode will disable event emission entirely.
+Finally, the \*(Aqenvironment\*(Aq mode was the default until 2.0. It sets environment variables
+with the paths of the affected files, for filesystem events:
+
+$WATCHEXEC_COMMON_PATH is set to the longest common path of all of the below variables,
+and so should be prepended to each path to obtain the full/real path. Then:
+
+  \- $WATCHEXEC_CREATED_PATH is set when files/folders were created
+  \- $WATCHEXEC_REMOVED_PATH is set when files/folders were removed
+  \- $WATCHEXEC_RENAMED_PATH is set when files/folders were renamed
+  \- $WATCHEXEC_WRITTEN_PATH is set when files/folders were modified
+  \- $WATCHEXEC_META_CHANGED_PATH is set when files/folders\*(Aq metadata were modified
+  \- $WATCHEXEC_OTHERWISE_CHANGED_PATH is set for every other kind of pathed event
+
+Multiple paths are separated by the system path separator, \*(Aq;\*(Aq on Windows and \*(Aq:\*(Aq on unix.
+Within each variable, paths are deduplicated and sorted in binary order (i.e. neither
+Unicode nor locale aware).
+
+This is the legacy mode, is deprecated, and will be removed in the future. The environment
+is a very restricted space, while also limited in what it can usefully represent. Large
+numbers of files will either cause the environment to be truncated, or may error or crash
+the process entirely. The $WATCHEXEC_COMMON_PATH is also unintuitive, as demonstrated by the
+multiple confused queries that have landed in my inbox over the years.
 .TP
 \fB\-\-only\-emit\-events\fR
 Only emit events to stdout, run no commands.

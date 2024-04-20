@@ -37,7 +37,7 @@ Example use cases:
 
     These variables may contain multiple paths: these are separated by the platform's path separator, as with the `PATH` system environment variable. On Unix that is `:`, and on Windows `;`. Within each variable, paths are deduplicated and sorted in binary order (i.e. neither Unicode nor locale aware).
 
-    This can be disabled or limited with `--no-environment` (doesn't set any of these variables) and `--no-meta` (ignores metadata changes).
+    This can be disabled with `--emit-events=none` or changed to JSON events on STDIN with `--emit-events=json-stdio`.
 
 ## Anti-Features
 

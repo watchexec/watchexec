@@ -52,8 +52,6 @@ _watchexec() {
 '(--manual)--completions=[Generate a shell completions script]:COMPLETIONS:(bash elvish fish nu powershell zsh)' \
 '(-o --on-busy-update)-r[Restart the process if it'\''s still running]' \
 '(-o --on-busy-update)--restart[Restart the process if it'\''s still running]' \
-'-k[Hidden legacy shorthand for '\''--signal=kill'\'']' \
-'--kill[Hidden legacy shorthand for '\''--signal=kill'\'']' \
 '--stdin-quit[Exit when stdin closes]' \
 '--no-vcs-ignore[Don'\''t load gitignores]' \
 '--no-project-ignore[Don'\''t load project-local ignores]' \
@@ -63,8 +61,8 @@ _watchexec() {
 '--ignore-nothing[Don'\''t ignore anything at all]' \
 '-p[Wait until first change before running command]' \
 '--postpone[Wait until first change before running command]' \
-'-n[Don'\''t use a shell]' \
-'--no-environment[Shorthand for '\''--emit-events=none'\'']' \
+'-n[Shorthand for '\''--shell=none'\'']' \
+'--no-environment[Deprecated shorthand for '\''--emit-events=none'\'']' \
 '(--completions --manual)--only-emit-events[Only emit events to stdout, run no commands]' \
 '--no-process-group[Don'\''t use a process group]' \
 '-1[Testing only\: exit Watchexec after the first run]' \
