@@ -4,7 +4,6 @@
     app_name: "watchexec",
     app_version: $version,
     changelog_title: "CLI \($version)",
-    changelog_body: $changelog,
     artifacts: [ $files | split("\n") | .[] | {
       name: .,
       kind: (if (. | test("[.](deb|rpm)$")) then "installer" else "executable-zip" end),
