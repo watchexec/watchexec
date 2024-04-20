@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+- Deps: watchexec 4
+
 ## v3.0.0 (2024-01-01)
 
 - Deps: `watchexec-filterer-ignore` and `ignore-files`
