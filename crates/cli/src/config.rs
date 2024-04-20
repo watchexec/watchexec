@@ -32,7 +32,7 @@ use watchexec_events::{Event, Keyboard, ProcessEnd, Tag};
 use watchexec_signals::Signal;
 
 use crate::{
-	args::{Args, ClearMode, ColourMode, EmitEvents, OnBusyUpdate, SignalMapping},
+	args::{Args, ClearMode, ColourMode, EmitEvents, OnBusyUpdate, SignalMapping, WrapMode},
 	state::RotatingTempFile,
 };
 use crate::{emits::events_to_simple_format, state::State};
@@ -545,7 +545,8 @@ fn interpret_command_args(args: &Args) -> Result<Arc<Command>> {
 	Ok(Arc::new(Command {
 		program,
 		options: SpawnOptions {
-			grouped: !args.no_process_group,
+			grouped: matches!(args.wrap_process, WrapMode::Group),
+			session: matches!(args.wrap_process, WrapMode::Session),
 			..Default::default()
 		},
 	}))

@@ -37,6 +37,7 @@ set edit:completion:arg-completer[watchexec] = {|@words|
             cand --emit-events-to 'Configure event emission'
             cand -E 'Add env vars to the command'
             cand --env 'Add env vars to the command'
+            cand --wrap-process 'Configure how the process is wrapped'
             cand --color 'When to use terminal colours'
             cand --project-origin 'Set the project origin'
             cand --workdir 'Set the working directory'

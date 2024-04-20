@@ -636,11 +636,30 @@ pub struct Args {
 	/// By default, Watchexec will run the command in a process group, so that signals and
 	/// terminations are sent to all processes in the group. Sometimes that's not what you want, and
 	/// you can disable the behaviour with this option.
+	///
+	/// Deprecated, use '--wrap-process=none' instead.
 	#[arg(
 		long,
 		help_heading = OPTSET_COMMAND,
 	)]
 	pub no_process_group: bool,
+
+	/// Configure how the process is wrapped
+	///
+	/// By default, Watchexec will run the command in a process group in Unix, and in a Job Object
+	/// in Windows.
+	///
+	/// Some Unix programs prefer running in a session, while others do not work in a process group.
+	///
+	/// Use 'group' to use a process group, 'session' to use a process session, and 'none' to run
+	/// the command directly. On Windows, either of 'group' or 'session' will use a Job Object.
+	#[arg(
+		long,
+		help_heading = OPTSET_COMMAND,
+		value_name = "MODE",
+		default_value = "group",
+	)]
+	pub wrap_process: WrapMode,
 
 	/// Testing only: exit Watchexec after the first run
 	#[arg(short = '1', hide = true)]
@@ -1000,6 +1019,14 @@ pub enum OnBusyUpdate {
 }
 
 #[derive(Clone, Copy, Debug, Default, ValueEnum)]
+pub enum WrapMode {
+	#[default]
+	Group,
+	Session,
+	None,
+}
+
+#[derive(Clone, Copy, Debug, Default, ValueEnum)]
 pub enum ClearMode {
 	#[default]
 	Clear,
@@ -1169,6 +1196,10 @@ pub async fn get_args() -> Result<Args> {
 
 	if args.no_environment {
 		args.emit_events_to = EmitEvents::None;
+	}
+
+	if args.no_process_group {
+		args.wrap_process = WrapMode::None;
 	}
 
 	if args.filter_fs_meta {

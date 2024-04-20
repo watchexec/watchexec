@@ -34,6 +34,7 @@ _watchexec() {
 '--emit-events-to=[Configure event emission]:MODE:(environment stdio file json-stdio json-file none)' \
 '*-E+[Add env vars to the command]:KEY=VALUE: ' \
 '*--env=[Add env vars to the command]:KEY=VALUE: ' \
+'--wrap-process=[Configure how the process is wrapped]:MODE:(group session none)' \
 '--color=[When to use terminal colours]:MODE:(auto always never)' \
 '--project-origin=[Set the project origin]:DIRECTORY:_files -/' \
 '--workdir=[Set the working directory]:DIRECTORY:_files -/' \
