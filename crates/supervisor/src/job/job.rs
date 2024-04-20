@@ -313,7 +313,10 @@ impl Job {
 	/// spawn hooks that can't be done in the simpler sync version.
 	pub fn set_spawn_async_hook(
 		&self,
-		fun: impl (Fn(&mut TokioCommandWrap, &JobTaskContext<'_>) -> Box<dyn Future<Output = ()> + Send + Sync>)
+		fun: impl (Fn(
+				&mut TokioCommandWrap,
+				&JobTaskContext<'_>,
+			) -> Box<dyn Future<Output = ()> + Send + Sync>)
 			+ Send
 			+ Sync
 			+ 'static,

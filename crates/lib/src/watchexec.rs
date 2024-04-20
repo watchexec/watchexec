@@ -140,7 +140,8 @@ impl Watchexec {
 		let notify = Arc::new(Notify::new());
 		let start_lock = notify.clone();
 
-		let (ev_s, ev_r) = priority::bounded(config.event_channel_size.try_into().unwrap_or(u64::MAX));
+		let (ev_s, ev_r) =
+			priority::bounded(config.event_channel_size.try_into().unwrap_or(u64::MAX));
 		let event_input = ev_s.clone();
 
 		trace!("creating main task");

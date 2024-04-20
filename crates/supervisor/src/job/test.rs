@@ -337,9 +337,9 @@ async fn signal_unix() {
 	job.signal(watchexec_signals::Signal::User1).await;
 
 	let calls = get_child(&job).await.calls;
-	assert!(calls
-		.iter()
-		.any(|(_, call)| matches!(call, TestChildCall::Signal(Signal::SIGUSR1))));
+	assert!(calls.iter().any(
+		|(_, call)| matches!(call, TestChildCall::Signal(sig) if *sig == Signal::SIGUSR1 as i32)
+	));
 
 	task.abort();
 }
@@ -563,7 +563,7 @@ async fn graceful_stop_beyond_grace() {
 		let calls = get_child(&job).await.calls;
 		assert!(calls.iter().any(|(_, call)| matches!(
 			call,
-			TestChildCall::Signal(Signal::SIGUSR1)
+			TestChildCall::Signal(sig) if *sig == Signal::SIGUSR1 as i32
 		)));
 	}
 
@@ -606,7 +606,7 @@ async fn graceful_restart_beyond_grace() {
 		let calls = get_child(&job).await.calls;
 		assert!(calls.iter().any(|(_, call)| matches!(
 			call,
-			TestChildCall::Signal(Signal::SIGUSR1)
+			TestChildCall::Signal(sig) if *sig == Signal::SIGUSR1 as i32
 		)));
 	}
 

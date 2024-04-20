@@ -1,4 +1,5 @@
 use std::{
+	future::Future,
 	io::Result,
 	path::Path,
 	process::{ExitStatus, Output},
@@ -6,8 +7,6 @@ use std::{
 	time::{Duration, Instant},
 };
 
-#[cfg(unix)]
-use command_group::Signal;
 use tokio::{sync::Mutex, time::sleep};
 use watchexec_events::ProcessEnd;
 
@@ -35,7 +34,7 @@ impl TestChild {
 		}
 
 		Ok(Self {
-			grouped: command.options.grouped,
+			grouped: command.options.grouped || command.options.session,
 			command,
 			calls: Arc::new(boxcar::Vec::new()),
 			output: Arc::new(Mutex::new(None)),
@@ -52,7 +51,7 @@ pub enum TestChildCall {
 	TryWait,
 	Wait,
 	#[cfg(unix)]
-	Signal(Signal),
+	Signal(i32),
 }
 
 // Exact same signatures as ErasedChild
@@ -62,9 +61,9 @@ impl TestChild {
 		None
 	}
 
-	pub async fn kill(&mut self) -> Result<()> {
+	pub fn kill(&mut self) -> Box<dyn Future<Output = Result<()>> + Send + '_> {
 		self.calls.push(TestChildCall::Kill);
-		Ok(())
+		Box::new(async { Ok(()) })
 	}
 
 	pub fn start_kill(&mut self) -> Result<()> {
@@ -96,54 +95,58 @@ impl TestChild {
 			.and_then(|o| o.as_ref().map(|o| o.status)))
 	}
 
-	pub async fn wait(&mut self) -> Result<ExitStatus> {
+	pub fn wait(&mut self) -> Box<dyn Future<Output = Result<ExitStatus>> + Send + '_> {
 		self.calls.push(TestChildCall::Wait);
-		if let Program::Exec { prog, args } = &self.command.program {
-			if prog == Path::new("sleep") {
-				if let Some(time) = args
-					.get(0)
-					.and_then(|arg| arg.parse().ok())
-					.map(Duration::from_millis)
-				{
-					if self.spawned.elapsed() < time {
-						sleep(time - self.spawned.elapsed()).await;
-						if let Ok(guard) = self.output.try_lock() {
-							if let Some(output) = guard.as_ref() {
-								return Ok(output.status);
+		Box::new(async {
+			if let Program::Exec { prog, args } = &self.command.program {
+				if prog == Path::new("sleep") {
+					if let Some(time) = args
+						.get(0)
+						.and_then(|arg| arg.parse().ok())
+						.map(Duration::from_millis)
+					{
+						if self.spawned.elapsed() < time {
+							sleep(time - self.spawned.elapsed()).await;
+							if let Ok(guard) = self.output.try_lock() {
+								if let Some(output) = guard.as_ref() {
+									return Ok(output.status);
+								}
 							}
-						}
 
-						return Ok(ProcessEnd::Success.into_exitstatus());
+							return Ok(ProcessEnd::Success.into_exitstatus());
+						}
 					}
 				}
 			}
-		}
 
-		loop {
-			eprintln!("[{:?}] child: output lock", Instant::now());
-			let output = self.output.lock().await;
-			if let Some(output) = output.as_ref() {
-				return Ok(output.status);
-			}
-			eprintln!("[{:?}] child: output unlock", Instant::now());
+			loop {
+				eprintln!("[{:?}] child: output lock", Instant::now());
+				let output = self.output.lock().await;
+				if let Some(output) = output.as_ref() {
+					return Ok(output.status);
+				}
+				eprintln!("[{:?}] child: output unlock", Instant::now());
 
-			sleep(Duration::from_secs(1)).await;
-		}
-	}
-
-	pub async fn wait_with_output(self) -> Result<Output> {
-		loop {
-			let mut output = self.output.lock().await;
-			if let Some(output) = output.take() {
-				return Ok(output);
-			} else {
 				sleep(Duration::from_secs(1)).await;
 			}
-		}
+		})
+	}
+
+	pub fn wait_with_output(self) -> Box<dyn Future<Output = Result<Output>> + Send> {
+		Box::new(async move {
+			loop {
+				let mut output = self.output.lock().await;
+				if let Some(output) = output.take() {
+					return Ok(output);
+				} else {
+					sleep(Duration::from_secs(1)).await;
+				}
+			}
+		})
 	}
 
 	#[cfg(unix)]
-	pub fn signal(&self, sig: Signal) -> Result<()> {
+	pub fn signal(&self, sig: i32) -> Result<()> {
 		self.calls.push(TestChildCall::Signal(sig));
 		Ok(())
 	}

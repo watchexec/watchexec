@@ -1,6 +1,6 @@
 use std::fmt;
 
-use process_wrap::tokio::{TokioCommandWrap, KillOnDrop};
+use process_wrap::tokio::{KillOnDrop, TokioCommandWrap};
 use tokio::process::Command as TokioCommand;
 use tracing::trace;
 

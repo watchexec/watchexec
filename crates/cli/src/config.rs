@@ -235,7 +235,13 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 						command.command_mut().current_dir(workdir);
 					}
 
-					emit_events_to_command(command.command_mut(), events, emit_file, emit_events_to, add_envs);
+					emit_events_to_command(
+						command.command_mut(),
+						events,
+						emit_file,
+						emit_events_to,
+						add_envs,
+					);
 				});
 
 				let show_events = || {
