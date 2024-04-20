@@ -316,14 +316,10 @@ pub struct Args {
 	/// VCS ignore files (Git, Mercurial, Bazaar, Darcs, Fossil) are only used if the corresponding
 	/// VCS is discovered to be in use for the project/origin. For example, a .bzrignore in a Git
 	/// repository will be discarded.
-	///
-	/// Note that this was previously called '--no-ignore', but that's now deprecated and its use is
-	/// discouraged, as it may be repurposed in the future.
 	#[arg(
 		long,
 		help_heading = OPTSET_FILTERING,
 		verbatim_doc_comment,
-		alias = "no-ignore", // deprecated
 	)]
 	pub no_project_ignore: bool,
 

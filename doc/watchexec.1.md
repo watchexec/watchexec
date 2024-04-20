@@ -253,10 +253,6 @@ if the corresponding VCS is discovered to be in use for the
 project/origin. For example, a .bzrignore in a Git repository will be
 discarded.
 
-Note that this was previously called \--no-ignore, but thats now
-deprecated and its use is discouraged, as it may be repurposed in the
-future.
-
 **\--no-global-ignore**
 
 :   Dont load global ignores
