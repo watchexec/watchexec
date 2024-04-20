@@ -642,6 +642,22 @@ pub struct Args {
 	)]
 	pub no_process_group: bool,
 
+	/// Configure how the process is wrapped
+	///
+	/// By default, Watchexec will run the command in a process group in Unix, and in a Job Object
+	/// in Windows.
+	///
+	/// Some Unix programs prefer running in a session, while others do not work in a process group.
+	///
+	/// Use 'group' to use a process group, 'session' to use a process session, and 'none' to run
+	/// the command directly. On Windows, either of 'group' or 'session' will use a Job Object.
+	#[arg(
+		long,
+		help_heading = OPTSET_COMMAND,
+		value_name = "MODE",
+	)]
+	pub wrap_process: WrapMode,
+
 	/// Testing only: exit Watchexec after the first run
 	#[arg(short = '1', hide = true)]
 	pub once: bool,
@@ -997,6 +1013,14 @@ pub enum OnBusyUpdate {
 	DoNothing,
 	Restart,
 	Signal,
+}
+
+#[derive(Clone, Copy, Debug, Default, ValueEnum)]
+pub enum WrapMode {
+	#[default]
+	Group,
+	Session,
+	None,
 }
 
 #[derive(Clone, Copy, Debug, Default, ValueEnum)]
