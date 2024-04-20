@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v3.0.0 (2024-04-20)
+
 - Deps: miette 7
 - Deps: nix 0.28
 
