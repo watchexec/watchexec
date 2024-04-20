@@ -53,8 +53,6 @@ set edit:completion:arg-completer[watchexec] = {|@words|
             cand --fs-events 'Filesystem events to filter to'
             cand --log-file 'Write diagnostic logs to a file'
             cand --completions 'Generate a shell completions script'
-            cand -W 'Deprecated alias for ''--on-busy-update=do-nothing'''
-            cand --watch-when-idle 'Deprecated alias for ''--on-busy-update=do-nothing'''
             cand -r 'Restart the process if it''s still running'
             cand --restart 'Restart the process if it''s still running'
             cand -k 'Hidden legacy shorthand for ''--signal=kill'''

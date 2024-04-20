@@ -56,8 +56,6 @@ Register-ArgumentCompleter -Native -CommandName 'watchexec' -ScriptBlock {
             [CompletionResult]::new('--fs-events', 'fs-events', [CompletionResultType]::ParameterName, 'Filesystem events to filter to')
             [CompletionResult]::new('--log-file', 'log-file', [CompletionResultType]::ParameterName, 'Write diagnostic logs to a file')
             [CompletionResult]::new('--completions', 'completions', [CompletionResultType]::ParameterName, 'Generate a shell completions script')
-            [CompletionResult]::new('-W', 'W ', [CompletionResultType]::ParameterName, 'Deprecated alias for ''--on-busy-update=do-nothing''')
-            [CompletionResult]::new('--watch-when-idle', 'watch-when-idle', [CompletionResultType]::ParameterName, 'Deprecated alias for ''--on-busy-update=do-nothing''')
             [CompletionResult]::new('-r', 'r', [CompletionResultType]::ParameterName, 'Restart the process if it''s still running')
             [CompletionResult]::new('--restart', 'restart', [CompletionResultType]::ParameterName, 'Restart the process if it''s still running')
             [CompletionResult]::new('-k', 'k', [CompletionResultType]::ParameterName, 'Hidden legacy shorthand for ''--signal=kill''')

@@ -21,8 +21,8 @@ _watchexec() {
 '--clear=[Clear screen before running command]' \
 '-o+[What to do when receiving events while the command is running]:MODE:(queue do-nothing restart signal)' \
 '--on-busy-update=[What to do when receiving events while the command is running]:MODE:(queue do-nothing restart signal)' \
-'(-r --restart -W --watch-when-idle)-s+[Send a signal to the process when it'\''s still running]:SIGNAL: ' \
-'(-r --restart -W --watch-when-idle)--signal=[Send a signal to the process when it'\''s still running]:SIGNAL: ' \
+'(-r --restart)-s+[Send a signal to the process when it'\''s still running]:SIGNAL: ' \
+'(-r --restart)--signal=[Send a signal to the process when it'\''s still running]:SIGNAL: ' \
 '--stop-signal=[Signal to send to stop the command]:SIGNAL: ' \
 '--stop-timeout=[Time to wait for the command to exit gracefully]:TIMEOUT: ' \
 '*--map-signal=[Translate signals from the OS to signals to send to the command]:SIGNAL:SIGNAL: ' \
@@ -50,10 +50,8 @@ _watchexec() {
 '*--fs-events=[Filesystem events to filter to]:EVENTS:(access create remove rename modify metadata)' \
 '--log-file=[Write diagnostic logs to a file]' \
 '(--manual)--completions=[Generate a shell completions script]:COMPLETIONS:(bash elvish fish nu powershell zsh)' \
-'(-o --on-busy-update -r --restart)-W[Deprecated alias for '\''--on-busy-update=do-nothing'\'']' \
-'(-o --on-busy-update -r --restart)--watch-when-idle[Deprecated alias for '\''--on-busy-update=do-nothing'\'']' \
-'(-o --on-busy-update -W --watch-when-idle)-r[Restart the process if it'\''s still running]' \
-'(-o --on-busy-update -W --watch-when-idle)--restart[Restart the process if it'\''s still running]' \
+'(-o --on-busy-update)-r[Restart the process if it'\''s still running]' \
+'(-o --on-busy-update)--restart[Restart the process if it'\''s still running]' \
 '-k[Hidden legacy shorthand for '\''--signal=kill'\'']' \
 '--kill[Hidden legacy shorthand for '\''--signal=kill'\'']' \
 '--stdin-quit[Exit when stdin closes]' \

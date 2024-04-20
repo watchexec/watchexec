@@ -23,7 +23,6 @@ complete -c watchexec -l ignore-file -d 'Files to load ignores from' -r -F
 complete -c watchexec -l fs-events -d 'Filesystem events to filter to' -r -f -a "{access	'',create	'',remove	'',rename	'',modify	'',metadata	''}"
 complete -c watchexec -l log-file -d 'Write diagnostic logs to a file' -r -F
 complete -c watchexec -l completions -d 'Generate a shell completions script' -r -f -a "{bash	'',elvish	'',fish	'',nu	'',powershell	'',zsh	''}"
-complete -c watchexec -s W -l watch-when-idle -d 'Deprecated alias for \'--on-busy-update=do-nothing\''
 complete -c watchexec -s r -l restart -d 'Restart the process if it\'s still running'
 complete -c watchexec -s k -l kill -d 'Hidden legacy shorthand for \'--signal=kill\''
 complete -c watchexec -l stdin-quit -d 'Exit when stdin closes'

@@ -159,22 +159,11 @@ pub struct Args {
 	#[arg(
 		short,
 		long,
-		default_value = "queue",
+		default_value = "do-nothing",
 		hide_default_value = true,
 		value_name = "MODE"
 	)]
 	pub on_busy_update: OnBusyUpdate,
-
-	/// Deprecated alias for '--on-busy-update=do-nothing'
-	///
-	/// This option is deprecated and will be removed in the next major release.
-	#[arg(
-		long,
-		short = 'W',
-		hide = true,
-		conflicts_with_all = ["on_busy_update", "restart"],
-	)]
-	pub watch_when_idle: bool,
 
 	/// Restart the process if it's still running
 	///
@@ -182,7 +171,7 @@ pub struct Args {
 	#[arg(
 		short,
 		long,
-		conflicts_with_all = ["on_busy_update", "watch_when_idle"],
+		conflicts_with_all = ["on_busy_update"],
 	)]
 	pub restart: bool,
 
@@ -199,7 +188,7 @@ pub struct Args {
 	#[arg(
 		short,
 		long,
-		conflicts_with_all = ["restart", "watch_when_idle"],
+		conflicts_with_all = ["restart"],
 		value_name = "SIGNAL"
 	)]
 	pub signal: Option<Signal>,
@@ -1191,8 +1180,6 @@ pub async fn get_args() -> Result<Args> {
 		args.on_busy_update = OnBusyUpdate::Signal;
 	} else if args.restart {
 		args.on_busy_update = OnBusyUpdate::Restart;
-	} else if args.watch_when_idle {
-		args.on_busy_update = OnBusyUpdate::DoNothing;
 	}
 
 	if args.no_environment {
