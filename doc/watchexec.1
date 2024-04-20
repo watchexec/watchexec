@@ -248,15 +248,13 @@ Use with a unix shell and options:
 $ watchexec \-\-shell=\*(Aqzsh \-x \-o shwordsplit\*(Aq \-\- scr
 .TP
 \fB\-n\fR
-Don\*(Aqt use a shell
-
-This is a shorthand for \*(Aq\-\-shell=none\*(Aq.
+Shorthand for \*(Aq\-\-shell=none\*(Aq
 .TP
 \fB\-\-emit\-events\-to\fR=\fIMODE\fR
 Configure event emission
 
-Watchexec emits event information when running a command, which can be used by the command
-to target specific changed files.
+Watchexec can emit event information when running a command, which can be used by the child
+process to target specific changed files.
 
 One thing to take care with is assuming inherent behaviour where there is only chance.
 Notably, it could appear as if the `RENAMED` variable contains both the original and the new
@@ -267,32 +265,14 @@ reliably and portably know which changed path is the old or new, "half" renames 
 whether it was the old or new isn\*(Aqt known), rename events might split across two debouncing
 boundaries, and so on.
 
-This option controls where that information is emitted. It defaults to \*(Aqenvironment\*(Aq, which
-sets environment variables with the paths of the affected files, for filesystem events:
+This option controls where that information is emitted. It defaults to \*(Aqnone\*(Aq, which doesn\*(Aqt
+emit event information at all. The other options are \*(Aqenvironment\*(Aq (deprecated), \*(Aqstdio\*(Aq,
+\*(Aqfile\*(Aq, \*(Aqjson\-stdio\*(Aq, and \*(Aqjson\-file\*(Aq.
 
-$WATCHEXEC_COMMON_PATH is set to the longest common path of all of the below variables,
-and so should be prepended to each path to obtain the full/real path. Then:
-
-  \- $WATCHEXEC_CREATED_PATH is set when files/folders were created
-  \- $WATCHEXEC_REMOVED_PATH is set when files/folders were removed
-  \- $WATCHEXEC_RENAMED_PATH is set when files/folders were renamed
-  \- $WATCHEXEC_WRITTEN_PATH is set when files/folders were modified
-  \- $WATCHEXEC_META_CHANGED_PATH is set when files/folders\*(Aq metadata were modified
-  \- $WATCHEXEC_OTHERWISE_CHANGED_PATH is set for every other kind of pathed event
-
-Multiple paths are separated by the system path separator, \*(Aq;\*(Aq on Windows and \*(Aq:\*(Aq on unix.
-Within each variable, paths are deduplicated and sorted in binary order (i.e. neither
-Unicode nor locale aware).
-
-This is the legacy mode and will be deprecated and removed in the future. The environment of
-a process is a very restricted space, while also limited in what it can usefully represent.
-Large numbers of files will either cause the environment to be truncated, or may error or
-crash the process entirely.
-
-Two new modes are available: \*(Aqstdio\*(Aq writes absolute paths to the stdin of the command,
-one per line, each prefixed with `create:`, `remove:`, `rename:`, `modify:`, or `other:`,
-then closes the handle; \*(Aqfile\*(Aq writes the same thing to a temporary file, and its path is
-given with the $WATCHEXEC_EVENTS_FILE environment variable.
+The \*(Aqstdio\*(Aq and \*(Aqfile\*(Aq modes are text\-based: \*(Aqstdio\*(Aq writes absolute paths to the stdin of
+the command, one per line, each prefixed with `create:`, `remove:`, `rename:`, `modify:`,
+or `other:`, then closes the handle; \*(Aqfile\*(Aq writes the same thing to a temporary file, and
+its path is given with the $WATCHEXEC_EVENTS_FILE environment variable.
 
 There are also two JSON modes, which are based on JSON objects and can represent the full
 set of events Watchexec handles. Here\*(Aqs an example of a folder being created on Linux:
@@ -349,7 +329,28 @@ line, then close stdin. The \*(Aqjson\-file\*(Aq mode will create a temporary fi
 events to it, and provide the path to the file with the $WATCHEXEC_EVENTS_FILE
 environment variable.
 
-Finally, the special \*(Aqnone\*(Aq mode will disable event emission entirely.
+Finally, the \*(Aqenvironment\*(Aq mode was the default until 2.0. It sets environment variables
+with the paths of the affected files, for filesystem events:
+
+$WATCHEXEC_COMMON_PATH is set to the longest common path of all of the below variables,
+and so should be prepended to each path to obtain the full/real path. Then:
+
+  \- $WATCHEXEC_CREATED_PATH is set when files/folders were created
+  \- $WATCHEXEC_REMOVED_PATH is set when files/folders were removed
+  \- $WATCHEXEC_RENAMED_PATH is set when files/folders were renamed
+  \- $WATCHEXEC_WRITTEN_PATH is set when files/folders were modified
+  \- $WATCHEXEC_META_CHANGED_PATH is set when files/folders\*(Aq metadata were modified
+  \- $WATCHEXEC_OTHERWISE_CHANGED_PATH is set for every other kind of pathed event
+
+Multiple paths are separated by the system path separator, \*(Aq;\*(Aq on Windows and \*(Aq:\*(Aq on unix.
+Within each variable, paths are deduplicated and sorted in binary order (i.e. neither
+Unicode nor locale aware).
+
+This is the legacy mode, is deprecated, and will be removed in the future. The environment
+is a very restricted space, while also limited in what it can usefully represent. Large
+numbers of files will either cause the environment to be truncated, or may error or crash
+the process entirely. The $WATCHEXEC_COMMON_PATH is also unintuitive, as demonstrated by the
+multiple confused queries that have landed in my inbox over the years.
 .TP
 \fB\-\-only\-emit\-events\fR
 Only emit events to stdout, run no commands.

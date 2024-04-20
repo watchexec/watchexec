@@ -979,10 +979,8 @@ pub struct Args {
 pub enum EmitEvents {
 	#[default]
 	Environment,
-	#[value(alias("stdin"))]
 	Stdio,
 	File,
-	#[value(alias("json-stdin"))]
 	JsonStdio,
 	JsonFile,
 	None,

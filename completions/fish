@@ -32,7 +32,7 @@ complete -c watchexec -l no-default-ignore -d 'Don\'t use internal default ignor
 complete -c watchexec -l no-discover-ignore -d 'Don\'t discover ignore files at all'
 complete -c watchexec -l ignore-nothing -d 'Don\'t ignore anything at all'
 complete -c watchexec -s p -l postpone -d 'Wait until first change before running command'
-complete -c watchexec -s n -d 'Don\'t use a shell'
+complete -c watchexec -s n -d 'Shorthand for \'--shell=none\''
 complete -c watchexec -l no-environment -d 'Deprecated shorthand for \'--emit-events=none\''
 complete -c watchexec -l only-emit-events -d 'Only emit events to stdout, run no commands'
 complete -c watchexec -l no-process-group -d 'Don\'t use a process group'

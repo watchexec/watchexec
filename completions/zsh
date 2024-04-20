@@ -61,7 +61,7 @@ _watchexec() {
 '--ignore-nothing[Don'\''t ignore anything at all]' \
 '-p[Wait until first change before running command]' \
 '--postpone[Wait until first change before running command]' \
-'-n[Don'\''t use a shell]' \
+'-n[Shorthand for '\''--shell=none'\'']' \
 '--no-environment[Deprecated shorthand for '\''--emit-events=none'\'']' \
 '(--completions --manual)--only-emit-events[Only emit events to stdout, run no commands]' \
 '--no-process-group[Don'\''t use a process group]' \

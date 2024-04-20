@@ -64,7 +64,7 @@ set edit:completion:arg-completer[watchexec] = {|@words|
             cand --ignore-nothing 'Don''t ignore anything at all'
             cand -p 'Wait until first change before running command'
             cand --postpone 'Wait until first change before running command'
-            cand -n 'Don''t use a shell'
+            cand -n 'Shorthand for ''--shell=none'''
             cand --no-environment 'Deprecated shorthand for ''--emit-events=none'''
             cand --only-emit-events 'Only emit events to stdout, run no commands'
             cand --no-process-group 'Don''t use a process group'
