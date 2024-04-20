@@ -27,7 +27,7 @@ thiserror = "1.0.44"
 normalize-path = "0.2.0"
 
 [dependencies.process-wrap]
-version = "7.1.0"
+version = "8.0.0"
 features = ["tokio1"]
 
 [dependencies.watchexec-events]
