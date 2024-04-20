@@ -61,6 +61,14 @@ pub struct SpawnOptions {
 	/// [Job Objects]: https://en.wikipedia.org/wiki/Object_Manager_(Windows)
 	pub grouped: bool,
 
+	/// Run the program in a new session.
+	///
+	/// This will use Unix [sessions]. On Windows, this is not supported. This
+	/// implies `grouped: true`.
+	///
+	/// [sessions]: https://pubs.opengroup.org/onlinepubs/9699919799/functions/setsid.html
+	pub session: bool,
+
 	/// Reset the signal mask of the process before we spawn it.
 	///
 	/// By default, the signal mask of the process is inherited from the parent process. This means

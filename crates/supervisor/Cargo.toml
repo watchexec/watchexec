@@ -18,6 +18,9 @@ edition = "2021"
 futures = "0.3.29"
 tracing = "0.1.40"
 
+[dependencies.process-wrap]
+version = "7.1.0"
+features = ["reset-sigmask", "tokio1"]
 [dependencies.command-group]
 version = "5.0.1"
 features = ["with-tokio"]

@@ -10,6 +10,7 @@ use std::{
 	time::{Duration, Instant},
 };
 
+use nix::sys::signal::Signal;
 use tokio::time::sleep;
 use watchexec_events::ProcessEnd;
 
@@ -338,7 +339,7 @@ async fn signal_unix() {
 	let calls = get_child(&job).await.calls;
 	assert!(calls
 		.iter()
-		.any(|(_, call)| matches!(call, TestChildCall::Signal(command_group::Signal::SIGUSR1))));
+		.any(|(_, call)| matches!(call, TestChildCall::Signal(Signal::SIGUSR1))));
 
 	task.abort();
 }
@@ -562,7 +563,7 @@ async fn graceful_stop_beyond_grace() {
 		let calls = get_child(&job).await.calls;
 		assert!(calls.iter().any(|(_, call)| matches!(
 			call,
-			TestChildCall::Signal(command_group::Signal::SIGUSR1)
+			TestChildCall::Signal(Signal::SIGUSR1)
 		)));
 	}
 
@@ -605,7 +606,7 @@ async fn graceful_restart_beyond_grace() {
 		let calls = get_child(&job).await.calls;
 		assert!(calls.iter().any(|(_, call)| matches!(
 			call,
-			TestChildCall::Signal(command_group::Signal::SIGUSR1)
+			TestChildCall::Signal(Signal::SIGUSR1)
 		)));
 	}
 

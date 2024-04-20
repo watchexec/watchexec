@@ -1,6 +1,6 @@
 use std::{future::Future, sync::Arc, time::Duration};
 
-use tokio::process::Command as TokioCommand;
+use process_wrap::tokio::TokioCommandWrap;
 use watchexec_signals::Signal;
 
 use crate::{command::Command, errors::SyncIoError, flag::Flag};
@@ -293,7 +293,7 @@ impl Job {
 	/// command as it sees fit.
 	pub fn set_spawn_hook(
 		&self,
-		fun: impl Fn(&mut TokioCommand, &JobTaskContext<'_>) + Send + Sync + 'static,
+		fun: impl Fn(&mut TokioCommandWrap, &JobTaskContext<'_>) + Send + Sync + 'static,
 	) -> Ticket {
 		self.control(Control::SetSyncSpawnHook(Arc::new(fun)))
 	}
@@ -313,7 +313,7 @@ impl Job {
 	/// spawn hooks that can't be done in the simpler sync version.
 	pub fn set_spawn_async_hook(
 		&self,
-		fun: impl (Fn(&mut TokioCommand, &JobTaskContext<'_>) -> Box<dyn Future<Output = ()> + Send + Sync>)
+		fun: impl (Fn(&mut TokioCommandWrap, &JobTaskContext<'_>) -> Box<dyn Future<Output = ()> + Send + Sync>)
 			+ Send
 			+ Sync
 			+ 'static,

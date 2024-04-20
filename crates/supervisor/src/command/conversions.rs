@@ -1,17 +1,17 @@
 use std::fmt;
 
+use process_wrap::tokio::{TokioCommandWrap, KillOnDrop};
 use tokio::process::Command as TokioCommand;
 use tracing::trace;
 
-use super::{Command, Program};
+use super::{Command, Program, SpawnOptions};
 
 impl Command {
-	/// Obtain a [`tokio::process::Command`].
-	pub fn to_spawnable(&self) -> TokioCommand {
+	/// Obtain a [`process_wrap::tokio::TokioCommandWrap`].
+	pub fn to_spawnable(&self) -> TokioCommandWrap {
 		trace!(program=?self.program, "constructing command");
 
-		#[cfg_attr(not(unix), allow(unused_mut))]
-		let mut cmd = match &self.program {
+		let cmd = match &self.program {
 			Program::Exec { prog, args, .. } => {
 				let mut c = TokioCommand::new(prog);
 				c.args(args);
@@ -56,19 +56,28 @@ impl Command {
 			}
 		};
 
+		let mut cmd = TokioCommandWrap::from(cmd);
+		cmd.wrap(KillOnDrop);
+
+		match self.options {
+			#[cfg(unix)]
+			SpawnOptions { session: true, .. } => {
+				cmd.wrap(process_wrap::tokio::ProcessSession);
+			}
+			#[cfg(unix)]
+			SpawnOptions { grouped: true, .. } => {
+				cmd.wrap(process_wrap::tokio::ProcessGroup::leader());
+			}
+			#[cfg(windows)]
+			SpawnOptions { grouped: true, .. } | SpawnOptions { session: true, .. } => {
+				cmd.wrap(process_wrap::tokio::JobObject);
+			}
+			_ => {}
+		}
+
 		#[cfg(unix)]
 		if self.options.reset_sigmask {
-			use nix::sys::signal::{sigprocmask, SigSet, SigmaskHow};
-			unsafe {
-				cmd.pre_exec(|| {
-					let mut oldset = SigSet::empty();
-					let newset = SigSet::all();
-					trace!(unblocking=?newset, "resetting process sigmask");
-					sigprocmask(SigmaskHow::SIG_UNBLOCK, Some(&newset), Some(&mut oldset))?;
-					trace!(?oldset, "sigmask reset");
-					Ok(())
-				});
-			}
+			cmd.wrap(process_wrap::tokio::ResetSigmask);
 		}
 
 		cmd
