@@ -68,7 +68,7 @@ features = ["log", "env_logger"]
 optional = true
 
 [dependencies.ignore-files]
-version = "2.1.0"
+version = "3.0.0"
 path = "../ignore-files"
 
 [dependencies.miette]
