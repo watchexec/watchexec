@@ -14,15 +14,16 @@ watchexec - Execute commands when watched files change
 \[**-p**\|**\--postpone**\] \[**\--delay-run**\] \[**\--poll**\]
 \[**\--shell**\] \[**-n **\] \[**\--emit-events-to**\]
 \[**\--only-emit-events**\] \[**-E**\|**\--env**\]
-\[**\--no-process-group**\] \[**-N**\|**\--notify**\] \[**\--color**\]
-\[**\--timings**\] \[**-q**\|**\--quiet**\] \[**\--bell**\]
-\[**\--project-origin**\] \[**\--workdir**\] \[**-e**\|**\--exts**\]
-\[**-f**\|**\--filter**\] \[**\--filter-file**\]
-\[**-j**\|**\--filter-prog**\] \[**-i**\|**\--ignore**\]
-\[**\--ignore-file**\] \[**\--fs-events**\] \[**\--no-meta**\]
-\[**\--print-events**\] \[**-v**\|**\--verbose**\]\...
-\[**\--log-file**\] \[**\--manual**\] \[**\--completions**\]
-\[**-h**\|**\--help**\] \[**-V**\|**\--version**\] \[*COMMAND*\]
+\[**\--no-process-group**\] \[**\--wrap-process**\]
+\[**-N**\|**\--notify**\] \[**\--color**\] \[**\--timings**\]
+\[**-q**\|**\--quiet**\] \[**\--bell**\] \[**\--project-origin**\]
+\[**\--workdir**\] \[**-e**\|**\--exts**\] \[**-f**\|**\--filter**\]
+\[**\--filter-file**\] \[**-j**\|**\--filter-prog**\]
+\[**-i**\|**\--ignore**\] \[**\--ignore-file**\] \[**\--fs-events**\]
+\[**\--no-meta**\] \[**\--print-events**\]
+\[**-v**\|**\--verbose**\]\... \[**\--log-file**\] \[**\--manual**\]
+\[**\--completions**\] \[**-h**\|**\--help**\]
+\[**-V**\|**\--version**\] \[*COMMAND*\]
 
 # DESCRIPTION
 
@@ -517,6 +518,22 @@ By default, Watchexec will run the command in a process group, so that
 signals and terminations are sent to all processes in the group.
 Sometimes thats not what you want, and you can disable the behaviour
 with this option.
+
+Deprecated, use \--wrap-process=none instead.
+
+**\--wrap-process**=*MODE* \[default: group\]
+
+:   Configure how the process is wrapped
+
+By default, Watchexec will run the command in a process group in Unix,
+and in a Job Object in Windows.
+
+Some Unix programs prefer running in a session, while others do not work
+in a process group.
+
+Use group to use a process group, session to use a process session, and
+none to run the command directly. On Windows, either of group or session
+will use a Job Object.
 
 **-N**, **\--notify**
 

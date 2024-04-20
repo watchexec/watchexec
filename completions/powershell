@@ -40,6 +40,7 @@ Register-ArgumentCompleter -Native -CommandName 'watchexec' -ScriptBlock {
             [CompletionResult]::new('--emit-events-to', 'emit-events-to', [CompletionResultType]::ParameterName, 'Configure event emission')
             [CompletionResult]::new('-E', 'E ', [CompletionResultType]::ParameterName, 'Add env vars to the command')
             [CompletionResult]::new('--env', 'env', [CompletionResultType]::ParameterName, 'Add env vars to the command')
+            [CompletionResult]::new('--wrap-process', 'wrap-process', [CompletionResultType]::ParameterName, 'Configure how the process is wrapped')
             [CompletionResult]::new('--color', 'color', [CompletionResultType]::ParameterName, 'When to use terminal colours')
             [CompletionResult]::new('--project-origin', 'project-origin', [CompletionResultType]::ParameterName, 'Set the project origin')
             [CompletionResult]::new('--workdir', 'workdir', [CompletionResultType]::ParameterName, 'Set the working directory')

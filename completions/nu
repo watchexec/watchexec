@@ -12,6 +12,10 @@ module completions {
     [ "environment" "stdio" "file" "json-stdio" "json-file" "none" ]
   }
 
+  def "nu-complete watchexec wrap_process" [] {
+    [ "group" "session" "none" ]
+  }
+
   def "nu-complete watchexec color" [] {
     [ "auto" "always" "never" ]
   }
@@ -53,6 +57,7 @@ module completions {
     --only-emit-events        # Only emit events to stdout, run no commands
     --env(-E): string         # Add env vars to the command
     --no-process-group        # Don't use a process group
+    --wrap-process: string@"nu-complete watchexec wrap_process" # Configure how the process is wrapped
     -1                        # Testing only: exit Watchexec after the first run
     --notify(-N)              # Alert when commands start and end
     --color: string@"nu-complete watchexec color" # When to use terminal colours

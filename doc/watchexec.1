@@ -4,7 +4,7 @@
 .SH NAME
 watchexec \- Execute commands when watched files change
 .SH SYNOPSIS
-\fBwatchexec\fR [\fB\-w\fR|\fB\-\-watch\fR] [\fB\-c\fR|\fB\-\-clear\fR] [\fB\-o\fR|\fB\-\-on\-busy\-update\fR] [\fB\-r\fR|\fB\-\-restart\fR] [\fB\-s\fR|\fB\-\-signal\fR] [\fB\-\-stop\-signal\fR] [\fB\-\-stop\-timeout\fR] [\fB\-\-map\-signal\fR] [\fB\-d\fR|\fB\-\-debounce\fR] [\fB\-\-stdin\-quit\fR] [\fB\-\-no\-vcs\-ignore\fR] [\fB\-\-no\-project\-ignore\fR] [\fB\-\-no\-global\-ignore\fR] [\fB\-\-no\-default\-ignore\fR] [\fB\-\-no\-discover\-ignore\fR] [\fB\-\-ignore\-nothing\fR] [\fB\-p\fR|\fB\-\-postpone\fR] [\fB\-\-delay\-run\fR] [\fB\-\-poll\fR] [\fB\-\-shell\fR] [\fB\-n \fR] [\fB\-\-emit\-events\-to\fR] [\fB\-\-only\-emit\-events\fR] [\fB\-E\fR|\fB\-\-env\fR] [\fB\-\-no\-process\-group\fR] [\fB\-N\fR|\fB\-\-notify\fR] [\fB\-\-color\fR] [\fB\-\-timings\fR] [\fB\-q\fR|\fB\-\-quiet\fR] [\fB\-\-bell\fR] [\fB\-\-project\-origin\fR] [\fB\-\-workdir\fR] [\fB\-e\fR|\fB\-\-exts\fR] [\fB\-f\fR|\fB\-\-filter\fR] [\fB\-\-filter\-file\fR] [\fB\-j\fR|\fB\-\-filter\-prog\fR] [\fB\-i\fR|\fB\-\-ignore\fR] [\fB\-\-ignore\-file\fR] [\fB\-\-fs\-events\fR] [\fB\-\-no\-meta\fR] [\fB\-\-print\-events\fR] [\fB\-v\fR|\fB\-\-verbose\fR]... [\fB\-\-log\-file\fR] [\fB\-\-manual\fR] [\fB\-\-completions\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fICOMMAND\fR] 
+\fBwatchexec\fR [\fB\-w\fR|\fB\-\-watch\fR] [\fB\-c\fR|\fB\-\-clear\fR] [\fB\-o\fR|\fB\-\-on\-busy\-update\fR] [\fB\-r\fR|\fB\-\-restart\fR] [\fB\-s\fR|\fB\-\-signal\fR] [\fB\-\-stop\-signal\fR] [\fB\-\-stop\-timeout\fR] [\fB\-\-map\-signal\fR] [\fB\-d\fR|\fB\-\-debounce\fR] [\fB\-\-stdin\-quit\fR] [\fB\-\-no\-vcs\-ignore\fR] [\fB\-\-no\-project\-ignore\fR] [\fB\-\-no\-global\-ignore\fR] [\fB\-\-no\-default\-ignore\fR] [\fB\-\-no\-discover\-ignore\fR] [\fB\-\-ignore\-nothing\fR] [\fB\-p\fR|\fB\-\-postpone\fR] [\fB\-\-delay\-run\fR] [\fB\-\-poll\fR] [\fB\-\-shell\fR] [\fB\-n \fR] [\fB\-\-emit\-events\-to\fR] [\fB\-\-only\-emit\-events\fR] [\fB\-E\fR|\fB\-\-env\fR] [\fB\-\-no\-process\-group\fR] [\fB\-\-wrap\-process\fR] [\fB\-N\fR|\fB\-\-notify\fR] [\fB\-\-color\fR] [\fB\-\-timings\fR] [\fB\-q\fR|\fB\-\-quiet\fR] [\fB\-\-bell\fR] [\fB\-\-project\-origin\fR] [\fB\-\-workdir\fR] [\fB\-e\fR|\fB\-\-exts\fR] [\fB\-f\fR|\fB\-\-filter\fR] [\fB\-\-filter\-file\fR] [\fB\-j\fR|\fB\-\-filter\-prog\fR] [\fB\-i\fR|\fB\-\-ignore\fR] [\fB\-\-ignore\-file\fR] [\fB\-\-fs\-events\fR] [\fB\-\-no\-meta\fR] [\fB\-\-print\-events\fR] [\fB\-v\fR|\fB\-\-verbose\fR]... [\fB\-\-log\-file\fR] [\fB\-\-manual\fR] [\fB\-\-completions\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fICOMMAND\fR] 
 .SH DESCRIPTION
 Execute commands when watched files change.
 .PP
@@ -370,6 +370,17 @@ Use key=value syntax. Multiple variables can be set by repeating the option.
 Don\*(Aqt use a process group
 
 By default, Watchexec will run the command in a process group, so that signals and terminations are sent to all processes in the group. Sometimes that\*(Aqs not what you want, and you can disable the behaviour with this option.
+
+Deprecated, use \*(Aq\-\-wrap\-process=none\*(Aq instead.
+.TP
+\fB\-\-wrap\-process\fR=\fIMODE\fR [default: group]
+Configure how the process is wrapped
+
+By default, Watchexec will run the command in a process group in Unix, and in a Job Object in Windows.
+
+Some Unix programs prefer running in a session, while others do not work in a process group.
+
+Use \*(Aqgroup\*(Aq to use a process group, \*(Aqsession\*(Aq to use a process session, and \*(Aqnone\*(Aq to run the command directly. On Windows, either of \*(Aqgroup\*(Aq or \*(Aqsession\*(Aq will use a Job Object.
 .TP
 \fB\-N\fR, \fB\-\-notify\fR
 Alert when commands start and end

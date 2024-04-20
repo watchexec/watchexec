@@ -657,6 +657,7 @@ pub struct Args {
 		long,
 		help_heading = OPTSET_COMMAND,
 		value_name = "MODE",
+		default_value = "group",
 	)]
 	pub wrap_process: WrapMode,
 
