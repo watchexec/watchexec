@@ -4098,7 +4098,7 @@ dependencies = [
 
 [[package]]
 name = "watchexec-filterer-ignore"
-version = "3.0.1"
+version = "4.0.0"
 dependencies = [
  "dunce",
  "ignore",

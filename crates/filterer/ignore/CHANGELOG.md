@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v4.0.0 (2024-04-20)
+
 - Deps: watchexec 4
 
 ## v3.0.1 (2024-01-04)
