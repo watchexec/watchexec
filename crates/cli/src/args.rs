@@ -1137,13 +1137,6 @@ pub async fn get_args() -> Result<Args> {
 		warn!("⚠ RUST_LOG environment variable set, logging options have no effect");
 	}
 
-	if let Ok(filt) = std::env::var("WATCHEXEC_FILTERER") {
-		warn!("WATCHEXEC_FILTERER is deprecated");
-		if filt == "tagged" {
-			eprintln!("Tagged filterer has been removed. Open an issue if you have no workaround.");
-		}
-	}
-
 	debug!("expanding @argfile arguments if any");
 	let args = expand_args_up_to_doubledash().expect("while expanding @argfile");
 
