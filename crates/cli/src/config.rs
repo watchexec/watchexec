@@ -237,7 +237,6 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 				});
 
 				let show_events = {
-					let print_events = print_events;
 					let events = action.events.clone();
 					move || {
 						if print_events {
@@ -250,8 +249,6 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 				};
 
 				let clear_screen = {
-					let clear = clear;
-					let print_events = print_events;
 					let events = action.events.clone();
 					move || {
 						if let Some(mode) = clear {
