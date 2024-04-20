@@ -4020,7 +4020,7 @@ dependencies = [
 
 [[package]]
 name = "watchexec-cli"
-version = "1.25.1"
+version = "2.0.0"
 dependencies = [
  "ahash",
  "argfile",
