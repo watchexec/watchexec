@@ -97,7 +97,7 @@ version = "3.0.0"
 path = "../signals"
 
 [dependencies.watchexec-filterer-globset]
-version = "3.0.0"
+version = "4.0.0"
 path = "../filterer/globset"
 
 [dependencies.tokio]
