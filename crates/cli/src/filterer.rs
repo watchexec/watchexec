@@ -9,19 +9,21 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tracing::{info, trace, trace_span};
 use watchexec::{
 	error::RuntimeError,
-	event::{
-		filekind::{FileEventKind, ModifyKind},
-		Event, Priority, Tag,
-	},
 	filter::Filterer,
+};
+use watchexec_events::{
+	filekind::{FileEventKind, ModifyKind},
+	Event, Priority, Tag,
 };
 use watchexec_filterer_globset::GlobsetFilterer;
 
 use crate::args::{Args, FsEvent};
 
 mod dirs;
+pub(crate) mod parse;
 mod proglib;
 mod progs;
+mod syncval;
 
 /// A custom filterer that combines the library's Globset filterer and a switch for --no-meta
 #[derive(Debug)]
@@ -72,7 +74,7 @@ impl WatchexecFilterer {
 	pub async fn new(args: &Args) -> Result<Arc<Self>> {
 		let (project_origin, workdir) = dirs::dirs(args).await?;
 		let vcs_types = dirs::vcs_types(&project_origin).await;
-		let ignore_files = dirs::ignores(args, &vcs_types, &project_origin).await;
+		let ignore_files = dirs::ignores(args, &vcs_types, &project_origin).await?;
 
 		let mut ignores = Vec::new();
 

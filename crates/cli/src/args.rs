@@ -14,6 +14,8 @@ use tokio::{fs::File, io::AsyncReadExt};
 use watchexec::paths::PATH_SEPARATOR;
 use watchexec_signals::Signal;
 
+use crate::filterer::parse::parse_filter_program;
+
 const OPTSET_FILTERING: &str = "Filtering";
 const OPTSET_COMMAND: &str = "Command";
 const OPTSET_DEBUGGING: &str = "Debugging";
@@ -860,6 +862,10 @@ pub struct Args {
 	)]
 	pub filter_programs: Vec<String>,
 
+	#[doc(hidden)]
+	#[clap(skip)]
+	pub filter_programs_parsed: Vec<jaq_syn::Main>,
+
 	/// Filename patterns to filter out
 	///
 	/// Provide a glob-like filter pattern, and events for files matching the pattern will be
@@ -1237,6 +1243,12 @@ pub async fn get_args() -> Result<Args> {
 			*prog = buf;
 		}
 	}
+
+	args.filter_programs_parsed = std::mem::take(&mut args.filter_programs)
+		.into_iter()
+		.enumerate()
+		.map(parse_filter_program)
+		.collect::<Result<_, _>>()?;
 
 	debug!(?args, "got arguments");
 	Ok(args)

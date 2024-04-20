@@ -1,15 +1,12 @@
-use std::{iter::once, marker::PhantomData};
+use std::{iter::empty, marker::PhantomData};
 
-use jaq_core::{
-	parse::{self, filter::Filter, Def},
-	Ctx, Definitions, RcIter, Val,
-};
+use jaq_interpret::{Ctx, FilterT, RcIter, Val};
 use miette::miette;
 use tokio::{
 	sync::{mpsc, oneshot},
 	task::{block_in_place, spawn_blocking},
 };
-use tracing::{debug, error, trace, warn};
+use tracing::{error, trace, warn};
 use watchexec::error::RuntimeError;
 use watchexec_events::Event;
 
@@ -65,8 +62,7 @@ impl FilterProgs {
 	}
 
 	pub fn new(args: &Args) -> miette::Result<Self> {
-		let n_filters = args.filter_programs.len();
-		let progs = args.filter_programs.clone();
+		let progs = args.filter_programs_parsed.clone();
 		eprintln!(
 			"EXPERIMENTAL: filter programs are unstable and may change/vanish without notice"
 		);
@@ -74,30 +70,24 @@ impl FilterProgs {
 		let (requester, mut receiver) = Requester::<Event, bool>::new(BUFFER);
 		let task =
 			spawn_blocking(move || {
-				let mut defs = super::proglib::load_std_defs()?;
-				super::proglib::load_watchexec_defs(&mut defs)?;
-				load_user_progs(&mut defs, &progs)?;
-
 				'chan: while let Some((event, sender)) = receiver.blocking_recv() {
 					let val = serde_json::to_value(&event)
 						.map_err(|err| miette!("failed to serialize event: {}", err))
 						.map(Val::from)?;
 
-					for n in 0..n_filters {
+					for (n, prog) in progs.iter().enumerate() {
 						trace!(?n, "trying filter program");
-
-						let name = format!("__watchexec_filter_{n}");
-						let filter = Filter::Call(name, Vec::new());
-						let mut errs = Vec::new();
-						let filter = defs.clone().finish((Vec::new(), (filter, 0..0)), &mut errs);
-						if !errs.is_empty() {
-							error!(?errs, "failed to load filter program #{}", n);
+						let mut jaq = super::proglib::jaq_lib()?;
+						let filter = jaq.compile(prog.clone());
+						if !jaq.errs.is_empty() {
+							for (error, span) in jaq.errs {
+								error!(%error, "failed to compile filter program #{n}@{}:{}", span.start, span.end);
+							}
 							continue;
 						}
 
-						let inputs = RcIter::new(once(Ok(val.clone())));
-						let ctx = Ctx::new(Vec::new(), &inputs);
-						let mut results = filter.run(ctx, val.clone());
+						let inputs = RcIter::new(empty());
+						let mut results = filter.run((Ctx::new([], &inputs), val.clone()));
 						if let Some(res) = results.next() {
 							match res {
 								Ok(Val::Bool(false)) => {
@@ -150,32 +140,4 @@ impl FilterProgs {
 
 		Ok(Self { channel: requester })
 	}
-}
-
-fn load_user_progs(all_defs: &mut Definitions, progs: &[String]) -> miette::Result<()> {
-	debug!("loading jaq programs");
-	for (n, prog) in progs.iter().enumerate() {
-		trace!(?n, ?prog, "loading filter program");
-		let (main, mut errs) = parse::parse(prog, parse::main());
-
-		if let Some((defs, filter)) = main {
-			let name = format!("__watchexec_filter_{}", n);
-			trace!(?filter, ?name, "loading filter program into global as def");
-			all_defs.insert_defs(
-				vec![Def {
-					name,
-					args: Vec::new(),
-					body: filter,
-					defs,
-				}],
-				&mut errs,
-			);
-		}
-
-		if !errs.is_empty() {
-			return Err(miette!("failed to load filter program #{}: {:?}", n, errs));
-		}
-	}
-
-	Ok(())
 }
