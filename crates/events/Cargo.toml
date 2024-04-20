@@ -33,7 +33,7 @@ version = "0.28.0"
 features = ["signal"]
 
 [dev-dependencies]
-watchexec-events = { version = "*", features = ["serde"], path = "." }
+watchexec-events = { workspace = true, features = ["serde"] }
 snapbox = "0.5.9"
 serde_json = "1.0.107"
 

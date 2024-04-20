@@ -20,6 +20,7 @@ tempfile = "3.8.0"
 tracing-test = "0.2.4"
 rand = "0.8"
 uuid = "1.5.0"
+watchexec-events = "2.0.1"
 
 [profile.release]
 lto = true
