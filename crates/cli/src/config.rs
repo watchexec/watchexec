@@ -236,11 +236,43 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 					);
 				});
 
-				let show_events = || {
-					if print_events {
-						trace!("print events to stderr");
-						for (n, event) in action.events.iter().enumerate() {
-							eprintln!("[EVENT {n}] {event}");
+				let show_events = {
+					let print_events = print_events;
+					let events = action.events.clone();
+					move || {
+						if print_events {
+							trace!("print events to stderr");
+							for (n, event) in events.iter().enumerate() {
+								eprintln!("[EVENT {n}] {event}");
+							}
+						}
+					}
+				};
+
+				let clear_screen = {
+					let clear = clear;
+					let print_events = print_events;
+					let events = action.events.clone();
+					move || {
+						if let Some(mode) = clear {
+							match mode {
+								ClearMode::Clear => {
+									clearscreen::clear().ok();
+									debug!("cleared screen");
+								}
+								ClearMode::Reset => {
+									reset_screen();
+									debug!("hard-reset screen");
+								}
+							}
+						}
+
+						// re-show events after clearing
+						if print_events {
+							trace!("print events to stderr");
+							for (n, event) in events.iter().enumerate() {
+								eprintln!("[EVENT {n}] {event}");
+							}
 						}
 					}
 				};
@@ -333,28 +365,6 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 					return action;
 				}
 
-				// clear the screen before printing events
-				if let Some(mode) = clear {
-					match mode {
-						ClearMode::Clear => {
-							clearscreen::clear().ok();
-							debug!("cleared screen");
-						}
-						ClearMode::Reset => {
-							for cs in [
-								ClearScreen::WindowsCooked,
-								ClearScreen::WindowsVt,
-								ClearScreen::VtLeaveAlt,
-								ClearScreen::VtWellDone,
-								ClearScreen::default(),
-							] {
-								cs.clear().ok();
-							}
-							debug!("hard-reset screen");
-						}
-					}
-				}
-
 				show_events();
 
 				if let Some(delay) = delay_run {
@@ -388,6 +398,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 									OnBusyUpdate::Restart if cfg!(windows) => {
 										job.restart();
 										job.run(move |context| {
+											clear_screen();
 											setup_process(
 												innerjob.clone(),
 												context.command.clone(),
@@ -401,6 +412,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 											stop_timeout,
 										);
 										job.run(move |context| {
+											clear_screen();
 											setup_process(
 												innerjob.clone(),
 												context.command.clone(),
@@ -424,6 +436,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 													trace!("job finished, starting queued");
 													job.start();
 													job.run(move |context| {
+														clear_screen();
 														setup_process(
 															innerjob.clone(),
 															context.command.clone(),
@@ -442,6 +455,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 								trace!("job is not running, start it");
 								job.start();
 								job.run(move |context| {
+									clear_screen();
 									setup_process(
 										innerjob.clone(),
 										context.command.clone(),
