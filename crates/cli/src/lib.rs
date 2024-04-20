@@ -14,6 +14,8 @@ use tracing::{debug, info, warn};
 use watchexec::Watchexec;
 use watchexec_events::{Event, Priority};
 
+use crate::filterer::WatchexecFilterer;
+
 pub mod args;
 mod config;
 mod emits;
@@ -44,7 +46,7 @@ async fn init() -> Result<Args> {
 		}
 	}
 
-	let args = args::get_args();
+	let args = args::get_args().await?;
 	let verbosity = args.verbose.unwrap_or(0);
 
 	if log_on {
@@ -101,7 +103,7 @@ async fn run_watchexec(args: Args) -> Result<()> {
 
 	let state = state::State::new()?;
 	let config = config::make_config(&args, &state)?;
-	config.filterer(filterer::globset(&args).await?);
+	config.filterer(WatchexecFilterer::new(&args).await?);
 
 	info!("initialising Watchexec runtime");
 	let wx = Watchexec::with_config(config)?;

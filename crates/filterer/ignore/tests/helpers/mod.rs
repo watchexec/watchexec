@@ -14,7 +14,6 @@ pub mod ignore {
 	pub use super::ignore_filt as filt;
 	pub use super::Applies;
 	pub use super::PathHarness;
-	pub use watchexec_events::Priority;
 }
 
 pub trait PathHarness: Filterer {
