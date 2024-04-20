@@ -5,14 +5,14 @@ use std::{
 	time::{SystemTime, UNIX_EPOCH},
 };
 
-use jaq_interpret::{ParseCtx, Error, Native, Val};
+use jaq_interpret::{Error, Native, ParseCtx, Val};
 use serde_json::{json, Value};
 use tracing::{debug, error, trace};
 
 use super::macros::*;
 
 pub fn load(jaq: &mut ParseCtx) {
-		trace!("jaq: add file_read filter");
+	trace!("jaq: add file_read filter");
 	jaq.insert_native(
 		"file_read".into(),
 		1,

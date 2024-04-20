@@ -101,7 +101,7 @@ async fn init() -> Result<Args> {
 async fn run_watchexec(args: Args) -> Result<()> {
 	info!(version=%env!("CARGO_PKG_VERSION"), "constructing Watchexec from CLI");
 
-	let state = state::State::new()?;
+	let state = state::State::default();
 	let config = config::make_config(&args, &state)?;
 	config.filterer(WatchexecFilterer::new(&args).await?);
 
