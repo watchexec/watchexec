@@ -4098,7 +4098,6 @@ version = "3.0.0"
 dependencies = [
  "ignore",
  "ignore-files",
- "project-origins",
  "tokio",
  "tracing",
  "tracing-subscriber",
