@@ -1,6 +1,7 @@
 use std::{future::Future, mem::take, sync::Arc, time::Instant};
 
-use tokio::{process::Command as TokioCommand, select, task::JoinHandle};
+use process_wrap::tokio::TokioCommandWrap;
+use tokio::{select, task::JoinHandle};
 use tracing::{instrument, trace, trace_span, Instrument};
 use watchexec_signals::Signal;
 
@@ -156,9 +157,9 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 								Control::Stop => {
 									if let CommandState::Running { child, started, .. } = &mut command_state {
 										trace!("stopping child");
-										try_with_handler!(child.kill().await);
+										try_with_handler!(Box::into_pin(child.kill()).await);
 										trace!("waiting on child");
-										let status = try_with_handler!(child.wait().await);
+										let status = try_with_handler!(Box::into_pin(child.wait()).await);
 
 										trace!(?status, "got child end status");
 										command_state = CommandState::Finished {
@@ -188,9 +189,9 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 								Control::TryRestart => {
 									if let CommandState::Running { child, started, .. } = &mut command_state {
 										trace!("stopping child");
-										try_with_handler!(child.kill().await);
+										try_with_handler!(Box::into_pin(child.kill()).await);
 										trace!("waiting on child");
-										let status = try_with_handler!(child.wait().await);
+										let status = try_with_handler!(Box::into_pin(child.wait()).await);
 
 										trace!(?status, "got child end status");
 										command_state = CommandState::Finished {
@@ -238,9 +239,9 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 
 									if let CommandState::Running { child, started, .. } = &mut command_state {
 										trace!("stopping child forcefully");
-										try_with_handler!(child.kill().await);
+										try_with_handler!(Box::into_pin(child.kill()).await);
 										trace!("waiting on child");
-										let status = try_with_handler!(child.wait().await);
+										let status = try_with_handler!(Box::into_pin(child.wait()).await);
 
 										trace!(?status, "got child end status");
 										command_state = CommandState::Finished {
@@ -411,15 +412,15 @@ pub type AsyncFunc = Box<
 >;
 
 pub type SyncSpawnHook =
-	Arc<dyn Fn(&mut TokioCommand, &JobTaskContext<'_>) + Send + Sync + 'static>;
+	Arc<dyn Fn(&mut TokioCommandWrap, &JobTaskContext<'_>) + Send + Sync + 'static>;
 pub type AsyncSpawnHook = Arc<
-	dyn (Fn(&mut TokioCommand, &JobTaskContext<'_>) -> Box<dyn Future<Output = ()> + Send + Sync>)
+	dyn (Fn(&mut TokioCommandWrap, &JobTaskContext<'_>) -> Box<dyn Future<Output = ()> + Send + Sync>)
 		+ Send
 		+ Sync
 		+ 'static,
 >;
 
-sync_async_callbox!(SpawnHook, SyncSpawnHook, AsyncSpawnHook, (command: &mut TokioCommand, context: &JobTaskContext<'_>));
+sync_async_callbox!(SpawnHook, SyncSpawnHook, AsyncSpawnHook, (command: &mut TokioCommandWrap, context: &JobTaskContext<'_>));
 
 pub type SyncErrorHandler = Arc<dyn Fn(SyncIoError) + Send + Sync + 'static>;
 pub type AsyncErrorHandler = Arc<
@@ -432,8 +433,8 @@ sync_async_callbox!(ErrorHandler, SyncErrorHandler, AsyncErrorHandler, (error: S
 #[instrument(level = "trace")]
 async fn signal_child(
 	signal: Signal,
+	#[cfg(not(test))] child: &mut Box<dyn process_wrap::tokio::TokioChildWrapper>,
 	#[cfg(test)] child: &mut super::TestChild,
-	#[cfg(not(test))] child: &mut command_group::tokio::ErasedChild,
 ) -> std::io::Result<()> {
 	#[cfg(unix)]
 	{
@@ -442,7 +443,7 @@ async fn signal_child(
 			.or_else(|| Signal::Terminate.to_nix())
 			.expect("UNWRAP: guaranteed for Signal::Terminate default");
 		trace!(signal=?sig, "sending signal");
-		child.signal(sig)?;
+		child.signal(sig as _)?;
 	}
 
 	#[cfg(windows)]

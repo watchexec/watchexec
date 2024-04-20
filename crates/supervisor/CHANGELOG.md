@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+- Deps: replace command-group with process-wrap
+
 ## v1.0.3 (2023-12-19)
 
 - Fix Start executing even when the job is running.

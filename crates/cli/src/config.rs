@@ -232,10 +232,16 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 
 					if let Some(ref workdir) = workdir.as_ref() {
 						debug!(?workdir, "set command workdir");
-						command.current_dir(workdir);
+						command.command_mut().current_dir(workdir);
 					}
 
-					emit_events_to_command(command, events, emit_file, emit_events_to, add_envs);
+					emit_events_to_command(
+						command.command_mut(),
+						events,
+						emit_file,
+						emit_events_to,
+						add_envs,
+					);
 				});
 
 				let show_events = || {

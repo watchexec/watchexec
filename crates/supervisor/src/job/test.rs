@@ -328,6 +328,7 @@ async fn start() {
 #[cfg(unix)]
 #[tokio::test]
 async fn signal_unix() {
+	use nix::sys::signal::Signal;
 	let (job, task) = start_job(working_command());
 
 	expect_state!(job, CommandState::Pending);
@@ -336,9 +337,9 @@ async fn signal_unix() {
 	job.signal(watchexec_signals::Signal::User1).await;
 
 	let calls = get_child(&job).await.calls;
-	assert!(calls
-		.iter()
-		.any(|(_, call)| matches!(call, TestChildCall::Signal(command_group::Signal::SIGUSR1))));
+	assert!(calls.iter().any(
+		|(_, call)| matches!(call, TestChildCall::Signal(sig) if *sig == Signal::SIGUSR1 as i32)
+	));
 
 	task.abort();
 }
@@ -553,6 +554,7 @@ async fn graceful_stop_beyond_grace() {
 
 	#[cfg(unix)]
 	{
+		use nix::sys::signal::Signal;
 		expect_state!(
 			job,
 			CommandState::Running { .. },
@@ -562,7 +564,7 @@ async fn graceful_stop_beyond_grace() {
 		let calls = get_child(&job).await.calls;
 		assert!(calls.iter().any(|(_, call)| matches!(
 			call,
-			TestChildCall::Signal(command_group::Signal::SIGUSR1)
+			TestChildCall::Signal(sig) if *sig == Signal::SIGUSR1 as i32
 		)));
 	}
 
@@ -596,6 +598,7 @@ async fn graceful_restart_beyond_grace() {
 
 	#[cfg(unix)]
 	{
+		use nix::sys::signal::Signal;
 		expect_state!(
 			job,
 			CommandState::Running { .. },
@@ -605,7 +608,7 @@ async fn graceful_restart_beyond_grace() {
 		let calls = get_child(&job).await.calls;
 		assert!(calls.iter().any(|(_, call)| matches!(
 			call,
-			TestChildCall::Signal(command_group::Signal::SIGUSR1)
+			TestChildCall::Signal(sig) if *sig == Signal::SIGUSR1 as i32
 		)));
 	}
 

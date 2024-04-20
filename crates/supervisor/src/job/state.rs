@@ -1,8 +1,6 @@
 use std::{sync::Arc, time::Instant};
 
-#[cfg(not(test))]
-use command_group::{tokio::ErasedChild, AsyncCommandGroup};
-use tokio::process::Command as TokioCommand;
+use process_wrap::tokio::{TokioChildWrapper, TokioCommandWrap};
 use tracing::trace;
 use watchexec_events::ProcessEnd;
 
@@ -33,7 +31,7 @@ pub enum CommandState {
 
 		/// The child process.
 		#[cfg(not(test))]
-		child: ErasedChild,
+		child: Box<dyn TokioChildWrapper>,
 
 		/// The time at which the process was spawned.
 		started: Instant,
@@ -75,7 +73,7 @@ impl CommandState {
 	pub(crate) fn spawn(
 		&mut self,
 		command: Arc<Command>,
-		mut spawnable: TokioCommand,
+		mut spawnable: TokioCommandWrap,
 	) -> std::io::Result<bool> {
 		if let Self::Running { .. } = self {
 			trace!("command running, not spawning again");
@@ -88,11 +86,7 @@ impl CommandState {
 		let child = super::TestChild::new(command)?;
 
 		#[cfg(not(test))]
-		let child = if command.options.grouped {
-			ErasedChild::Grouped(spawnable.group().kill_on_drop(true).spawn()?)
-		} else {
-			ErasedChild::Ungrouped(spawnable.kill_on_drop(true).spawn()?)
-		};
+		let child = spawnable.spawn()?;
 
 		*self = Self::Running {
 			child,
@@ -136,7 +130,7 @@ impl CommandState {
 
 	pub(crate) async fn wait(&mut self) -> std::io::Result<bool> {
 		if let Self::Running { child, started } = self {
-			let end = child.wait().await?;
+			let end = Box::into_pin(child.wait()).await?;
 			*self = Self::Finished {
 				status: end.into(),
 				started: *started,

@@ -1,6 +1,6 @@
 use std::{future::Future, sync::Arc, time::Duration};
 
-use tokio::process::Command as TokioCommand;
+use process_wrap::tokio::TokioCommandWrap;
 use watchexec_signals::Signal;
 
 use crate::{command::Command, errors::SyncIoError, flag::Flag};
@@ -289,11 +289,11 @@ impl Job {
 	/// Set the spawn hook.
 	///
 	/// The hook will be called once per process spawned, before the process is spawned. It's given
-	/// a mutable reference to the [`tokio::process::Command`] and some context; it can modify the
-	/// command as it sees fit.
+	/// a mutable reference to the [`process_wrap::tokio::TokioCommandWrap`] and some context; it
+	/// can modify or further [wrap](process_wrap) the command as it sees fit.
 	pub fn set_spawn_hook(
 		&self,
-		fun: impl Fn(&mut TokioCommand, &JobTaskContext<'_>) + Send + Sync + 'static,
+		fun: impl Fn(&mut TokioCommandWrap, &JobTaskContext<'_>) + Send + Sync + 'static,
 	) -> Ticket {
 		self.control(Control::SetSyncSpawnHook(Arc::new(fun)))
 	}
@@ -301,8 +301,8 @@ impl Job {
 	/// Set the spawn hook (async version).
 	///
 	/// The hook will be called once per process spawned, before the process is spawned. It's given
-	/// a mutable reference to the [`tokio::process::Command`] and some context; it can modify the
-	/// command as it sees fit.
+	/// a mutable reference to the [`process_wrap::tokio::TokioCommandWrap`] and some context; it
+	/// can modify or further [wrap](process_wrap) the command as it sees fit.
 	///
 	/// A gotcha when using this method is that the future returned by the function can live longer
 	/// than the references it was given, so you can't bring the command or context into the async
@@ -313,7 +313,10 @@ impl Job {
 	/// spawn hooks that can't be done in the simpler sync version.
 	pub fn set_spawn_async_hook(
 		&self,
-		fun: impl (Fn(&mut TokioCommand, &JobTaskContext<'_>) -> Box<dyn Future<Output = ()> + Send + Sync>)
+		fun: impl (Fn(
+				&mut TokioCommandWrap,
+				&JobTaskContext<'_>,
+			) -> Box<dyn Future<Output = ()> + Send + Sync>)
 			+ Send
 			+ Sync
 			+ 'static,
