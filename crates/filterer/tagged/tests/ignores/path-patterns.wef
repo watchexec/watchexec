@@ -1,5 +1,0 @@
-path*!Cargo.toml
-path*!package.json
-path*!*.gemspec
-path~!test-[^u]+
-path~![.]sw[a-z]$

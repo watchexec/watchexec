@@ -3801,15 +3801,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "unicase"
-version = "2.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7d2d4dafb69621809a81864c9c1b864479e1235c0dd4e199924b9742439ed89"
-dependencies = [
- "version_check",
-]
-
-[[package]]
 name = "unicode-bidi"
 version = "0.3.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4132,29 +4123,6 @@ dependencies = [
  "tracing-subscriber",
  "watchexec",
  "watchexec-events 3.0.0",
- "watchexec-signals 3.0.0",
-]
-
-[[package]]
-name = "watchexec-filterer-tagged"
-version = "2.0.0"
-dependencies = [
- "futures",
- "globset",
- "ignore",
- "ignore-files",
- "miette",
- "nom",
- "project-origins",
- "regex",
- "thiserror",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "unicase",
- "watchexec",
- "watchexec-events 3.0.0",
- "watchexec-filterer-ignore",
  "watchexec-signals 3.0.0",
 ]
 
