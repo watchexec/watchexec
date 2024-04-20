@@ -154,9 +154,10 @@ graceful stop signal is sent, Watchexec will wait for the command to
 exit. If it hasnt exited after this time, it is forcefully terminated.
 
 Takes a unit-less value in seconds, or a time span value such as \"5min
-20s\".
+20s\". Providing a unit-less value is deprecated and will warn; it will
+be an error in the future.
 
-The default is 60 seconds. Set to 0 to immediately force-kill the
+The default is 10 seconds. Set to 0 to immediately force-kill the
 command.
 
 This has no practical effect on Windows as the command is always
@@ -203,7 +204,8 @@ script. In those use cases, note that every accumulated event will build
 up in memory.
 
 Takes a unit-less value in milliseconds, or a time span value such as
-\"5sec 20ms\".
+\"5sec 20ms\". Providing a unit-less value is deprecated and will warn;
+it will be an error in the future.
 
 The default is 50 milliseconds. Setting to 0 is highly discouraged.
 
@@ -321,7 +323,8 @@ like using \"sleep 5 && command\" in a shell, but portable and slightly
 more efficient.
 
 Takes a unit-less value in seconds, or a time span value such as \"2min
-5s\".
+5s\". Providing a unit-less value is deprecated and will warn; it will
+be an error in the future.
 
 **\--poll**=*INTERVAL*
 
@@ -335,7 +338,8 @@ cases.
 
 Optionally takes a unit-less value in milliseconds, or a time span value
 such as \"2s 500ms\", to use as the polling interval. If not specified,
-the default is 30 seconds.
+the default is 30 seconds. Providing a unit-less value is deprecated and
+will warn; it will be an error in the future.
 
 Aliased as \--force-poll.
 

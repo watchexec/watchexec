@@ -219,14 +219,15 @@ pub struct Args {
 	/// it is forcefully terminated.
 	///
 	/// Takes a unit-less value in seconds, or a time span value such as "5min 20s".
+	/// Providing a unit-less value is deprecated and will warn; it will be an error in the future.
 	///
-	/// The default is 60 seconds. Set to 0 to immediately force-kill the command.
+	/// The default is 10 seconds. Set to 0 to immediately force-kill the command.
 	///
 	/// This has no practical effect on Windows as the command is always forcefully terminated; see
 	/// '--stop-signal' for why.
 	#[arg(
 		long,
-		default_value = "60",
+		default_value = "10s",
 		hide_default_value = true,
 		value_name = "TIMEOUT"
 	)]
@@ -266,12 +267,13 @@ pub struct Args {
 	/// every accumulated event will build up in memory.
 	///
 	/// Takes a unit-less value in milliseconds, or a time span value such as "5sec 20ms".
+	/// Providing a unit-less value is deprecated and will warn; it will be an error in the future.
 	///
 	/// The default is 50 milliseconds. Setting to 0 is highly discouraged.
 	#[arg(
 		long,
 		short,
-		default_value = "50",
+		default_value = "50ms",
 		hide_default_value = true,
 		value_name = "TIMEOUT"
 	)]
@@ -394,6 +396,7 @@ pub struct Args {
 	/// but portable and slightly more efficient.
 	///
 	/// Takes a unit-less value in seconds, or a time span value such as "2min 5s".
+	/// Providing a unit-less value is deprecated and will warn; it will be an error in the future.
 	#[arg(long, value_name = "DURATION")]
 	pub delay_run: Option<TimeSpan>,
 
@@ -406,6 +409,7 @@ pub struct Args {
 	///
 	/// Optionally takes a unit-less value in milliseconds, or a time span value such as "2s 500ms",
 	/// to use as the polling interval. If not specified, the default is 30 seconds.
+	/// Providing a unit-less value is deprecated and will warn; it will be an error in the future.
 	///
 	/// Aliased as '--force-poll'.
 	#[arg(
@@ -1039,7 +1043,10 @@ impl<const UNITLESS_NANOS_MULTIPLIER: u64> FromStr for TimeSpan<UNITLESS_NANOS_M
 		s.parse::<u64>()
 			.map_or_else(
 				|_| humantime::parse_duration(s),
-				|unitless| Ok(Duration::from_nanos(unitless * UNITLESS_NANOS_MULTIPLIER)),
+				|unitless| {
+					eprintln!("Warning: unitless time span values are deprecated and will be removed in an upcoming version");
+					Ok(Duration::from_nanos(unitless * UNITLESS_NANOS_MULTIPLIER))
+				},
 			)
 			.map(TimeSpan)
 	}
