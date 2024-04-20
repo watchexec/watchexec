@@ -1,5 +1,5 @@
 pre-release-commit-message = "release: filterer-globset v{{version}}"
-tag-prefix = "filterer-globset-"
+tag-prefix = "watchexec-filterer-globset-"
 tag-message = "watchexec-filterer-globset {{version}}"
 
 [[pre-release-replacements]]

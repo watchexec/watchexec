@@ -1,5 +1,5 @@
 pre-release-commit-message = "release: filterer-ignore v{{version}}"
-tag-prefix = "filterer-ignore-"
+tag-prefix = "watchexec-filterer-ignore-"
 tag-message = "watchexec-filterer-ignore {{version}}"
 
 [[pre-release-replacements]]

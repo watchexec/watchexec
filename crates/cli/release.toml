@@ -1,5 +1,5 @@
 pre-release-commit-message = "release: cli v{{version}}"
-tag-prefix = "cli-"
+tag-prefix = ""
 tag-message = "watchexec {{version}}"
 
 [[pre-release-replacements]]
