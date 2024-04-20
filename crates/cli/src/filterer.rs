@@ -7,10 +7,7 @@ use std::{
 use miette::{IntoDiagnostic, Result};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tracing::{info, trace, trace_span};
-use watchexec::{
-	error::RuntimeError,
-	filter::Filterer,
-};
+use watchexec::{error::RuntimeError, filter::Filterer};
 use watchexec_events::{
 	filekind::{FileEventKind, ModifyKind},
 	Event, Priority, Tag,
@@ -75,8 +72,13 @@ impl WatchexecFilterer {
 	/// Create a new filterer from the given arguments
 	pub async fn new(args: &Args) -> Result<Arc<Self>> {
 		let (project_origin, workdir) = dirs::dirs(args).await?;
-		let vcs_types = dirs::vcs_types(&project_origin).await;
-		let ignore_files = dirs::ignores(args, &vcs_types, &project_origin).await?;
+
+		let ignore_files = if args.no_discover_ignore {
+			Vec::new()
+		} else {
+			let vcs_types = dirs::vcs_types(&project_origin).await;
+			dirs::ignores(args, &vcs_types, &project_origin).await?
+		};
 
 		let mut ignores = Vec::new();
 
@@ -144,8 +146,18 @@ async fn read_filter_file(path: &Path) -> Result<Vec<(String, Option<PathBuf>)>>
 
 	let file = tokio::fs::File::open(path).await.into_diagnostic()?;
 
-	let mut filters =
-		Vec::with_capacity(file.metadata().await.map(|m| m.len() as usize).unwrap_or(0) / 20);
+	let metadata_len = file
+		.metadata()
+		.await
+		.map(|m| usize::try_from(m.len()))
+		.unwrap_or(Ok(0))
+		.into_diagnostic()?;
+	let filter_capacity = if metadata_len == 0 {
+		0
+	} else {
+		metadata_len / 20
+	};
+	let mut filters = Vec::with_capacity(filter_capacity);
 
 	let reader = BufReader::new(file);
 	let mut lines = reader.lines();
