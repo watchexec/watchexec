@@ -7,38 +7,34 @@ use std::{
 use miette::{IntoDiagnostic, Result};
 use tempfile::NamedTempFile;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct State {
 	pub emit_file: RotatingTempFile,
 }
 
-impl State {
-	pub fn new() -> Result<Self> {
-		let emit_file = RotatingTempFile::new()?;
-		Ok(Self { emit_file })
-	}
-}
-
-#[derive(Clone, Debug)]
-pub struct RotatingTempFile(Arc<Mutex<NamedTempFile>>);
+#[derive(Clone, Debug, Default)]
+pub struct RotatingTempFile(Arc<Mutex<Option<NamedTempFile>>>);
 
 impl RotatingTempFile {
-	pub fn new() -> Result<Self> {
-		let file = Arc::new(Mutex::new(NamedTempFile::new().into_diagnostic()?));
-		Ok(Self(file))
-	}
-
 	pub fn rotate(&self) -> Result<()> {
 		// implicitly drops the old file
-		*self.0.lock().unwrap() = NamedTempFile::new().into_diagnostic()?;
+		*self.0.lock().unwrap() = Some(NamedTempFile::new().into_diagnostic()?);
 		Ok(())
 	}
 
 	pub fn write(&self, data: &[u8]) -> Result<()> {
-		self.0.lock().unwrap().write_all(data).into_diagnostic()
+		if let Some(file) = self.0.lock().unwrap().as_mut() {
+			file.write_all(data).into_diagnostic()?;
+		}
+
+		Ok(())
 	}
 
 	pub fn path(&self) -> PathBuf {
-		self.0.lock().unwrap().path().to_owned()
+		if let Some(file) = self.0.lock().unwrap().as_ref() {
+			file.path().to_owned()
+		} else {
+			PathBuf::new()
+		}
 	}
 }
