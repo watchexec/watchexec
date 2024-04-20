@@ -114,15 +114,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 						clearscreen::clear().ok();
 					}
 					ClearMode::Reset => {
-						for cs in [
-							ClearScreen::WindowsCooked,
-							ClearScreen::WindowsVt,
-							ClearScreen::VtLeaveAlt,
-							ClearScreen::VtWellDone,
-							ClearScreen::default(),
-						] {
-							cs.clear().ok();
-						}
+						reset_screen();
 					}
 				}
 			}
@@ -684,5 +676,17 @@ fn emit_events_to_command(
 	if let Some(stdin) = stdin {
 		debug!("set command stdin");
 		command.stdin(stdin);
+	}
+}
+
+pub(crate) fn reset_screen() {
+	for cs in [
+		ClearScreen::WindowsCooked,
+		ClearScreen::WindowsVt,
+		ClearScreen::VtLeaveAlt,
+		ClearScreen::VtWellDone,
+		ClearScreen::default(),
+	] {
+		cs.clear().ok();
 	}
 }

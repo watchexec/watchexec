@@ -113,6 +113,11 @@ async fn run_watchexec(args: Args) -> Result<()> {
 
 	info!("running main loop");
 	wx.main().await.into_diagnostic()??;
+
+	if matches!(args.screen_clear, Some(args::ClearMode::Reset)) {
+		config::reset_screen();
+	}
+
 	info!("done with main loop");
 
 	Ok(())
