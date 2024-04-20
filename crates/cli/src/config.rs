@@ -1,7 +1,7 @@
 use std::{
 	borrow::Cow,
 	collections::HashMap,
-	env::current_dir,
+	env::{current_dir, var},
 	ffi::{OsStr, OsString},
 	fs::File,
 	io::{IsTerminal, Write},
@@ -469,35 +469,52 @@ fn interpret_command_args(args: &Args) -> Result<Arc<Command>> {
 		panic!("(clap) Bug: command is not present");
 	}
 
-	let shell = match if args.no_shell || args.no_shell_long {
+	let shell = if args.no_shell {
 		None
 	} else {
-		args.shell.as_deref().or(Some("default"))
-	} {
-		Some("") => return Err(RuntimeError::CommandShellEmptyShell).into_diagnostic(),
-
-		Some("none") | None => None,
-
-		#[cfg(windows)]
-		Some("default") | Some("cmd") | Some("cmd.exe") | Some("CMD") | Some("CMD.EXE") => {
-			Some(Shell::cmd())
-		}
-
-		#[cfg(not(windows))]
-		Some("default") => Some(Shell::new("sh")),
-
-		Some(other) => {
-			let sh = other.split_ascii_whitespace().collect::<Vec<_>>();
-
-			// UNWRAP: checked by Some("")
-			#[allow(clippy::unwrap_used)]
-			let (shprog, shopts) = sh.split_first().unwrap();
-
-			Some(Shell {
-				prog: shprog.into(),
-				options: shopts.iter().map(|s| (*s).to_string()).collect(),
-				program_option: Some(Cow::Borrowed(OsStr::new("-c"))),
+		let shell = args.shell.clone().or_else(|| var("SHELL").ok());
+		match shell
+			.as_deref()
+			.or_else(|| {
+				if cfg!(not(windows)) {
+					Some("sh")
+				} else if var("POWERSHELL_DISTRIBUTION_CHANNEL").is_ok()
+					&& (which::which("pwsh").is_ok() || which::which("pwsh.exe").is_ok())
+				{
+					trace!("detected pwsh");
+					Some("pwsh")
+				} else if var("PSModulePath").is_ok()
+					&& (which::which("powershell").is_ok()
+						|| which::which("powershell.exe").is_ok())
+				{
+					trace!("detected powershell");
+					Some("powershell")
+				} else {
+					Some("cmd")
+				}
 			})
+			.or(Some("default"))
+		{
+			Some("") => return Err(RuntimeError::CommandShellEmptyShell).into_diagnostic(),
+
+			Some("none") | None => None,
+
+			#[cfg(windows)]
+			Some("cmd") | Some("cmd.exe") | Some("CMD") | Some("CMD.EXE") => Some(Shell::cmd()),
+
+			Some(other) => {
+				let sh = other.split_ascii_whitespace().collect::<Vec<_>>();
+
+				// UNWRAP: checked by Some("")
+				#[allow(clippy::unwrap_used)]
+				let (shprog, shopts) = sh.split_first().unwrap();
+
+				Some(Shell {
+					prog: shprog.into(),
+					options: shopts.iter().map(|s| (*s).to_string()).collect(),
+					program_option: Some(Cow::Borrowed(OsStr::new("-c"))),
+				})
+			}
 		}
 	};
 

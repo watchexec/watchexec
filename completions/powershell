@@ -72,7 +72,6 @@ Register-ArgumentCompleter -Native -CommandName 'watchexec' -ScriptBlock {
             [CompletionResult]::new('-p', 'p', [CompletionResultType]::ParameterName, 'Wait until first change before running command')
             [CompletionResult]::new('--postpone', 'postpone', [CompletionResultType]::ParameterName, 'Wait until first change before running command')
             [CompletionResult]::new('-n', 'n', [CompletionResultType]::ParameterName, 'Don''t use a shell')
-            [CompletionResult]::new('--no-shell-long', 'no-shell-long', [CompletionResultType]::ParameterName, 'Don''t use a shell')
             [CompletionResult]::new('--no-environment', 'no-environment', [CompletionResultType]::ParameterName, 'Shorthand for ''--emit-events=none''')
             [CompletionResult]::new('--only-emit-events', 'only-emit-events', [CompletionResultType]::ParameterName, 'Only emit events to stdout, run no commands')
             [CompletionResult]::new('--no-process-group', 'no-process-group', [CompletionResultType]::ParameterName, 'Don''t use a process group')
