@@ -636,6 +636,8 @@ pub struct Args {
 	/// By default, Watchexec will run the command in a process group, so that signals and
 	/// terminations are sent to all processes in the group. Sometimes that's not what you want, and
 	/// you can disable the behaviour with this option.
+	///
+	/// Deprecated, use '--wrap-process=none' instead.
 	#[arg(
 		long,
 		help_heading = OPTSET_COMMAND,
@@ -1193,6 +1195,10 @@ pub async fn get_args() -> Result<Args> {
 
 	if args.no_environment {
 		args.emit_events_to = EmitEvents::None;
+	}
+
+	if args.no_process_group {
+		args.wrap_process = WrapMode::None;
 	}
 
 	if args.filter_fs_meta {
