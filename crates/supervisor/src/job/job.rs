@@ -1,3 +1,5 @@
+#![allow(clippy::must_use_candidate)] // Ticket-returning methods are supposed to be used without awaiting
+
 use std::{future::Future, sync::Arc, time::Duration};
 
 use process_wrap::tokio::TokioCommandWrap;

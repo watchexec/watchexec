@@ -3,8 +3,6 @@ use std::{
 	path::{Path, PathBuf},
 };
 
-use ignore_files::IgnoreFile;
-use project_origins::ProjectType;
 use watchexec::{error::RuntimeError, filter::Filterer};
 use watchexec_events::{Event, FileType, Priority, Tag};
 use watchexec_filterer_globset::GlobsetFilterer;
@@ -12,7 +10,6 @@ use watchexec_filterer_ignore::IgnoreFilterer;
 
 pub mod globset {
 	pub use super::globset_filt as filt;
-	pub use super::Applies;
 	pub use super::PathHarness;
 	pub use watchexec_events::Priority;
 }
@@ -118,22 +115,4 @@ pub async fn globset_filt(
 	)
 	.await
 	.expect("making filterer")
-}
-
-pub trait Applies {
-	fn applies_in(self, origin: &str) -> Self;
-	fn applies_to(self, project_type: ProjectType) -> Self;
-}
-
-impl Applies for IgnoreFile {
-	fn applies_in(mut self, origin: &str) -> Self {
-		let origin = std::fs::canonicalize(".").unwrap().join(origin);
-		self.applies_in = Some(origin);
-		self
-	}
-
-	fn applies_to(mut self, project_type: ProjectType) -> Self {
-		self.applies_to = Some(project_type);
-		self
-	}
 }
