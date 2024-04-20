@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+- Deps: miette 7
+
 ## v2.0.0 (2024-01-01)
 
 - Depend on `watchexec-events` instead of the `watchexec` re-export.

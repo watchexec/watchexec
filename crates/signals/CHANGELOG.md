@@ -2,6 +2,9 @@
 
 ## Next (YYYY-MM-DD)
 
+- Deps: miette 7
+- Deps: nix 0.28
+
 ## v2.1.0 (2023-12-09)
 
 - Derive `Hash` for `Signal`.

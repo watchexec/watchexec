@@ -3,6 +3,8 @@
 ## Next (YYYY-MM-DD)
 
 - Deps: replace command-group with process-wrap (in supervisor, but has flow-on effects)
+- Deps: miette 7
+- Deps: nix 0.28
 
 ## v3.0.1 (2023-11-29)
 

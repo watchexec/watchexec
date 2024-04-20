@@ -1,6 +1,6 @@
 use std::num::{NonZeroI32, NonZeroI64};
 
-use snapbox::assert_eq_path;
+use snapbox::{assert_eq, file};
 use watchexec_events::{
 	filekind::{CreateKind, FileEventKind as EventKind, ModifyKind, RemoveKind, RenameMode},
 	Event, FileType, Keyboard, ProcessEnd, Source, Tag,
@@ -18,8 +18,8 @@ fn single() {
 		metadata: Default::default(),
 	};
 
-	assert_eq_path(
-		"tests/snapshots/single.json",
+	assert_eq(
+		file!["snapshots/single.json"],
 		serde_json::to_string_pretty(&single).unwrap(),
 	);
 
@@ -52,8 +52,8 @@ fn array() {
 		},
 	];
 
-	assert_eq_path(
-		"tests/snapshots/array.json",
+	assert_eq(
+		file!["snapshots/array.json"],
 		serde_json::to_string_pretty(array).unwrap(),
 	);
 
@@ -71,8 +71,8 @@ fn metadata() {
 		.into(),
 	}];
 
-	assert_eq_path(
-		"tests/snapshots/metadata.json",
+	assert_eq(
+		file!["snapshots/metadata.json"],
 		serde_json::to_string_pretty(metadata).unwrap(),
 	);
 
@@ -134,8 +134,8 @@ fn sources() {
 		},
 	];
 
-	assert_eq_path(
-		"tests/snapshots/sources.json",
+	assert_eq(
+		file!["snapshots/sources.json"],
 		serde_json::to_string_pretty(&sources).unwrap(),
 	);
 
@@ -162,8 +162,8 @@ fn signals() {
 		},
 	];
 
-	assert_eq_path(
-		"tests/snapshots/signals.json",
+	assert_eq(
+		file!["snapshots/signals.json"],
 		serde_json::to_string_pretty(&signals).unwrap(),
 	);
 
@@ -193,8 +193,8 @@ fn completions() {
 		},
 	];
 
-	assert_eq_path(
-		"tests/snapshots/completions.json",
+	assert_eq(
+		file!["snapshots/completions.json"],
 		serde_json::to_string_pretty(&completions).unwrap(),
 	);
 
@@ -244,8 +244,8 @@ fn paths() {
 		},
 	];
 
-	assert_eq_path(
-		"tests/snapshots/paths.json",
+	assert_eq(
+		file!["snapshots/paths.json"],
 		serde_json::to_string_pretty(&paths).unwrap(),
 	);
 

@@ -2,6 +2,9 @@
 
 ## Next (YYYY-MM-DD)
 
+- Deps: gix-config 0.36
+- Deps: miette 7
+
 ## v2.1.0 (2024-01-04)
 
 - Normalise paths on all platforms (via `normalize-path`).
