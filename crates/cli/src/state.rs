@@ -1,4 +1,5 @@
 use std::{
+	env::var_os,
 	io::Write,
 	path::PathBuf,
 	sync::{Arc, Mutex},
@@ -18,7 +19,14 @@ pub struct RotatingTempFile(Arc<Mutex<Option<NamedTempFile>>>);
 impl RotatingTempFile {
 	pub fn rotate(&self) -> Result<()> {
 		// implicitly drops the old file
-		*self.0.lock().unwrap() = Some(NamedTempFile::new().into_diagnostic()?);
+		*self.0.lock().unwrap() = Some(
+			if let Some(dir) = var_os("WATCHEXEC_TMPDIR") {
+				NamedTempFile::new_in(dir)
+			} else {
+				NamedTempFile::new()
+			}
+			.into_diagnostic()?,
+		);
 		Ok(())
 	}
 
