@@ -468,30 +468,28 @@ pub struct Args {
 	)]
 	pub shell: Option<String>,
 
-	/// Don't use a shell
-	///
-	/// This is a shorthand for '--shell=none'.
+	/// Shorthand for '--shell=none'
 	#[arg(
 		short = 'n',
 		help_heading = OPTSET_COMMAND,
 	)]
 	pub no_shell: bool,
 
-	/// Shorthand for '--emit-events=none'
+	/// Deprecated shorthand for '--emit-events=none'
 	///
 	/// This is the old way to disable event emission into the environment. See '--emit-events' for
-	/// more.
+	/// more. Will be removed at next major release.
 	#[arg(
 		long,
 		help_heading = OPTSET_COMMAND,
-		// TODO: deprecate then remove
+		hide = true, // deprecated
 	)]
 	pub no_environment: bool,
 
 	/// Configure event emission
 	///
-	/// Watchexec emits event information when running a command, which can be used by the command
-	/// to target specific changed files.
+	/// Watchexec can emit event information when running a command, which can be used by the child
+	/// process to target specific changed files.
 	///
 	/// One thing to take care with is assuming inherent behaviour where there is only chance.
 	/// Notably, it could appear as if the `RENAMED` variable contains both the original and the new
@@ -502,32 +500,14 @@ pub struct Args {
 	/// whether it was the old or new isn't known), rename events might split across two debouncing
 	/// boundaries, and so on.
 	///
-	/// This option controls where that information is emitted. It defaults to 'environment', which
-	/// sets environment variables with the paths of the affected files, for filesystem events:
+	/// This option controls where that information is emitted. It defaults to 'none', which doesn't
+	/// emit event information at all. The other options are 'environment' (deprecated), 'stdio',
+	/// 'file', 'json-stdio', and 'json-file'.
 	///
-	/// $WATCHEXEC_COMMON_PATH is set to the longest common path of all of the below variables,
-	/// and so should be prepended to each path to obtain the full/real path. Then:
-	///
-	///   - $WATCHEXEC_CREATED_PATH is set when files/folders were created
-	///   - $WATCHEXEC_REMOVED_PATH is set when files/folders were removed
-	///   - $WATCHEXEC_RENAMED_PATH is set when files/folders were renamed
-	///   - $WATCHEXEC_WRITTEN_PATH is set when files/folders were modified
-	///   - $WATCHEXEC_META_CHANGED_PATH is set when files/folders' metadata were modified
-	///   - $WATCHEXEC_OTHERWISE_CHANGED_PATH is set for every other kind of pathed event
-	///
-	/// Multiple paths are separated by the system path separator, ';' on Windows and ':' on unix.
-	/// Within each variable, paths are deduplicated and sorted in binary order (i.e. neither
-	/// Unicode nor locale aware).
-	///
-	/// This is the legacy mode and will be deprecated and removed in the future. The environment of
-	/// a process is a very restricted space, while also limited in what it can usefully represent.
-	/// Large numbers of files will either cause the environment to be truncated, or may error or
-	/// crash the process entirely.
-	///
-	/// Two new modes are available: 'stdio' writes absolute paths to the stdin of the command,
-	/// one per line, each prefixed with `create:`, `remove:`, `rename:`, `modify:`, or `other:`,
-	/// then closes the handle; 'file' writes the same thing to a temporary file, and its path is
-	/// given with the $WATCHEXEC_EVENTS_FILE environment variable.
+	/// The 'stdio' and 'file' modes are text-based: 'stdio' writes absolute paths to the stdin of
+	/// the command, one per line, each prefixed with `create:`, `remove:`, `rename:`, `modify:`,
+	/// or `other:`, then closes the handle; 'file' writes the same thing to a temporary file, and
+	/// its path is given with the $WATCHEXEC_EVENTS_FILE environment variable.
 	///
 	/// There are also two JSON modes, which are based on JSON objects and can represent the full
 	/// set of events Watchexec handles. Here's an example of a folder being created on Linux:
@@ -584,13 +564,33 @@ pub struct Args {
 	/// events to it, and provide the path to the file with the $WATCHEXEC_EVENTS_FILE
 	/// environment variable.
 	///
-	/// Finally, the special 'none' mode will disable event emission entirely.
-	// TODO: when deprecating, make the none mode the default.
+	/// Finally, the 'environment' mode was the default until 2.0. It sets environment variables
+	/// with the paths of the affected files, for filesystem events:
+	///
+	/// $WATCHEXEC_COMMON_PATH is set to the longest common path of all of the below variables,
+	/// and so should be prepended to each path to obtain the full/real path. Then:
+	///
+	///   - $WATCHEXEC_CREATED_PATH is set when files/folders were created
+	///   - $WATCHEXEC_REMOVED_PATH is set when files/folders were removed
+	///   - $WATCHEXEC_RENAMED_PATH is set when files/folders were renamed
+	///   - $WATCHEXEC_WRITTEN_PATH is set when files/folders were modified
+	///   - $WATCHEXEC_META_CHANGED_PATH is set when files/folders' metadata were modified
+	///   - $WATCHEXEC_OTHERWISE_CHANGED_PATH is set for every other kind of pathed event
+	///
+	/// Multiple paths are separated by the system path separator, ';' on Windows and ':' on unix.
+	/// Within each variable, paths are deduplicated and sorted in binary order (i.e. neither
+	/// Unicode nor locale aware).
+	///
+	/// This is the legacy mode, is deprecated, and will be removed in the future. The environment
+	/// is a very restricted space, while also limited in what it can usefully represent. Large
+	/// numbers of files will either cause the environment to be truncated, or may error or crash
+	/// the process entirely. The $WATCHEXEC_COMMON_PATH is also unintuitive, as demonstrated by the
+	/// multiple confused queries that have landed in my inbox over the years.
 	#[arg(
 		long,
 		help_heading = OPTSET_COMMAND,
 		verbatim_doc_comment,
-		default_value = "environment",
+		default_value = "none",
 		hide_default_value = true,
 		value_name = "MODE",
 		required_if_eq("only_emit_events", "true"),

@@ -12,18 +12,17 @@ watchexec - Execute commands when watched files change
 \[**\--no-global-ignore**\] \[**\--no-default-ignore**\]
 \[**\--no-discover-ignore**\] \[**\--ignore-nothing**\]
 \[**-p**\|**\--postpone**\] \[**\--delay-run**\] \[**\--poll**\]
-\[**\--shell**\] \[**-n **\] \[**\--no-environment**\]
-\[**\--emit-events-to**\] \[**\--only-emit-events**\]
-\[**-E**\|**\--env**\] \[**\--no-process-group**\]
-\[**-N**\|**\--notify**\] \[**\--color**\] \[**\--timings**\]
-\[**-q**\|**\--quiet**\] \[**\--bell**\] \[**\--project-origin**\]
-\[**\--workdir**\] \[**-e**\|**\--exts**\] \[**-f**\|**\--filter**\]
-\[**\--filter-file**\] \[**-j**\|**\--filter-prog**\]
-\[**-i**\|**\--ignore**\] \[**\--ignore-file**\] \[**\--fs-events**\]
-\[**\--no-meta**\] \[**\--print-events**\]
-\[**-v**\|**\--verbose**\]\... \[**\--log-file**\] \[**\--manual**\]
-\[**\--completions**\] \[**-h**\|**\--help**\]
-\[**-V**\|**\--version**\] \[*COMMAND*\]
+\[**\--shell**\] \[**-n **\] \[**\--emit-events-to**\]
+\[**\--only-emit-events**\] \[**-E**\|**\--env**\]
+\[**\--no-process-group**\] \[**-N**\|**\--notify**\] \[**\--color**\]
+\[**\--timings**\] \[**-q**\|**\--quiet**\] \[**\--bell**\]
+\[**\--project-origin**\] \[**\--workdir**\] \[**-e**\|**\--exts**\]
+\[**-f**\|**\--filter**\] \[**\--filter-file**\]
+\[**-j**\|**\--filter-prog**\] \[**-i**\|**\--ignore**\]
+\[**\--ignore-file**\] \[**\--fs-events**\] \[**\--no-meta**\]
+\[**\--print-events**\] \[**-v**\|**\--verbose**\]\...
+\[**\--log-file**\] \[**\--manual**\] \[**\--completions**\]
+\[**-h**\|**\--help**\] \[**-V**\|**\--version**\] \[*COMMAND*\]
 
 # DESCRIPTION
 
@@ -395,13 +394,6 @@ Use with a unix shell and options:
 :   Dont use a shell
 
 This is a shorthand for \--shell=none.
-
-**\--no-environment**
-
-:   Shorthand for \--emit-events=none
-
-This is the old way to disable event emission into the environment. See
-\--emit-events for more.
 
 **\--emit-events-to**=*MODE*
 
