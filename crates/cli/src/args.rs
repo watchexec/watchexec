@@ -193,10 +193,6 @@ pub struct Args {
 	)]
 	pub signal: Option<Signal>,
 
-	/// Hidden legacy shorthand for '--signal=kill'.
-	#[arg(short, long, hide = true)]
-	pub kill: bool,
-
 	/// Signal to send to stop the command
 	///
 	/// This is used by 'restart' and 'signal' modes of '--on-busy-update' (unless '--signal' is
@@ -1170,10 +1166,6 @@ pub async fn get_args() -> Result<Args> {
 		args.no_project_ignore = true;
 		args.no_default_ignore = true;
 		args.no_discover_ignore = true;
-	}
-
-	if args.kill {
-		args.signal = Some(Signal::ForceStop);
 	}
 
 	if args.signal.is_some() {

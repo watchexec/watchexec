@@ -24,7 +24,6 @@ complete -c watchexec -l fs-events -d 'Filesystem events to filter to' -r -f -a 
 complete -c watchexec -l log-file -d 'Write diagnostic logs to a file' -r -F
 complete -c watchexec -l completions -d 'Generate a shell completions script' -r -f -a "{bash	'',elvish	'',fish	'',nu	'',powershell	'',zsh	''}"
 complete -c watchexec -s r -l restart -d 'Restart the process if it\'s still running'
-complete -c watchexec -s k -l kill -d 'Hidden legacy shorthand for \'--signal=kill\''
 complete -c watchexec -l stdin-quit -d 'Exit when stdin closes'
 complete -c watchexec -l no-vcs-ignore -d 'Don\'t load gitignores'
 complete -c watchexec -l no-project-ignore -d 'Don\'t load project-local ignores'

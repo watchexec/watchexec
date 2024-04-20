@@ -52,8 +52,6 @@ _watchexec() {
 '(--manual)--completions=[Generate a shell completions script]:COMPLETIONS:(bash elvish fish nu powershell zsh)' \
 '(-o --on-busy-update)-r[Restart the process if it'\''s still running]' \
 '(-o --on-busy-update)--restart[Restart the process if it'\''s still running]' \
-'-k[Hidden legacy shorthand for '\''--signal=kill'\'']' \
-'--kill[Hidden legacy shorthand for '\''--signal=kill'\'']' \
 '--stdin-quit[Exit when stdin closes]' \
 '--no-vcs-ignore[Don'\''t load gitignores]' \
 '--no-project-ignore[Don'\''t load project-local ignores]' \

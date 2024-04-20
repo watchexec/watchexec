@@ -55,8 +55,6 @@ set edit:completion:arg-completer[watchexec] = {|@words|
             cand --completions 'Generate a shell completions script'
             cand -r 'Restart the process if it''s still running'
             cand --restart 'Restart the process if it''s still running'
-            cand -k 'Hidden legacy shorthand for ''--signal=kill'''
-            cand --kill 'Hidden legacy shorthand for ''--signal=kill'''
             cand --stdin-quit 'Exit when stdin closes'
             cand --no-vcs-ignore 'Don''t load gitignores'
             cand --no-project-ignore 'Don''t load project-local ignores'

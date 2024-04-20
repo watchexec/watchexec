@@ -58,8 +58,6 @@ Register-ArgumentCompleter -Native -CommandName 'watchexec' -ScriptBlock {
             [CompletionResult]::new('--completions', 'completions', [CompletionResultType]::ParameterName, 'Generate a shell completions script')
             [CompletionResult]::new('-r', 'r', [CompletionResultType]::ParameterName, 'Restart the process if it''s still running')
             [CompletionResult]::new('--restart', 'restart', [CompletionResultType]::ParameterName, 'Restart the process if it''s still running')
-            [CompletionResult]::new('-k', 'k', [CompletionResultType]::ParameterName, 'Hidden legacy shorthand for ''--signal=kill''')
-            [CompletionResult]::new('--kill', 'kill', [CompletionResultType]::ParameterName, 'Hidden legacy shorthand for ''--signal=kill''')
             [CompletionResult]::new('--stdin-quit', 'stdin-quit', [CompletionResultType]::ParameterName, 'Exit when stdin closes')
             [CompletionResult]::new('--no-vcs-ignore', 'no-vcs-ignore', [CompletionResultType]::ParameterName, 'Don''t load gitignores')
             [CompletionResult]::new('--no-project-ignore', 'no-project-ignore', [CompletionResultType]::ParameterName, 'Don''t load project-local ignores')
