@@ -908,7 +908,6 @@ pub struct Args {
 	/// Use '-v' when you need more diagnostic information.
 	#[arg(
 		long,
-		alias = "changes-only", // deprecated
 		help_heading = OPTSET_DEBUGGING,
 	)]
 	pub print_events: bool,
