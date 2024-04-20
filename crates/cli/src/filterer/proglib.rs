@@ -11,6 +11,9 @@ mod output;
 pub fn jaq_lib() -> Result<ParseCtx> {
 	let mut jaq = ParseCtx::new(Vec::new());
 
+	debug!("loading jaq core library");
+	jaq.insert_natives(jaq_core::core());
+
 	debug!("loading jaq std library");
 	jaq.insert_defs(jaq_std::std());
 

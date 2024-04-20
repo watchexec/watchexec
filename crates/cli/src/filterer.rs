@@ -34,6 +34,7 @@ pub struct WatchexecFilterer {
 }
 
 impl Filterer for WatchexecFilterer {
+	#[tracing::instrument(level = "trace", skip(self))]
 	fn check_event(&self, event: &Event, priority: Priority) -> Result<bool, RuntimeError> {
 		for tag in &event.tags {
 			if let Tag::FileEventKind(fek) = tag {
@@ -47,6 +48,7 @@ impl Filterer for WatchexecFilterer {
 					_ => continue,
 				};
 
+				trace!(allowed=?self.fs_events, this=?normalised, "check against fs event filter");
 				if !self.fs_events.contains(&normalised) {
 					return Ok(false);
 				}
@@ -128,7 +130,7 @@ impl WatchexecFilterer {
 				.await
 				.into_diagnostic()?,
 			fs_events: args.filter_fs_events.clone(),
-			progs: if args.filter_programs.is_empty() {
+			progs: if args.filter_programs_parsed.is_empty() {
 				None
 			} else {
 				Some(progs::FilterProgs::new(args)?)
