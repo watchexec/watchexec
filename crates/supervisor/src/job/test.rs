@@ -10,7 +10,6 @@ use std::{
 	time::{Duration, Instant},
 };
 
-use nix::sys::signal::Signal;
 use tokio::time::sleep;
 use watchexec_events::ProcessEnd;
 
@@ -329,6 +328,7 @@ async fn start() {
 #[cfg(unix)]
 #[tokio::test]
 async fn signal_unix() {
+	use nix::sys::signal::Signal;
 	let (job, task) = start_job(working_command());
 
 	expect_state!(job, CommandState::Pending);
@@ -554,6 +554,7 @@ async fn graceful_stop_beyond_grace() {
 
 	#[cfg(unix)]
 	{
+		use nix::sys::signal::Signal;
 		expect_state!(
 			job,
 			CommandState::Running { .. },
@@ -597,6 +598,7 @@ async fn graceful_restart_beyond_grace() {
 
 	#[cfg(unix)]
 	{
+		use nix::sys::signal::Signal;
 		expect_state!(
 			job,
 			CommandState::Running { .. },
