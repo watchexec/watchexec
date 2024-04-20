@@ -30,7 +30,6 @@ module completions {
     --watch(-w): string       # Watch a specific file or directory
     --clear(-c): string@"nu-complete watchexec screen_clear" # Clear screen before running command
     --on-busy-update(-o): string@"nu-complete watchexec on_busy_update" # What to do when receiving events while the command is running
-    --watch-when-idle(-W)     # Deprecated alias for '--on-busy-update=do-nothing'
     --restart(-r)             # Restart the process if it's still running
     --signal(-s): string      # Send a signal to the process when it's still running
     --kill(-k)                # Hidden legacy shorthand for '--signal=kill'
