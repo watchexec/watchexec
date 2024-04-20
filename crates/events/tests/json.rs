@@ -1,3 +1,5 @@
+#![cfg(feature = "serde")]
+
 use std::num::{NonZeroI32, NonZeroI64};
 
 use snapbox::{assert_eq, file};

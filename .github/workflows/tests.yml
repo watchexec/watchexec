@@ -68,9 +68,11 @@ jobs:
         key: ${{ runner.os }}-target-stable-${{ hashFiles('**/Cargo.lock') }}
 
     - name: Run test suite
-      run: cargo test ${{ env.flags }}
+      run: cargo test
+    - name: Run watchexec-events integration tests
+      run: cargo test -p watchexec-events -F serde
     - name: Check that CLI runs
-      run: cargo run ${{ env.flags }} -p watchexec-cli -- -1 echo
+      run: cargo run -p watchexec-cli -- -1 echo
 
     - name: Install coreutils on mac
       if: ${{ matrix.platform == 'macos' }}
@@ -89,7 +91,7 @@ jobs:
       shell: bash
 
     - name: Generate manpage
-      run: cargo run ${{ env.flags }} -p watchexec-cli -- --manual > doc/watchexec.1
+      run: cargo run -p watchexec-cli -- --manual > doc/watchexec.1
     - name: Check that manpage is up to date
       run: git diff --exit-code -- doc/
 

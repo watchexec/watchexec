@@ -4013,8 +4013,8 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
- "watchexec-events 3.0.0",
- "watchexec-signals 3.0.0",
+ "watchexec-events",
+ "watchexec-signals",
  "watchexec-supervisor",
 ]
 
@@ -4064,22 +4064,10 @@ dependencies = [
  "tracing-test",
  "uuid",
  "watchexec",
- "watchexec-events 3.0.0",
+ "watchexec-events",
  "watchexec-filterer-globset",
- "watchexec-signals 3.0.0",
+ "watchexec-signals",
  "which",
-]
-
-[[package]]
-name = "watchexec-events"
-version = "2.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8fa905a7f327bfdda78b9c06831d3180a419b7b722bd1ef779ac13ff2ab69df0"
-dependencies = [
- "nix 0.27.1",
- "notify",
- "serde",
- "watchexec-signals 2.1.0",
 ]
 
 [[package]]
@@ -4091,8 +4079,7 @@ dependencies = [
  "serde",
  "serde_json",
  "snapbox",
- "watchexec-events 2.0.1",
- "watchexec-signals 3.0.0",
+ "watchexec-signals",
 ]
 
 [[package]]
@@ -4105,7 +4092,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "watchexec",
- "watchexec-events 3.0.0",
+ "watchexec-events",
  "watchexec-filterer-ignore",
 ]
 
@@ -4122,18 +4109,8 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "watchexec",
- "watchexec-events 3.0.0",
- "watchexec-signals 3.0.0",
-]
-
-[[package]]
-name = "watchexec-signals"
-version = "2.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af0a778522cf0fc2fa8a8f1380e32893208cb2e7fd33e64de8bd81a00a2a7838"
-dependencies = [
- "nix 0.27.1",
- "serde",
+ "watchexec-events",
+ "watchexec-signals",
 ]
 
 [[package]]
@@ -4156,8 +4133,8 @@ dependencies = [
  "process-wrap",
  "tokio",
  "tracing",
- "watchexec-events 3.0.0",
- "watchexec-signals 3.0.0",
+ "watchexec-events",
+ "watchexec-signals",
 ]
 
 [[package]]
