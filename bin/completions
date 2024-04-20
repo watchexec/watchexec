@@ -1,7 +1,7 @@
 #!/bin/sh
-cargo run -p watchexec-cli -- --completions bash > completions/bash
-cargo run -p watchexec-cli -- --completions elvish > completions/elvish
-cargo run -p watchexec-cli -- --completions fish > completions/fish
-cargo run -p watchexec-cli -- --completions nu > completions/nu
-cargo run -p watchexec-cli -- --completions powershell > completions/powershell
-cargo run -p watchexec-cli -- --completions zsh > completions/zsh
+cargo run -p watchexec-cli $* -- --completions bash > completions/bash
+cargo run -p watchexec-cli $* -- --completions elvish > completions/elvish
+cargo run -p watchexec-cli $* -- --completions fish > completions/fish
+cargo run -p watchexec-cli $* -- --completions nu > completions/nu
+cargo run -p watchexec-cli $* -- --completions powershell > completions/powershell
+cargo run -p watchexec-cli $* -- --completions zsh > completions/zsh

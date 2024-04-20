@@ -196,19 +196,14 @@ jobs:
         with:
           tool: cross
 
-      - name: Build (cargo)
-        if: "!matrix.cross"
-        run: cargo build --package watchexec-cli --release --locked --target ${{ matrix.target }}
-
-      - name: Build (cross)
-        if: matrix.cross
-        run: cross build --package watchexec-cli --release --locked --target ${{ matrix.target }}
+      - name: Build
+        run: ${{ matrix.cross && 'cross' || 'cargo' }} build --package watchexec-cli --release --locked --target ${{ matrix.target }}
 
       - name: Make manpage
-        run: cargo run -p watchexec-cli -- --manual > doc/watchexec.1
+        run: cargo run -p watchexec-cli ${{ matrix.cross && '' || '--release' }} -- --manual > doc/watchexec.1
 
       - name: Make completions
-        run: bin/completions
+        run: bin/completions ${{ matrix.cross && '' || '--release' }}
 
       - name: Package
         shell: bash
