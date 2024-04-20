@@ -348,9 +348,12 @@ Aliased as \--force-poll.
 
 :   Use a different shell
 
-By default, Watchexec will use sh on unix and cmd (CMD.EXE) on Windows.
-With this, you can override that and use a different shell, for example
-one with more features or one which has your custom aliases and
+By default, Watchexec will use \$SHELL if its defined or a default of sh
+on Unix-likes, and either pwsh, powershell, or cmd (CMD.EXE) on Windows,
+depending on what Watchexec detects is the running shell.
+
+With this option, you can override that and use a different shell, for
+example one with more features or one which has your custom aliases and
 functions.
 
 If the value has spaces, it is parsed as a command line, and the first
@@ -358,10 +361,6 @@ word used as the shell program, with the rest as arguments to the shell.
 
 The command is run with the -c flag (except for cmd on Windows, where
 its /C).
-
-Note that the default shell will change at the next major release: the
-value of \$SHELL will be respected, falling back to sh on unix and to
-PowerShell on Windows.
 
 The special value none can be used to disable shell use entirely. In
 that case, the command provided to Watchexec will be parsed, with the
@@ -383,7 +382,7 @@ Use with powershell core:
 
 \$ watchexec \--shell=pwsh \-- Test-Connection localhost
 
-Use with cmd (default on Windows):
+Use with CMD.exe:
 
 \$ watchexec \--shell=cmd \-- dir
 

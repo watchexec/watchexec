@@ -50,7 +50,6 @@ module completions {
     --poll: string            # Poll for filesystem changes
     --shell: string           # Use a different shell
     -n                        # Don't use a shell
-    --no-shell-long           # Don't use a shell
     --no-environment          # Shorthand for '--emit-events=none'
     --emit-events-to: string@"nu-complete watchexec emit_events_to" # Configure event emission
     --only-emit-events        # Only emit events to stdout, run no commands
