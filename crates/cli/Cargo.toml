@@ -129,7 +129,7 @@ mimalloc = "0.1.39"
 embed-resource = "2.4.0"
 
 [build-dependencies.bosion]
-version = "1.0.2"
+version = "1.0.3"
 path = "../bosion"
 
 [dev-dependencies]
