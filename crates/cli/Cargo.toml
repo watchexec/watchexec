@@ -20,12 +20,12 @@ name = "watchexec"
 path = "src/main.rs"
 
 [dependencies]
-argfile = "0.1.6"
+argfile = "0.2.0"
 chrono = "0.4.31"
 clap_complete = "4.4.4"
 clap_complete_nushell = "4.4.2"
 clap_mangen = "0.2.15"
-clearscreen = "2.0.1"
+clearscreen = "3.0.0"
 dirs = "5.0.0"
 futures = "0.3.29"
 humantime = "2.1.0"
@@ -35,10 +35,10 @@ serde_json = "1.0.107"
 tempfile = "3.8.1"
 termcolor = "1.4.0"
 tracing = "0.1.40"
-which = "5.0.0"
+which = "6.0.1"
 
 [dev-dependencies]
-tracing-test = "0.1"
+tracing-test = "0.2.4"
 uuid = { workspace = true, features = [ "v4", "fast-rng" ] }
 rand = { workspace = true }
 
@@ -60,7 +60,7 @@ version = "2.1.0"
 path = "../ignore-files"
 
 [dependencies.miette]
-version = "5.3.0"
+version = "7.2.0"
 features = ["fancy"]
 
 [dependencies.pid1]

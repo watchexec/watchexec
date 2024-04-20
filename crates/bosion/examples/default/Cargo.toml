@@ -16,5 +16,5 @@ path = "../.."
 
 [dependencies]
 leon = { version = "2.0.1", default-features = false }
-snapbox = "0.4.8"
+snapbox = "0.5.9"
 time = { version = "0.3.30", features = ["formatting", "macros"] }
