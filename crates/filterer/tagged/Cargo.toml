@@ -52,7 +52,7 @@ version = "3.0.1"
 path = "../ignore"
 
 [dependencies.watchexec-signals]
-version = "2.1.0"
+version = "3.0.0"
 path = "../../signals"
 
 [dev-dependencies]
