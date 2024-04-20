@@ -1,5 +1,5 @@
 pre-release-commit-message = "release: supervisor v{{version}}"
-tag-prefix = "supervisor-"
+tag-prefix = "watchexec-supervisor-"
 tag-message = "watchexec-supervisor {{version}}"
 
 [[pre-release-replacements]]

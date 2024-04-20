@@ -1,5 +1,5 @@
 pre-release-commit-message = "release: signals v{{version}}"
-tag-prefix = "signals-"
+tag-prefix = "watchexec-signals-"
 tag-message = "watchexec-signals {{version}}"
 
 [[pre-release-replacements]]

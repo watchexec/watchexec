@@ -1,5 +1,5 @@
 pre-release-commit-message = "release: events v{{version}}"
-tag-prefix = "events-"
+tag-prefix = "watchexec-events-"
 tag-message = "watchexec-events {{version}}"
 
 [[pre-release-replacements]]
