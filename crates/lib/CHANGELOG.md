@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+- Deps: replace command-group with process-wrap (in supervisor, but has flow-on effects)
+
 ## v3.0.1 (2023-11-29)
 
 - Deps: watchexec-events and watchexec-signals after major bump and yank

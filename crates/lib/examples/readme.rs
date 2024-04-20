@@ -47,7 +47,7 @@ async fn main() -> Result<()> {
 			job.set_spawn_hook(|cmd, _| {
 				use nix::sys::signal::{sigprocmask, SigSet, SigmaskHow, Signal};
 				unsafe {
-					cmd.pre_exec(|| {
+					cmd.command_mut().pre_exec(|| {
 						let mut newset = SigSet::empty();
 						newset.add(Signal::SIGINT);
 						sigprocmask(SigmaskHow::SIG_BLOCK, Some(&newset), None)?;

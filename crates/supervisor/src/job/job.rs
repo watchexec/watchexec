@@ -289,8 +289,8 @@ impl Job {
 	/// Set the spawn hook.
 	///
 	/// The hook will be called once per process spawned, before the process is spawned. It's given
-	/// a mutable reference to the [`tokio::process::Command`] and some context; it can modify the
-	/// command as it sees fit.
+	/// a mutable reference to the [`process_wrap::tokio::TokioCommandWrap`] and some context; it
+	/// can modify or further [wrap](process_wrap) the command as it sees fit.
 	pub fn set_spawn_hook(
 		&self,
 		fun: impl Fn(&mut TokioCommandWrap, &JobTaskContext<'_>) + Send + Sync + 'static,
@@ -301,8 +301,8 @@ impl Job {
 	/// Set the spawn hook (async version).
 	///
 	/// The hook will be called once per process spawned, before the process is spawned. It's given
-	/// a mutable reference to the [`tokio::process::Command`] and some context; it can modify the
-	/// command as it sees fit.
+	/// a mutable reference to the [`process_wrap::tokio::TokioCommandWrap`] and some context; it
+	/// can modify or further [wrap](process_wrap) the command as it sees fit.
 	///
 	/// A gotcha when using this method is that the future returned by the function can live longer
 	/// than the references it was given, so you can't bring the command or context into the async
