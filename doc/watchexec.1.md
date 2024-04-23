@@ -92,18 +92,16 @@ If this doesnt completely clear the screen, try \--clear=reset.
 
 :   What to do when receiving events while the command is running
 
-Default is to queue up events and run the command once again when the
-previous run has finished. You can also use do-nothing, which ignores
-events while the command is running and may be useful to avoid spurious
-changes made by that command, or restart, which terminates the running
-command and starts a new one. Finally, theres signal, which only sends a
-signal; this can be useful with programs that can reload their
-configuration without a full restart.
+Default is to do-nothing, which ignores events while the command is
+running, so that changes that occur due to the command are ignored, like
+compilation outputs. You can also use queue which will run the command
+once again when the current run has finished if any events occur while
+its running, or restart, which terminates the running command and starts
+a new one. Finally, theres signal, which only sends a signal; this can
+be useful with programs that can reload their configuration without a
+full restart.
 
 The signal can be specified with the \--signal option.
-
-Note that this option is scheduled to change its default to do-nothing
-in the next major release. File an issue if you have any concerns.
 
 **-r**, **\--restart**
 
@@ -852,7 +850,7 @@ Didnt expect this much output? Use the short -h flag to get short help.
 
 # VERSION
 
-v1.25.1
+v2.0.0
 
 # AUTHORS
 
