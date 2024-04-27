@@ -49,7 +49,7 @@ pub enum ProjectType {
 
 	/// VCS: [Git](https://git-scm.com/).
 	///
-	/// Detects when a `.git` folder is present, or any of the files `.gitattributes` or
+	/// Detects when a `.git` file or folder is present, or any of the files `.gitattributes` or
 	/// `.gitmodules`. Does _not_ check or return from the presence of `.gitignore` files, as Git
 	/// supports nested ignores, and that would result in false-positives.
 	Git,
@@ -208,6 +208,7 @@ pub async fn origins(path: impl AsRef<Path> + Send) -> HashSet<PathBuf> {
 			list.has_file(".codecov.yml"),
 			list.has_file(".ctags"),
 			list.has_file(".editorconfig"),
+			list.has_file(".git"),
 			list.has_file(".gitattributes"),
 			list.has_file(".gitmodules"),
 			list.has_file(".hgignore"),
@@ -293,6 +294,7 @@ pub async fn types(path: impl AsRef<Path> + Send) -> HashSet<ProjectType> {
 		list.if_has_dir(".svn", ProjectType::Subversion),
 		list.if_has_file(".bzrignore", ProjectType::Bazaar),
 		list.if_has_file(".ctags", ProjectType::C),
+		list.if_has_file(".git", ProjectType::Git),
 		list.if_has_file(".gitattributes", ProjectType::Git),
 		list.if_has_file(".gitmodules", ProjectType::Git),
 		list.if_has_file(".hgignore", ProjectType::Mercurial),
