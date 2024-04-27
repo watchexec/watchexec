@@ -18,6 +18,7 @@ use crate::filterer::WatchexecFilterer;
 
 pub mod args;
 mod config;
+mod dirs;
 mod emits;
 mod filterer;
 mod state;

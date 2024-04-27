@@ -1,6 +1,9 @@
 use std::{
+	collections::BTreeSet,
 	ffi::{OsStr, OsString},
-	path::PathBuf,
+	fs::canonicalize,
+	mem::take,
+	path::{Path, PathBuf},
 	str::FromStr,
 	time::Duration,
 };
@@ -11,7 +14,7 @@ use clap::{
 };
 use miette::{IntoDiagnostic, Result};
 use tokio::{fs::File, io::AsyncReadExt};
-use watchexec::paths::PATH_SEPARATOR;
+use watchexec::{paths::PATH_SEPARATOR, sources::fs::WatchedPath};
 use watchexec_signals::Signal;
 
 use crate::filterer::parse::parse_filter_program;
@@ -128,7 +131,25 @@ pub struct Args {
 		value_hint = ValueHint::AnyPath,
 		value_name = "PATH",
 	)]
-	pub paths: Vec<PathBuf>,
+	pub recursive_paths: Vec<PathBuf>,
+
+	/// Watch a specific directory, non-recursively
+	///
+	/// Unlike '-w', folders watched with this option are not recursed into.
+	///
+	/// This option can be specified multiple times to watch multiple directories non-recursively.
+	#[arg(
+		short = 'W',
+		long = "watch-non-recursive",
+		help_heading = OPTSET_FILTERING,
+		value_hint = ValueHint::AnyPath,
+		value_name = "PATH",
+	)]
+	pub non_recursive_paths: Vec<PathBuf>,
+
+	#[doc(hidden)]
+	#[arg(skip)]
+	pub paths: Vec<WatchedPath>,
 
 	/// Clear screen before running command
 	///
@@ -1221,6 +1242,61 @@ pub async fn get_args() -> Result<Args> {
 			.exit();
 	}
 
+	args.workdir = Some(if let Some(w) = take(&mut args.workdir) {
+		w
+	} else {
+		let curdir = std::env::current_dir().into_diagnostic()?;
+		canonicalize(curdir).into_diagnostic()?
+	});
+	debug!(workdir=?args.workdir, "current directory");
+
+	let project_origin = if let Some(p) = take(&mut args.project_origin) {
+		p
+	} else {
+		crate::dirs::project_origin(&args).await?
+	};
+
+	args.paths = take(&mut args.recursive_paths)
+		.into_iter()
+		.map(|path| {
+			{
+				if path.is_absolute() {
+					Ok(path)
+				} else {
+					canonicalize(project_origin.join(path)).into_diagnostic()
+				}
+			}
+			.map(WatchedPath::non_recursive)
+		})
+		.chain(take(&mut args.non_recursive_paths).into_iter().map(|path| {
+			{
+				if path.is_absolute() {
+					Ok(path)
+				} else {
+					canonicalize(project_origin.join(path)).into_diagnostic()
+				}
+			}
+			.map(WatchedPath::non_recursive)
+		}))
+		.collect::<Result<BTreeSet<_>>>()?
+		.into_iter()
+		.collect();
+
+	if args.paths.len() == 1
+		&& args
+			.paths
+			.first()
+			.map_or(false, |p| p.as_ref() == Path::new("/dev/null"))
+	{
+		debug!("only path is /dev/null, not watching anything");
+		args.paths = Vec::new();
+	} else if args.paths.is_empty() {
+		debug!("no paths, using current directory");
+		args.paths.push(args.workdir.clone().unwrap().into());
+	}
+
+	debug!(paths=?args.paths, "resolved all watched paths");
+
 	for (n, prog) in args.filter_programs.iter_mut().enumerate() {
 		if let Some(progpath) = prog.strip_prefix('@') {
 			trace!(?n, path=?progpath, "reading filter program from file");
@@ -1233,7 +1309,7 @@ pub async fn get_args() -> Result<Args> {
 		}
 	}
 
-	args.filter_programs_parsed = std::mem::take(&mut args.filter_programs)
+	args.filter_programs_parsed = take(&mut args.filter_programs)
 		.into_iter()
 		.enumerate()
 		.map(parse_filter_program)
