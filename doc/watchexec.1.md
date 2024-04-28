@@ -640,7 +640,8 @@ notice.
 
 Provide your own custom filter programs in jaq (similar to jq) syntax.
 Programs are given an event in the same format as described in
-\--emit-events-to and must return a boolean.
+\--emit-events-to and must return a boolean. Invalid programs will make
+watchexec fail to start; use -v to see program runtime errors.
 
 In addition to the jaq stdlib, watchexec adds some custom filter
 definitions:
@@ -756,7 +757,7 @@ This prints the events that triggered the action when handling it (after
 debouncing), in a human readable form. This is useful for debugging
 filters.
 
-Use -v when you need more diagnostic information.
+Use -vvv instead when you need more diagnostic information.
 
 **\--manual**
 

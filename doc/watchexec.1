@@ -446,7 +446,7 @@ This can also be used via the $WATCHEXEC_FILTER_FILES environment variable.
 
 /!\\ This option is EXPERIMENTAL and may change and/or vanish without notice.
 
-Provide your own custom filter programs in jaq (similar to jq) syntax. Programs are given an event in the same format as described in \*(Aq\-\-emit\-events\-to\*(Aq and must return a boolean.
+Provide your own custom filter programs in jaq (similar to jq) syntax. Programs are given an event in the same format as described in \*(Aq\-\-emit\-events\-to\*(Aq and must return a boolean. Invalid programs will make watchexec fail to start; use \*(Aq\-v\*(Aq to see program runtime errors.
 
 In addition to the jaq stdlib, watchexec adds some custom filter definitions:
 
@@ -517,7 +517,7 @@ Print events that trigger actions
 
 This prints the events that triggered the action when handling it (after debouncing), in a human readable form. This is useful for debugging filters.
 
-Use \*(Aq\-v\*(Aq when you need more diagnostic information.
+Use \*(Aq\-vvv\*(Aq instead when you need more diagnostic information.
 .TP
 \fB\-\-manual\fR
 Show the manual page
