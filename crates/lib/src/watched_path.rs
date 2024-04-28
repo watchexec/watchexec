@@ -27,6 +27,15 @@ impl From<&str> for WatchedPath {
 	}
 }
 
+impl From<String> for WatchedPath {
+	fn from(path: String) -> Self {
+		Self {
+			path: path.into(),
+			recursive: true,
+		}
+	}
+}
+
 impl From<&Path> for WatchedPath {
 	fn from(path: &Path) -> Self {
 		Self {
