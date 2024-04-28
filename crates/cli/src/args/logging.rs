@@ -1,16 +1,17 @@
-use std::{path::PathBuf, env::var, fs::File, sync::Mutex};
+use std::{env::var, io::stderr, path::PathBuf};
 
 use clap::{ArgAction, Parser, ValueHint};
-use miette::{IntoDiagnostic, Result};
+use miette::{bail, Result};
 use tokio::fs::metadata;
 use tracing::{info, warn};
+use tracing_appender::{non_blocking, non_blocking::WorkerGuard, rolling};
 
 #[derive(Debug, Clone, Parser)]
 pub struct LoggingArgs {
 	/// Set diagnostic log level
 	///
 	/// This enables diagnostic logging, which is useful for investigating bugs or gaining more
-	/// insight into faulty filters or "missing" events. Use multiple times to increase args.verbose.
+	/// insight into faulty filters or "missing" events. Use multiple times to increase verbosity.
 	///
 	/// Goes up to '-vvvv'. When submitting bug reports, default to a '-vvv' log level.
 	///
@@ -77,27 +78,30 @@ pub fn preargs() -> bool {
 	log_on
 }
 
-pub async fn postargs(args: &LoggingArgs) -> Result<()> {
+pub async fn postargs(args: &LoggingArgs) -> Result<Option<WorkerGuard>> {
 	if args.verbose == 0 {
-		return Ok(());
+		return Ok(None);
 	}
 
-	let log_file = if let Some(file) = &args.log_file {
+	let (log_writer, guard) = if let Some(file) = &args.log_file {
 		let is_dir = metadata(&file).await.map_or(false, |info| info.is_dir());
-		let path = if is_dir {
-			let filename = format!(
-				"watchexec.{}.log",
-				chrono::Utc::now().format("%Y-%m-%dT%H-%M-%SZ")
-			);
-			file.join(filename)
+		let (dir, filename) = if is_dir {
+			(
+				file.to_owned(),
+				PathBuf::from(format!(
+					"watchexec.{}.log",
+					chrono::Utc::now().format("%Y-%m-%dT%H-%M-%SZ")
+				)),
+			)
+		} else if let (Some(parent), Some(file_name)) = (file.parent(), file.file_name()) {
+			(parent.into(), PathBuf::from(file_name))
 		} else {
-			file.to_owned()
+			bail!("Failed to determine log file name");
 		};
 
-		// TODO: use tracing-appender instead
-		Some(File::create(path).into_diagnostic()?)
+		non_blocking(rolling::never(dir, filename))
 	} else {
-		None
+		non_blocking(stderr())
 	};
 
 	let mut builder = tracing_subscriber::fmt().with_env_filter(match args.verbose {
@@ -113,16 +117,16 @@ pub async fn postargs(args: &LoggingArgs) -> Result<()> {
 		builder = builder.with_span_events(FmtSpan::NEW | FmtSpan::CLOSE);
 	}
 
-	match if let Some(writer) = log_file {
-		builder.json().with_writer(Mutex::new(writer)).try_init()
+	match if args.log_file.is_some() {
+		builder.json().with_writer(log_writer).try_init()
 	} else if args.verbose > 3 {
-		builder.pretty().try_init()
+		builder.pretty().with_writer(log_writer).try_init()
 	} else {
-		builder.try_init()
+		builder.with_writer(log_writer).try_init()
 	} {
 		Ok(()) => info!("logging initialised"),
 		Err(e) => eprintln!("Failed to initialise logging, continuing with none\n{e}"),
 	}
 
-	Ok(())
+	Ok(Some(guard))
 }

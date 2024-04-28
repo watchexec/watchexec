@@ -15,6 +15,7 @@ use clap::{
 use miette::{IntoDiagnostic, Result};
 use tokio::{fs::File, io::AsyncReadExt};
 use tracing::{debug, info, trace, warn};
+use tracing_appender::non_blocking::WorkerGuard;
 use watchexec::{paths::PATH_SEPARATOR, sources::fs::WatchedPath};
 use watchexec_signals::Signal;
 
@@ -1145,7 +1146,7 @@ fn expand_args_up_to_doubledash() -> Result<Vec<OsString>, std::io::Error> {
 }
 
 #[inline]
-pub async fn get_args() -> Result<Args> {
+pub async fn get_args() -> Result<(Args, Option<WorkerGuard>)> {
 	let prearg_logs = logging::preargs();
 	if prearg_logs {
 		warn!("⚠ RUST_LOG environment variable set or hardcoded, logging options have no effect");
@@ -1157,9 +1158,11 @@ pub async fn get_args() -> Result<Args> {
 	debug!("parsing arguments");
 	let mut args = Args::parse_from(args);
 
-	if !prearg_logs {
-		logging::postargs(&args.logging).await?;
-	}
+	let log_guard = if !prearg_logs {
+		logging::postargs(&args.logging).await?
+	} else {
+		None
+	};
 
 	// https://no-color.org/
 	if args.color == ColourMode::Auto && std::env::var("NO_COLOR").is_ok() {
@@ -1290,5 +1293,5 @@ pub async fn get_args() -> Result<Args> {
 	debug_assert!(args.workdir.is_some());
 	debug_assert!(args.project_origin.is_some());
 	info!(?args, "got arguments");
-	Ok(args)
+	Ok((args, log_guard))
 }

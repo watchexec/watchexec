@@ -116,7 +116,7 @@ async fn run_completions(shell: ShellCompletion) -> Result<()> {
 }
 
 pub async fn run() -> Result<()> {
-	let args = args::get_args().await?;
+	let (args, _log_guard) = args::get_args().await?;
 
 	if args.manual {
 		run_manpage(args).await
