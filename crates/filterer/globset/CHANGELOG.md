@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v4.0.1 (2024-04-28)
+
 - Hide fmt::Debug spew from ignore crate, use `full_debug` feature to restore.
 
 ## v4.0.0 (2024-04-20)
