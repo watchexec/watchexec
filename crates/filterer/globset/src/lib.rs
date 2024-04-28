@@ -10,6 +10,7 @@
 
 use std::{
 	ffi::OsString,
+	fmt,
 	path::{Path, PathBuf},
 };
 
@@ -21,7 +22,7 @@ use watchexec_events::{Event, FileType, Priority};
 use watchexec_filterer_ignore::IgnoreFilterer;
 
 /// A simple filterer in the style of the watchexec v1.17 filter.
-#[derive(Debug)]
+#[cfg_attr(feature = "full_debug", derive(Debug))]
 pub struct GlobsetFilterer {
 	#[cfg_attr(not(unix), allow(dead_code))]
 	origin: PathBuf,
@@ -29,6 +30,19 @@ pub struct GlobsetFilterer {
 	ignores: Gitignore,
 	ignore_files: IgnoreFilterer,
 	extensions: Vec<OsString>,
+}
+
+#[cfg(not(feature = "full_debug"))]
+impl fmt::Debug for GlobsetFilterer {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		f.debug_struct("GlobsetFilterer")
+			.field("origin", &self.origin)
+			.field("filters", &"ignore::gitignore::Gitignore{...}")
+			.field("ignores", &"ignore::gitignore::Gitignore{...}")
+			.field("ignore_files", &self.ignore_files)
+			.field("extensions", &self.extensions)
+			.finish()
+	}
 }
 
 impl GlobsetFilterer {
