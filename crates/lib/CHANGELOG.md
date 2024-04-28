@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v4.1.0 (2024-04-28)
+
 - Feature: non-recursive watches with `WatchedPath::non_recursive()`
 - Fix: `config.pathset()` now preserves `WatchedPath` attributes
 - Refactor: move `WatchedPath` to the root of the crate (old path remains as re-export for now)
