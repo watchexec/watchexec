@@ -1,3 +1,4 @@
+use std::fmt;
 use std::path::{Path, PathBuf};
 
 use futures::stream::{FuturesUnordered, StreamExt};
@@ -11,10 +12,21 @@ use tracing::{trace, trace_span};
 
 use crate::{simplify_path, Error, IgnoreFile};
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
+#[cfg_attr(feature = "full_debug", derive(Debug))]
 struct Ignore {
 	gitignore: Gitignore,
 	builder: Option<GitignoreBuilder>,
+}
+
+#[cfg(not(feature = "full_debug"))]
+impl fmt::Debug for Ignore {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		f.debug_struct("Ignore")
+			.field("gitignore", &"ignore::gitignore::Gitignore{...}")
+			.field("builder", &"ignore::gitignore::GitignoreBuilder{...}")
+			.finish()
+	}
 }
 
 /// A mutable filter dedicated to ignore files and trees of ignore files.
