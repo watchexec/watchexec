@@ -19,7 +19,7 @@ _watchexec() {
 
     case "${cmd}" in
         watchexec)
-            opts="-w -c -o -r -s -d -p -n -E -1 -N -q -e -f -j -i -v -h -V --watch --clear --on-busy-update --restart --signal --stop-signal --stop-timeout --map-signal --debounce --stdin-quit --no-vcs-ignore --no-project-ignore --no-global-ignore --no-default-ignore --no-discover-ignore --ignore-nothing --postpone --delay-run --poll --shell --no-environment --emit-events-to --only-emit-events --env --no-process-group --wrap-process --notify --color --timings --quiet --bell --project-origin --workdir --exts --filter --filter-file --filter-prog --ignore --ignore-file --fs-events --no-meta --print-events --verbose --log-file --manual --completions --help --version [COMMAND]..."
+            opts="-w -W -c -o -r -s -d -p -n -E -1 -N -q -e -f -j -i -v -h -V --watch --watch-non-recursive --clear --on-busy-update --restart --signal --stop-signal --stop-timeout --map-signal --debounce --stdin-quit --no-vcs-ignore --no-project-ignore --no-global-ignore --no-default-ignore --no-discover-ignore --ignore-nothing --postpone --delay-run --poll --shell --no-environment --emit-events-to --only-emit-events --env --no-process-group --wrap-process --notify --color --timings --quiet --bell --project-origin --workdir --exts --filter --filter-file --filter-prog --ignore --ignore-file --fs-events --no-meta --print-events --manual --completions --verbose --log-file --help --version [COMMAND]..."
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -30,6 +30,14 @@ _watchexec() {
                     return 0
                     ;;
                 -w)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --watch-non-recursive)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                -W)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
@@ -189,12 +197,12 @@ _watchexec() {
                     COMPREPLY=($(compgen -W "access create remove rename modify metadata" -- "${cur}"))
                     return 0
                     ;;
-                --log-file)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
                 --completions)
                     COMPREPLY=($(compgen -W "bash elvish fish nu powershell zsh" -- "${cur}"))
+                    return 0
+                    ;;
+                --log-file)
+                    COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
                 *)
