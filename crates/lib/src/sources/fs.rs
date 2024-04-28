@@ -4,7 +4,6 @@ use std::{
 	collections::{HashMap, HashSet},
 	fs::metadata,
 	mem::take,
-	path::{Path, PathBuf},
 	sync::Arc,
 	time::Duration,
 };
@@ -19,6 +18,9 @@ use crate::{
 	error::{CriticalError, FsWatcherError, RuntimeError},
 	Config,
 };
+
+// re-export for compatibility, until next major version
+pub use crate::WatchedPath;
 
 /// What kind of filesystem watcher to use.
 ///
@@ -69,78 +71,6 @@ impl Watcher {
 				FsWatcherError::Create(err)
 			},
 		})
-	}
-}
-
-/// A path to watch.
-///
-/// This is currently only a wrapper around a [`PathBuf`], but may be augmented in the future.
-#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct WatchedPath {
-	path: PathBuf,
-	recursive: bool,
-}
-
-impl From<PathBuf> for WatchedPath {
-	fn from(path: PathBuf) -> Self {
-		Self {
-			path,
-			recursive: true,
-		}
-	}
-}
-
-impl From<&str> for WatchedPath {
-	fn from(path: &str) -> Self {
-		Self {
-			path: path.into(),
-			recursive: true,
-		}
-	}
-}
-
-impl From<&Path> for WatchedPath {
-	fn from(path: &Path) -> Self {
-		Self {
-			path: path.into(),
-			recursive: true,
-		}
-	}
-}
-
-impl From<WatchedPath> for PathBuf {
-	fn from(path: WatchedPath) -> Self {
-		path.path
-	}
-}
-
-impl From<&WatchedPath> for PathBuf {
-	fn from(path: &WatchedPath) -> Self {
-		path.path.clone()
-	}
-}
-
-impl AsRef<Path> for WatchedPath {
-	fn as_ref(&self) -> &Path {
-		self.path.as_ref()
-	}
-}
-
-impl WatchedPath {
-	/// Create a new watched path, recursively descending into subdirectories.
-	pub fn recursive(path: impl Into<PathBuf>) -> Self {
-		Self {
-			path: path.into(),
-			recursive: true,
-		}
-	}
-
-	/// Create a new watched path, not descending into subdirectories.
-	pub fn non_recursive(path: impl Into<PathBuf>) -> Self {
-		Self {
-			path: path.into(),
-			recursive: false,
-		}
 	}
 }
 
@@ -226,6 +156,7 @@ pub async fn worker(
 		// now let's calculate which paths we should add to the watch, and which we should drop:
 
 		let config_pathset = config.pathset.get();
+		tracing::info!(?config_pathset, "obtaining pathset");
 		let (to_watch, to_drop) = if pathset.is_empty() {
 			// if the current pathset is empty, we can take a shortcut
 			(config_pathset, Vec::new())
