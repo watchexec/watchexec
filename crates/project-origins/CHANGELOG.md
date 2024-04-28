@@ -2,6 +2,10 @@
 
 ## Next (YYYY-MM-DD)
 
+## v1.4.0 (2024-04-28)
+
+- Add out-of-tree Git repositories (`.git` file instead of folder).
+
 ## v1.3.0 (2024-01-01)
 
 - Remove `README.md` files from detection; those were causing too many false positives and were a weak signal anyway.
