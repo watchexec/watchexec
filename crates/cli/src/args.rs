@@ -14,6 +14,7 @@ use clap::{
 };
 use miette::{IntoDiagnostic, Result};
 use tokio::{fs::File, io::AsyncReadExt};
+use tracing::{debug, info, trace, warn};
 use watchexec::{paths::PATH_SEPARATOR, sources::fs::WatchedPath};
 use watchexec_signals::Signal;
 
@@ -1181,8 +1182,6 @@ fn expand_args_up_to_doubledash() -> Result<Vec<OsString>, std::io::Error> {
 
 #[inline]
 pub async fn get_args() -> Result<Args> {
-	use tracing::{debug, trace, warn};
-
 	if std::env::var("RUST_LOG").is_ok() {
 		warn!("⚠ RUST_LOG environment variable set, logging options have no effect");
 	}
@@ -1213,10 +1212,12 @@ pub async fn get_args() -> Result<Args> {
 	}
 
 	if args.no_environment {
+		warn!("--no-environment is deprecated");
 		args.emit_events_to = EmitEvents::None;
 	}
 
 	if args.no_process_group {
+		warn!("--no-process-group is deprecated");
 		args.wrap_process = WrapMode::None;
 	}
 
@@ -1242,19 +1243,22 @@ pub async fn get_args() -> Result<Args> {
 			.exit();
 	}
 
-	args.workdir = Some(if let Some(w) = take(&mut args.workdir) {
+	let workdir = if let Some(w) = take(&mut args.workdir) {
 		w
 	} else {
 		let curdir = std::env::current_dir().into_diagnostic()?;
 		canonicalize(curdir).into_diagnostic()?
-	});
-	debug!(workdir=?args.workdir, "current directory");
+	};
+	info!(path=?workdir, "effective working directory");
+	args.workdir = Some(workdir.clone());
 
 	let project_origin = if let Some(p) = take(&mut args.project_origin) {
 		p
 	} else {
 		crate::dirs::project_origin(&args).await?
 	};
+	info!(path=?project_origin, "effective project origin");
+	args.project_origin = Some(project_origin.clone());
 
 	args.paths = take(&mut args.recursive_paths)
 		.into_iter()
@@ -1288,14 +1292,13 @@ pub async fn get_args() -> Result<Args> {
 			.first()
 			.map_or(false, |p| p.as_ref() == Path::new("/dev/null"))
 	{
-		debug!("only path is /dev/null, not watching anything");
+		info!("only path is /dev/null, not watching anything");
 		args.paths = Vec::new();
 	} else if args.paths.is_empty() {
-		debug!("no paths, using current directory");
+		info!("no paths, using current directory");
 		args.paths.push(args.workdir.clone().unwrap().into());
 	}
-
-	debug!(paths=?args.paths, "resolved all watched paths");
+	info!(paths=?args.paths, "effective watched paths");
 
 	for (n, prog) in args.filter_programs.iter_mut().enumerate() {
 		if let Some(progpath) = prog.strip_prefix('@') {
@@ -1315,6 +1318,8 @@ pub async fn get_args() -> Result<Args> {
 		.map(parse_filter_program)
 		.collect::<Result<_, _>>()?;
 
-	debug!(?args, "got arguments");
+	debug_assert!(args.workdir.is_some());
+	debug_assert!(args.project_origin.is_some());
+	info!(?args, "got arguments");
 	Ok(args)
 }
