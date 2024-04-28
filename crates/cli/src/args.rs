@@ -9,8 +9,8 @@ use std::{
 };
 
 use clap::{
-	builder::TypedValueParser, error::ErrorKind, Arg, ArgAction, Command, CommandFactory, Parser,
-	ValueEnum, ValueHint,
+	builder::TypedValueParser, error::ErrorKind, Arg, Command, CommandFactory, Parser, ValueEnum,
+	ValueHint,
 };
 use miette::{IntoDiagnostic, Result};
 use tokio::{fs::File, io::AsyncReadExt};
@@ -19,6 +19,8 @@ use watchexec::{paths::PATH_SEPARATOR, sources::fs::WatchedPath};
 use watchexec_signals::Signal;
 
 use crate::filterer::parse::parse_filter_program;
+
+mod logging;
 
 const OPTSET_FILTERING: &str = "Filtering";
 const OPTSET_COMMAND: &str = "Command";
@@ -950,47 +952,6 @@ pub struct Args {
 	)]
 	pub print_events: bool,
 
-	/// Set diagnostic log level
-	///
-	/// This enables diagnostic logging, which is useful for investigating bugs or gaining more
-	/// insight into faulty filters or "missing" events. Use multiple times to increase verbosity.
-	///
-	/// Goes up to '-vvvv'. When submitting bug reports, default to a '-vvv' log level.
-	///
-	/// You may want to use with '--log-file' to avoid polluting your terminal.
-	///
-	/// Setting $RUST_LOG also works, and takes precedence, but is not recommended. However, using
-	/// $RUST_LOG is the only way to get logs from before these options are parsed.
-	#[arg(
-		long,
-		short,
-		help_heading = OPTSET_DEBUGGING,
-		action = ArgAction::Count,
-		num_args = 0,
-	)]
-	pub verbose: Option<u8>,
-
-	/// Write diagnostic logs to a file
-	///
-	/// This writes diagnostic logs to a file, instead of the terminal, in JSON format. If a log
-	/// level was not already specified, this will set it to '-vvv'.
-	///
-	/// If a path is not provided, the default is the working directory. Note that with
-	/// '--ignore-nothing', the write events to the log will likely get picked up by Watchexec,
-	/// causing a loop; prefer setting a path outside of the watched directory.
-	///
-	/// If the path provided is a directory, a file will be created in that directory. The file name
-	/// will be the current date and time, in the format 'watchexec.YYYY-MM-DDTHH-MM-SSZ.log'.
-	#[arg(
-		long,
-		help_heading = OPTSET_DEBUGGING,
-		num_args = 0..=1,
-		default_missing_value = ".",
-		value_hint = ValueHint::AnyPath,
-		value_name = "PATH",
-	)]
-	pub log_file: Option<PathBuf>,
-
 	/// Show the manual page
 	///
 	/// This shows the manual page for Watchexec, if the output is a terminal and the 'man' program
@@ -1015,6 +976,9 @@ pub struct Args {
 		conflicts_with_all = ["command", "manual"],
 	)]
 	pub completions: Option<ShellCompletion>,
+
+	#[command(flatten)]
+	pub logging: logging::LoggingArgs,
 }
 
 #[derive(Clone, Copy, Debug, Default, ValueEnum)]
@@ -1182,8 +1146,9 @@ fn expand_args_up_to_doubledash() -> Result<Vec<OsString>, std::io::Error> {
 
 #[inline]
 pub async fn get_args() -> Result<Args> {
-	if std::env::var("RUST_LOG").is_ok() {
-		warn!("⚠ RUST_LOG environment variable set, logging options have no effect");
+	let prearg_logs = logging::preargs();
+	if prearg_logs {
+		warn!("⚠ RUST_LOG environment variable set or hardcoded, logging options have no effect");
 	}
 
 	debug!("expanding @argfile arguments if any");
@@ -1191,6 +1156,10 @@ pub async fn get_args() -> Result<Args> {
 
 	debug!("parsing arguments");
 	let mut args = Args::parse_from(args);
+
+	if !prearg_logs {
+		logging::postargs(&args.logging).await?;
+	}
 
 	// https://no-color.org/
 	if args.color == ColourMode::Auto && std::env::var("NO_COLOR").is_ok() {

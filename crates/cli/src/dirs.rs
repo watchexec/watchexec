@@ -61,7 +61,7 @@ pub async fn project_origin(args: &Args) -> Result<PathBuf> {
 		.await
 		.into_diagnostic()?
 	};
-	info!(?project_origin, "resolved common/project origin");
+	debug!(?project_origin, "resolved common/project origin");
 
 	Ok(project_origin)
 }
@@ -72,7 +72,7 @@ pub async fn vcs_types(origin: &Path) -> Vec<ProjectType> {
 		.into_iter()
 		.filter(|pt| pt.is_vcs())
 		.collect::<Vec<_>>();
-	info!(?vcs_types, "resolved vcs types");
+	info!(?vcs_types, "effective vcs types");
 	vcs_types
 }
 
