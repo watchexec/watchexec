@@ -2,6 +2,10 @@
 
 ## Next (YYYY-MM-DD)
 
+- Feature: non-recursive watches with `WatchedPath::non_recursive()`
+- Fix: `config.pathset()` now preserves `WatchedPath` attributes
+- Refactor: move `WatchedPath` to the root of the crate (old path remains as re-export for now)
+
 ## v4.0.0 (2024-04-20)
 
 - Deps: replace command-group with process-wrap (in supervisor, but has flow-on effects)
