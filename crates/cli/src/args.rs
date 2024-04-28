@@ -816,6 +816,7 @@ pub struct Args {
 	///
 	/// Provide your own custom filter programs in jaq (similar to jq) syntax. Programs are given
 	/// an event in the same format as described in '--emit-events-to' and must return a boolean.
+	/// Invalid programs will make watchexec fail to start; use '-v' to see program runtime errors.
 	///
 	/// In addition to the jaq stdlib, watchexec adds some custom filter definitions:
 	///

@@ -10,7 +10,7 @@ pub fn parse_filter_program((n, prog): (usize, String)) -> Result<jaq_syn::Main>
 			.map(|err| err.to_string())
 			.collect::<Vec<_>>()
 			.join("\n");
-		return Err(miette!("failed to load filter program #{}: {:?}", n, errs));
+		return Err(miette!("{}", errs).wrap_err(format!("failed to load filter program #{}", n)));
 	}
 
 	main.ok_or_else(|| miette!("failed to load filter program #{} (no reason given)", n))
