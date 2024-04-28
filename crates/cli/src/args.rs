@@ -947,7 +947,7 @@ pub struct Args {
 	/// This prints the events that triggered the action when handling it (after debouncing), in a
 	/// human readable form. This is useful for debugging filters.
 	///
-	/// Use '-v' when you need more diagnostic information.
+	/// Use '-vvv' instead when you need more diagnostic information.
 	#[arg(
 		long,
 		help_heading = OPTSET_DEBUGGING,
