@@ -40,3 +40,9 @@ path = "../project-origins"
 
 [dev-dependencies]
 tracing-subscriber = "0.3.6"
+
+[features]
+default = []
+
+## Don't hide ignore::gitignore::Gitignore Debug impl
+full_debug = []

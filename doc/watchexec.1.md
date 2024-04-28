@@ -4,7 +4,8 @@ watchexec - Execute commands when watched files change
 
 # SYNOPSIS
 
-**watchexec** \[**-w**\|**\--watch**\] \[**-c**\|**\--clear**\]
+**watchexec** \[**-w**\|**\--watch**\]
+\[**-W**\|**\--watch-non-recursive**\] \[**-c**\|**\--clear**\]
 \[**-o**\|**\--on-busy-update**\] \[**-r**\|**\--restart**\]
 \[**-s**\|**\--signal**\] \[**\--stop-signal**\] \[**\--stop-timeout**\]
 \[**\--map-signal**\] \[**-d**\|**\--debounce**\] \[**\--stdin-quit**\]
@@ -20,10 +21,10 @@ watchexec - Execute commands when watched files change
 \[**\--workdir**\] \[**-e**\|**\--exts**\] \[**-f**\|**\--filter**\]
 \[**\--filter-file**\] \[**-j**\|**\--filter-prog**\]
 \[**-i**\|**\--ignore**\] \[**\--ignore-file**\] \[**\--fs-events**\]
-\[**\--no-meta**\] \[**\--print-events**\]
-\[**-v**\|**\--verbose**\]\... \[**\--log-file**\] \[**\--manual**\]
-\[**\--completions**\] \[**-h**\|**\--help**\]
-\[**-V**\|**\--version**\] \[*COMMAND*\]
+\[**\--no-meta**\] \[**\--print-events**\] \[**\--manual**\]
+\[**\--completions**\] \[**-v**\|**\--verbose**\]\...
+\[**\--log-file**\] \[**-h**\|**\--help**\] \[**-V**\|**\--version**\]
+\[*COMMAND*\]
 
 # DESCRIPTION
 
@@ -81,6 +82,15 @@ directories.
 The special value /dev/null, provided as the only path watched, will
 cause Watchexec to not watch any paths. Other event sources (like
 signals or key events) may still be used.
+
+**-W**, **\--watch-non-recursive**=*PATH*
+
+:   Watch a specific directory, non-recursively
+
+Unlike -w, folders watched with this option are not recursed into.
+
+This option can be specified multiple times to watch multiple
+directories non-recursively.
 
 **-c**, **\--clear**=*MODE*
 
@@ -630,7 +640,8 @@ notice.
 
 Provide your own custom filter programs in jaq (similar to jq) syntax.
 Programs are given an event in the same format as described in
-\--emit-events-to and must return a boolean.
+\--emit-events-to and must return a boolean. Invalid programs will make
+watchexec fail to start; use -v to see program runtime errors.
 
 In addition to the jaq stdlib, watchexec adds some custom filter
 definitions:
@@ -746,7 +757,25 @@ This prints the events that triggered the action when handling it (after
 debouncing), in a human readable form. This is useful for debugging
 filters.
 
-Use -v when you need more diagnostic information.
+Use -vvv instead when you need more diagnostic information.
+
+**\--manual**
+
+:   Show the manual page
+
+This shows the manual page for Watchexec, if the output is a terminal
+and the man program is available. If not, the manual page is printed to
+stdout in ROFF format (suitable for writing to a watchexec.1 file).
+
+**\--completions**=*COMPLETIONS*
+
+:   Generate a shell completions script
+
+Provides a completions script or configuration for the given shell. If
+Watchexec is not distributed with pre-generated completions, you can use
+this to generate them yourself.
+
+Supported shells: bash, elvish, fish, nu, powershell, zsh.
 
 **-v**, **\--verbose**
 
@@ -781,24 +810,6 @@ the watched directory.
 If the path provided is a directory, a file will be created in that
 directory. The file name will be the current date and time, in the
 format watchexec.YYYY-MM-DDTHH-MM-SSZ.log.
-
-**\--manual**
-
-:   Show the manual page
-
-This shows the manual page for Watchexec, if the output is a terminal
-and the man program is available. If not, the manual page is printed to
-stdout in ROFF format (suitable for writing to a watchexec.1 file).
-
-**\--completions**=*COMPLETIONS*
-
-:   Generate a shell completions script
-
-Provides a completions script or configuration for the given shell. If
-Watchexec is not distributed with pre-generated completions, you can use
-this to generate them yourself.
-
-Supported shells: bash, elvish, fish, nu, powershell, zsh.
 
 **-h**, **\--help**
 

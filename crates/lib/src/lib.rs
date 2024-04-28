@@ -68,12 +68,14 @@ pub mod config;
 
 mod id;
 mod late_join_set;
+mod watched_path;
 mod watchexec;
 
 #[doc(inline)]
 pub use crate::{
 	id::Id,
 	watchexec::{ErrorHook, Watchexec},
+	watched_path::WatchedPath,
 };
 
 #[doc(no_inline)]

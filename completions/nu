@@ -32,6 +32,7 @@ module completions {
   export extern watchexec [
     ...command: string        # Command to run on changes
     --watch(-w): string       # Watch a specific file or directory
+    --watch-non-recursive(-W): string # Watch a specific directory, non-recursively
     --clear(-c): string@"nu-complete watchexec screen_clear" # Clear screen before running command
     --on-busy-update(-o): string@"nu-complete watchexec on_busy_update" # What to do when receiving events while the command is running
     --restart(-r)             # Restart the process if it's still running
@@ -75,10 +76,10 @@ module completions {
     --fs-events: string@"nu-complete watchexec filter_fs_events" # Filesystem events to filter to
     --no-meta                 # Don't emit fs events for metadata changes
     --print-events            # Print events that trigger actions
-    --verbose(-v)             # Set diagnostic log level
-    --log-file: string        # Write diagnostic logs to a file
     --manual                  # Show the manual page
     --completions: string@"nu-complete watchexec completions" # Generate a shell completions script
+    --verbose(-v)             # Set diagnostic log level
+    --log-file: string        # Write diagnostic logs to a file
     --help(-h)                # Print help (see more with '--help')
     --version(-V)             # Print version
   ]

@@ -2,6 +2,8 @@ pre-release-commit-message = "release: cli v{{version}}"
 tag-prefix = ""
 tag-message = "watchexec {{version}}"
 
+pre-release-hook = ["sh", "-c", "cd ../.. && bin/completions && bin/manpage"]
+
 [[pre-release-replacements]]
 file = "watchexec.exe.manifest"
 search = "^		version=\"[\\d.]+[.]0\""

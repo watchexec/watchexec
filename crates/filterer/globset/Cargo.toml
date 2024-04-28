@@ -47,3 +47,9 @@ features = [
 	"rt-multi-thread",
 	"macros",
 ]
+
+[features]
+default = []
+
+## Don't hide ignore::gitignore::Gitignore Debug impl
+full_debug = []

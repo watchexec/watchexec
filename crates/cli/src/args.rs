@@ -1,20 +1,27 @@
 use std::{
+	collections::BTreeSet,
 	ffi::{OsStr, OsString},
-	path::PathBuf,
+	fs::canonicalize,
+	mem::take,
+	path::{Path, PathBuf},
 	str::FromStr,
 	time::Duration,
 };
 
 use clap::{
-	builder::TypedValueParser, error::ErrorKind, Arg, ArgAction, Command, CommandFactory, Parser,
-	ValueEnum, ValueHint,
+	builder::TypedValueParser, error::ErrorKind, Arg, Command, CommandFactory, Parser, ValueEnum,
+	ValueHint,
 };
 use miette::{IntoDiagnostic, Result};
 use tokio::{fs::File, io::AsyncReadExt};
-use watchexec::paths::PATH_SEPARATOR;
+use tracing::{debug, info, trace, warn};
+use tracing_appender::non_blocking::WorkerGuard;
+use watchexec::{paths::PATH_SEPARATOR, sources::fs::WatchedPath};
 use watchexec_signals::Signal;
 
 use crate::filterer::parse::parse_filter_program;
+
+mod logging;
 
 const OPTSET_FILTERING: &str = "Filtering";
 const OPTSET_COMMAND: &str = "Command";
@@ -128,7 +135,25 @@ pub struct Args {
 		value_hint = ValueHint::AnyPath,
 		value_name = "PATH",
 	)]
-	pub paths: Vec<PathBuf>,
+	pub recursive_paths: Vec<PathBuf>,
+
+	/// Watch a specific directory, non-recursively
+	///
+	/// Unlike '-w', folders watched with this option are not recursed into.
+	///
+	/// This option can be specified multiple times to watch multiple directories non-recursively.
+	#[arg(
+		short = 'W',
+		long = "watch-non-recursive",
+		help_heading = OPTSET_FILTERING,
+		value_hint = ValueHint::AnyPath,
+		value_name = "PATH",
+	)]
+	pub non_recursive_paths: Vec<PathBuf>,
+
+	#[doc(hidden)]
+	#[arg(skip)]
+	pub paths: Vec<WatchedPath>,
 
 	/// Clear screen before running command
 	///
@@ -791,6 +816,7 @@ pub struct Args {
 	///
 	/// Provide your own custom filter programs in jaq (similar to jq) syntax. Programs are given
 	/// an event in the same format as described in '--emit-events-to' and must return a boolean.
+	/// Invalid programs will make watchexec fail to start; use '-v' to see program runtime errors.
 	///
 	/// In addition to the jaq stdlib, watchexec adds some custom filter definitions:
 	///
@@ -921,53 +947,12 @@ pub struct Args {
 	/// This prints the events that triggered the action when handling it (after debouncing), in a
 	/// human readable form. This is useful for debugging filters.
 	///
-	/// Use '-v' when you need more diagnostic information.
+	/// Use '-vvv' instead when you need more diagnostic information.
 	#[arg(
 		long,
 		help_heading = OPTSET_DEBUGGING,
 	)]
 	pub print_events: bool,
-
-	/// Set diagnostic log level
-	///
-	/// This enables diagnostic logging, which is useful for investigating bugs or gaining more
-	/// insight into faulty filters or "missing" events. Use multiple times to increase verbosity.
-	///
-	/// Goes up to '-vvvv'. When submitting bug reports, default to a '-vvv' log level.
-	///
-	/// You may want to use with '--log-file' to avoid polluting your terminal.
-	///
-	/// Setting $RUST_LOG also works, and takes precedence, but is not recommended. However, using
-	/// $RUST_LOG is the only way to get logs from before these options are parsed.
-	#[arg(
-		long,
-		short,
-		help_heading = OPTSET_DEBUGGING,
-		action = ArgAction::Count,
-		num_args = 0,
-	)]
-	pub verbose: Option<u8>,
-
-	/// Write diagnostic logs to a file
-	///
-	/// This writes diagnostic logs to a file, instead of the terminal, in JSON format. If a log
-	/// level was not already specified, this will set it to '-vvv'.
-	///
-	/// If a path is not provided, the default is the working directory. Note that with
-	/// '--ignore-nothing', the write events to the log will likely get picked up by Watchexec,
-	/// causing a loop; prefer setting a path outside of the watched directory.
-	///
-	/// If the path provided is a directory, a file will be created in that directory. The file name
-	/// will be the current date and time, in the format 'watchexec.YYYY-MM-DDTHH-MM-SSZ.log'.
-	#[arg(
-		long,
-		help_heading = OPTSET_DEBUGGING,
-		num_args = 0..=1,
-		default_missing_value = ".",
-		value_hint = ValueHint::AnyPath,
-		value_name = "PATH",
-	)]
-	pub log_file: Option<PathBuf>,
 
 	/// Show the manual page
 	///
@@ -993,6 +978,9 @@ pub struct Args {
 		conflicts_with_all = ["command", "manual"],
 	)]
 	pub completions: Option<ShellCompletion>,
+
+	#[command(flatten)]
+	pub logging: logging::LoggingArgs,
 }
 
 #[derive(Clone, Copy, Debug, Default, ValueEnum)]
@@ -1159,11 +1147,10 @@ fn expand_args_up_to_doubledash() -> Result<Vec<OsString>, std::io::Error> {
 }
 
 #[inline]
-pub async fn get_args() -> Result<Args> {
-	use tracing::{debug, trace, warn};
-
-	if std::env::var("RUST_LOG").is_ok() {
-		warn!("⚠ RUST_LOG environment variable set, logging options have no effect");
+pub async fn get_args() -> Result<(Args, Option<WorkerGuard>)> {
+	let prearg_logs = logging::preargs();
+	if prearg_logs {
+		warn!("⚠ RUST_LOG environment variable set or hardcoded, logging options have no effect");
 	}
 
 	debug!("expanding @argfile arguments if any");
@@ -1171,6 +1158,12 @@ pub async fn get_args() -> Result<Args> {
 
 	debug!("parsing arguments");
 	let mut args = Args::parse_from(args);
+
+	let log_guard = if !prearg_logs {
+		logging::postargs(&args.logging).await?
+	} else {
+		None
+	};
 
 	// https://no-color.org/
 	if args.color == ColourMode::Auto && std::env::var("NO_COLOR").is_ok() {
@@ -1192,10 +1185,12 @@ pub async fn get_args() -> Result<Args> {
 	}
 
 	if args.no_environment {
+		warn!("--no-environment is deprecated");
 		args.emit_events_to = EmitEvents::None;
 	}
 
 	if args.no_process_group {
+		warn!("--no-process-group is deprecated");
 		args.wrap_process = WrapMode::None;
 	}
 
@@ -1221,6 +1216,63 @@ pub async fn get_args() -> Result<Args> {
 			.exit();
 	}
 
+	let workdir = if let Some(w) = take(&mut args.workdir) {
+		w
+	} else {
+		let curdir = std::env::current_dir().into_diagnostic()?;
+		canonicalize(curdir).into_diagnostic()?
+	};
+	info!(path=?workdir, "effective working directory");
+	args.workdir = Some(workdir.clone());
+
+	let project_origin = if let Some(p) = take(&mut args.project_origin) {
+		p
+	} else {
+		crate::dirs::project_origin(&args).await?
+	};
+	info!(path=?project_origin, "effective project origin");
+	args.project_origin = Some(project_origin.clone());
+
+	args.paths = take(&mut args.recursive_paths)
+		.into_iter()
+		.map(|path| {
+			{
+				if path.is_absolute() {
+					Ok(path)
+				} else {
+					canonicalize(project_origin.join(path)).into_diagnostic()
+				}
+			}
+			.map(WatchedPath::non_recursive)
+		})
+		.chain(take(&mut args.non_recursive_paths).into_iter().map(|path| {
+			{
+				if path.is_absolute() {
+					Ok(path)
+				} else {
+					canonicalize(project_origin.join(path)).into_diagnostic()
+				}
+			}
+			.map(WatchedPath::non_recursive)
+		}))
+		.collect::<Result<BTreeSet<_>>>()?
+		.into_iter()
+		.collect();
+
+	if args.paths.len() == 1
+		&& args
+			.paths
+			.first()
+			.map_or(false, |p| p.as_ref() == Path::new("/dev/null"))
+	{
+		info!("only path is /dev/null, not watching anything");
+		args.paths = Vec::new();
+	} else if args.paths.is_empty() {
+		info!("no paths, using current directory");
+		args.paths.push(args.workdir.clone().unwrap().into());
+	}
+	info!(paths=?args.paths, "effective watched paths");
+
 	for (n, prog) in args.filter_programs.iter_mut().enumerate() {
 		if let Some(progpath) = prog.strip_prefix('@') {
 			trace!(?n, path=?progpath, "reading filter program from file");
@@ -1233,12 +1285,14 @@ pub async fn get_args() -> Result<Args> {
 		}
 	}
 
-	args.filter_programs_parsed = std::mem::take(&mut args.filter_programs)
+	args.filter_programs_parsed = take(&mut args.filter_programs)
 		.into_iter()
 		.enumerate()
 		.map(parse_filter_program)
 		.collect::<Result<_, _>>()?;
 
-	debug!(?args, "got arguments");
-	Ok(args)
+	debug_assert!(args.workdir.is_some());
+	debug_assert!(args.project_origin.is_some());
+	info!(?args, "got arguments");
+	Ok((args, log_guard))
 }

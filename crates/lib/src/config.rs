@@ -1,6 +1,6 @@
 //! Configuration and builders for [`crate::Watchexec`].
 
-use std::{future::Future, path::Path, pin::pin, sync::Arc, time::Duration};
+use std::{future::Future, pin::pin, sync::Arc, time::Duration};
 
 use tokio::sync::Notify;
 use tracing::{debug, trace};
@@ -195,9 +195,9 @@ impl Config {
 	pub fn pathset<I, P>(&self, pathset: I) -> &Self
 	where
 		I: IntoIterator<Item = P>,
-		P: AsRef<Path>,
+		P: Into<WatchedPath>,
 	{
-		let pathset = pathset.into_iter().map(|p| p.as_ref().into()).collect();
+		let pathset = pathset.into_iter().map(|p| p.into()).collect();
 		debug!(?pathset, "Config: pathset");
 		self.pathset.replace(pathset);
 		self.signal_change()

@@ -4,7 +4,7 @@
 .SH NAME
 watchexec \- Execute commands when watched files change
 .SH SYNOPSIS
-\fBwatchexec\fR [\fB\-w\fR|\fB\-\-watch\fR] [\fB\-c\fR|\fB\-\-clear\fR] [\fB\-o\fR|\fB\-\-on\-busy\-update\fR] [\fB\-r\fR|\fB\-\-restart\fR] [\fB\-s\fR|\fB\-\-signal\fR] [\fB\-\-stop\-signal\fR] [\fB\-\-stop\-timeout\fR] [\fB\-\-map\-signal\fR] [\fB\-d\fR|\fB\-\-debounce\fR] [\fB\-\-stdin\-quit\fR] [\fB\-\-no\-vcs\-ignore\fR] [\fB\-\-no\-project\-ignore\fR] [\fB\-\-no\-global\-ignore\fR] [\fB\-\-no\-default\-ignore\fR] [\fB\-\-no\-discover\-ignore\fR] [\fB\-\-ignore\-nothing\fR] [\fB\-p\fR|\fB\-\-postpone\fR] [\fB\-\-delay\-run\fR] [\fB\-\-poll\fR] [\fB\-\-shell\fR] [\fB\-n \fR] [\fB\-\-emit\-events\-to\fR] [\fB\-\-only\-emit\-events\fR] [\fB\-E\fR|\fB\-\-env\fR] [\fB\-\-no\-process\-group\fR] [\fB\-\-wrap\-process\fR] [\fB\-N\fR|\fB\-\-notify\fR] [\fB\-\-color\fR] [\fB\-\-timings\fR] [\fB\-q\fR|\fB\-\-quiet\fR] [\fB\-\-bell\fR] [\fB\-\-project\-origin\fR] [\fB\-\-workdir\fR] [\fB\-e\fR|\fB\-\-exts\fR] [\fB\-f\fR|\fB\-\-filter\fR] [\fB\-\-filter\-file\fR] [\fB\-j\fR|\fB\-\-filter\-prog\fR] [\fB\-i\fR|\fB\-\-ignore\fR] [\fB\-\-ignore\-file\fR] [\fB\-\-fs\-events\fR] [\fB\-\-no\-meta\fR] [\fB\-\-print\-events\fR] [\fB\-v\fR|\fB\-\-verbose\fR]... [\fB\-\-log\-file\fR] [\fB\-\-manual\fR] [\fB\-\-completions\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fICOMMAND\fR] 
+\fBwatchexec\fR [\fB\-w\fR|\fB\-\-watch\fR] [\fB\-W\fR|\fB\-\-watch\-non\-recursive\fR] [\fB\-c\fR|\fB\-\-clear\fR] [\fB\-o\fR|\fB\-\-on\-busy\-update\fR] [\fB\-r\fR|\fB\-\-restart\fR] [\fB\-s\fR|\fB\-\-signal\fR] [\fB\-\-stop\-signal\fR] [\fB\-\-stop\-timeout\fR] [\fB\-\-map\-signal\fR] [\fB\-d\fR|\fB\-\-debounce\fR] [\fB\-\-stdin\-quit\fR] [\fB\-\-no\-vcs\-ignore\fR] [\fB\-\-no\-project\-ignore\fR] [\fB\-\-no\-global\-ignore\fR] [\fB\-\-no\-default\-ignore\fR] [\fB\-\-no\-discover\-ignore\fR] [\fB\-\-ignore\-nothing\fR] [\fB\-p\fR|\fB\-\-postpone\fR] [\fB\-\-delay\-run\fR] [\fB\-\-poll\fR] [\fB\-\-shell\fR] [\fB\-n \fR] [\fB\-\-emit\-events\-to\fR] [\fB\-\-only\-emit\-events\fR] [\fB\-E\fR|\fB\-\-env\fR] [\fB\-\-no\-process\-group\fR] [\fB\-\-wrap\-process\fR] [\fB\-N\fR|\fB\-\-notify\fR] [\fB\-\-color\fR] [\fB\-\-timings\fR] [\fB\-q\fR|\fB\-\-quiet\fR] [\fB\-\-bell\fR] [\fB\-\-project\-origin\fR] [\fB\-\-workdir\fR] [\fB\-e\fR|\fB\-\-exts\fR] [\fB\-f\fR|\fB\-\-filter\fR] [\fB\-\-filter\-file\fR] [\fB\-j\fR|\fB\-\-filter\-prog\fR] [\fB\-i\fR|\fB\-\-ignore\fR] [\fB\-\-ignore\-file\fR] [\fB\-\-fs\-events\fR] [\fB\-\-no\-meta\fR] [\fB\-\-print\-events\fR] [\fB\-\-manual\fR] [\fB\-\-completions\fR] [\fB\-v\fR|\fB\-\-verbose\fR]... [\fB\-\-log\-file\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fICOMMAND\fR] 
 .SH DESCRIPTION
 Execute commands when watched files change.
 .PP
@@ -47,6 +47,13 @@ Upon starting, Watchexec resolves a "project origin" from the watched paths. See
 This option can be specified multiple times to watch multiple files or directories.
 
 The special value \*(Aq/dev/null\*(Aq, provided as the only path watched, will cause Watchexec to not watch any paths. Other event sources (like signals or key events) may still be used.
+.TP
+\fB\-W\fR, \fB\-\-watch\-non\-recursive\fR=\fIPATH\fR
+Watch a specific directory, non\-recursively
+
+Unlike \*(Aq\-w\*(Aq, folders watched with this option are not recursed into.
+
+This option can be specified multiple times to watch multiple directories non\-recursively.
 .TP
 \fB\-c\fR, \fB\-\-clear\fR=\fIMODE\fR
 Clear screen before running command
@@ -439,7 +446,7 @@ This can also be used via the $WATCHEXEC_FILTER_FILES environment variable.
 
 /!\\ This option is EXPERIMENTAL and may change and/or vanish without notice.
 
-Provide your own custom filter programs in jaq (similar to jq) syntax. Programs are given an event in the same format as described in \*(Aq\-\-emit\-events\-to\*(Aq and must return a boolean.
+Provide your own custom filter programs in jaq (similar to jq) syntax. Programs are given an event in the same format as described in \*(Aq\-\-emit\-events\-to\*(Aq and must return a boolean. Invalid programs will make watchexec fail to start; use \*(Aq\-v\*(Aq to see program runtime errors.
 
 In addition to the jaq stdlib, watchexec adds some custom filter definitions:
 
@@ -510,7 +517,19 @@ Print events that trigger actions
 
 This prints the events that triggered the action when handling it (after debouncing), in a human readable form. This is useful for debugging filters.
 
-Use \*(Aq\-v\*(Aq when you need more diagnostic information.
+Use \*(Aq\-vvv\*(Aq instead when you need more diagnostic information.
+.TP
+\fB\-\-manual\fR
+Show the manual page
+
+This shows the manual page for Watchexec, if the output is a terminal and the \*(Aqman\*(Aq program is available. If not, the manual page is printed to stdout in ROFF format (suitable for writing to a watchexec.1 file).
+.TP
+\fB\-\-completions\fR=\fICOMPLETIONS\fR
+Generate a shell completions script
+
+Provides a completions script or configuration for the given shell. If Watchexec is not distributed with pre\-generated completions, you can use this to generate them yourself.
+
+Supported shells: bash, elvish, fish, nu, powershell, zsh.
 .TP
 \fB\-v\fR, \fB\-\-verbose\fR
 Set diagnostic log level
@@ -531,18 +550,6 @@ This writes diagnostic logs to a file, instead of the terminal, in JSON format. 
 If a path is not provided, the default is the working directory. Note that with \*(Aq\-\-ignore\-nothing\*(Aq, the write events to the log will likely get picked up by Watchexec, causing a loop; prefer setting a path outside of the watched directory.
 
 If the path provided is a directory, a file will be created in that directory. The file name will be the current date and time, in the format \*(Aqwatchexec.YYYY\-MM\-DDTHH\-MM\-SSZ.log\*(Aq.
-.TP
-\fB\-\-manual\fR
-Show the manual page
-
-This shows the manual page for Watchexec, if the output is a terminal and the \*(Aqman\*(Aq program is available. If not, the manual page is printed to stdout in ROFF format (suitable for writing to a watchexec.1 file).
-.TP
-\fB\-\-completions\fR=\fICOMPLETIONS\fR
-Generate a shell completions script
-
-Provides a completions script or configuration for the given shell. If Watchexec is not distributed with pre\-generated completions, you can use this to generate them yourself.
-
-Supported shells: bash, elvish, fish, nu, powershell, zsh.
 .TP
 \fB\-h\fR, \fB\-\-help\fR
 Print help (see a summary with \*(Aq\-h\*(Aq)

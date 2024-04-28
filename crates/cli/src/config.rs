@@ -1,11 +1,10 @@
 use std::{
 	borrow::Cow,
 	collections::HashMap,
-	env::{current_dir, var},
+	env::var,
 	ffi::{OsStr, OsString},
 	fs::File,
 	io::{IsTerminal, Write},
-	path::Path,
 	process::Stdio,
 	sync::{
 		atomic::{AtomicBool, AtomicU8, Ordering},
@@ -68,19 +67,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 		eprintln!("[[Error (not fatal)]]\n{}", Report::new(err.error));
 	});
 
-	config.pathset(if args.paths.is_empty() {
-		vec![current_dir().into_diagnostic()?]
-	} else if args.paths.len() == 1
-		&& args
-			.paths
-			.first()
-			.map_or(false, |p| p == Path::new("/dev/null"))
-	{
-		// special case: /dev/null means "don't start the fs event source"
-		Vec::new()
-	} else {
-		args.paths.clone()
-	});
+	config.pathset(args.paths.clone());
 
 	config.throttle(args.debounce.0);
 	config.keyboard_events(args.stdin_quit);

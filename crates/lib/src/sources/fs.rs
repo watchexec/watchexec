@@ -4,7 +4,6 @@ use std::{
 	collections::{HashMap, HashSet},
 	fs::metadata,
 	mem::take,
-	path::{Path, PathBuf},
 	sync::Arc,
 	time::Duration,
 };
@@ -19,6 +18,9 @@ use crate::{
 	error::{CriticalError, FsWatcherError, RuntimeError},
 	Config,
 };
+
+// re-export for compatibility, until next major version
+pub use crate::WatchedPath;
 
 /// What kind of filesystem watcher to use.
 ///
@@ -69,42 +71,6 @@ impl Watcher {
 				FsWatcherError::Create(err)
 			},
 		})
-	}
-}
-
-/// A path to watch.
-///
-/// This is currently only a wrapper around a [`PathBuf`], but may be augmented in the future.
-#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct WatchedPath(PathBuf);
-
-impl From<PathBuf> for WatchedPath {
-	fn from(path: PathBuf) -> Self {
-		Self(path)
-	}
-}
-
-impl From<&str> for WatchedPath {
-	fn from(path: &str) -> Self {
-		Self(path.into())
-	}
-}
-
-impl From<&Path> for WatchedPath {
-	fn from(path: &Path) -> Self {
-		Self(path.into())
-	}
-}
-
-impl From<WatchedPath> for PathBuf {
-	fn from(path: WatchedPath) -> Self {
-		path.0
-	}
-}
-
-impl AsRef<Path> for WatchedPath {
-	fn as_ref(&self) -> &Path {
-		self.0.as_ref()
 	}
 }
 
@@ -190,6 +156,7 @@ pub async fn worker(
 		// now let's calculate which paths we should add to the watch, and which we should drop:
 
 		let config_pathset = config.pathset.get();
+		tracing::info!(?config_pathset, "obtaining pathset");
 		let (to_watch, to_drop) = if pathset.is_empty() {
 			// if the current pathset is empty, we can take a shortcut
 			(config_pathset, Vec::new())
@@ -222,7 +189,7 @@ pub async fn worker(
 
 		for path in to_drop {
 			trace!(?path, "removing path from the watcher");
-			if let Err(err) = watcher.unwatch(path.as_ref()) {
+			if let Err(err) = watcher.unwatch(path.path.as_ref()) {
 				error!(?err, "notify unwatch() error");
 				for e in notify_multi_path_errors(watcher_type, path, err, true) {
 					errors.send(e).await?;
@@ -234,13 +201,18 @@ pub async fn worker(
 
 		for path in to_watch {
 			trace!(?path, "adding path to the watcher");
-			if let Err(err) = watcher.watch(path.as_ref(), notify::RecursiveMode::Recursive) {
+			if let Err(err) = watcher.watch(
+				path.path.as_ref(),
+				if path.recursive {
+					notify::RecursiveMode::Recursive
+				} else {
+					notify::RecursiveMode::NonRecursive
+				},
+			) {
 				error!(?err, "notify watch() error");
 				for e in notify_multi_path_errors(watcher_type, path, err, false) {
 					errors.send(e).await?;
 				}
-			// TODO: unwatch and re-watch manually while ignoring all the erroring paths
-			// See https://github.com/watchexec/watchexec/issues/218
 			} else {
 				pathset.insert(path);
 			}
@@ -250,13 +222,13 @@ pub async fn worker(
 
 fn notify_multi_path_errors(
 	kind: Watcher,
-	path: WatchedPath,
+	watched_path: WatchedPath,
 	mut err: notify::Error,
 	rm: bool,
 ) -> Vec<RuntimeError> {
 	let mut paths = take(&mut err.paths);
 	if paths.is_empty() {
-		paths.push(path.into());
+		paths.push(watched_path.into());
 	}
 
 	let generic = err.to_string();

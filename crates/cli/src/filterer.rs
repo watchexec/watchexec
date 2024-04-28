@@ -16,7 +16,6 @@ use watchexec_filterer_globset::GlobsetFilterer;
 
 use crate::args::{Args, FsEvent};
 
-mod dirs;
 pub(crate) mod parse;
 mod proglib;
 mod progs;
@@ -71,13 +70,14 @@ impl Filterer for WatchexecFilterer {
 impl WatchexecFilterer {
 	/// Create a new filterer from the given arguments
 	pub async fn new(args: &Args) -> Result<Arc<Self>> {
-		let (project_origin, workdir) = dirs::dirs(args).await?;
+		let project_origin = args.project_origin.clone().unwrap();
+		let workdir = args.workdir.clone().unwrap();
 
 		let ignore_files = if args.no_discover_ignore {
 			Vec::new()
 		} else {
-			let vcs_types = dirs::vcs_types(&project_origin).await;
-			dirs::ignores(args, &vcs_types, &project_origin).await?
+			let vcs_types = crate::dirs::vcs_types(&project_origin).await;
+			crate::dirs::ignores(args, &vcs_types).await?
 		};
 
 		let mut ignores = Vec::new();

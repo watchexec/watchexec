@@ -1,7 +1,5 @@
 use std::{
-	borrow::Cow,
 	collections::HashSet,
-	env,
 	path::{Path, PathBuf},
 };
 
@@ -14,16 +12,7 @@ use watchexec::paths::common_prefix;
 
 use crate::args::Args;
 
-type ProjectOriginPath = PathBuf;
-type WorkDirPath = PathBuf;
-
-/// Extract relevant directories (in particular the project origin and work directory)
-/// given the command line arguments that were provided
-pub async fn dirs(args: &Args) -> Result<(ProjectOriginPath, WorkDirPath)> {
-	let curdir = env::current_dir().into_diagnostic()?;
-	let curdir = canonicalize(curdir).await.into_diagnostic()?;
-	debug!(?curdir, "current directory");
-
+pub async fn project_origin(args: &Args) -> Result<PathBuf> {
 	let project_origin = if let Some(origin) = &args.project_origin {
 		debug!(?origin, "project origin override");
 		canonicalize(origin).await.into_diagnostic()?
@@ -34,27 +23,19 @@ pub async fn dirs(args: &Args) -> Result<(ProjectOriginPath, WorkDirPath)> {
 		};
 		debug!(?homedir, "home directory");
 
-		let mut paths = HashSet::new();
-		for path in &args.paths {
-			paths.insert(canonicalize(path).await.into_diagnostic()?);
-		}
-
-		let homedir_requested = homedir.as_ref().map_or(false, |home| paths.contains(home));
+		let homedir_requested = homedir.as_ref().map_or(false, |home| {
+			args.paths
+				.binary_search_by_key(home, |w| PathBuf::from(w.clone()))
+				.is_ok()
+		});
 		debug!(
 			?homedir_requested,
 			"resolved whether the homedir is explicitly requested"
 		);
 
-		if paths.is_empty() {
-			debug!("no paths, using current directory");
-			paths.insert(curdir.clone());
-		}
-
-		debug!(?paths, "resolved all watched paths");
-
 		let mut origins = HashSet::new();
-		for path in paths {
-			origins.extend(project_origins::origins(&path).await);
+		for path in &args.paths {
+			origins.extend(project_origins::origins(path).await);
 		}
 
 		match (homedir, homedir_requested) {
@@ -67,7 +48,7 @@ pub async fn dirs(args: &Args) -> Result<(ProjectOriginPath, WorkDirPath)> {
 
 		if origins.is_empty() {
 			debug!("no origins, using current directory");
-			origins.insert(curdir.clone());
+			origins.insert(args.workdir.clone().unwrap());
 		}
 
 		debug!(?origins, "resolved all project origins");
@@ -80,12 +61,9 @@ pub async fn dirs(args: &Args) -> Result<(ProjectOriginPath, WorkDirPath)> {
 		.await
 		.into_diagnostic()?
 	};
-	info!(?project_origin, "resolved common/project origin");
+	debug!(?project_origin, "resolved common/project origin");
 
-	let workdir = curdir;
-	info!(?workdir, "resolved working directory");
-
-	Ok((project_origin, workdir))
+	Ok(project_origin)
 }
 
 pub async fn vcs_types(origin: &Path) -> Vec<ProjectType> {
@@ -94,41 +72,34 @@ pub async fn vcs_types(origin: &Path) -> Vec<ProjectType> {
 		.into_iter()
 		.filter(|pt| pt.is_vcs())
 		.collect::<Vec<_>>();
-	info!(?vcs_types, "resolved vcs types");
+	info!(?vcs_types, "effective vcs types");
 	vcs_types
 }
 
-pub async fn ignores(
-	args: &Args,
-	vcs_types: &[ProjectType],
-	origin: &Path,
-) -> Result<Vec<IgnoreFile>> {
-	fn higher_make_absolute_if_needed<'a>(
-		origin: &'a Path,
-	) -> impl 'a + Fn(&'a PathBuf) -> Cow<'a, Path> {
-		|path| {
-			if path.is_absolute() {
-				Cow::Borrowed(path)
-			} else {
-				Cow::Owned(origin.join(path))
-			}
-		}
-	}
-
+pub async fn ignores(args: &Args, vcs_types: &[ProjectType]) -> Result<Vec<IgnoreFile>> {
+	let origin = args.project_origin.clone().unwrap();
 	let mut skip_git_global_excludes = false;
 
 	let mut ignores = if args.no_project_ignore {
 		Vec::new()
 	} else {
-		let make_absolute_if_needed = higher_make_absolute_if_needed(origin);
-		let include_paths = args.paths.iter().map(&make_absolute_if_needed);
-		let ignore_files = args.ignore_files.iter().map(&make_absolute_if_needed);
+		let ignore_files = args.ignore_files.iter().map(|path| {
+			if path.is_absolute() {
+				path.into()
+			} else {
+				origin.join(path)
+			}
+		});
 
 		let (mut ignores, errors) = ignore_files::from_origin(
-			IgnoreFilesFromOriginArgs::new_unchecked(origin, include_paths, ignore_files)
-				.canonicalise()
-				.await
-				.into_diagnostic()?,
+			IgnoreFilesFromOriginArgs::new_unchecked(
+				&origin,
+				args.paths.iter().map(PathBuf::from),
+				ignore_files,
+			)
+			.canonicalise()
+			.await
+			.into_diagnostic()?,
 		)
 		.await;
 
@@ -221,7 +192,7 @@ pub async fn ignores(
 			.filter(|ig| {
 				!ig.applies_in
 					.as_ref()
-					.map_or(false, |p| p.starts_with(origin))
+					.map_or(false, |p| p.starts_with(&origin))
 			})
 			.collect::<Vec<_>>();
 		debug!(
