@@ -1243,7 +1243,7 @@ pub async fn get_args() -> Result<(Args, Option<WorkerGuard>)> {
 					canonicalize(project_origin.join(path)).into_diagnostic()
 				}
 			}
-			.map(WatchedPath::non_recursive)
+			.map(WatchedPath::recursive)
 		})
 		.chain(take(&mut args.non_recursive_paths).into_iter().map(|path| {
 			{
