@@ -13,6 +13,9 @@ struct Args {
 
 	#[clap(long)]
 	dates: bool,
+
+	#[clap(long)]
+	describe: bool,
 }
 
 fn main() {
@@ -23,17 +26,15 @@ fn main() {
 			"{}",
 			Bosion::long_version_with(&[("extra", "field"), ("custom", "1.2.3"),])
 		);
-	} else
-
-	if args.features {
+	} else if args.features {
 		println!("Features: {}", Bosion::CRATE_FEATURE_STRING);
-	} else
-
-	if args.dates {
+	} else if args.dates {
 		println!("commit date: {}", Bosion::GIT_COMMIT_DATE);
 		println!("commit datetime: {}", Bosion::GIT_COMMIT_DATETIME);
 		println!("build date: {}", Bosion::BUILD_DATE);
 		println!("build datetime: {}", Bosion::BUILD_DATETIME);
+	} else if args.describe {
+		println!("commit description: {}", Bosion::GIT_COMMIT_DESCRIPTION);
 	} else {
 		println!("{}", Bosion::LONG_VERSION);
 	}
