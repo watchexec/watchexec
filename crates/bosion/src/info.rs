@@ -145,6 +145,9 @@ pub struct GitInfo {
 
 	/// The datetime of the current commit, in the format `YYYY-MM-DD HH:MM:SS`, at UTC.
 	pub git_datetime: String,
+
+	/// The `git describe` equivalent output
+	pub git_description: String,
 }
 
 #[cfg(feature = "git")]
@@ -163,6 +166,7 @@ impl GitInfo {
 			git_shorthash: head.short_id().err_string()?.to_string(),
 			git_date: timestamp.format(DATE_FORMAT).err_string()?,
 			git_datetime: timestamp.format(DATETIME_FORMAT).err_string()?,
+			git_description: head.describe().format().err_string()?.to_string(),
 		})
 	}
 }
