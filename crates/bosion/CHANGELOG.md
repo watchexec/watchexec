@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v1.1.0 (2024-05-16)
+
 - Add `git-describe` support (#832, by @lu-zero)
 
 ## v1.0.3 (2024-04-20)
