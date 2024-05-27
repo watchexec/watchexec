@@ -33,7 +33,7 @@ version = "0.28.0"
 features = ["signal"]
 
 [dev-dependencies]
-snapbox = "0.5.9"
+snapbox = "0.6.5"
 serde_json = "1.0.107"
 
 [features]
