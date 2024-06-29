@@ -19,6 +19,8 @@ _watchexec() {
 '*--watch=[Watch a specific file or directory]:PATH:_files' \
 '*-W+[Watch a specific directory, non-recursively]:PATH:_files' \
 '*--watch-non-recursive=[Watch a specific directory, non-recursively]:PATH:_files' \
+'-F+[Watch files and directories from a file]:PATH:_files' \
+'--watch-file=[Watch files and directories from a file]:PATH:_files' \
 '-c+[Clear screen before running command]' \
 '--clear=[Clear screen before running command]' \
 '-o+[What to do when receiving events while the command is running]:MODE:(queue do-nothing restart signal)' \

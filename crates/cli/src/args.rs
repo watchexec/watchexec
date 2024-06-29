@@ -1263,11 +1263,19 @@ pub async fn get_args() -> Result<(Args, Option<WorkerGuard>)> {
 	args.project_origin = Some(project_origin.clone());
 
 	if let Some(watch_file) = args.watch_file.as_ref() {
-		let file = BufReader::new(File::open(watch_file).await.into_diagnostic()?);
-		let mut lines = file.lines();
-		while let Ok(Some(line)) = lines.next_line().await {
-			args.recursive_paths.push(line.into());
-		}
+		if watch_file == Path::new("-") {
+			let file = tokio::io::stdin();
+			let mut lines = BufReader::new(file).lines();
+			while let Ok(Some(line)) = lines.next_line().await {
+				args.recursive_paths.push(line.into());
+			}
+		} else {
+			let file = File::open(watch_file).await.into_diagnostic()?;
+			let mut lines = BufReader::new(file).lines();
+			while let Ok(Some(line)) = lines.next_line().await {
+				args.recursive_paths.push(line.into());
+			}
+		};
 	}
 
 	args.paths = take(&mut args.recursive_paths)
