@@ -74,8 +74,8 @@ mod watchexec;
 #[doc(inline)]
 pub use crate::{
 	id::Id,
-	watchexec::{ErrorHook, Watchexec},
 	watched_path::WatchedPath,
+	watchexec::{ErrorHook, Watchexec},
 };
 
 #[doc(no_inline)]
