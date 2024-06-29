@@ -25,6 +25,8 @@ Register-ArgumentCompleter -Native -CommandName 'watchexec' -ScriptBlock {
             [CompletionResult]::new('--watch', 'watch', [CompletionResultType]::ParameterName, 'Watch a specific file or directory')
             [CompletionResult]::new('-W', 'W ', [CompletionResultType]::ParameterName, 'Watch a specific directory, non-recursively')
             [CompletionResult]::new('--watch-non-recursive', 'watch-non-recursive', [CompletionResultType]::ParameterName, 'Watch a specific directory, non-recursively')
+            [CompletionResult]::new('-F', 'F ', [CompletionResultType]::ParameterName, 'Watch files and directories from a file')
+            [CompletionResult]::new('--watch-file', 'watch-file', [CompletionResultType]::ParameterName, 'Watch files and directories from a file')
             [CompletionResult]::new('-c', 'c', [CompletionResultType]::ParameterName, 'Clear screen before running command')
             [CompletionResult]::new('--clear', 'clear', [CompletionResultType]::ParameterName, 'Clear screen before running command')
             [CompletionResult]::new('-o', 'o', [CompletionResultType]::ParameterName, 'What to do when receiving events while the command is running')

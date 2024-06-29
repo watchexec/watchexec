@@ -1,5 +1,6 @@
 complete -c watchexec -s w -l watch -d 'Watch a specific file or directory' -r -F
 complete -c watchexec -s W -l watch-non-recursive -d 'Watch a specific directory, non-recursively' -r -F
+complete -c watchexec -s F -l watch-file -d 'Watch files and directories from a file' -r -F
 complete -c watchexec -s c -l clear -d 'Clear screen before running command' -r -f -a "{clear	'',reset	''}"
 complete -c watchexec -s o -l on-busy-update -d 'What to do when receiving events while the command is running' -r -f -a "{queue	'',do-nothing	'',restart	'',signal	''}"
 complete -c watchexec -s s -l signal -d 'Send a signal to the process when it\'s still running' -r

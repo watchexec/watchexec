@@ -4,7 +4,7 @@
 .SH NAME
 watchexec \- Execute commands when watched files change
 .SH SYNOPSIS
-\fBwatchexec\fR [\fB\-w\fR|\fB\-\-watch\fR] [\fB\-W\fR|\fB\-\-watch\-non\-recursive\fR] [\fB\-c\fR|\fB\-\-clear\fR] [\fB\-o\fR|\fB\-\-on\-busy\-update\fR] [\fB\-r\fR|\fB\-\-restart\fR] [\fB\-s\fR|\fB\-\-signal\fR] [\fB\-\-stop\-signal\fR] [\fB\-\-stop\-timeout\fR] [\fB\-\-map\-signal\fR] [\fB\-d\fR|\fB\-\-debounce\fR] [\fB\-\-stdin\-quit\fR] [\fB\-\-no\-vcs\-ignore\fR] [\fB\-\-no\-project\-ignore\fR] [\fB\-\-no\-global\-ignore\fR] [\fB\-\-no\-default\-ignore\fR] [\fB\-\-no\-discover\-ignore\fR] [\fB\-\-ignore\-nothing\fR] [\fB\-p\fR|\fB\-\-postpone\fR] [\fB\-\-delay\-run\fR] [\fB\-\-poll\fR] [\fB\-\-shell\fR] [\fB\-n \fR] [\fB\-\-emit\-events\-to\fR] [\fB\-\-only\-emit\-events\fR] [\fB\-E\fR|\fB\-\-env\fR] [\fB\-\-no\-process\-group\fR] [\fB\-\-wrap\-process\fR] [\fB\-N\fR|\fB\-\-notify\fR] [\fB\-\-color\fR] [\fB\-\-timings\fR] [\fB\-q\fR|\fB\-\-quiet\fR] [\fB\-\-bell\fR] [\fB\-\-project\-origin\fR] [\fB\-\-workdir\fR] [\fB\-e\fR|\fB\-\-exts\fR] [\fB\-f\fR|\fB\-\-filter\fR] [\fB\-\-filter\-file\fR] [\fB\-j\fR|\fB\-\-filter\-prog\fR] [\fB\-i\fR|\fB\-\-ignore\fR] [\fB\-\-ignore\-file\fR] [\fB\-\-fs\-events\fR] [\fB\-\-no\-meta\fR] [\fB\-\-print\-events\fR] [\fB\-\-manual\fR] [\fB\-\-completions\fR] [\fB\-v\fR|\fB\-\-verbose\fR]... [\fB\-\-log\-file\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fICOMMAND\fR] 
+\fBwatchexec\fR [\fB\-w\fR|\fB\-\-watch\fR] [\fB\-W\fR|\fB\-\-watch\-non\-recursive\fR] [\fB\-F\fR|\fB\-\-watch\-file\fR] [\fB\-c\fR|\fB\-\-clear\fR] [\fB\-o\fR|\fB\-\-on\-busy\-update\fR] [\fB\-r\fR|\fB\-\-restart\fR] [\fB\-s\fR|\fB\-\-signal\fR] [\fB\-\-stop\-signal\fR] [\fB\-\-stop\-timeout\fR] [\fB\-\-map\-signal\fR] [\fB\-d\fR|\fB\-\-debounce\fR] [\fB\-\-stdin\-quit\fR] [\fB\-\-no\-vcs\-ignore\fR] [\fB\-\-no\-project\-ignore\fR] [\fB\-\-no\-global\-ignore\fR] [\fB\-\-no\-default\-ignore\fR] [\fB\-\-no\-discover\-ignore\fR] [\fB\-\-ignore\-nothing\fR] [\fB\-p\fR|\fB\-\-postpone\fR] [\fB\-\-delay\-run\fR] [\fB\-\-poll\fR] [\fB\-\-shell\fR] [\fB\-n \fR] [\fB\-\-emit\-events\-to\fR] [\fB\-\-only\-emit\-events\fR] [\fB\-E\fR|\fB\-\-env\fR] [\fB\-\-no\-process\-group\fR] [\fB\-\-wrap\-process\fR] [\fB\-N\fR|\fB\-\-notify\fR] [\fB\-\-color\fR] [\fB\-\-timings\fR] [\fB\-q\fR|\fB\-\-quiet\fR] [\fB\-\-bell\fR] [\fB\-\-project\-origin\fR] [\fB\-\-workdir\fR] [\fB\-e\fR|\fB\-\-exts\fR] [\fB\-f\fR|\fB\-\-filter\fR] [\fB\-\-filter\-file\fR] [\fB\-j\fR|\fB\-\-filter\-prog\fR] [\fB\-i\fR|\fB\-\-ignore\fR] [\fB\-\-ignore\-file\fR] [\fB\-\-fs\-events\fR] [\fB\-\-no\-meta\fR] [\fB\-\-print\-events\fR] [\fB\-\-manual\fR] [\fB\-\-completions\fR] [\fB\-v\fR|\fB\-\-verbose\fR]... [\fB\-\-log\-file\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fICOMMAND\fR] 
 .SH DESCRIPTION
 Execute commands when watched files change.
 .PP
@@ -54,6 +54,15 @@ Watch a specific directory, non\-recursively
 Unlike \*(Aq\-w\*(Aq, folders watched with this option are not recursed into.
 
 This option can be specified multiple times to watch multiple directories non\-recursively.
+.TP
+\fB\-F\fR, \fB\-\-watch\-file\fR=\fIPATH\fR
+Watch files and directories from a file
+
+Each line in the file will be interpreted as if given to \*(Aq\-w\*(Aq.
+
+For more complex uses (like watching non\-recursively), use the argfile capability: build a file containing command\-line options and pass it to watchexec with `@path/to/argfile`.
+
+The special value \*(Aq\-\*(Aq will read from STDIN; this in incompatible with \*(Aq\-\-stdin\-quit\*(Aq.
 .TP
 \fB\-c\fR, \fB\-\-clear\fR=\fIMODE\fR
 Clear screen before running command

@@ -5,10 +5,11 @@ watchexec - Execute commands when watched files change
 # SYNOPSIS
 
 **watchexec** \[**-w**\|**\--watch**\]
-\[**-W**\|**\--watch-non-recursive**\] \[**-c**\|**\--clear**\]
-\[**-o**\|**\--on-busy-update**\] \[**-r**\|**\--restart**\]
-\[**-s**\|**\--signal**\] \[**\--stop-signal**\] \[**\--stop-timeout**\]
-\[**\--map-signal**\] \[**-d**\|**\--debounce**\] \[**\--stdin-quit**\]
+\[**-W**\|**\--watch-non-recursive**\] \[**-F**\|**\--watch-file**\]
+\[**-c**\|**\--clear**\] \[**-o**\|**\--on-busy-update**\]
+\[**-r**\|**\--restart**\] \[**-s**\|**\--signal**\]
+\[**\--stop-signal**\] \[**\--stop-timeout**\] \[**\--map-signal**\]
+\[**-d**\|**\--debounce**\] \[**\--stdin-quit**\]
 \[**\--no-vcs-ignore**\] \[**\--no-project-ignore**\]
 \[**\--no-global-ignore**\] \[**\--no-default-ignore**\]
 \[**\--no-discover-ignore**\] \[**\--ignore-nothing**\]
@@ -91,6 +92,19 @@ Unlike -w, folders watched with this option are not recursed into.
 
 This option can be specified multiple times to watch multiple
 directories non-recursively.
+
+**-F**, **\--watch-file**=*PATH*
+
+:   Watch files and directories from a file
+
+Each line in the file will be interpreted as if given to -w.
+
+For more complex uses (like watching non-recursively), use the argfile
+capability: build a file containing command-line options and pass it to
+watchexec with \`@path/to/argfile\`.
+
+The special value - will read from STDIN; this in incompatible with
+\--stdin-quit.
 
 **-c**, **\--clear**=*MODE*
 
