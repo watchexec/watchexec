@@ -13,7 +13,10 @@ use clap::{
 	ValueHint,
 };
 use miette::{IntoDiagnostic, Result};
-use tokio::{fs::File, io::AsyncReadExt};
+use tokio::{
+	fs::File,
+	io::{AsyncBufReadExt, AsyncReadExt, BufReader},
+};
 use tracing::{debug, info, trace, warn};
 use tracing_appender::non_blocking::WorkerGuard;
 use watchexec::{paths::PATH_SEPARATOR, sources::fs::WatchedPath};
@@ -150,6 +153,23 @@ pub struct Args {
 		value_name = "PATH",
 	)]
 	pub non_recursive_paths: Vec<PathBuf>,
+
+	/// Watch files and directories from a file
+	///
+	/// Each line in the file will be interpreted as if given to '-w'.
+	///
+	/// For more complex uses (like watching non-recursively), use the argfile capability: build a
+	/// file containing command-line options and pass it to watchexec with `@path/to/argfile`.
+	///
+	/// The special value '-' will read from STDIN; this in incompatible with '--stdin-quit'.
+	#[arg(
+		short = 'F',
+		long,
+		help_heading = OPTSET_FILTERING,
+		value_hint = ValueHint::AnyPath,
+		value_name = "PATH",
+	)]
+	pub watch_file: Option<PathBuf>,
 
 	#[doc(hidden)]
 	#[arg(skip)]
@@ -1216,6 +1236,15 @@ pub async fn get_args() -> Result<(Args, Option<WorkerGuard>)> {
 			.exit();
 	}
 
+	if args.stdin_quit && args.watch_file == Some(PathBuf::from("-")) {
+		Args::command()
+			.error(
+				ErrorKind::InvalidValue,
+				"stdin-quit cannot be used when --watch-file=-",
+			)
+			.exit();
+	}
+
 	let workdir = if let Some(w) = take(&mut args.workdir) {
 		w
 	} else {
@@ -1232,6 +1261,14 @@ pub async fn get_args() -> Result<(Args, Option<WorkerGuard>)> {
 	};
 	info!(path=?project_origin, "effective project origin");
 	args.project_origin = Some(project_origin.clone());
+
+	if let Some(watch_file) = args.watch_file.as_ref() {
+		let file = BufReader::new(File::open(watch_file).await.into_diagnostic()?);
+		let mut lines = file.lines();
+		while let Ok(Some(line)) = lines.next_line().await {
+			args.recursive_paths.push(line.into());
+		}
+	}
 
 	args.paths = take(&mut args.recursive_paths)
 		.into_iter()
