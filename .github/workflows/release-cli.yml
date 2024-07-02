@@ -104,10 +104,10 @@ jobs:
             experimental: false
 
           - name: mac-arm64
-            os: macos-11.0
+            os: macos-latest
             target: aarch64-apple-darwin
             cross: true
-            experimental: true
+            experimental: false
 
           - name: windows-x86-64
             os: windows-latest
