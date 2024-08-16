@@ -1,12 +1,13 @@
 use std::{
 	collections::BTreeSet,
 	ffi::{OsStr, OsString},
-	fs::canonicalize,
 	mem::take,
 	path::{Path, PathBuf},
 	str::FromStr,
 	time::Duration,
 };
+
+use dunce::canonicalize;
 
 use clap::{
 	builder::TypedValueParser, error::ErrorKind, Arg, Command, CommandFactory, Parser, ValueEnum,
