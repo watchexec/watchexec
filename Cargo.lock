@@ -4085,6 +4085,7 @@ dependencies = [
  "console-subscriber",
  "dashmap",
  "dirs 5.0.1",
+ "dunce",
  "embed-resource",
  "eyra",
  "futures",
