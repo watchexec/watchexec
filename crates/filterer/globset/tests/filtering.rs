@@ -644,20 +644,24 @@ async fn whitelist_overrides_ignore() {
 async fn whitelist_overrides_ignore_files() {
 	let mut ignore_file = tempfile::NamedTempFile::new().unwrap();
 	let _ = ignore_file.write(b"prunes");
-	let filterer = filt(&[], &[], &["/prunes"], &[], &[ignore_file.path().to_path_buf()]).await;
 
-	filterer.file_does_pass("/apples");
-	filterer.file_does_pass("/prunes");
-	filterer.dir_does_pass("/apples");
-	filterer.dir_does_pass("/prunes");
+	let origin = std::fs::canonicalize(".").unwrap();
+	let whitelist = origin.join("prunes").display().to_string();
 
-	filterer.file_does_pass("/raw-prunes");
-	filterer.dir_does_pass("/raw-prunes");
+	let filterer = filt(&[], &[], &[&whitelist], &[], &[ignore_file.path().to_path_buf()]).await;
 
-	filterer.file_doesnt_pass("/apples/prunes");
-	filterer.file_doesnt_pass("/raw/prunes");
-	filterer.dir_doesnt_pass("/apples/prunes");
-	filterer.dir_doesnt_pass("/raw/prunes");
+	filterer.file_does_pass("apples");
+	filterer.file_does_pass("prunes");
+	filterer.dir_does_pass("apples");
+	filterer.dir_does_pass("prunes");
+
+	filterer.file_does_pass("raw-prunes");
+	filterer.dir_does_pass("raw-prunes");
+
+	filterer.file_doesnt_pass("apples/prunes");
+	filterer.file_doesnt_pass("raw/prunes");
+	filterer.dir_doesnt_pass("apples/prunes");
+	filterer.dir_doesnt_pass("raw/prunes");
 }
 
 #[tokio::test]
@@ -666,12 +670,12 @@ async fn whitelist_overrides_ignore_files_nested() {
 	let _ = ignore_file.write(b"prunes\n");
 
 	let origin = std::fs::canonicalize(".").unwrap();
-	let whitelist = origin.join("prunes/target").display().to_string();
+	let whitelist = origin.join("prunes").join("target").display().to_string();
 
 	let filterer = filt(&[], &[], &[&whitelist], &[], &[ignore_file.path().to_path_buf()]).await;
 
 	filterer.file_does_pass("apples");
-	// filterer.file_doesnt_pass("/prunes");
+	filterer.file_doesnt_pass("prunes");
 	filterer.dir_does_pass("apples");
 	filterer.dir_doesnt_pass("prunes");
 
