@@ -28,6 +28,7 @@ pub struct GlobsetFilterer {
 	origin: PathBuf,
 	filters: Gitignore,
 	ignores: Gitignore,
+	whitelist: Vec<PathBuf>,
 	ignore_files: IgnoreFilterer,
 	extensions: Vec<OsString>,
 }
@@ -64,6 +65,7 @@ impl GlobsetFilterer {
 		origin: impl AsRef<Path>,
 		filters: impl IntoIterator<Item = (String, Option<PathBuf>)>,
 		ignores: impl IntoIterator<Item = (String, Option<PathBuf>)>,
+        whitelist: impl IntoIterator<Item = PathBuf>,
 		ignore_files: impl IntoIterator<Item = IgnoreFile>,
 		extensions: impl IntoIterator<Item = OsString>,
 	) -> Result<Self, Error> {
@@ -99,6 +101,8 @@ impl GlobsetFilterer {
 		ignore_files.finish();
 		let ignore_files = IgnoreFilterer(ignore_files);
 
+		let whitelist = whitelist.into_iter().collect::<Vec<_>>();
+
 		debug!(
 			?origin,
 			num_filters=%filters.num_ignores(),
@@ -113,6 +117,7 @@ impl GlobsetFilterer {
 			origin: origin.into(),
 			filters,
 			ignores,
+			whitelist,
 			ignore_files,
 			extensions,
 		})
@@ -125,6 +130,14 @@ impl Filterer for GlobsetFilterer {
 	/// This implementation never errors.
 	fn check_event(&self, event: &Event, priority: Priority) -> Result<bool, RuntimeError> {
 		let _span = trace_span!("filterer_check").entered();
+
+		{
+			trace!("checking internal whitelist");
+			if event.paths().any(|(p, _)| self.whitelist.iter().any(|w| w == p)) {
+				trace!("internal whitelist filterer matched (success)");
+				return Ok(true);
+			}
+		}
 
 		{
 			trace!("checking internal ignore filterer");

@@ -102,6 +102,7 @@ fn tracing_init() {
 pub async fn globset_filt(
 	filters: &[&str],
 	ignores: &[&str],
+	whitelists: &[&str],
 	extensions: &[&str],
 ) -> GlobsetFilterer {
 	let origin = tokio::fs::canonicalize(".").await.unwrap();
@@ -110,6 +111,7 @@ pub async fn globset_filt(
 		origin,
 		filters.iter().map(|s| ((*s).to_string(), None)),
 		ignores.iter().map(|s| ((*s).to_string(), None)),
+		whitelists.iter().map(|s| (*s).into()),
 		vec![],
 		extensions.iter().map(OsString::from),
 	)
