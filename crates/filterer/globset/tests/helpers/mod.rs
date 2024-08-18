@@ -6,6 +6,7 @@ use std::{
 use watchexec::{error::RuntimeError, filter::Filterer};
 use watchexec_events::{Event, FileType, Priority, Tag};
 use watchexec_filterer_globset::GlobsetFilterer;
+use ignore_files::IgnoreFile;
 use watchexec_filterer_ignore::IgnoreFilterer;
 
 pub mod globset {
@@ -104,6 +105,7 @@ pub async fn globset_filt(
 	ignores: &[&str],
 	whitelists: &[&str],
 	extensions: &[&str],
+	ignore_files: &[PathBuf]
 ) -> GlobsetFilterer {
 	let origin = tokio::fs::canonicalize(".").await.unwrap();
 	tracing_init();
@@ -112,7 +114,7 @@ pub async fn globset_filt(
 		filters.iter().map(|s| ((*s).to_string(), None)),
 		ignores.iter().map(|s| ((*s).to_string(), None)),
 		whitelists.iter().map(|s| (*s).into()),
-		vec![],
+		ignore_files.iter().map(|path| IgnoreFile { path: path.clone(), applies_in: None, applies_to: None }),
 		extensions.iter().map(OsString::from),
 	)
 	.await

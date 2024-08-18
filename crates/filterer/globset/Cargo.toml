@@ -37,6 +37,7 @@ path = "../ignore"
 
 [dev-dependencies]
 tracing-subscriber = "0.3.6"
+tempfile = "3"
 
 [dev-dependencies.tokio]
 version = "1.33.0"
