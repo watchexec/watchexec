@@ -52,6 +52,8 @@ impl GlobsetFilterer {
 	/// The first list is used to filter paths (only matching paths will pass the filter), the
 	/// second is used to ignore paths (matching paths will fail the pattern). If the filter list is
 	/// empty, only the ignore list will be used. If both lists are empty, the filter always passes.
+	/// Whitelist is used to automatically accept files even if they would be filtered out
+	/// otherwise. It is passed as an absolute path to the file that should not be filtered.
 	///
 	/// Ignores and filters are passed as a tuple of the glob pattern as a string and an optional
 	/// path of the folder the pattern should apply in (e.g. the folder a gitignore file is in).
@@ -133,6 +135,8 @@ impl Filterer for GlobsetFilterer {
 
 		{
 			trace!("checking internal whitelist");
+			// Ideally check path equality backwards for better perf
+			// There could be long matching prefixes so we will exit late
 			if event.paths().any(|(p, _)| self.whitelist.iter().any(|w| w == p)) {
 				trace!("internal whitelist filterer matched (success)");
 				return Ok(true);
