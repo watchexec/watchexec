@@ -343,7 +343,14 @@ async fn ignore_glob_double_star_trailing_slash() {
 
 #[tokio::test]
 async fn ignores_take_precedence() {
-	let filterer = filt(&["*.docx", "*.toml", "*.json"], &["*.toml", "*.json"], &[], &[], &[]).await;
+	let filterer = filt(
+		&["*.docx", "*.toml", "*.json"],
+		&["*.toml", "*.json"],
+		&[],
+		&[],
+		&[],
+	)
+	.await;
 
 	filterer.file_doesnt_pass("Cargo.toml");
 	filterer.file_doesnt_pass("/test/foo/bar/Cargo.toml");
@@ -648,7 +655,14 @@ async fn whitelist_overrides_ignore_files() {
 	let origin = std::fs::canonicalize(".").unwrap();
 	let whitelist = origin.join("prunes").display().to_string();
 
-	let filterer = filt(&[], &[], &[&whitelist], &[], &[ignore_file.path().to_path_buf()]).await;
+	let filterer = filt(
+		&[],
+		&[],
+		&[&whitelist],
+		&[],
+		&[ignore_file.path().to_path_buf()],
+	)
+	.await;
 
 	filterer.file_does_pass("apples");
 	filterer.file_does_pass("prunes");
@@ -672,7 +686,14 @@ async fn whitelist_overrides_ignore_files_nested() {
 	let origin = std::fs::canonicalize(".").unwrap();
 	let whitelist = origin.join("prunes").join("target").display().to_string();
 
-	let filterer = filt(&[], &[], &[&whitelist], &[], &[ignore_file.path().to_path_buf()]).await;
+	let filterer = filt(
+		&[],
+		&[],
+		&[&whitelist],
+		&[],
+		&[ignore_file.path().to_path_buf()],
+	)
+	.await;
 
 	filterer.file_does_pass("apples");
 	filterer.file_doesnt_pass("prunes");

@@ -67,7 +67,7 @@ impl GlobsetFilterer {
 		origin: impl AsRef<Path>,
 		filters: impl IntoIterator<Item = (String, Option<PathBuf>)>,
 		ignores: impl IntoIterator<Item = (String, Option<PathBuf>)>,
-        whitelist: impl IntoIterator<Item = PathBuf>,
+		whitelist: impl IntoIterator<Item = PathBuf>,
 		ignore_files: impl IntoIterator<Item = IgnoreFile>,
 		extensions: impl IntoIterator<Item = OsString>,
 	) -> Result<Self, Error> {
@@ -137,7 +137,10 @@ impl Filterer for GlobsetFilterer {
 			trace!("checking internal whitelist");
 			// Ideally check path equality backwards for better perf
 			// There could be long matching prefixes so we will exit late
-			if event.paths().any(|(p, _)| self.whitelist.iter().any(|w| w == p)) {
+			if event
+				.paths()
+				.any(|(p, _)| self.whitelist.iter().any(|w| w == p))
+			{
 				trace!("internal whitelist filterer matched (success)");
 				return Ok(true);
 			}

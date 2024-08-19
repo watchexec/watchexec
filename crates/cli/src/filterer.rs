@@ -105,10 +105,11 @@ impl WatchexecFilterer {
 			]);
 		}
 
-        let whitelist = args.paths
-                .iter()
-                .map(|p| p.into())
-                .filter(|p: &PathBuf| p.is_file());
+		let whitelist = args
+			.paths
+			.iter()
+			.map(|p| p.into())
+			.filter(|p: &PathBuf| p.is_file());
 
 		let mut filters = args
 			.filter_patterns
@@ -133,9 +134,16 @@ impl WatchexecFilterer {
 
 		info!("initialising Globset filterer");
 		Ok(Arc::new(Self {
-			inner: GlobsetFilterer::new(project_origin, filters, ignores, whitelist, ignore_files, exts)
-				.await
-				.into_diagnostic()?,
+			inner: GlobsetFilterer::new(
+				project_origin,
+				filters,
+				ignores,
+				whitelist,
+				ignore_files,
+				exts,
+			)
+			.await
+			.into_diagnostic()?,
 			fs_events: args.filter_fs_events.clone(),
 			progs: if args.filter_programs_parsed.is_empty() {
 				None
