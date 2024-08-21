@@ -4139,6 +4139,7 @@ version = "4.0.1"
 dependencies = [
  "ignore",
  "ignore-files",
+ "tempfile",
  "tokio",
  "tracing",
  "tracing-subscriber",
