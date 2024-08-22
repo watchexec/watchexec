@@ -5,6 +5,7 @@ use std::{
 	ffi::{OsStr, OsString},
 	fs::File,
 	io::{IsTerminal, Write},
+	path::PathBuf,
 	process::Stdio,
 	sync::{
 		atomic::{AtomicBool, AtomicU8, Ordering},
@@ -67,7 +68,12 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 		eprintln!("[[Error (not fatal)]]\n{}", Report::new(err.error));
 	});
 
-	config.pathset(args.paths.clone());
+	config.pathset(args.paths.iter().map(|wp| wp.into()).map(|mut p: PathBuf| {
+		if p.is_file() {
+			p.pop();
+		}
+		p
+	}));
 
 	config.throttle(args.debounce.0);
 	config.keyboard_events(args.stdin_quit);
