@@ -1,11 +1,17 @@
 use std::{
+	ffi::OsStr,
 	path::{Path, PathBuf},
 	process::Stdio,
 	time::Duration,
 };
 
-use miette::{IntoDiagnostic, Result, WrapErr};
-use tokio::{process::Command, time::Instant};
+use assert_cmd::prelude::CommandCargoExt;
+use miette::{IntoDiagnostic, Result, WrapErr, Error};
+use tokio::{
+	process::{Child, Command},
+	time::{Instant, timeout},
+    io::AsyncReadExt,
+};
 use tracing_test::traced_test;
 use uuid::Uuid;
 
@@ -79,7 +85,7 @@ async fn e2e_ignore_many_files_200_000() -> Result<()> {
 	};
 
 	// Get the number of elapsed
-	let small_elapsed = run_watchexec_cmd(&wexec_bin, root_dir_path, args.clone()).await?;
+	let small_elapsed = run_watchexec_cmd_once(&wexec_bin, root_dir_path, args.clone()).await?;
 
 	// Create a tempfile so that drop will clean it up
 	let large_test_dir = tempfile::tempdir()
@@ -108,7 +114,7 @@ async fn e2e_ignore_many_files_200_000() -> Result<()> {
 	};
 
 	// Get the number of elapsed
-	let large_elapsed = run_watchexec_cmd(&wexec_bin, root_dir_path, args.clone()).await?;
+	let large_elapsed = run_watchexec_cmd_once(&wexec_bin, root_dir_path, args.clone()).await?;
 
 	// We expect the ignores to not impact watchexec startup time at all
 	// whether there are 200 files in there or 200k
@@ -123,7 +129,7 @@ async fn e2e_ignore_many_files_200_000() -> Result<()> {
 }
 
 /// Run a watchexec command once
-async fn run_watchexec_cmd(
+async fn run_watchexec_cmd_once(
 	wexec_bin: impl AsRef<str>,
 	dir: impl AsRef<Path>,
 	args: impl Into<Vec<String>>,
@@ -143,4 +149,73 @@ async fn run_watchexec_cmd(
 		.wrap_err("fixed")?;
 
 	Ok(start.elapsed())
+}
+
+fn start_watchexec_cmd<Element>(
+	dir: impl AsRef<Path>,
+	args: impl Into<Vec<Element>>,
+) -> Result<Child>
+where
+	Element: AsRef<OsStr>,
+{
+	let mut cmd: Command = std::process::Command::cargo_bin("watchexec")
+		.into_diagnostic()
+		.wrap_err("Failed to create watchexec command")?
+		.into();
+	cmd.args(args.into());
+	cmd.current_dir(dir);
+	cmd.stdout(Stdio::piped());
+	cmd.stderr(Stdio::piped());
+	cmd.spawn()
+		.into_diagnostic()
+		.wrap_err("Failed to spawn watchexec")
+}
+
+async fn assert_stdout_and_clear(tmp: &mut Vec<u8>, timeout_duration: Duration, stdout: &mut (impl AsyncReadExt + std::marker::Unpin)) {
+	assert!(timeout(timeout_duration, stdout.read_u8()).await.is_ok());
+	while timeout(timeout_duration, stdout.read_to_end(tmp)).await.is_ok() {
+		tmp.clear();
+	}
+	assert!(timeout(timeout_duration, stdout.read_u8()).await.is_err());
+}
+
+#[tokio::test]
+async fn watch_single_file_test() -> Result<()> {
+	let test_dir = tempfile::tempdir()
+		.into_diagnostic()
+		.wrap_err("failed to create tempdir for test use")?;
+	let dir_path = test_dir.path().to_path_buf();
+    let file_path = dir_path.join("file");
+    std::fs::File::create(file_path.clone()).into_diagnostic()?;
+	let mut child = start_watchexec_cmd(
+	    dir_path,
+		vec!["-w", file_path.to_str().unwrap(), "echo", "change"],
+	)?;
+
+    let timeout_duration = Duration::from_millis(50);
+    let mut tmp = vec![];
+    let mut stdout = child.stdout.take().ok_or(Error::msg("Failed to take child stdout"))?;
+    stdout.read_u8().await.into_diagnostic()?;
+    while timeout(timeout_duration, stdout.read_to_end(&mut tmp)).await.is_ok() {
+        tmp.clear();
+    }
+
+    let timeout_duration = Duration::from_millis(100);
+
+    std::fs::remove_file(file_path.clone()).into_diagnostic()?;
+	assert_stdout_and_clear(&mut tmp, timeout_duration, &mut stdout).await;
+
+    std::fs::File::create(file_path.clone()).into_diagnostic()?;
+	assert_stdout_and_clear(&mut tmp, timeout_duration, &mut stdout).await;
+
+	std::fs::remove_file(file_path.clone()).into_diagnostic()?;
+	assert_stdout_and_clear(&mut tmp, timeout_duration, &mut stdout).await;
+
+    std::fs::File::create(file_path.clone()).into_diagnostic()?;
+	assert_stdout_and_clear(&mut tmp, timeout_duration, &mut stdout).await;
+
+	std::fs::remove_file(file_path.clone()).into_diagnostic()?;
+	assert_stdout_and_clear(&mut tmp, timeout_duration, &mut stdout).await;
+
+	Ok(())
 }

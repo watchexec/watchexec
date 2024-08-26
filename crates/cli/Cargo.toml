@@ -107,6 +107,7 @@ version = "1.33.0"
 features = [
 	"fs",
 	"io-std",
+	"io-util",
 	"process",
 	"rt",
 	"rt-multi-thread",
@@ -138,6 +139,22 @@ path = "../bosion"
 tracing-test = "0.2.4"
 uuid = { workspace = true, features = [ "v4", "fast-rng" ] }
 rand = { workspace = true }
+assert_cmd = "2"
+
+[dev-dependencies.tokio]
+version = "1.33.0"
+features = [
+	"fs",
+	"io-std",
+	"io-util",
+	"process",
+	"rt",
+	"time",
+	"rt-multi-thread",
+	"signal",
+	"sync",
+]
+
 
 [features]
 default = ["pid1"]
