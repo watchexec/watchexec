@@ -115,13 +115,24 @@ impl WatchexecFilterer {
 			.paths
 			.iter()
 			.map(|wp| wp.into())
-			.filter(|path: &PathBuf| path.is_dir())
-			.filter_map(|path| {
+			.filter(|path: &PathBuf| path.is_file())
+			.filter_map(|mut path| {
 				path.strip_prefix(workdir.clone())
 					.ok()
-					.map(|p| p.to_path_buf())
+					.map(|p| (format!("{}", p.display()), None))
 			})
-			.map(|path: PathBuf| (format!("{}/**", path.display()), None))
+			.chain(
+				args.paths
+					.iter()
+					.map(|wp| wp.into())
+					.filter(|path: &PathBuf| path.is_dir())
+					.filter_map(|path| {
+						path.strip_prefix(workdir.clone())
+							.ok()
+							.map(|p| p.to_path_buf())
+					})
+					.map(|path: PathBuf| (format!("{}/**", path.display()), None)),
+			)
 			.chain(
 				args.filter_patterns
 					.iter()

@@ -6,11 +6,11 @@ use std::{
 };
 
 use assert_cmd::prelude::CommandCargoExt;
-use miette::{IntoDiagnostic, Result, WrapErr, Error};
+use miette::{Error, IntoDiagnostic, Result, WrapErr};
 use tokio::{
+	io::AsyncReadExt,
 	process::{Child, Command},
-	time::{Instant, timeout},
-    io::AsyncReadExt,
+	time::{timeout, Instant},
 };
 use tracing_test::traced_test;
 use uuid::Uuid;
@@ -171,9 +171,17 @@ where
 		.wrap_err("Failed to spawn watchexec")
 }
 
-async fn assert_stdout_and_clear(tmp: &mut Vec<u8>, timeout_duration: Duration, stdout: &mut (impl AsyncReadExt + std::marker::Unpin)) {
+async fn assert_stdout_and_clear(
+	tmp: &mut Vec<u8>,
+	timeout_duration: Duration,
+	stdout: &mut (impl AsyncReadExt + std::marker::Unpin),
+) {
 	assert!(timeout(timeout_duration, stdout.read_u8()).await.is_ok());
-	while timeout(timeout_duration, stdout.read_to_end(tmp)).await.is_ok() {
+	while let Ok(Ok(n)) = timeout(timeout_duration, stdout.read_buf(tmp)).await {
+		if n == 0 {
+			break;
+		}
+
 		tmp.clear();
 	}
 	assert!(timeout(timeout_duration, stdout.read_u8()).await.is_err());
@@ -185,37 +193,45 @@ async fn watch_single_file_test() -> Result<()> {
 		.into_diagnostic()
 		.wrap_err("failed to create tempdir for test use")?;
 	let dir_path = test_dir.path().to_path_buf();
-    let file_path = dir_path.join("file");
-    std::fs::File::create(file_path.clone()).into_diagnostic()?;
+	let file_path = dir_path.join("file");
+	std::fs::File::create(file_path.clone()).into_diagnostic()?;
 	let mut child = start_watchexec_cmd(
-	    dir_path,
+		dir_path,
 		vec!["-w", file_path.to_str().unwrap(), "echo", "change"],
 	)?;
 
-    let timeout_duration = Duration::from_millis(50);
-    let mut tmp = vec![];
-    let mut stdout = child.stdout.take().ok_or(Error::msg("Failed to take child stdout"))?;
-    stdout.read_u8().await.into_diagnostic()?;
-    while timeout(timeout_duration, stdout.read_to_end(&mut tmp)).await.is_ok() {
-        tmp.clear();
-    }
+	let timeout_duration = Duration::from_millis(50);
+	let mut tmp = vec![];
+	let mut stdout = child
+		.stdout
+		.take()
+		.ok_or(Error::msg("Failed to take child stdout"))?;
+	stdout.read_u8().await.into_diagnostic()?;
+	while timeout(timeout_duration, stdout.read_to_end(&mut tmp))
+		.await
+		.is_ok()
+	{
+		tmp.clear();
+	}
 
-    let timeout_duration = Duration::from_millis(100);
+	let timeout_duration = Duration::from_millis(250);
 
-    std::fs::remove_file(file_path.clone()).into_diagnostic()?;
+	std::fs::remove_file(file_path.clone()).into_diagnostic()?;
 	assert_stdout_and_clear(&mut tmp, timeout_duration, &mut stdout).await;
 
-    std::fs::File::create(file_path.clone()).into_diagnostic()?;
+	std::fs::File::create(file_path.clone()).into_diagnostic()?;
 	assert_stdout_and_clear(&mut tmp, timeout_duration, &mut stdout).await;
 
 	std::fs::remove_file(file_path.clone()).into_diagnostic()?;
 	assert_stdout_and_clear(&mut tmp, timeout_duration, &mut stdout).await;
 
-    std::fs::File::create(file_path.clone()).into_diagnostic()?;
+	std::fs::File::create(file_path.clone()).into_diagnostic()?;
 	assert_stdout_and_clear(&mut tmp, timeout_duration, &mut stdout).await;
 
 	std::fs::remove_file(file_path.clone()).into_diagnostic()?;
 	assert_stdout_and_clear(&mut tmp, timeout_duration, &mut stdout).await;
+
+	child.kill().await.expect("Child is not dead :(");
 
 	Ok(())
 }
