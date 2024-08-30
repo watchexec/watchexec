@@ -116,7 +116,7 @@ impl WatchexecFilterer {
 			.iter()
 			.map(|wp| wp.into())
 			.filter(|path: &PathBuf| path.is_file())
-			.filter_map(|mut path| {
+			.filter_map(|path| {
 				path.strip_prefix(workdir.clone())
 					.ok()
 					.map(|p| (format!("{}", p.display()), None))

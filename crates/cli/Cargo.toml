@@ -107,7 +107,6 @@ version = "1.33.0"
 features = [
 	"fs",
 	"io-std",
-	"io-util",
 	"process",
 	"rt",
 	"rt-multi-thread",

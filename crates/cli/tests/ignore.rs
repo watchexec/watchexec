@@ -6,6 +6,7 @@ use std::{
 };
 
 use assert_cmd::prelude::CommandCargoExt;
+use dunce::canonicalize;
 use miette::{Error, IntoDiagnostic, Result, WrapErr};
 use tokio::{
 	io::AsyncReadExt,
@@ -85,7 +86,7 @@ async fn e2e_ignore_many_files_200_000() -> Result<()> {
 	};
 
 	// Get the number of elapsed
-	let small_elapsed = run_watchexec_cmd_once(&wexec_bin, root_dir_path, args.clone()).await?;
+	let small_elapsed = run_watchexec_cmd(&wexec_bin, root_dir_path, args.clone()).await?;
 
 	// Create a tempfile so that drop will clean it up
 	let large_test_dir = tempfile::tempdir()
@@ -114,7 +115,7 @@ async fn e2e_ignore_many_files_200_000() -> Result<()> {
 	};
 
 	// Get the number of elapsed
-	let large_elapsed = run_watchexec_cmd_once(&wexec_bin, root_dir_path, args.clone()).await?;
+	let large_elapsed = run_watchexec_cmd(&wexec_bin, root_dir_path, args.clone()).await?;
 
 	// We expect the ignores to not impact watchexec startup time at all
 	// whether there are 200 files in there or 200k
@@ -129,7 +130,7 @@ async fn e2e_ignore_many_files_200_000() -> Result<()> {
 }
 
 /// Run a watchexec command once
-async fn run_watchexec_cmd_once(
+async fn run_watchexec_cmd(
 	wexec_bin: impl AsRef<str>,
 	dir: impl AsRef<Path>,
 	args: impl Into<Vec<String>>,
@@ -181,7 +182,6 @@ async fn assert_stdout_and_clear(
 		if n == 0 {
 			break;
 		}
-
 		tmp.clear();
 	}
 	assert!(timeout(timeout_duration, stdout.read_u8()).await.is_err());
@@ -192,30 +192,25 @@ async fn watch_single_file_test() -> Result<()> {
 	let test_dir = tempfile::tempdir()
 		.into_diagnostic()
 		.wrap_err("failed to create tempdir for test use")?;
-	let dir_path = test_dir.path().to_path_buf();
+	let dir_path =
+		canonicalize(test_dir.path().to_path_buf()).expect("Failed to canonicalize tmp dir path");
 	let file_path = dir_path.join("file");
 	std::fs::File::create(file_path.clone()).into_diagnostic()?;
+
 	let mut child = start_watchexec_cmd(
-		dir_path,
+		dir_path.clone(),
 		vec!["-w", file_path.to_str().unwrap(), "echo", "change"],
 	)?;
 
-	let timeout_duration = Duration::from_millis(50);
+	let timeout_duration = Duration::from_millis(400);
 	let mut tmp = vec![];
 	let mut stdout = child
 		.stdout
 		.take()
 		.ok_or(Error::msg("Failed to take child stdout"))?;
-	stdout.read_u8().await.into_diagnostic()?;
-	while timeout(timeout_duration, stdout.read_to_end(&mut tmp))
-		.await
-		.is_ok()
-	{
-		tmp.clear();
-	}
+	assert_stdout_and_clear(&mut tmp, timeout_duration, &mut stdout).await;
 
-	let timeout_duration = Duration::from_millis(250);
-
+	// Positive cases
 	std::fs::remove_file(file_path.clone()).into_diagnostic()?;
 	assert_stdout_and_clear(&mut tmp, timeout_duration, &mut stdout).await;
 
@@ -228,8 +223,13 @@ async fn watch_single_file_test() -> Result<()> {
 	std::fs::File::create(file_path.clone()).into_diagnostic()?;
 	assert_stdout_and_clear(&mut tmp, timeout_duration, &mut stdout).await;
 
-	std::fs::remove_file(file_path.clone()).into_diagnostic()?;
-	assert_stdout_and_clear(&mut tmp, timeout_duration, &mut stdout).await;
+	// Negative cases
+	let file_path2 = dir_path.join("file2");
+	std::fs::File::create(file_path2.clone()).into_diagnostic()?;
+	assert!(timeout(timeout_duration, stdout.read_u8()).await.is_err());
+
+	std::fs::remove_file(file_path2.clone()).into_diagnostic()?;
+	assert!(timeout(timeout_duration, stdout.read_u8()).await.is_err());
 
 	child.kill().await.expect("Child is not dead :(");
 
