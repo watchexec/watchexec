@@ -4135,7 +4135,7 @@ dependencies = [
 
 [[package]]
 name = "watchexec-filterer-globset"
-version = "4.0.1"
+version = "5.0.0"
 dependencies = [
  "ignore",
  "ignore-files",

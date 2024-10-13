@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v5.0.0 (2024-10-13)
+
 - Add whitelist parameter.
 
 ## v4.0.1 (2024-04-28)
