@@ -42,7 +42,7 @@
 //! ```
 //!
 //! Alternatively, you can use the modules exposed by the crate and the external crates such as
-//! [`ClearScreen`][clearscreen] and [Command Group][command_group] to build something more advanced,
+//! [`ClearScreen`][clearscreen] and [Process Wrap][process_wrap] to build something more advanced,
 //! at the cost of reimplementing the glue code.
 //!
 //! Note that the library generates a _lot_ of debug messaging with [tracing]. **You should not
