@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+- Deps: watchexec 5
+
 ## v5.0.0 (2024-10-13)
 
 - Add whitelist parameter.
