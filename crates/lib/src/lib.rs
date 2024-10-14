@@ -1,13 +1,13 @@
 //! Watchexec: a library for utilities and programs which respond to (file, signal, etc) events
 //! primarily by launching or managing other programs.
 //!
-//! Also see the CLI tool: <https://watchexec.github.io/>
+//! Also see the CLI tool: <https://github.com/watchexec/watchexec>
 //!
 //! This library is powered by [Tokio](https://tokio.rs).
 //!
 //! The main way to use this crate involves constructing a [`Watchexec`] around a [`Config`], then
-//! running it. [`Handler`][handler::Handler]s are used to hook into Watchexec at various points.
-//! The config can be changed at any time with the [`Watchexec::reconfigure()`] method.
+//! running it. Handlers (defined in [`Config`]) are used to hook into Watchexec at various points.
+//! The config can be changed at any time with the `config` field on your [`Watchexec`] instance.
 //!
 //! It's recommended to use the [miette] erroring library in applications, but all errors implement
 //! [`std::error::Error`] so your favourite error handling library can of course be used.
@@ -42,8 +42,8 @@
 //! ```
 //!
 //! Alternatively, you can use the modules exposed by the crate and the external crates such as
-//! [`ClearScreen`][clearscreen] and [Process Wrap][process_wrap] to build something more advanced,
-//! at the cost of reimplementing the glue code.
+//! [`notify`], [`clearscreen`], [`process_wrap`]... to build something more advanced, at the cost
+//! of reimplementing the glue code.
 //!
 //! Note that the library generates a _lot_ of debug messaging with [tracing]. **You should not
 //! enable printing even `error`-level log messages for this crate unless it's for debugging.**
