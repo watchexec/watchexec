@@ -215,9 +215,9 @@ impl Job {
 	/// the _previous_ run of the command.
 	///
 	/// Technically, some operations can be done through a `&self` shared borrow on the running
-	/// command's [`ErasedChild`](command_group::tokio::ErasedChild), but this library recommends
-	/// against taking advantage of this, and prefer using the methods here instead, so that the
-	/// supervisor can keep track of what's going on.
+	/// command's [`TokioChildWrapper`], but this library recommends against taking advantage of this,
+	/// and prefer using the methods on here instead, so that the supervisor can keep track of
+	/// what's going on.
 	pub fn run(&self, fun: impl FnOnce(&JobTaskContext<'_>) + Send + Sync + 'static) -> Ticket {
 		self.control(Control::SyncFunc(Box::new(fun)))
 	}
@@ -229,9 +229,9 @@ impl Job {
 	/// the _previous_ run of the command.
 	///
 	/// Technically, some operations can be done through a `&self` shared borrow on the running
-	/// command's [`ErasedChild`](command_group::tokio::ErasedChild), but this library recommends
-	/// against taking advantage of this, and prefer using the methods here instead, so that the
-	/// supervisor can keep track of what's going on.
+	/// command's [`TokioChildWrapper`], but this library recommends against taking advantage of this,
+	/// and prefer using the methods on here instead, so that the supervisor can keep track of
+	/// what's going on.
 	///
 	/// A gotcha when using this method is that the future returned by the function can live longer
 	/// than the `&JobTaskContext` it was given, so you can't bring the context into the async block

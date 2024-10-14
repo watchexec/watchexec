@@ -23,7 +23,7 @@
 //! task is spawned on the Tokio runtime, and so runs in the background. A `Job` takes as input a
 //! [`Command`](command::Command), which describes how to start a single process, through either a
 //! shell command or a direct executable invocation, and if the process should be grouped (using
-//! [`command-group`](command_group)) or not.
+//! [`process-wrap`](process_wrap)) or not.
 //!
 //! The job's task runs an event loop on two sources: the process's `wait()` (i.e. when the process
 //! ends) and the job's control queue. The control queue is a hybrid MPSC queue, with three priority

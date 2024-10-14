@@ -44,18 +44,11 @@ Apart from that, welcome and thank you for your time!
 
 ## Releasing
 
-A release goes like this:
+```
+cargo release -p crate-name --execute patch # or minor, major
+```
 
-1. A maintainer launches the ["Open a release PR" workflow](https://github.com/watchexec/watchexec/actions/workflows/release-pr.yml).
-
-2. A PR bumping the chosen crate's version is opened. Maintainers may then add stuff to it if
-   needed, like changelog entries for library crates. Release notes for CLI releases go directly on
-   the PR.
-
-3. When the PR is merged, the release is tagged. CLI releases also get built and distributed.
-
-4. A maintainer then manually publishes the crate (automated publishing is blocked on crates.io
-   implementing [scoped tokens](https://github.com/rust-lang/crates.io/issues/5443)).
+When a CLI release is done, the [release notes](https://github.com/watchexec/watchexec/releases) should be edited with the changelog.
 
 ### Release order
 

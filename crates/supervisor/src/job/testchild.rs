@@ -12,7 +12,7 @@ use watchexec_events::ProcessEnd;
 
 use crate::command::{Command, Program};
 
-/// Mock version of [`ErasedChild`](command_group::ErasedChild).
+/// Mock version of [`TokioChildWrapper`](process_wrap::tokio::TokioChildWrapper).
 #[derive(Debug, Clone)]
 pub struct TestChild {
 	pub grouped: bool,

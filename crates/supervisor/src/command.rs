@@ -55,7 +55,7 @@ pub struct SpawnOptions {
 	/// Run the program in a new process group.
 	///
 	/// This will use either of Unix [process groups] or Windows [Job Objects] via the
-	/// [`command-group`](command_group) crate.
+	/// [`process-wrap`](process_wrap) crate.
 	///
 	/// [process groups]: https://en.wikipedia.org/wiki/Process_group
 	/// [Job Objects]: https://en.wikipedia.org/wiki/Object_Manager_(Windows)

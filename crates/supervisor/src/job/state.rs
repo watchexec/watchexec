@@ -12,9 +12,9 @@ use crate::command::Command;
 /// of the command, and can be queried via the [`JobTaskContext`](super::JobTaskContext) by hooks.
 ///
 /// Technically, some operations can be done through a `&self` shared borrow on the running
-/// command's [`ErasedChild`](command_group::tokio::ErasedChild), but this library recommends
-/// against taking advantage of this, and prefer using the methods on [`Job`](super::Job) instead,
-/// so that the job can keep track of what's going on.
+/// command's [`TokioChildWrapper`], but this library recommends against taking advantage of this,
+/// and prefer using the methods on [`Job`](super::Job) instead, so that the job can keep track of
+/// what's going on.
 #[derive(Debug)]
 #[cfg_attr(test, derive(Clone))]
 pub enum CommandState {

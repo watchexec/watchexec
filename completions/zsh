@@ -14,7 +14,7 @@ _watchexec() {
     fi
 
     local context curcontext="$curcontext" state line
-    _arguments "${_arguments_options[@]}" \
+    _arguments "${_arguments_options[@]}" : \
 '*-w+[Watch a specific file or directory]:PATH:_files' \
 '*--watch=[Watch a specific file or directory]:PATH:_files' \
 '*-W+[Watch a specific directory, non-recursively]:PATH:_files' \

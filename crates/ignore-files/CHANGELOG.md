@@ -2,6 +2,10 @@
 
 ## Next (YYYY-MM-DD)
 
+## v3.0.2 (2024-10-14)
+
+- Deps: gix-config 0.40
+
 ## v3.0.1 (2024-04-28)
 
 - Hide fmt::Debug spew from ignore crate, use `full_debug` feature to restore.

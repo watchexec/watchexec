@@ -1,6 +1,6 @@
 [package]
 name = "watchexec"
-version = "4.1.0"
+version = "5.0.0"
 
 authors = ["Félix Saparelli <felix@passcod.name>", "Matt Green <mattgreenrocks@gmail.com>"]
 license = "Apache-2.0"
@@ -31,19 +31,19 @@ version = "8.0.0"
 features = ["tokio1"]
 
 [dependencies.watchexec-events]
-version = "3.0.0"
+version = "4.0.0"
 path = "../events"
 
 [dependencies.watchexec-signals]
-version = "3.0.0"
+version = "4.0.0"
 path = "../signals"
 
 [dependencies.watchexec-supervisor]
-version = "2.0.0"
+version = "3.0.0"
 path = "../supervisor"
 
 [dependencies.ignore-files]
-version = "3.0.1"
+version = "3.0.2"
 path = "../ignore-files"
 
 [dependencies.project-origins]
@@ -67,7 +67,7 @@ version = "0.1.40"
 features = ["log"]
 
 [target.'cfg(unix)'.dependencies.nix]
-version = "0.28.0"
+version = "0.29.0"
 features = ["signal"]
 
 [dev-dependencies.tracing-subscriber]

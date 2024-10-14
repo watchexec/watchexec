@@ -1,6 +1,6 @@
 [package]
 name = "watchexec-signals"
-version = "3.0.0"
+version = "4.0.0"
 
 authors = ["Félix Saparelli <felix@passcod.name>"]
 license = "Apache-2.0 OR MIT"
@@ -28,7 +28,7 @@ optional = true
 features = ["derive"]
 
 [target.'cfg(unix)'.dependencies.nix]
-version = "0.28.0"
+version = "0.29.0"
 features = ["signal"]
 
 [features]
