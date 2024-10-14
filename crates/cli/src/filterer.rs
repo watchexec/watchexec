@@ -112,9 +112,32 @@ impl WatchexecFilterer {
 			.filter(|p: &PathBuf| p.is_file());
 
 		let mut filters = args
-			.filter_patterns
+			.paths
 			.iter()
-			.map(|f| (f.to_owned(), Some(workdir.clone())))
+			.map(|wp| wp.into())
+			.filter(|path: &PathBuf| path.is_file())
+			.filter_map(|path| {
+				path.strip_prefix(workdir.clone())
+					.ok()
+					.map(|p| (format!("{}", p.display()), None))
+			})
+			.chain(
+				args.paths
+					.iter()
+					.map(|wp| wp.into())
+					.filter(|path: &PathBuf| path.is_dir())
+					.filter_map(|path| {
+						path.strip_prefix(workdir.clone())
+							.ok()
+							.map(|p| p.to_path_buf())
+					})
+					.map(|path: PathBuf| (format!("{}/**", path.display()), None)),
+			)
+			.chain(
+				args.filter_patterns
+					.iter()
+					.map(|f| (f.to_owned(), Some(workdir.clone()))),
+			)
 			.collect::<Vec<_>>();
 
 		for filter_file in &args.filter_files {
