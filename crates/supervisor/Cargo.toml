@@ -33,7 +33,7 @@ default-features = false
 path = "../events"
 
 [dependencies.watchexec-signals]
-version = "3.0.0"
+version = "4.0.0"
 default-features = false
 path = "../signals"
 
