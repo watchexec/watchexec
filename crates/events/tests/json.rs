@@ -2,7 +2,7 @@
 
 use std::num::{NonZeroI32, NonZeroI64};
 
-use snapbox::{assert_eq, file};
+use snapbox::{assert_data_eq, file};
 use watchexec_events::{
 	filekind::{CreateKind, FileEventKind as EventKind, ModifyKind, RemoveKind, RenameMode},
 	Event, FileType, Keyboard, ProcessEnd, Source, Tag,
@@ -20,9 +20,9 @@ fn single() {
 		metadata: Default::default(),
 	};
 
-	assert_eq(
-		file!["snapshots/single.json"],
+	assert_data_eq!(
 		serde_json::to_string_pretty(&single).unwrap(),
+		file!["snapshots/single.json"],
 	);
 
 	assert_eq!(
@@ -54,9 +54,9 @@ fn array() {
 		},
 	];
 
-	assert_eq(
-		file!["snapshots/array.json"],
+	assert_data_eq!(
 		serde_json::to_string_pretty(array).unwrap(),
+		file!["snapshots/array.json"],
 	);
 
 	assert_eq!(parse_file("tests/snapshots/array.json"), array);
@@ -73,9 +73,9 @@ fn metadata() {
 		.into(),
 	}];
 
-	assert_eq(
-		file!["snapshots/metadata.json"],
+	assert_data_eq!(
 		serde_json::to_string_pretty(metadata).unwrap(),
+		file!["snapshots/metadata.json"],
 	);
 
 	assert_eq!(parse_file("tests/snapshots/metadata.json"), metadata);
@@ -136,9 +136,9 @@ fn sources() {
 		},
 	];
 
-	assert_eq(
-		file!["snapshots/sources.json"],
+	assert_data_eq!(
 		serde_json::to_string_pretty(&sources).unwrap(),
+		file!["snapshots/sources.json"],
 	);
 
 	assert_eq!(parse_file("tests/snapshots/sources.json"), sources);
@@ -164,9 +164,9 @@ fn signals() {
 		},
 	];
 
-	assert_eq(
-		file!["snapshots/signals.json"],
+	assert_data_eq!(
 		serde_json::to_string_pretty(&signals).unwrap(),
+		file!["snapshots/signals.json"],
 	);
 
 	assert_eq!(parse_file("tests/snapshots/signals.json"), signals);
@@ -195,9 +195,9 @@ fn completions() {
 		},
 	];
 
-	assert_eq(
-		file!["snapshots/completions.json"],
+	assert_data_eq!(
 		serde_json::to_string_pretty(&completions).unwrap(),
+		file!["snapshots/completions.json"],
 	);
 
 	assert_eq!(parse_file("tests/snapshots/completions.json"), completions);
@@ -246,9 +246,9 @@ fn paths() {
 		},
 	];
 
-	assert_eq(
-		file!["snapshots/paths.json"],
+	assert_data_eq!(
 		serde_json::to_string_pretty(&paths).unwrap(),
+		file!["snapshots/paths.json"],
 	);
 
 	assert_eq!(parse_file("tests/snapshots/paths.json"), paths);
