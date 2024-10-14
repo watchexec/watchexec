@@ -82,7 +82,7 @@ version = "1.4.0"
 path = "../project-origins"
 
 [dependencies.watchexec]
-version = "4.1.0"
+version = "5.0.0"
 path = "../lib"
 
 [dependencies.watchexec-events]
