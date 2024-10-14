@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+- Deps: nix 0.29
+
 ## v2.0.0 (2024-04-20)
 
 - Deps: replace command-group with process-wrap

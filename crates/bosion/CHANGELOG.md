@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+- Deps: gix 0.66
+
 ## v1.1.0 (2024-05-16)
 
 - Add `git-describe` support (#832, by @lu-zero)

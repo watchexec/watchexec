@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+- Deps: nix 0.29
+
 ## v4.1.0 (2024-04-28)
 
 - Feature: non-recursive watches with `WatchedPath::non_recursive()`
