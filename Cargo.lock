@@ -2021,7 +2021,7 @@ dependencies = [
 
 [[package]]
 name = "ignore-files"
-version = "3.0.1"
+version = "3.0.2"
 dependencies = [
  "dunce",
  "futures",
