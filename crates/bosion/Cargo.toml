@@ -1,6 +1,6 @@
 [package]
 name = "bosion"
-version = "1.1.0"
+version = "1.1.1"
 
 authors = ["Félix Saparelli <felix@passcod.name>"]
 license = "Apache-2.0 OR MIT"
