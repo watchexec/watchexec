@@ -157,9 +157,11 @@ impl ProjectType {
 		matches!(
 			self,
 			Self::Bazaar
-				| Self::Darcs | Self::Fossil
+				| Self::Darcs
+				| Self::Fossil
 				| Self::Git | Self::Mercurial
-				| Self::Pijul | Self::Subversion
+				| Self::Pijul
+				| Self::Subversion
 		)
 	}
 
@@ -170,12 +172,14 @@ impl ProjectType {
 			self,
 			Self::Bundler
 				| Self::C | Self::Cargo
-				| Self::Docker | Self::Elixir
-				| Self::Gradle | Self::JavaScript
+				| Self::Docker
+				| Self::Elixir
+				| Self::Gradle
+				| Self::JavaScript
 				| Self::Leiningen
-				| Self::Maven | Self::Perl
-				| Self::PHP | Self::Pip
-				| Self::V
+				| Self::Maven
+				| Self::Perl | Self::PHP
+				| Self::Pip | Self::V
 		)
 	}
 }

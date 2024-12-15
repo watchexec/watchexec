@@ -330,9 +330,11 @@ fn multipath_is_sorted() {
 				"OTHERWISE_CHANGED",
 				OsString::from(
 					String::new()
-						+ "0123.txt" + ENV_SEP + "a.txt"
-						+ ENV_SEP + "b.txt" + ENV_SEP
-						+ "c.txt" + ENV_SEP + "ᄁ.txt"
+						+ "0123.txt" + ENV_SEP
+						+ "a.txt" + ENV_SEP
+						+ "b.txt" + ENV_SEP
+						+ "c.txt" + ENV_SEP
+						+ "ᄁ.txt"
 				)
 			),
 			("COMMON", ospath("")),
@@ -360,9 +362,11 @@ fn multipath_is_deduped() {
 				"OTHERWISE_CHANGED",
 				OsString::from(
 					String::new()
-						+ "0123.txt" + ENV_SEP + "a.txt"
-						+ ENV_SEP + "b.txt" + ENV_SEP
-						+ "c.txt" + ENV_SEP + "ᄁ.txt"
+						+ "0123.txt" + ENV_SEP
+						+ "a.txt" + ENV_SEP
+						+ "b.txt" + ENV_SEP
+						+ "c.txt" + ENV_SEP
+						+ "ᄁ.txt"
 				)
 			),
 			("COMMON", ospath("")),
