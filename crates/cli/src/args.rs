@@ -1260,6 +1260,8 @@ pub async fn get_args() -> Result<(Args, Option<WorkerGuard>)> {
 	} else {
 		crate::dirs::project_origin(&args).await?
 	};
+	debug!(path=?project_origin, "resolved project origin");
+	let project_origin = dunce::canonicalize(project_origin).into_diagnostic()?;
 	info!(path=?project_origin, "effective project origin");
 	args.project_origin = Some(project_origin.clone());
 
