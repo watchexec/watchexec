@@ -38,3 +38,17 @@ reproducible = []
 ### Specifically this is std support for the _using_ crate, not for the bosion crate itself. It's
 ### assumed that the bosion crate is always std, as it runs in build.rs.
 std = []
+
+[lints.clippy]
+nursery = "warn"
+pedantic = "warn"
+module_name_repetitions = "allow"
+similar_names = "allow"
+cognitive_complexity = "allow"
+too_many_lines = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+default_trait_access = "allow"
+enum_glob_use = "allow"
+option_if_let_else = "allow"
+blocks_in_conditions = "allow"
