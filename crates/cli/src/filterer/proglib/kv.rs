@@ -7,12 +7,12 @@ use tracing::trace;
 
 use crate::filterer::syncval::SyncVal;
 
-use super::macros::*;
+use super::macros::{return_err, string_arg};
 
 type KvStore = Arc<DashMap<String, SyncVal>>;
 fn kv_store() -> KvStore {
 	static KV_STORE: OnceCell<KvStore> = OnceCell::new();
-	KV_STORE.get_or_init(|| KvStore::default()).clone()
+	KV_STORE.get_or_init(KvStore::default).clone()
 }
 
 pub fn load(jaq: &mut ParseCtx) {
@@ -61,8 +61,7 @@ pub fn load(jaq: &mut ParseCtx) {
 
 				Box::new(once(Ok(kv
 					.get(&key)
-					.map(|val| val.value().into())
-					.unwrap_or(Val::Null))))
+					.map_or(Val::Null, |val| val.value().into()))))
 			}
 		}),
 	);

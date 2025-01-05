@@ -198,7 +198,7 @@ async fn async_func() {
 	let ticket = job.run_async({
 		let func_called = func_called.clone();
 		move |_| {
-			let func_called = func_called.clone();
+			let func_called = func_called;
 			Box::new(async move {
 				func_called.store(true, Ordering::Relaxed);
 			})

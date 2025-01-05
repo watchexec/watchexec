@@ -9,7 +9,7 @@ use jaq_interpret::{Error, Native, ParseCtx, Val};
 use serde_json::{json, Value};
 use tracing::{debug, error, trace};
 
-use super::macros::*;
+use super::macros::{int_arg, return_err};
 
 pub fn load(jaq: &mut ParseCtx) {
 	trace!("jaq: add file_read filter");

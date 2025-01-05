@@ -77,7 +77,7 @@ impl TestChild {
 		if let Program::Exec { prog, args } = &self.command.program {
 			if prog == Path::new("sleep") {
 				if let Some(time) = args
-					.get(0)
+					.first()
 					.and_then(|arg| arg.parse().ok())
 					.map(Duration::from_millis)
 				{
@@ -101,7 +101,7 @@ impl TestChild {
 			if let Program::Exec { prog, args } = &self.command.program {
 				if prog == Path::new("sleep") {
 					if let Some(time) = args
-						.get(0)
+						.first()
 						.and_then(|arg| arg.parse().ok())
 						.map(Duration::from_millis)
 					{

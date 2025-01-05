@@ -3,7 +3,7 @@ use std::iter::once;
 use jaq_interpret::{Error, Native, ParseCtx, Val};
 use tracing::{debug, error, info, trace, warn};
 
-use super::macros::*;
+use super::macros::{return_err, string_arg};
 
 macro_rules! log_action {
 	($level:expr, $val:expr) => {
@@ -55,11 +55,11 @@ pub fn load(jaq: &mut ParseCtx) {
 		0,
 		Native::with_update(
 			|_, (_, val)| {
-				println!("{}", val);
+				println!("{val}");
 				Box::new(once(Ok(val)))
 			},
 			|_, (_, val), _| {
-				println!("{}", val);
+				println!("{val}");
 				Box::new(once(Ok(val)))
 			},
 		),
@@ -71,11 +71,11 @@ pub fn load(jaq: &mut ParseCtx) {
 		0,
 		Native::with_update(
 			|_, (_, val)| {
-				eprintln!("{}", val);
+				eprintln!("{val}");
 				Box::new(once(Ok(val)))
 			},
 			|_, (_, val), _| {
-				eprintln!("{}", val);
+				eprintln!("{val}");
 				Box::new(once(Ok(val)))
 			},
 		),

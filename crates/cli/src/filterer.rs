@@ -16,7 +16,7 @@ use watchexec_filterer_globset::GlobsetFilterer;
 
 use crate::args::{Args, FsEvent};
 
-pub(crate) mod parse;
+pub mod parse;
 mod proglib;
 mod progs;
 mod syncval;
@@ -108,7 +108,7 @@ impl WatchexecFilterer {
 		let whitelist = args
 			.paths
 			.iter()
-			.map(|p| p.into())
+			.map(std::convert::Into::into)
 			.filter(|p: &PathBuf| p.is_file());
 
 		let mut filters = args

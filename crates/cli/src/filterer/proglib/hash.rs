@@ -3,7 +3,7 @@ use std::{fs::File, io::Read, iter::once};
 use jaq_interpret::{Error, Native, ParseCtx, Val};
 use tracing::{debug, error, trace};
 
-use super::macros::*;
+use super::macros::return_err;
 
 pub fn load(jaq: &mut ParseCtx) {
 	trace!("jaq: add hash filter");

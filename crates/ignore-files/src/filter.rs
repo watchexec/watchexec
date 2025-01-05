@@ -171,7 +171,7 @@ impl IgnoreFilter {
 		);
 
 		Ok(Self {
-			origin: origin.to_owned(),
+			origin: origin.clone(),
 			ignores: ignores_trie,
 		})
 	}

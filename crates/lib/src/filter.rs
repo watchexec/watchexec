@@ -41,7 +41,7 @@ impl ChangeableFilterer {
 	/// Replace the filterer with a new one.
 	///
 	/// Panics if the lock was poisoned.
-	pub fn replace(&self, new: impl Filterer + Send + Sync + 'static) {
+	pub fn replace(&self, new: impl Filterer + 'static) {
 		self.0.replace(Arc::new(new));
 	}
 }

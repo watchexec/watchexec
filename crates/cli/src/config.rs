@@ -343,7 +343,9 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 				}
 
 				// only filesystem events below here (or empty synthetic events)
-				if action.paths().next().is_none() && !action.events.iter().any(|e| e.is_empty()) {
+				if action.paths().next().is_none()
+					&& !action.events.iter().any(watchexec_events::Event::is_empty)
+				{
 					debug!("no filesystem or synthetic events, skip without doing more");
 					show_events();
 					return action;
@@ -387,7 +389,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 												innerjob.clone(),
 												context.command.clone(),
 												outflags,
-											)
+											);
 										});
 									}
 									OnBusyUpdate::Restart => {
@@ -401,7 +403,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 												innerjob.clone(),
 												context.command.clone(),
 												outflags,
-											)
+											);
 										});
 									}
 									OnBusyUpdate::Queue => {
@@ -425,7 +427,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 															innerjob.clone(),
 															context.command.clone(),
 															outflags,
-														)
+														);
 													})
 													.await;
 													trace!("resetting queued state");
@@ -444,7 +446,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 										innerjob.clone(),
 										context.command.clone(),
 										outflags,
-									)
+									);
 								});
 							}
 						})
@@ -463,9 +465,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 #[instrument(level = "debug")]
 fn interpret_command_args(args: &Args) -> Result<Arc<Command>> {
 	let mut cmd = args.command.clone();
-	if cmd.is_empty() {
-		panic!("(clap) Bug: command is not present");
-	}
+	assert!(!cmd.is_empty(), "(clap) Bug: command is not present");
 
 	let shell = if args.no_shell {
 		None
@@ -637,7 +637,7 @@ fn emit_events_to_command(
 	emit_events_to: EmitEvents,
 	mut add_envs: HashMap<String, OsString>,
 ) {
-	use crate::emits::*;
+	use crate::emits::{emits_to_environment, emits_to_file, emits_to_json_file};
 
 	let mut stdin = None;
 
@@ -695,7 +695,7 @@ fn emit_events_to_command(
 	}
 }
 
-pub(crate) fn reset_screen() {
+pub fn reset_screen() {
 	for cs in [
 		ClearScreen::WindowsCooked,
 		ClearScreen::WindowsVt,

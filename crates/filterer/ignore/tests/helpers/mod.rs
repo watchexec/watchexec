@@ -3,11 +3,8 @@ use std::path::{Path, PathBuf};
 use ignore_files::{IgnoreFile, IgnoreFilter};
 use project_origins::ProjectType;
 use watchexec::{error::RuntimeError, filter::Filterer};
-use watchexec_events::{
-	filekind::FileEventKind, Event, FileType, Priority, ProcessEnd, Source, Tag,
-};
+use watchexec_events::{Event, FileType, Priority, Tag};
 use watchexec_filterer_ignore::IgnoreFilterer;
-use watchexec_signals::Signal;
 
 pub mod ignore {
 	pub use super::ig_file as file;
