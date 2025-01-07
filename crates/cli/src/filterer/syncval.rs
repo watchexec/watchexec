@@ -1,8 +1,8 @@
-/// Jaq's [Val](jaq_interpret::Val) uses Rc, but we want to use in Sync contexts. UGH!
+/// Jaq's [Val](jaq_json::Val) uses Rc, but we want to use in Sync contexts. UGH!
 use std::{rc::Rc, sync::Arc};
 
 use indexmap::IndexMap;
-use jaq_interpret::Val;
+use jaq_json::Val;
 
 #[derive(Clone, Debug)]
 pub enum SyncVal {
@@ -60,7 +60,7 @@ impl From<&SyncVal> for Val {
 				arr.into()
 			}),
 			SyncVal::Obj(m) => Self::Obj(Rc::new({
-				let mut map: IndexMap<_, _, ahash::RandomState> = Default::default();
+				let mut map: IndexMap<_, _, foldhash::fast::RandomState> = Default::default();
 				for (k, v) in m.iter() {
 					map.insert(k.to_string().into(), v.into());
 				}

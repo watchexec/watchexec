@@ -1,9 +1,11 @@
 use std::iter::once;
 
-use jaq_interpret::{Error, Native, ParseCtx, Val};
+use jaq_core::{Ctx, Error, Native};
+use jaq_json::Val;
+use jaq_std::{v, Filter};
 use tracing::{debug, error, info, trace, warn};
 
-use super::macros::{return_err, string_arg};
+use super::macros::return_err;
 
 macro_rules! log_action {
 	($level:expr, $val:expr) => {
@@ -18,66 +20,49 @@ macro_rules! log_action {
 	};
 }
 
-pub fn load(jaq: &mut ParseCtx) {
-	trace!("jaq: add log filter");
-	jaq.insert_native(
-		"log".into(),
-		1,
-		Native::with_update(
-			|args, (ctx, val)| {
-				let level = match string_arg!(args, 0, ctx, val) {
-					Ok(v) => v,
-					Err(e) => return_err!(Err(e)),
-				};
-
+pub fn funs() -> [Filter<Native<jaq_json::Val>>; 3] {
+	[
+		(
+			"log",
+			v(1),
+			Native::new(|_, (mut ctx, val): (Ctx<'_, Val>, _)| {
+				let level = ctx.pop_var().to_string();
 				log_action!(level, val);
 
 				// passthrough
 				Box::new(once(Ok(val)))
-			},
-			|args, (ctx, val), _| {
-				let level = match string_arg!(args, 0, ctx, val) {
-					Ok(v) => v,
-					Err(e) => return_err!(Err(e)),
-				};
-
+			})
+			.with_update(|_, (mut ctx, val), _| {
+				let level = ctx.pop_var().to_string();
 				log_action!(level, val);
 
 				// passthrough
 				Box::new(once(Ok(val)))
-			},
+			}),
 		),
-	);
-
-	trace!("jaq: add printout filter");
-	jaq.insert_native(
-		"printout".into(),
-		0,
-		Native::with_update(
-			|_, (_, val)| {
+		(
+			"printout",
+			v(0),
+			Native::new(|_, (_, val)| {
 				println!("{val}");
 				Box::new(once(Ok(val)))
-			},
-			|_, (_, val), _| {
+			})
+			.with_update(|_, (_, val), _| {
 				println!("{val}");
 				Box::new(once(Ok(val)))
-			},
+			}),
 		),
-	);
-
-	trace!("jaq: add printerr filter");
-	jaq.insert_native(
-		"printerr".into(),
-		0,
-		Native::with_update(
-			|_, (_, val)| {
+		(
+			"printerr",
+			v(0),
+			Native::new(|_, (_, val)| {
 				eprintln!("{val}");
 				Box::new(once(Ok(val)))
-			},
-			|_, (_, val), _| {
+			})
+			.with_update(|_, (_, val), _| {
 				eprintln!("{val}");
 				Box::new(once(Ok(val)))
-			},
+			}),
 		),
-	);
+	]
 }

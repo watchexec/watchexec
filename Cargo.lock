@@ -24,7 +24,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e89da841a80418a9b391ebaea17f5c112ffaaa96f621d2c285b5174da76b9011"
 dependencies = [
  "cfg-if",
- "getrandom",
  "once_cell",
  "version_check",
  "zerocopy",
@@ -590,15 +589,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "chumsky"
-version = "0.9.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8eebd66744a15ded14960ab4ccdbfb51ad3b81f51f3f04a80adac98c985396c9"
-dependencies = [
- "hashbrown 0.14.5",
-]
-
-[[package]]
 name = "clap"
 version = "4.5.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1106,6 +1096,12 @@ name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
+
+[[package]]
+name = "foldhash"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a0d2fde1f7b3d48b8395d5f2de76c18a528bd6a9cdde438df747bfcba3e05d6f"
 
 [[package]]
 name = "form_urlencoded"
@@ -2321,62 +2317,43 @@ checksum = "d75a2a4b1b190afb6f5425f10f6a8f959d2ea0b9c2b1d79553551850539e4674"
 
 [[package]]
 name = "jaq-core"
-version = "1.5.1"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6fda09ee08c84c81293fdf811d9ebaa87b327557b5391f290c926d728c2ddd4"
+checksum = "d03ee1b714d63f0a5820131180056b592ecd400b32879c848e53e58707f19df0"
 dependencies = [
- "aho-corasick",
- "base64 0.22.1",
- "chrono",
- "hifijson",
- "jaq-interpret",
- "libm",
- "log",
- "regex",
- "urlencoding",
+ "dyn-clone",
+ "once_cell",
+ "typed-arena",
 ]
 
 [[package]]
-name = "jaq-interpret"
-version = "1.5.0"
+name = "jaq-json"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2fe95ec3c24af3fd9f3dd1091593f5e49b003a66c496a8aa39d764d0a06ae17b"
+checksum = "8daf2b52304419d7bf5ec32891884c65274a3eedc0b5834b84627099901a1176"
 dependencies = [
- "ahash",
- "dyn-clone",
+ "foldhash",
  "hifijson",
  "indexmap 2.7.0",
- "jaq-syn",
- "once_cell",
+ "jaq-core",
+ "jaq-std",
  "serde_json",
 ]
 
 [[package]]
-name = "jaq-parse"
-version = "1.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0346d7d3146cdda8acd929581f3d6626a332356c74d5c95aeaffaac2eb6dee82"
-dependencies = [
- "chumsky",
- "jaq-syn",
-]
-
-[[package]]
 name = "jaq-std"
-version = "1.6.0"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bfbaa55578fd3b70433b594a370741e0c364e4afff92cc0099623fce87311bc1"
+checksum = "80e2c65cceafd4c0019f15a0dac7c0dd659b0fcf5182fc3a10d15b89d89ac6e8"
 dependencies = [
- "jaq-syn",
-]
-
-[[package]]
-name = "jaq-syn"
-version = "1.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ba44fe4428c71304604261ecbae047ee9cfb60c4f1a6bd222ebbb31726d3948"
-dependencies = [
- "serde",
+ "aho-corasick",
+ "base64 0.22.1",
+ "chrono",
+ "jaq-core",
+ "libm",
+ "log",
+ "regex-lite",
+ "urlencoding",
 ]
 
 [[package]]
@@ -3283,6 +3260,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "regex-lite"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "53a49587ad06b26609c52e423de037e7f57f20d53535d66e08c695f347df952a"
+
+[[package]]
 name = "regex-syntax"
 version = "0.6.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4081,6 +4064,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
 
 [[package]]
+name = "typed-arena"
+version = "2.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6af6ae20167a9ece4bcb41af5b80f8a1f1df981f6391189ce00fd257af04126a"
+
+[[package]]
 name = "typenum"
 version = "1.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4331,7 +4320,6 @@ dependencies = [
 name = "watchexec-cli"
 version = "2.2.1"
 dependencies = [
- "ahash",
  "argfile",
  "blake3",
  "bosion",
@@ -4347,16 +4335,15 @@ dependencies = [
  "dunce",
  "embed-resource",
  "eyra",
+ "foldhash",
  "futures",
  "humantime",
  "ignore-files",
  "indexmap 2.7.0",
  "is-terminal",
  "jaq-core",
- "jaq-interpret",
- "jaq-parse",
+ "jaq-json",
  "jaq-std",
- "jaq-syn",
  "miette",
  "mimalloc",
  "notify-rust",

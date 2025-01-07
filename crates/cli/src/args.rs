@@ -16,14 +16,14 @@ use clap::{
 use miette::{IntoDiagnostic, Result};
 use tokio::{
 	fs::File,
-	io::{AsyncBufReadExt, AsyncReadExt, BufReader},
+	io::{AsyncBufReadExt, BufReader},
 };
-use tracing::{debug, info, trace, warn};
+use tracing::{debug, info, warn};
 use tracing_appender::non_blocking::WorkerGuard;
 use watchexec::{paths::PATH_SEPARATOR, sources::fs::WatchedPath};
 use watchexec_signals::Signal;
 
-use crate::filterer::parse::parse_filter_program;
+use crate::filterer::parse::FilterProgram;
 
 mod logging;
 
@@ -901,7 +901,7 @@ pub struct Args {
 
 	#[doc(hidden)]
 	#[clap(skip)]
-	pub filter_programs_parsed: Vec<jaq_syn::Main>,
+	pub filter_programs_parsed: Vec<FilterProgram>,
 
 	/// Filename patterns to filter out
 	///
@@ -1321,23 +1321,15 @@ pub async fn get_args() -> Result<(Args, Option<WorkerGuard>)> {
 	}
 	info!(paths=?args.paths, "effective watched paths");
 
-	for (n, prog) in args.filter_programs.iter_mut().enumerate() {
+	for (n, prog) in args.filter_programs.iter().enumerate() {
 		if let Some(progpath) = prog.strip_prefix('@') {
-			trace!(?n, path=?progpath, "reading filter program from file");
-			let mut progfile = File::open(&progpath).await.into_diagnostic()?;
-			let mut buf =
-				String::with_capacity(progfile.metadata().await.into_diagnostic()?.len() as _);
-			let bytes_read = progfile.read_to_string(&mut buf).await.into_diagnostic()?;
-			debug!(?n, path=?progpath, %bytes_read, "read filter program from file");
-			*prog = buf;
+			args.filter_programs_parsed
+				.push(FilterProgram::new_jaq_from_file(progpath).await?);
+		} else {
+			args.filter_programs_parsed
+				.push(FilterProgram::new_jaq_from_arg(n, prog.clone())?);
 		}
 	}
-
-	args.filter_programs_parsed = take(&mut args.filter_programs)
-		.into_iter()
-		.enumerate()
-		.map(parse_filter_program)
-		.collect::<Result<_, _>>()?;
 
 	debug_assert!(args.workdir.is_some());
 	debug_assert!(args.project_origin.is_some());
