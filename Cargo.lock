@@ -571,12 +571,6 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "cfg_aliases"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd16c4719339c4530435d38e511904438d07cce7950afa3718a84ac36c10e89e"
-
-[[package]]
-name = "cfg_aliases"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "613afe47fcd5fac7ccf1db93babcb082c5994d996f20b8b159f2ad1658eb5724"
@@ -676,15 +670,15 @@ dependencies = [
 
 [[package]]
 name = "clearscreen"
-version = "3.0.0"
+version = "4.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f8c93eb5f77c9050c7750e14f13ef1033a40a0aac70c6371535b6763a01438c"
+checksum = "8c41dc435a7b98e4608224bbf65282309f5403719df9113621b30f8b6f74e2f4"
 dependencies = [
- "nix 0.28.0",
+ "nix",
  "terminfo",
- "thiserror 1.0.69",
- "which",
- "winapi",
+ "thiserror 2.0.11",
+ "which 7.0.1",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -872,20 +866,11 @@ dependencies = [
 
 [[package]]
 name = "dirs"
-version = "4.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca3aa72a6f96ea37bbc5aa912f6788242832f75369bdfdadcb0e38423f100059"
-dependencies = [
- "dirs-sys 0.3.7",
-]
-
-[[package]]
-name = "dirs"
 version = "5.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "44c45a9d03d6676652bcb5e724c7e988de1acad23a711b5217ab9cbecbec2225"
 dependencies = [
- "dirs-sys 0.4.1",
+ "dirs-sys",
 ]
 
 [[package]]
@@ -896,17 +881,6 @@ checksum = "b98cf8ebf19c3d1b223e151f99a4f9f0690dca41414773390fc824184ac833e1"
 dependencies = [
  "cfg-if",
  "dirs-sys-next",
-]
-
-[[package]]
-name = "dirs-sys"
-version = "0.3.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b1d1d91c932ef41c0f2663aa8b0ca0342d444d842c06914aa0a7e352d0bada6"
-dependencies = [
- "libc",
- "redox_users",
- "winapi",
 ]
 
 [[package]]
@@ -1016,6 +990,12 @@ checksum = "186e05a59d4c50738528153b83b0b0194d3a29507dfec16eccd4b342903397d0"
 dependencies = [
  "log",
 ]
+
+[[package]]
+name = "env_home"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c7f84e12ccf0a7ddc17a6c41c93326024c42920d7ee630d04950e6926645c0fe"
 
 [[package]]
 name = "env_logger"
@@ -2681,25 +2661,13 @@ dependencies = [
 
 [[package]]
 name = "nix"
-version = "0.28.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab2156c4fce2f8df6c499cc1c763e4394b7482525bf2a9701c9d79d215f519e4"
-dependencies = [
- "bitflags 2.7.0",
- "cfg-if",
- "cfg_aliases 0.1.1",
- "libc",
-]
-
-[[package]]
-name = "nix"
 version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "71e2746dc3a24dd78b3cfcb7be93368c6de9963d30f43a6a73998a9cf4b17b46"
 dependencies = [
  "bitflags 2.7.0",
  "cfg-if",
- "cfg_aliases 0.2.1",
+ "cfg_aliases",
  "libc",
  "memoffset",
 ]
@@ -2978,7 +2946,7 @@ version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "796bf4730cee22991d5efb5f559283fd25684d689f62ceb597ee7983f59644eb"
 dependencies = [
- "nix 0.29.0",
+ "nix",
  "signal-hook",
  "thiserror 1.0.69",
 ]
@@ -3115,7 +3083,7 @@ checksum = "d35f4dc9988d1326b065b4def5e950c3ed727aa03e3151b86cc9e2aec6b03f54"
 dependencies = [
  "futures",
  "indexmap 2.7.0",
- "nix 0.29.0",
+ "nix",
  "tokio",
  "tracing",
  "windows 0.59.0",
@@ -3709,11 +3677,10 @@ dependencies = [
 
 [[package]]
 name = "terminfo"
-version = "0.8.0"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "666cd3a6681775d22b200409aad3b089c5b99fb11ecdd8a204d9d62f8148498f"
+checksum = "d4ea810f0692f9f51b382fff5893887bb4580f5fa246fde546e0b13e7fcee662"
 dependencies = [
- "dirs 4.0.0",
  "fnv",
  "nom",
  "phf",
@@ -4345,7 +4312,7 @@ dependencies = [
  "futures",
  "ignore-files",
  "miette",
- "nix 0.29.0",
+ "nix",
  "normalize-path",
  "notify",
  "once_cell",
@@ -4376,7 +4343,7 @@ dependencies = [
  "clearscreen",
  "console-subscriber",
  "dashmap",
- "dirs 5.0.1",
+ "dirs",
  "dunce",
  "embed-resource",
  "eyra",
@@ -4410,14 +4377,14 @@ dependencies = [
  "watchexec-events",
  "watchexec-filterer-globset",
  "watchexec-signals",
- "which",
+ "which 6.0.3",
 ]
 
 [[package]]
 name = "watchexec-events"
 version = "4.0.0"
 dependencies = [
- "nix 0.29.0",
+ "nix",
  "notify-types",
  "serde",
  "serde_json",
@@ -4462,7 +4429,7 @@ name = "watchexec-signals"
 version = "4.0.0"
 dependencies = [
  "miette",
- "nix 0.29.0",
+ "nix",
  "serde",
  "thiserror 2.0.11",
 ]
@@ -4473,7 +4440,7 @@ version = "3.0.0"
 dependencies = [
  "boxcar",
  "futures",
- "nix 0.29.0",
+ "nix",
  "process-wrap",
  "tokio",
  "tracing",
@@ -4489,6 +4456,18 @@ checksum = "b4ee928febd44d98f2f459a4a79bd4d928591333a494a10a868418ac1b39cf1f"
 dependencies = [
  "either",
  "home",
+ "rustix",
+ "winsafe",
+]
+
+[[package]]
+name = "which"
+version = "7.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb4a9e33648339dc1642b0e36e21b3385e6148e289226f657c809dee59df5028"
+dependencies = [
+ "either",
+ "env_home",
  "rustix",
  "winsafe",
 ]
@@ -4963,7 +4942,7 @@ dependencies = [
  "futures-sink",
  "futures-util",
  "hex",
- "nix 0.29.0",
+ "nix",
  "ordered-stream",
  "rand",
  "serde",
