@@ -145,8 +145,14 @@ impl From<&Path> for IgnoreFilesFromOriginArgs {
 ///
 /// This function panics if the `args` are not correctly-formed; this can be checked beforehand
 /// without panicking with [`IgnoreFilesFromOriginArgs::check()`].
-#[expect(clippy::future_not_send, reason = "gix_config internals, if this changes: update the doc")]
-#[allow(clippy::too_many_lines, reason = "it's just the discover_file calls that explode the line count")]
+#[expect(
+	clippy::future_not_send,
+	reason = "gix_config internals, if this changes: update the doc"
+)]
+#[allow(
+	clippy::too_many_lines,
+	reason = "it's just the discover_file calls that explode the line count"
+)]
 pub async fn from_origin(
 	args: impl Into<IgnoreFilesFromOriginArgs>,
 ) -> (Vec<IgnoreFile>, Vec<Error>) {
@@ -315,7 +321,10 @@ pub async fn from_origin(
 /// ## Async
 ///
 /// This future is not `Send` due to [`gix_config`] internals.
-#[expect(clippy::future_not_send, reason = "gix_config internals, if this changes: update the doc")]
+#[expect(
+	clippy::future_not_send,
+	reason = "gix_config internals, if this changes: update the doc"
+)]
 #[allow(clippy::too_many_lines, reason = "clearer than broken up needlessly")]
 pub async fn from_environment(appname: Option<&str>) -> (Vec<IgnoreFile>, Vec<Error>) {
 	let mut files = Vec::new();

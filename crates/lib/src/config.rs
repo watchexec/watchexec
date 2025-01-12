@@ -177,7 +177,10 @@ impl Config {
 	///
 	/// This is called automatically by all other methods here, so most of the time calling this
 	/// isn't needed, but it can be useful for some advanced uses.
-	#[allow(clippy::must_use_candidate, reason = "this return can explicitly be ignored")]
+	#[allow(
+		clippy::must_use_candidate,
+		reason = "this return can explicitly be ignored"
+	)]
 	pub fn signal_change(&self) -> &Self {
 		self.change_signal.notify_waiters();
 		self
@@ -227,7 +230,7 @@ impl Config {
 	}
 
 	/// Set the filterer implementation to use.
-	pub fn filterer(&self, filterer: impl Filterer + Send + Sync + 'static) -> &Self {
+	pub fn filterer(&self, filterer: impl Filterer + 'static) -> &Self {
 		debug!(?filterer, "Config: filterer");
 		self.filterer.replace(filterer);
 		self.signal_change()
