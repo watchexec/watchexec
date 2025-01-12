@@ -170,7 +170,8 @@ impl From<Tag> for SerdeTag {
 	}
 }
 
-#[allow(clippy::fallible_impl_from)] // due to the unwraps
+#[allow(clippy::fallible_impl_from, reason = "this triggers due to the unwraps, which are checked by branches")]
+#[allow(clippy::too_many_lines, reason = "clearer as a single match tree than broken up")]
 impl From<SerdeTag> for Tag {
 	fn from(value: SerdeTag) -> Self {
 		match value {
