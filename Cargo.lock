@@ -517,9 +517,9 @@ checksum = "325918d6fe32f23b19878fe4b34794ae41fc19ddbe53b10571a4874d44ffd39b"
 
 [[package]]
 name = "c-gull"
-version = "0.20.3"
+version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "60ac40e9c2c3b7da64c36a9301d86f034bb7d5686de2eca5c9faaaaeb75d3079"
+checksum = "eca9be6f3146947422366312e5792602d50a21a19539e25b10fca658c9cc98e0"
 dependencies = [
  "c-scape",
  "errno",
@@ -530,9 +530,9 @@ dependencies = [
 
 [[package]]
 name = "c-scape"
-version = "0.20.3"
+version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "23be457dcd3af52a261c2e146c78efcba640b188662803defa3c07b98def3725"
+checksum = "eaa2cb103578f524a0776efdb1c559c3dcb2e945443bb18f1ecb67e248e204ef"
 dependencies = [
  "bitflags 2.7.0",
  "errno",
@@ -1057,9 +1057,9 @@ dependencies = [
 
 [[package]]
 name = "eyra"
-version = "0.19.1"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51b1ec39a823fa13de862d945e02ee7a26b7f3af25662bef71a3264770328a5c"
+checksum = "1ef074b4a2e8ebe04045f1d2d056e69eb9770b1ad3fcf0bcf4c59128b139b4d5"
 dependencies = [
  "c-gull",
 ]
@@ -2832,9 +2832,9 @@ dependencies = [
 
 [[package]]
 name = "origin"
-version = "0.23.3"
+version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fee4c2b8008514d83dafa4263a0798f88bb35877f4d5fb1dfc0ebe3c312a7e6e"
+checksum = "6dedb8763b82677c2d8bc7b40c5f6042795991131edeb2d1d0b9f2349dab088f"
 dependencies = [
  "bitflags 2.7.0",
  "env_logger",
