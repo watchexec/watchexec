@@ -433,8 +433,7 @@ sync_async_callbox!(ErrorHandler, SyncErrorHandler, AsyncErrorHandler, (error: S
 #[instrument(level = "trace")]
 async fn signal_child(
 	signal: Signal,
-	#[cfg(not(test))] child: &mut Box<dyn process_wrap::tokio::TokioChildWrapper>,
-	#[cfg(test)] child: &mut super::TestChild,
+	child: &mut Box<dyn process_wrap::tokio::TokioChildWrapper>,
 ) -> std::io::Result<()> {
 	#[cfg(unix)]
 	{

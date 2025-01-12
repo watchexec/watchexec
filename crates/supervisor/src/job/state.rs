@@ -16,7 +16,6 @@ use crate::command::Command;
 /// and prefer using the methods on [`Job`](super::Job) instead, so that the job can keep track of
 /// what's going on.
 #[derive(Debug)]
-#[cfg_attr(test, derive(Clone))]
 pub enum CommandState {
 	/// The command is neither running nor has finished. This is the initial state.
 	Pending,
@@ -25,12 +24,7 @@ pub enum CommandState {
 	/// and not precisely synchronised with the process' aliveness: in some cases the process may be
 	/// exited but still `Running` in this enum.
 	Running {
-		/// The child process (test version).
-		#[cfg(test)]
-		child: super::TestChild,
-
 		/// The child process.
-		#[cfg(not(test))]
 		child: Box<dyn TokioChildWrapper>,
 
 		/// The time at which the process was spawned.
@@ -48,6 +42,28 @@ pub enum CommandState {
 		/// The time at which the process finished, or more precisely, when its status was collected.
 		finished: Instant,
 	},
+}
+
+#[cfg(test)]
+impl Clone for CommandState {
+	fn clone(&self) -> Self {
+		match self {
+			Self::Pending => Self::Pending,
+			Self::Running { child, started } => Self::Running {
+				child: child.try_clone().unwrap(),
+				started: started.clone(),
+			},
+			Self::Finished {
+				status,
+				started,
+				finished,
+			} => Self::Finished {
+				status: status.clone(),
+				started: started.clone(),
+				finished: finished.clone(),
+			},
+		}
+	}
 }
 
 impl CommandState {
@@ -69,7 +85,10 @@ impl CommandState {
 		matches!(self, Self::Finished { .. })
 	}
 
-	#[cfg_attr(test, allow(unused_mut, unused_variables))]
+	#[cfg_attr(
+		test,
+		allow(unused_mut, unused_variables, clippy::needless_pass_by_value)
+	)]
 	pub(crate) fn spawn(
 		&mut self,
 		command: Arc<Command>,
@@ -83,7 +102,7 @@ impl CommandState {
 		trace!(?command, "spawning command");
 
 		#[cfg(test)]
-		let child = super::TestChild::new(command)?;
+		let child = Box::new(super::TestChild::new(command)?);
 
 		#[cfg(not(test))]
 		let child = spawnable.spawn()?;

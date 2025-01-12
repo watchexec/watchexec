@@ -7,14 +7,16 @@ use std::{
 	time::{Duration, Instant},
 };
 
+use process_wrap::tokio::TokioChildWrapper;
 use tokio::{sync::Mutex, time::sleep};
 use watchexec_events::ProcessEnd;
 
 use crate::command::{Command, Program};
 
-/// Mock version of [`TokioChildWrapper`](process_wrap::tokio::TokioChildWrapper).
+/// Mock implementation of [`TokioChildWrapper`](process_wrap::tokio::TokioChildWrapper).
 #[derive(Debug, Clone)]
 pub struct TestChild {
+	#[allow(dead_code)]
 	pub grouped: bool,
 	pub command: Arc<Command>,
 	pub calls: Arc<boxcar::Vec<TestChildCall>>,
@@ -54,24 +56,51 @@ pub enum TestChildCall {
 	Signal(i32),
 }
 
-// Exact same signatures as ErasedChild
-impl TestChild {
-	pub fn id(&mut self) -> Option<u32> {
+impl TokioChildWrapper for TestChild {
+	fn inner(&self) -> &tokio::process::Child {
+		unimplemented!("mock")
+	}
+
+	fn inner_mut(&mut self) -> &mut tokio::process::Child {
+		unimplemented!("mock")
+	}
+
+	fn into_inner(self: Box<Self>) -> tokio::process::Child {
+		unimplemented!("mock")
+	}
+
+	fn stdin(&mut self) -> &mut Option<tokio::process::ChildStdin> {
+		unimplemented!("mock")
+	}
+
+	fn stdout(&mut self) -> &mut Option<tokio::process::ChildStdout> {
+		unimplemented!("mock")
+	}
+
+	fn stderr(&mut self) -> &mut Option<tokio::process::ChildStderr> {
+		unimplemented!("mock")
+	}
+
+	fn try_clone(&self) -> Option<Box<dyn TokioChildWrapper>> {
+		Some(Box::new(self.clone()))
+	}
+
+	fn id(&self) -> Option<u32> {
 		self.calls.push(TestChildCall::Id);
 		None
 	}
 
-	pub fn kill(&mut self) -> Box<dyn Future<Output = Result<()>> + Send + '_> {
+	fn kill(&mut self) -> Box<dyn Future<Output = Result<()>> + Send + '_> {
 		self.calls.push(TestChildCall::Kill);
 		Box::new(async { Ok(()) })
 	}
 
-	pub fn start_kill(&mut self) -> Result<()> {
+	fn start_kill(&mut self) -> Result<()> {
 		self.calls.push(TestChildCall::StartKill);
 		Ok(())
 	}
 
-	pub fn try_wait(&mut self) -> Result<Option<ExitStatus>> {
+	fn try_wait(&mut self) -> Result<Option<ExitStatus>> {
 		self.calls.push(TestChildCall::TryWait);
 
 		if let Program::Exec { prog, args } = &self.command.program {
@@ -95,7 +124,7 @@ impl TestChild {
 			.and_then(|o| o.as_ref().map(|o| o.status)))
 	}
 
-	pub fn wait(&mut self) -> Box<dyn Future<Output = Result<ExitStatus>> + Send + '_> {
+	fn wait(&mut self) -> Box<dyn Future<Output = Result<ExitStatus>> + Send + '_> {
 		self.calls.push(TestChildCall::Wait);
 		Box::new(async {
 			if let Program::Exec { prog, args } = &self.command.program {
@@ -132,21 +161,21 @@ impl TestChild {
 		})
 	}
 
-	pub fn wait_with_output(self) -> Box<dyn Future<Output = Result<Output>> + Send> {
+	fn wait_with_output(self: Box<TestChild>) -> Box<dyn Future<Output = Result<Output>> + Send> {
 		Box::new(async move {
 			loop {
 				let mut output = self.output.lock().await;
 				if let Some(output) = output.take() {
 					return Ok(output);
-				} else {
-					sleep(Duration::from_secs(1)).await;
 				}
+
+				sleep(Duration::from_secs(1)).await;
 			}
 		})
 	}
 
 	#[cfg(unix)]
-	pub fn signal(&self, sig: i32) -> Result<()> {
+	fn signal(&self, sig: i32) -> Result<()> {
 		self.calls.push(TestChildCall::Signal(sig));
 		Ok(())
 	}

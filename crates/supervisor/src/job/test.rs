@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
 use std::{
+	any::Any,
 	num::NonZeroI64,
 	process::{ExitStatus, Output},
 	sync::{
@@ -243,7 +244,8 @@ async fn set_running_child_status(job: &Job, status: ExitStatus) {
 		[Control::AsyncFunc(Box::new({
 			move |context| {
 				let output_lock = if let CommandState::Running { child, .. } = context.current {
-					Some(child.output.clone())
+					let testchild: &TestChild = <dyn Any>::downcast_ref(&*child).unwrap();
+					Some(testchild.output.clone())
 				} else {
 					None
 				};
@@ -307,7 +309,10 @@ async fn get_child(job: &Job) -> TestChild {
 	let state = state.lock().unwrap();
 	let state = state.as_ref().expect("no state");
 	match state {
-		CommandState::Running { ref child, .. } => child.clone(),
+		CommandState::Running { ref child, .. } => {
+			let testchild: &TestChild = <dyn Any>::downcast_ref(&*child).unwrap();
+			testchild.clone()
+		}
 		_ => panic!("get_child: expected IsRunning, got {state:?}"),
 	}
 }
