@@ -14,8 +14,8 @@ readme = "README.md"
 rust-version = "1.61.0"
 edition = "2021"
 
-[dependencies.notify]
-version = "6.0.0"
+[dependencies.notify-types]
+version = "2.0.0"
 optional = true
 
 [dependencies.serde]
@@ -38,8 +38,8 @@ serde_json = "1.0.107"
 
 [features]
 default = ["notify"]
-notify = ["dep:notify"]
-serde = ["dep:serde", "notify?/serde", "watchexec-signals/serde"]
+notify = ["dep:notify-types"]
+serde = ["dep:serde", "notify-types?/serde", "watchexec-signals/serde"]
 
 [lints.clippy]
 nursery = "warn"

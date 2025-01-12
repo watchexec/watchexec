@@ -3,7 +3,7 @@ use std::fmt;
 /// Re-export of the Notify file event types.
 #[cfg(feature = "notify")]
 pub mod filekind {
-	pub use notify::event::{
+	pub use notify_types::event::{
 		AccessKind, AccessMode, CreateKind, DataChange, EventKind as FileEventKind, MetadataKind,
 		ModifyKind, RemoveKind, RenameMode,
 	};
