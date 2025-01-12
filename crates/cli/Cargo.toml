@@ -124,7 +124,7 @@ features = [
 mimalloc = "0.1.39"
 
 [build-dependencies]
-embed-resource = "2.4.0"
+embed-resource = "3.0.1"
 
 [build-dependencies.bosion]
 version = "1.1.1"
