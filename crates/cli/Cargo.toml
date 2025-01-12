@@ -46,7 +46,7 @@ tempfile = "3.8.1"
 termcolor = "1.4.0"
 tracing = "0.1.40"
 tracing-appender = "0.2.3"
-which = "6.0.1"
+which = "7.0.1"
 
 [dependencies.blake3]
 version = "1.3.3"

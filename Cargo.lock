@@ -677,7 +677,7 @@ dependencies = [
  "nix",
  "terminfo",
  "thiserror 2.0.11",
- "which 7.0.1",
+ "which",
  "windows-sys 0.59.0",
 ]
 
@@ -4377,7 +4377,7 @@ dependencies = [
  "watchexec-events",
  "watchexec-filterer-globset",
  "watchexec-signals",
- "which 6.0.3",
+ "which",
 ]
 
 [[package]]
@@ -4446,18 +4446,6 @@ dependencies = [
  "tracing",
  "watchexec-events",
  "watchexec-signals",
-]
-
-[[package]]
-name = "which"
-version = "6.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4ee928febd44d98f2f459a4a79bd4d928591333a494a10a868418ac1b39cf1f"
-dependencies = [
- "either",
- "home",
- "rustix",
- "winsafe",
 ]
 
 [[package]]
