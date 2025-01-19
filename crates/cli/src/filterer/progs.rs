@@ -63,10 +63,6 @@ impl FilterProgs {
 
 	pub fn new(args: &Args) -> miette::Result<Self> {
 		let progs = args.filter_programs_parsed.clone();
-		eprintln!(
-			"EXPERIMENTAL: filter programs are unstable and may change/vanish without notice"
-		);
-
 		let (requester, mut receiver) = Requester::<Event, bool>::new(BUFFER);
 		let task =
 			spawn_blocking(move || {
