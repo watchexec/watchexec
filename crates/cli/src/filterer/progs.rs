@@ -61,7 +61,7 @@ impl FilterProgs {
 	}
 
 	pub fn new(args: &Args) -> miette::Result<Self> {
-		let progs = args.filter_programs_parsed.clone();
+		let progs = args.filtering.filter_programs_parsed.clone();
 		let (requester, mut receiver) = Requester::<Event, bool>::new(BUFFER);
 		let task = spawn_blocking(move || {
 			'chan: while let Some((event, sender)) = receiver.blocking_recv() {
