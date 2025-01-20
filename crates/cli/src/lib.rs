@@ -14,7 +14,7 @@ use watchexec::Watchexec;
 use watchexec_events::{Event, Priority};
 
 use crate::{
-	args::{debugging::ShellCompletion, Args},
+	args::{Args, ShellCompletion},
 	filterer::WatchexecFilterer,
 };
 
@@ -123,9 +123,9 @@ async fn run_completions(shell: ShellCompletion) -> Result<()> {
 pub async fn run() -> Result<()> {
 	let (args, _log_guard) = args::get_args().await?;
 
-	if args.debugging.manual {
+	if args.manual {
 		run_manpage(args).await
-	} else if let Some(shell) = args.debugging.completions {
+	} else if let Some(shell) = args.completions {
 		run_completions(shell).await
 	} else {
 		run_watchexec(args).await

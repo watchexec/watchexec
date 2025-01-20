@@ -1,7 +1,6 @@
 use std::path::{Path, PathBuf};
 
 use ignore_files::{IgnoreFile, IgnoreFilter};
-use project_origins::ProjectType;
 use watchexec::{error::RuntimeError, filter::Filterer};
 use watchexec_events::{Event, FileType, Priority, Tag};
 use watchexec_filterer_ignore::IgnoreFilterer;
@@ -120,7 +119,6 @@ pub fn ig_file(name: &str) -> IgnoreFile {
 pub trait Applies {
 	fn applies_globally(self) -> Self;
 	fn applies_in(self, origin: &str) -> Self;
-	fn applies_to(self, project_type: ProjectType) -> Self;
 }
 
 impl Applies for IgnoreFile {
@@ -132,11 +130,6 @@ impl Applies for IgnoreFile {
 	fn applies_in(mut self, origin: &str) -> Self {
 		let origin = std::fs::canonicalize(".").unwrap().join(origin);
 		self.applies_in = Some(origin);
-		self
-	}
-
-	fn applies_to(mut self, project_type: ProjectType) -> Self {
-		self.applies_to = Some(project_type);
 		self
 	}
 }

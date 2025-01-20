@@ -9,42 +9,6 @@ use super::{TimeSpan, OPTSET_COMMAND};
 
 #[derive(Debug, Clone, Parser)]
 pub struct CommandArgs {
-	/// Command (program and arguments) to run on changes
-	///
-	/// It's run when events pass filters and the debounce period (and once at startup unless
-	/// '--postpone' is given). If you pass flags to the command, you should separate it with --
-	/// though that is not strictly required.
-	///
-	/// Examples:
-	///
-	///   $ watchexec -w src npm run build
-	///
-	///   $ watchexec -w src -- rsync -a src dest
-	///
-	/// Take care when using globs or other shell expansions in the command. Your shell may expand
-	/// them before ever passing them to Watchexec, and the results may not be what you expect.
-	/// Compare:
-	///
-	///   $ watchexec echo src/*.rs
-	///
-	///   $ watchexec echo 'src/*.rs'
-	///
-	///   $ watchexec --shell=none echo 'src/*.rs'
-	///
-	/// Behaviour depends on the value of '--shell': for all except 'none', every part of the
-	/// command is joined together into one string with a single ascii space character, and given to
-	/// the shell as described in the help for '--shell'. For 'none', each distinct element the
-	/// command is passed as per the execvp(3) convention: first argument is the program, as a path
-	/// or searched for in the 'PATH' environment variable, rest are arguments.
-	#[arg(
-		trailing_var_arg = true,
-		num_args = 1..,
-		value_hint = ValueHint::CommandString,
-		value_name = "COMMAND",
-		required_unless_present_any = ["completions", "manual", "only_emit_events"],
-	)]
-	pub program: Vec<String>,
-
 	/// Use a different shell
 	///
 	/// By default, Watchexec will use '$SHELL' if it's defined or a default of 'sh' on Unix-likes,

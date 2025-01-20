@@ -264,25 +264,8 @@ pub struct EventsArgs {
 		default_value = "none",
 		hide_default_value = true,
 		value_name = "MODE",
-		required_if_eq("only_emit_events", "true"),
 	)]
 	pub emit_events_to: EmitEvents,
-
-	/// Only emit events to stdout, run no commands.
-	///
-	/// This is a convenience option for using Watchexec as a file watcher, without running any
-	/// commands. It is almost equivalent to using `cat` as the command, except that it will not
-	/// spawn a new process for each event.
-	///
-	/// This option requires `--emit-events-to` to be set, and restricts the available modes to
-	/// `stdio` and `json-stdio`, modifying their behaviour to write to stdout instead of the stdin
-	/// of the command.
-	#[arg(
-		long,
-		help_heading = OPTSET_EVENTS,
-		conflicts_with_all = ["command", "completions", "manual"],
-	)]
-	pub only_emit_events: bool,
 }
 
 impl EventsArgs {
@@ -290,6 +273,7 @@ impl EventsArgs {
 		&mut self,
 		command: &CommandArgs,
 		filtering: &FilteringArgs,
+		only_emit_events: bool,
 	) -> Result<()> {
 		if self.signal.is_some() {
 			self.on_busy_update = OnBusyUpdate::Signal;
@@ -302,17 +286,12 @@ impl EventsArgs {
 			self.emit_events_to = EmitEvents::None;
 		}
 
-		if self.only_emit_events
+		if only_emit_events
 			&& !matches!(
 				self.emit_events_to,
 				EmitEvents::JsonStdio | EmitEvents::Stdio
 			) {
-			super::Args::command()
-			.error(
-				ErrorKind::InvalidValue,
-				"only-emit-events requires --emit-events-to=stdio or --emit-events-to=json-stdio",
-			)
-			.exit();
+			self.emit_events_to = EmitEvents::JsonStdio;
 		}
 
 		if self.stdin_quit && filtering.watch_file == Some(PathBuf::from("-")) {
