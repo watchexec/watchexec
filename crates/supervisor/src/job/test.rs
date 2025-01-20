@@ -301,6 +301,7 @@ macro_rules! expect_state {
 	};
 }
 
+#[cfg(unix)]
 async fn get_child(job: &Job) -> TestChild {
 	let state = Arc::new(Mutex::new(None));
 	refresh_state(job, &state, true).await;
