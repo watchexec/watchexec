@@ -15,7 +15,7 @@ _watchexec() {
 
     local context curcontext="$curcontext" state line
     _arguments "${_arguments_options[@]}" : \
-'(--manual --only-emit-events)--completions=[Generate a shell completions script]:COMPLETIONS:(bash elvish fish nu powershell zsh)' \
+'(--manual --only-emit-events)--completions=[Generate a shell completions script]:SHELL:(bash elvish fish nu powershell zsh)' \
 '--shell=[Use a different shell]:SHELL:_default' \
 '*-E+[Add env vars to the command]:KEY=VALUE:_default' \
 '*--env=[Add env vars to the command]:KEY=VALUE:_default' \
@@ -45,8 +45,8 @@ _watchexec() {
 '*--filter=[Filename patterns to filter to]:PATTERN:_default' \
 '*--filter-file=[Files to load filters from]:PATH:_files' \
 '--project-origin=[Set the project origin]:DIRECTORY:_files -/' \
-'*-j+[\[experimental\] Filter programs]:EXPRESSION:_default' \
-'*--filter-prog=[\[experimental\] Filter programs]:EXPRESSION:_default' \
+'*-j+[Filter programs]:EXPRESSION:_default' \
+'*--filter-prog=[Filter programs]:EXPRESSION:_default' \
 '*-i+[Filename patterns to filter out]:PATTERN:_default' \
 '*--ignore=[Filename patterns to filter out]:PATTERN:_default' \
 '*--ignore-file=[Files to load ignores from]:PATH:_files' \

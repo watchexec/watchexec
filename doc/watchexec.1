@@ -35,6 +35,25 @@ Watch lib and src directories for changes, rebuilding each time:
 $ watchexec \-w lib \-w src make
 .SH OPTIONS
 .TP
+\fB\-\-manual\fR
+Show the manual page
+
+This shows the manual page for Watchexec, if the output is a terminal and the \*(Aqman\*(Aq program is available. If not, the manual page is printed to stdout in ROFF format (suitable for writing to a watchexec.1 file).
+.TP
+\fB\-\-completions\fR=\fISHELL\fR
+Generate a shell completions script
+
+Provides a completions script or configuration for the given shell. If Watchexec is not distributed with pre\-generated completions, you can use this to generate them yourself.
+
+Supported shells: bash, elvish, fish, nu, powershell, zsh.
+.TP
+\fB\-\-only\-emit\-events\fR
+Only emit events to stdout, run no commands.
+
+This is a convenience option for using Watchexec as a file watcher, without running any commands. It is almost equivalent to using `cat` as the command, except that it will not spawn a new process for each event.
+
+This option implies `\-\-emit\-events\-to=json\-stdio`; you may also use the text mode by specifying `\-\-emit\-events\-to=stdio`.
+.TP
 \fB\-h\fR, \fB\-\-help\fR
 Print help (see a summary with \*(Aq\-h\*(Aq)
 .TP
@@ -61,19 +80,105 @@ $ watchexec echo \*(Aqsrc/*.rs\*(Aq
 $ watchexec \-\-shell=none echo \*(Aqsrc/*.rs\*(Aq
 
 Behaviour depends on the value of \*(Aq\-\-shell\*(Aq: for all except \*(Aqnone\*(Aq, every part of the command is joined together into one string with a single ascii space character, and given to the shell as described in the help for \*(Aq\-\-shell\*(Aq. For \*(Aqnone\*(Aq, each distinct element the command is passed as per the execvp(3) convention: first argument is the program, as a path or searched for in the \*(AqPATH\*(Aq environment variable, rest are arguments.
+.SH COMMAND
+.TP
+\fB\-\-shell\fR=\fISHELL\fR
+Use a different shell
+
+By default, Watchexec will use \*(Aq$SHELL\*(Aq if it\*(Aqs defined or a default of \*(Aqsh\*(Aq on Unix\-likes, and either \*(Aqpwsh\*(Aq, \*(Aqpowershell\*(Aq, or \*(Aqcmd\*(Aq (CMD.EXE) on Windows, depending on what Watchexec detects is the running shell.
+
+With this option, you can override that and use a different shell, for example one with more features or one which has your custom aliases and functions.
+
+If the value has spaces, it is parsed as a command line, and the first word used as the shell program, with the rest as arguments to the shell.
+
+The command is run with the \*(Aq\-c\*(Aq flag (except for \*(Aqcmd\*(Aq on Windows, where it\*(Aqs \*(Aq/C\*(Aq).
+
+The special value \*(Aqnone\*(Aq can be used to disable shell use entirely. In that case, the command provided to Watchexec will be parsed, with the first word being the executable and the rest being the arguments, and executed directly. Note that this parsing is rudimentary, and may not work as expected in all cases.
+
+Using \*(Aqnone\*(Aq is a little more efficient and can enable a stricter interpretation of the input, but it also means that you can\*(Aqt use shell features like globbing, redirection, control flow, logic, or pipes.
+
+Examples:
+
+Use without shell:
+
+$ watchexec \-n \-\- zsh \-x \-o shwordsplit scr
+
+Use with powershell core:
+
+$ watchexec \-\-shell=pwsh \-\- Test\-Connection localhost
+
+Use with CMD.exe:
+
+$ watchexec \-\-shell=cmd \-\- dir
+
+Use with a different unix shell:
+
+$ watchexec \-\-shell=bash \-\- \*(Aqecho $BASH_VERSION\*(Aq
+
+Use with a unix shell and options:
+
+$ watchexec \-\-shell=\*(Aqzsh \-x \-o shwordsplit\*(Aq \-\- scr
+.TP
+\fB\-n\fR
+Shorthand for \*(Aq\-\-shell=none\*(Aq
+.TP
+\fB\-E\fR, \fB\-\-env\fR=\fIKEY=VALUE\fR
+Add env vars to the command
+
+This is a convenience option for setting environment variables for the command, without setting them for the Watchexec process itself.
+
+Use key=value syntax. Multiple variables can be set by repeating the option.
+.TP
+\fB\-\-no\-process\-group\fR
+Don\*(Aqt use a process group
+
+By default, Watchexec will run the command in a process group, so that signals and terminations are sent to all processes in the group. Sometimes that\*(Aqs not what you want, and you can disable the behaviour with this option.
+
+Deprecated, use \*(Aq\-\-wrap\-process=none\*(Aq instead.
+.TP
+\fB\-\-wrap\-process\fR=\fIMODE\fR [default: group]
+Configure how the process is wrapped
+
+By default, Watchexec will run the command in a process group in Unix, and in a Job Object in Windows.
+
+Some Unix programs prefer running in a session, while others do not work in a process group.
+
+Use \*(Aqgroup\*(Aq to use a process group, \*(Aqsession\*(Aq to use a process session, and \*(Aqnone\*(Aq to run the command directly. On Windows, either of \*(Aqgroup\*(Aq or \*(Aqsession\*(Aq will use a Job Object.
+.TP
+\fB\-\-stop\-signal\fR=\fISIGNAL\fR
+Signal to send to stop the command
+
+This is used by \*(Aqrestart\*(Aq and \*(Aqsignal\*(Aq modes of \*(Aq\-\-on\-busy\-update\*(Aq (unless \*(Aq\-\-signal\*(Aq is provided). The restart behaviour is to send the signal, wait for the command to exit, and if it hasn\*(Aqt exited after some time (see \*(Aq\-\-timeout\-stop\*(Aq), forcefully terminate it.
+
+The default on unix is "SIGTERM".
+
+Input is parsed as a full signal name (like "SIGTERM"), a short signal name (like "TERM"), or a signal number (like "15"). All input is case\-insensitive.
+
+On Windows this option is technically supported but only supports the "KILL" event, as Watchexec cannot yet deliver other events. Windows doesn\*(Aqt have signals as such; instead it has termination (here called "KILL" or "STOP") and "CTRL+C", "CTRL+BREAK", and "CTRL+CLOSE" events. For portability the unix signals "SIGKILL", "SIGINT", "SIGTERM", and "SIGHUP" are respectively mapped to these.
+.TP
+\fB\-\-stop\-timeout\fR=\fITIMEOUT\fR
+Time to wait for the command to exit gracefully
+
+This is used by the \*(Aqrestart\*(Aq mode of \*(Aq\-\-on\-busy\-update\*(Aq. After the graceful stop signal is sent, Watchexec will wait for the command to exit. If it hasn\*(Aqt exited after this time, it is forcefully terminated.
+
+Takes a unit\-less value in seconds, or a time span value such as "5min 20s". Providing a unit\-less value is deprecated and will warn; it will be an error in the future.
+
+The default is 10 seconds. Set to 0 to immediately force\-kill the command.
+
+This has no practical effect on Windows as the command is always forcefully terminated; see \*(Aq\-\-stop\-signal\*(Aq for why.
+.TP
+\fB\-\-delay\-run\fR=\fIDURATION\fR
+Sleep before running the command
+
+This option will cause Watchexec to sleep for the specified amount of time before running the command, after an event is detected. This is like using "sleep 5 && command" in a shell, but portable and slightly more efficient.
+
+Takes a unit\-less value in seconds, or a time span value such as "2min 5s". Providing a unit\-less value is deprecated and will warn; it will be an error in the future.
+.TP
+\fB\-\-workdir\fR=\fIDIRECTORY\fR
+Set the working directory
+
+By default, the working directory of the command is the working directory of Watchexec. You can change that with this option. Note that paths may be less intuitive to use with this.
 .SH DEBUGGING
-.TP
-\fB\-\-manual\fR
-Show the manual page
-
-This shows the manual page for Watchexec, if the output is a terminal and the \*(Aqman\*(Aq program is available. If not, the manual page is printed to stdout in ROFF format (suitable for writing to a watchexec.1 file).
-.TP
-\fB\-\-completions\fR=\fICOMPLETIONS\fR
-Generate a shell completions script
-
-Provides a completions script or configuration for the given shell. If Watchexec is not distributed with pre\-generated completions, you can use this to generate them yourself.
-
-Supported shells: bash, elvish, fish, nu, powershell, zsh.
 .TP
 \fB\-\-print\-events\fR
 Print events that trigger actions
@@ -102,13 +207,6 @@ If a path is not provided, the default is the working directory. Note that with 
 
 If the path provided is a directory, a file will be created in that directory. The file name will be the current date and time, in the format \*(Aqwatchexec.YYYY\-MM\-DDTHH\-MM\-SSZ.log\*(Aq.
 .SH EVENTS
-.TP
-\fB\-\-only\-emit\-events\fR
-Only emit events to stdout, run no commands.
-
-This is a convenience option for using Watchexec as a file watcher, without running any commands. It is almost equivalent to using `cat` as the command, except that it will not spawn a new process for each event.
-
-This option implies `\-\-emit\-events\-to=json\-stdio`; you may also use the text mode by specifying `\-\-emit\-events\-to=stdio`.
 .TP
 \fB\-o\fR, \fB\-\-on\-busy\-update\fR=\fIMODE\fR
 What to do when receiving events while the command is running
@@ -273,104 +371,6 @@ is a very restricted space, while also limited in what it can usefully represent
 numbers of files will either cause the environment to be truncated, or may error or crash
 the process entirely. The $WATCHEXEC_COMMON_PATH is also unintuitive, as demonstrated by the
 multiple confused queries that have landed in my inbox over the years.
-.SH COMMAND
-.TP
-\fB\-\-shell\fR=\fISHELL\fR
-Use a different shell
-
-By default, Watchexec will use \*(Aq$SHELL\*(Aq if it\*(Aqs defined or a default of \*(Aqsh\*(Aq on Unix\-likes, and either \*(Aqpwsh\*(Aq, \*(Aqpowershell\*(Aq, or \*(Aqcmd\*(Aq (CMD.EXE) on Windows, depending on what Watchexec detects is the running shell.
-
-With this option, you can override that and use a different shell, for example one with more features or one which has your custom aliases and functions.
-
-If the value has spaces, it is parsed as a command line, and the first word used as the shell program, with the rest as arguments to the shell.
-
-The command is run with the \*(Aq\-c\*(Aq flag (except for \*(Aqcmd\*(Aq on Windows, where it\*(Aqs \*(Aq/C\*(Aq).
-
-The special value \*(Aqnone\*(Aq can be used to disable shell use entirely. In that case, the command provided to Watchexec will be parsed, with the first word being the executable and the rest being the arguments, and executed directly. Note that this parsing is rudimentary, and may not work as expected in all cases.
-
-Using \*(Aqnone\*(Aq is a little more efficient and can enable a stricter interpretation of the input, but it also means that you can\*(Aqt use shell features like globbing, redirection, control flow, logic, or pipes.
-
-Examples:
-
-Use without shell:
-
-$ watchexec \-n \-\- zsh \-x \-o shwordsplit scr
-
-Use with powershell core:
-
-$ watchexec \-\-shell=pwsh \-\- Test\-Connection localhost
-
-Use with CMD.exe:
-
-$ watchexec \-\-shell=cmd \-\- dir
-
-Use with a different unix shell:
-
-$ watchexec \-\-shell=bash \-\- \*(Aqecho $BASH_VERSION\*(Aq
-
-Use with a unix shell and options:
-
-$ watchexec \-\-shell=\*(Aqzsh \-x \-o shwordsplit\*(Aq \-\- scr
-.TP
-\fB\-n\fR
-Shorthand for \*(Aq\-\-shell=none\*(Aq
-.TP
-\fB\-E\fR, \fB\-\-env\fR=\fIKEY=VALUE\fR
-Add env vars to the command
-
-This is a convenience option for setting environment variables for the command, without setting them for the Watchexec process itself.
-
-Use key=value syntax. Multiple variables can be set by repeating the option.
-.TP
-\fB\-\-no\-process\-group\fR
-Don\*(Aqt use a process group
-
-By default, Watchexec will run the command in a process group, so that signals and terminations are sent to all processes in the group. Sometimes that\*(Aqs not what you want, and you can disable the behaviour with this option.
-
-Deprecated, use \*(Aq\-\-wrap\-process=none\*(Aq instead.
-.TP
-\fB\-\-wrap\-process\fR=\fIMODE\fR [default: group]
-Configure how the process is wrapped
-
-By default, Watchexec will run the command in a process group in Unix, and in a Job Object in Windows.
-
-Some Unix programs prefer running in a session, while others do not work in a process group.
-
-Use \*(Aqgroup\*(Aq to use a process group, \*(Aqsession\*(Aq to use a process session, and \*(Aqnone\*(Aq to run the command directly. On Windows, either of \*(Aqgroup\*(Aq or \*(Aqsession\*(Aq will use a Job Object.
-.TP
-\fB\-\-stop\-signal\fR=\fISIGNAL\fR
-Signal to send to stop the command
-
-This is used by \*(Aqrestart\*(Aq and \*(Aqsignal\*(Aq modes of \*(Aq\-\-on\-busy\-update\*(Aq (unless \*(Aq\-\-signal\*(Aq is provided). The restart behaviour is to send the signal, wait for the command to exit, and if it hasn\*(Aqt exited after some time (see \*(Aq\-\-timeout\-stop\*(Aq), forcefully terminate it.
-
-The default on unix is "SIGTERM".
-
-Input is parsed as a full signal name (like "SIGTERM"), a short signal name (like "TERM"), or a signal number (like "15"). All input is case\-insensitive.
-
-On Windows this option is technically supported but only supports the "KILL" event, as Watchexec cannot yet deliver other events. Windows doesn\*(Aqt have signals as such; instead it has termination (here called "KILL" or "STOP") and "CTRL+C", "CTRL+BREAK", and "CTRL+CLOSE" events. For portability the unix signals "SIGKILL", "SIGINT", "SIGTERM", and "SIGHUP" are respectively mapped to these.
-.TP
-\fB\-\-stop\-timeout\fR=\fITIMEOUT\fR
-Time to wait for the command to exit gracefully
-
-This is used by the \*(Aqrestart\*(Aq mode of \*(Aq\-\-on\-busy\-update\*(Aq. After the graceful stop signal is sent, Watchexec will wait for the command to exit. If it hasn\*(Aqt exited after this time, it is forcefully terminated.
-
-Takes a unit\-less value in seconds, or a time span value such as "5min 20s". Providing a unit\-less value is deprecated and will warn; it will be an error in the future.
-
-The default is 10 seconds. Set to 0 to immediately force\-kill the command.
-
-This has no practical effect on Windows as the command is always forcefully terminated; see \*(Aq\-\-stop\-signal\*(Aq for why.
-.TP
-\fB\-\-delay\-run\fR=\fIDURATION\fR
-Sleep before running the command
-
-This option will cause Watchexec to sleep for the specified amount of time before running the command, after an event is detected. This is like using "sleep 5 && command" in a shell, but portable and slightly more efficient.
-
-Takes a unit\-less value in seconds, or a time span value such as "2min 5s". Providing a unit\-less value is deprecated and will warn; it will be an error in the future.
-.TP
-\fB\-\-workdir\fR=\fIDIRECTORY\fR
-Set the working directory
-
-By default, the working directory of the command is the working directory of Watchexec. You can change that with this option. Note that paths may be less intuitive to use with this.
 .SH FILTERING
 .TP
 \fB\-w\fR, \fB\-\-watch\fR=\fIPATH\fR
@@ -493,9 +493,7 @@ The project origin is used to determine the path of certain ignore files, which 
 When set, Watchexec will also not bother searching, which can be significantly faster.
 .TP
 \fB\-j\fR, \fB\-\-filter\-prog\fR=\fIEXPRESSION\fR
-[experimental] Filter programs.
-
-/!\\ This option is EXPERIMENTAL and may change and/or vanish without notice.
+Filter programs.
 
 Provide your own custom filter programs in jaq (similar to jq) syntax. Programs are given an event in the same format as described in \*(Aq\-\-emit\-events\-to\*(Aq and must return a boolean. Invalid programs will make watchexec fail to start; use \*(Aq\-v\*(Aq to see program runtime errors.
 

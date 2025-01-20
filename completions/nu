@@ -68,7 +68,7 @@ module completions {
     --filter(-f): string      # Filename patterns to filter to
     --filter-file: path       # Files to load filters from
     --project-origin: path    # Set the project origin
-    --filter-prog(-j): string # [experimental] Filter programs
+    --filter-prog(-j): string # Filter programs
     --ignore(-i): string      # Filename patterns to filter out
     --ignore-file: path       # Files to load ignores from
     --fs-events: string@"nu-complete watchexec filter_fs_events" # Filesystem events to filter to
