@@ -81,7 +81,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 		config.file_watcher(Watcher::Poll(interval.0));
 	}
 
-	let once = args.once;
+	let once = args.debugging.once;
 	let clear = args.output.screen_clear;
 
 	let emit_events_to = args.events.emit_events_to;
@@ -143,7 +143,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 	let stop_signal = args.command.stop_signal;
 	let stop_timeout = args.command.stop_timeout.0;
 
-	let print_events = args.print_events;
+	let print_events = args.debugging.print_events;
 	let outflags = OutputFlags {
 		quiet: args.output.quiet,
 		colour: match args.output.color {
