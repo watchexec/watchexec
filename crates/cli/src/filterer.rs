@@ -70,7 +70,7 @@ impl Filterer for WatchexecFilterer {
 impl WatchexecFilterer {
 	/// Create a new filterer from the given arguments
 	pub async fn new(args: &Args) -> Result<Arc<Self>> {
-		let project_origin = args.project_origin.clone().unwrap();
+		let project_origin = args.filtering.project_origin.clone().unwrap();
 		let workdir = args.command.workdir.clone().unwrap();
 
 		let ignore_files = if args.filtering.no_discover_ignore {

@@ -33,7 +33,7 @@ async fn run_watchexec(args: Args) -> Result<()> {
 	info!("initialising Watchexec runtime");
 	let wx = Watchexec::with_config(config)?;
 
-	if !args.postpone {
+	if !args.events.postpone {
 		debug!("kicking off with empty event");
 		wx.send_event(Event::default(), Priority::Urgent).await?;
 	}

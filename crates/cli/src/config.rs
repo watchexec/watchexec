@@ -32,7 +32,9 @@ use watchexec_signals::Signal;
 
 use crate::{
 	args::{
-		command::WrapMode, Args, ClearMode, ColourMode, EmitEvents, OnBusyUpdate, SignalMapping,
+		command::WrapMode,
+		events::{EmitEvents, OnBusyUpdate, SignalMapping},
+		Args, ClearMode, ColourMode,
 	},
 	state::RotatingTempFile,
 };
@@ -71,20 +73,20 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 
 	config.pathset(args.filtering.paths.clone());
 
-	config.throttle(args.debounce.0);
-	config.keyboard_events(args.stdin_quit);
+	config.throttle(args.events.debounce.0);
+	config.keyboard_events(args.events.stdin_quit);
 
-	if let Some(interval) = args.poll {
+	if let Some(interval) = args.events.poll {
 		config.file_watcher(Watcher::Poll(interval.0));
 	}
 
 	let once = args.once;
 	let clear = args.screen_clear;
 
-	let emit_events_to = args.emit_events_to;
+	let emit_events_to = args.events.emit_events_to;
 	let emit_file = state.emit_file.clone();
 
-	if args.only_emit_events {
+	if args.events.only_emit_events {
 		config.on_action(move |mut action| {
 			// if we got a terminate or interrupt signal, quit
 			if action
@@ -133,10 +135,10 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 	}
 
 	let delay_run = args.command.delay_run.map(|ts| ts.0);
-	let on_busy = args.on_busy_update;
-	let stdin_quit = args.stdin_quit;
+	let on_busy = args.events.on_busy_update;
+	let stdin_quit = args.events.stdin_quit;
 
-	let signal = args.signal;
+	let signal = args.events.signal;
 	let stop_signal = args.command.stop_signal;
 	let stop_timeout = args.command.stop_timeout.0;
 
@@ -173,7 +175,8 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 	let command = interpret_command_args(args)?;
 
 	let signal_map: Arc<HashMap<Signal, Option<Signal>>> = Arc::new(
-		args.signal_map
+		args.events
+			.signal_map
 			.iter()
 			.copied()
 			.map(|SignalMapping { from, to }| (from, to))

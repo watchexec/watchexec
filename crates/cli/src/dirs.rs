@@ -10,10 +10,17 @@ use tokio::fs::canonicalize;
 use tracing::{debug, info, warn};
 use watchexec::paths::common_prefix;
 
-use crate::args::Args;
+use crate::args::{command::CommandArgs, filtering::FilteringArgs, Args};
 
-pub async fn project_origin(args: &Args) -> Result<PathBuf> {
-	let project_origin = if let Some(origin) = &args.project_origin {
+pub async fn project_origin(
+	FilteringArgs {
+		project_origin,
+		paths,
+		..
+	}: &FilteringArgs,
+	CommandArgs { workdir, .. }: &CommandArgs,
+) -> Result<PathBuf> {
+	let project_origin = if let Some(origin) = project_origin {
 		debug!(?origin, "project origin override");
 		canonicalize(origin).await.into_diagnostic()?
 	} else {
@@ -24,8 +31,7 @@ pub async fn project_origin(args: &Args) -> Result<PathBuf> {
 		debug!(?homedir, "home directory");
 
 		let homedir_requested = homedir.as_ref().map_or(false, |home| {
-			args.filtering
-				.paths
+			paths
 				.binary_search_by_key(home, |w| PathBuf::from(w.clone()))
 				.is_ok()
 		});
@@ -35,7 +41,7 @@ pub async fn project_origin(args: &Args) -> Result<PathBuf> {
 		);
 
 		let mut origins = HashSet::new();
-		for path in &args.filtering.paths {
+		for path in paths {
 			origins.extend(project_origins::origins(path).await);
 		}
 
@@ -49,7 +55,7 @@ pub async fn project_origin(args: &Args) -> Result<PathBuf> {
 
 		if origins.is_empty() {
 			debug!("no origins, using current directory");
-			origins.insert(args.command.workdir.clone().unwrap());
+			origins.insert(workdir.clone().unwrap());
 		}
 
 		debug!(?origins, "resolved all project origins");
@@ -78,7 +84,7 @@ pub async fn vcs_types(origin: &Path) -> Vec<ProjectType> {
 }
 
 pub async fn ignores(args: &Args, vcs_types: &[ProjectType]) -> Result<Vec<IgnoreFile>> {
-	let origin = args.project_origin.clone().unwrap();
+	let origin = args.filtering.project_origin.clone().unwrap();
 	let mut skip_git_global_excludes = false;
 
 	let mut ignores = if args.filtering.no_project_ignore {

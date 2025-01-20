@@ -10,10 +10,12 @@ use tokio::{
 	fs::File,
 	io::{AsyncBufReadExt, BufReader},
 };
-use tracing::info;
+use tracing::{debug, info};
 use watchexec::{paths::PATH_SEPARATOR, WatchedPath};
 
 use crate::filterer::parse::FilterProgram;
+
+use super::{command::CommandArgs, OPTSET_FILTERING};
 
 #[derive(Debug, Clone, Parser)]
 pub struct FilteringArgs {
@@ -39,7 +41,7 @@ pub struct FilteringArgs {
 	#[arg(
 		short = 'w',
 		long = "watch",
-		help_heading = super::OPTSET_FILTERING,
+		help_heading = OPTSET_FILTERING,
 		value_hint = ValueHint::AnyPath,
 		value_name = "PATH",
 	)]
@@ -53,7 +55,7 @@ pub struct FilteringArgs {
 	#[arg(
 		short = 'W',
 		long = "watch-non-recursive",
-		help_heading = super::OPTSET_FILTERING,
+		help_heading = OPTSET_FILTERING,
 		value_hint = ValueHint::AnyPath,
 		value_name = "PATH",
 	)]
@@ -70,7 +72,7 @@ pub struct FilteringArgs {
 	#[arg(
 		short = 'F',
 		long,
-		help_heading = super::OPTSET_FILTERING,
+		help_heading = OPTSET_FILTERING,
 		value_hint = ValueHint::AnyPath,
 		value_name = "PATH",
 	)]
@@ -85,7 +87,7 @@ pub struct FilteringArgs {
 	/// This option is useful if you want to watch files that are ignored by Git.
 	#[arg(
 		long,
-		help_heading = super::OPTSET_FILTERING,
+		help_heading = OPTSET_FILTERING,
 	)]
 	pub no_vcs_ignore: bool,
 
@@ -110,7 +112,7 @@ pub struct FilteringArgs {
 	/// repository will be discarded.
 	#[arg(
 		long,
-		help_heading = super::OPTSET_FILTERING,
+		help_heading = OPTSET_FILTERING,
 		verbatim_doc_comment,
 	)]
 	pub no_project_ignore: bool,
@@ -132,7 +134,7 @@ pub struct FilteringArgs {
 	/// VCS as used in the project.
 	#[arg(
 		long,
-		help_heading = super::OPTSET_FILTERING,
+		help_heading = OPTSET_FILTERING,
 		verbatim_doc_comment,
 	)]
 	pub no_global_ignore: bool,
@@ -144,7 +146,7 @@ pub struct FilteringArgs {
 	/// Watchexec log files.
 	#[arg(
 		long,
-		help_heading = super::OPTSET_FILTERING,
+		help_heading = OPTSET_FILTERING,
 	)]
 	pub no_default_ignore: bool,
 
@@ -156,7 +158,7 @@ pub struct FilteringArgs {
 	/// Note that default ignores are still loaded, see '--no-default-ignore'.
 	#[arg(
 		long,
-		help_heading = super::OPTSET_FILTERING,
+		help_heading = OPTSET_FILTERING,
 	)]
 	pub no_discover_ignore: bool,
 
@@ -168,7 +170,7 @@ pub struct FilteringArgs {
 	/// '--ignore-file', will still be used.
 	#[arg(
 		long,
-		help_heading = super::OPTSET_FILTERING,
+		help_heading = OPTSET_FILTERING,
 	)]
 	pub ignore_nothing: bool,
 
@@ -180,7 +182,7 @@ pub struct FilteringArgs {
 	#[arg(
 		long = "exts",
 		short = 'e',
-		help_heading = super::OPTSET_FILTERING,
+		help_heading = OPTSET_FILTERING,
 		value_delimiter = ',',
 		value_name = "EXTENSIONS",
 	)]
@@ -194,7 +196,7 @@ pub struct FilteringArgs {
 	#[arg(
 		long = "filter",
 		short = 'f',
-		help_heading = super::OPTSET_FILTERING,
+		help_heading = OPTSET_FILTERING,
 		value_name = "PATTERN",
 	)]
 	pub filter_patterns: Vec<String>,
@@ -207,7 +209,7 @@ pub struct FilteringArgs {
 	/// This can also be used via the $WATCHEXEC_FILTER_FILES environment variable.
 	#[arg(
 		long = "filter-file",
-		help_heading = super::OPTSET_FILTERING,
+		help_heading = OPTSET_FILTERING,
 		value_delimiter = PATH_SEPARATOR.chars().next().unwrap(),
 		value_hint = ValueHint::FilePath,
 		value_name = "PATH",
@@ -215,6 +217,24 @@ pub struct FilteringArgs {
 		hide_env = true,
 	)]
 	pub filter_files: Vec<PathBuf>,
+
+	/// Set the project origin
+	///
+	/// Watchexec will attempt to discover the project's "origin" (or "root") by searching for a
+	/// variety of markers, like files or directory patterns. It does its best but sometimes gets it
+	/// it wrong, and you can override that with this option.
+	///
+	/// The project origin is used to determine the path of certain ignore files, which VCS is being
+	/// used, the meaning of a leading '/' in filtering patterns, and maybe more in the future.
+	///
+	/// When set, Watchexec will also not bother searching, which can be significantly faster.
+	#[arg(
+		long,
+		help_heading = OPTSET_FILTERING,
+		value_hint = ValueHint::DirPath,
+		value_name = "DIRECTORY",
+	)]
+	pub project_origin: Option<PathBuf>,
 
 	/// [experimental] Filter programs.
 	///
@@ -279,7 +299,7 @@ pub struct FilteringArgs {
 	#[arg(
 		long = "filter-prog",
 		short = 'j',
-		help_heading = super::OPTSET_FILTERING,
+		help_heading = OPTSET_FILTERING,
 		value_name = "EXPRESSION",
 	)]
 	pub filter_programs: Vec<String>,
@@ -296,7 +316,7 @@ pub struct FilteringArgs {
 	#[arg(
 		long = "ignore",
 		short = 'i',
-		help_heading = super::OPTSET_FILTERING,
+		help_heading = OPTSET_FILTERING,
 		value_name = "PATTERN",
 	)]
 	pub ignore_patterns: Vec<String>,
@@ -309,7 +329,7 @@ pub struct FilteringArgs {
 	/// This can also be used via the $WATCHEXEC_IGNORE_FILES environment variable.
 	#[arg(
 		long = "ignore-file",
-		help_heading = super::OPTSET_FILTERING,
+		help_heading = OPTSET_FILTERING,
 		value_delimiter = PATH_SEPARATOR.chars().next().unwrap(),
 		value_hint = ValueHint::FilePath,
 		value_name = "PATH",
@@ -329,7 +349,7 @@ pub struct FilteringArgs {
 	/// may be more confusing when reading the logs.
 	#[arg(
 		long = "fs-events",
-		help_heading = super::OPTSET_FILTERING,
+		help_heading = OPTSET_FILTERING,
 		default_value = "create,remove,rename,modify,metadata",
 		value_delimiter = ',',
 		hide_default_value = true,
@@ -343,14 +363,14 @@ pub struct FilteringArgs {
 	/// '--fs-events' option is non-sensical and not allowed.
 	#[arg(
 		long = "no-meta",
-		help_heading = super::OPTSET_FILTERING,
+		help_heading = OPTSET_FILTERING,
 		conflicts_with = "filter_fs_events",
 	)]
 	pub filter_fs_meta: bool,
 }
 
 impl FilteringArgs {
-	pub(crate) async fn normalise(&mut self, project_origin: &Path, workdir: &Path) -> Result<()> {
+	pub(crate) async fn normalise(&mut self, command: &CommandArgs) -> Result<()> {
 		if self.ignore_nothing {
 			self.no_global_ignore = true;
 			self.no_vcs_ignore = true;
@@ -383,6 +403,16 @@ impl FilteringArgs {
 				}
 			};
 		}
+
+		let project_origin = if let Some(p) = take(&mut self.project_origin) {
+			p
+		} else {
+			crate::dirs::project_origin(&self, command).await?
+		};
+		debug!(path=?project_origin, "resolved project origin");
+		let project_origin = dunce::canonicalize(project_origin).into_diagnostic()?;
+		info!(path=?project_origin, "effective project origin");
+		self.project_origin = Some(project_origin.clone());
 
 		self.paths = take(&mut self.recursive_paths)
 			.into_iter()
@@ -420,7 +450,7 @@ impl FilteringArgs {
 			self.paths = Vec::new();
 		} else if self.paths.is_empty() {
 			info!("no paths, using current directory");
-			self.paths.push(workdir.into());
+			self.paths.push(command.workdir.as_deref().unwrap().into());
 		}
 		info!(paths=?self.paths, "effective watched paths");
 
@@ -434,6 +464,7 @@ impl FilteringArgs {
 			}
 		}
 
+		debug_assert!(self.project_origin.is_some());
 		Ok(())
 	}
 }
