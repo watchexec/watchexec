@@ -34,7 +34,8 @@ use crate::{
 	args::{
 		command::WrapMode,
 		events::{EmitEvents, OnBusyUpdate, SignalMapping},
-		Args, ClearMode, ColourMode,
+		output::{ClearMode, ColourMode},
+		Args,
 	},
 	state::RotatingTempFile,
 };
@@ -81,7 +82,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 	}
 
 	let once = args.once;
-	let clear = args.screen_clear;
+	let clear = args.output.screen_clear;
 
 	let emit_events_to = args.events.emit_events_to;
 	let emit_file = state.emit_file.clone();
@@ -144,16 +145,16 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 
 	let print_events = args.print_events;
 	let outflags = OutputFlags {
-		quiet: args.quiet,
-		colour: match args.color {
+		quiet: args.output.quiet,
+		colour: match args.output.color {
 			ColourMode::Auto if !std::io::stdin().is_terminal() => ColorChoice::Never,
 			ColourMode::Auto => ColorChoice::Auto,
 			ColourMode::Always => ColorChoice::Always,
 			ColourMode::Never => ColorChoice::Never,
 		},
-		timings: args.timings,
-		bell: args.bell,
-		toast: args.notify,
+		timings: args.output.timings,
+		bell: args.output.bell,
+		toast: args.output.notify,
 	};
 
 	let workdir = Arc::new(args.command.workdir.clone());
