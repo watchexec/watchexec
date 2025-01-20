@@ -271,6 +271,9 @@ pub enum WrapMode {
 	None,
 }
 
+// listen-fd code inspired by systemdfd source by @mitsuhiko (Apache-2.0)
+// https://github.com/mitsuhiko/systemfd/blob/master/src/fd.rs
+
 #[derive(Clone, Copy, Debug, Default, ValueEnum)]
 pub enum SocketType {
 	#[default]
