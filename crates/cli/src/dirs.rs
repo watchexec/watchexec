@@ -49,7 +49,7 @@ pub async fn project_origin(args: &Args) -> Result<PathBuf> {
 
 		if origins.is_empty() {
 			debug!("no origins, using current directory");
-			origins.insert(args.workdir.clone().unwrap());
+			origins.insert(args.command.workdir.clone().unwrap());
 		}
 
 		debug!(?origins, "resolved all project origins");

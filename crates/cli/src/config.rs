@@ -31,7 +31,9 @@ use watchexec_events::{Event, Keyboard, ProcessEnd, Tag};
 use watchexec_signals::Signal;
 
 use crate::{
-	args::{Args, ClearMode, ColourMode, EmitEvents, OnBusyUpdate, SignalMapping, WrapMode},
+	args::{
+		command::WrapMode, Args, ClearMode, ColourMode, EmitEvents, OnBusyUpdate, SignalMapping,
+	},
 	state::RotatingTempFile,
 };
 use crate::{emits::events_to_simple_format, state::State};
@@ -130,13 +132,13 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 		return Ok(config);
 	}
 
-	let delay_run = args.delay_run.map(|ts| ts.0);
+	let delay_run = args.command.delay_run.map(|ts| ts.0);
 	let on_busy = args.on_busy_update;
 	let stdin_quit = args.stdin_quit;
 
 	let signal = args.signal;
-	let stop_signal = args.stop_signal;
-	let stop_timeout = args.stop_timeout.0;
+	let stop_signal = args.command.stop_signal;
+	let stop_timeout = args.command.stop_timeout.0;
 
 	let print_events = args.print_events;
 	let outflags = OutputFlags {
@@ -152,10 +154,10 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 		toast: args.notify,
 	};
 
-	let workdir = Arc::new(args.workdir.clone());
+	let workdir = Arc::new(args.command.workdir.clone());
 
 	let mut add_envs = HashMap::new();
-	for pair in &args.env {
+	for pair in &args.command.env {
 		if let Some((k, v)) = pair.split_once('=') {
 			add_envs.insert(k.to_owned(), OsString::from(v));
 		} else {
@@ -464,13 +466,13 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 
 #[instrument(level = "debug")]
 fn interpret_command_args(args: &Args) -> Result<Arc<Command>> {
-	let mut cmd = args.command.clone();
+	let mut cmd = args.command.program.clone();
 	assert!(!cmd.is_empty(), "(clap) Bug: command is not present");
 
-	let shell = if args.no_shell {
+	let shell = if args.command.no_shell {
 		None
 	} else {
-		let shell = args.shell.clone().or_else(|| var("SHELL").ok());
+		let shell = args.command.shell.clone().or_else(|| var("SHELL").ok());
 		match shell
 			.as_deref()
 			.or_else(|| {
@@ -532,8 +534,8 @@ fn interpret_command_args(args: &Args) -> Result<Arc<Command>> {
 	Ok(Arc::new(Command {
 		program,
 		options: SpawnOptions {
-			grouped: matches!(args.wrap_process, WrapMode::Group),
-			session: matches!(args.wrap_process, WrapMode::Session),
+			grouped: matches!(args.command.wrap_process, WrapMode::Group),
+			session: matches!(args.command.wrap_process, WrapMode::Session),
 			..Default::default()
 		},
 	}))
