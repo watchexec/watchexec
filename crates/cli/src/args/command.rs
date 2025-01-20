@@ -284,8 +284,7 @@ pub enum SocketType {
 #[derive(Clone, Copy, Debug)]
 pub struct FdSpec {
 	pub socket: SocketType,
-	pub addr: IpAddr,
-	pub port: u16,
+	pub addr: SocketAddr,
 }
 
 #[derive(Clone)]
@@ -313,22 +312,22 @@ impl TypedValueParser for FdSpecValueParser {
 			(SocketType::Tcp, value.as_ref())
 		};
 
-		let (addr, port) = if let Ok(addr) = SocketAddr::from_str(value) {
-			(addr.ip(), addr.port())
+		let addr = if let Ok(addr) = SocketAddr::from_str(value) {
+			addr
 		} else if let Ok(port) = u16::from_str(value) {
-			(IpAddr::V4(Ipv4Addr::LOCALHOST), port)
+			SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), port)
 		} else {
 			return Err(Error::raw(ErrorKind::ValueValidation, "not a port number"));
 		};
 
-		if port == 0 {
+		if addr.port() == 0 {
 			return Err(Error::raw(
 				ErrorKind::ValueValidation,
 				"port number cannot be zero",
 			));
 		}
 
-		Ok(FdSpec { socket, addr, port })
+		Ok(FdSpec { socket, addr })
 	}
 }
 
@@ -359,8 +358,7 @@ impl FdSpec {
 			SockaddrStorage,
 		};
 
-		let sockaddr = SocketAddr::new(self.addr, self.port);
-		let addr = SockaddrStorage::from(sockaddr);
+		let addr = SockaddrStorage::from(self.addr);
 		let fam = if self.addr.is_ipv4() {
 			AddressFamily::Inet
 		} else {
@@ -396,8 +394,7 @@ impl FdSpec {
 	fn create_fd_imp(&self) -> Result<OwnedFd> {
 		use socket2::{Domain, SockAddr, Socket, Type};
 
-		let sockaddr = SocketAddr::new(self.addr, self.port);
-		let addr = SockAddr::from(sockaddr);
+		let addr = SockAddr::from(self.addr);
 		let dom = if self.addr.is_ipv4() {
 			Domain::IPV4
 		} else {
