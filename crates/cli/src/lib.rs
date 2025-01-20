@@ -3,7 +3,6 @@
 
 use std::{io::Write, process::Stdio};
 
-use args::{Args, ShellCompletion};
 use clap::CommandFactory;
 use clap_complete::{Generator, Shell};
 use clap_mangen::Man;
@@ -14,7 +13,10 @@ use tracing::{debug, info};
 use watchexec::Watchexec;
 use watchexec_events::{Event, Priority};
 
-use crate::filterer::WatchexecFilterer;
+use crate::{
+	args::{debugging::ShellCompletion, Args},
+	filterer::WatchexecFilterer,
+};
 
 pub mod args;
 mod config;
@@ -121,9 +123,9 @@ async fn run_completions(shell: ShellCompletion) -> Result<()> {
 pub async fn run() -> Result<()> {
 	let (args, _log_guard) = args::get_args().await?;
 
-	if args.manual {
+	if args.debugging.manual {
 		run_manpage(args).await
-	} else if let Some(shell) = args.completions {
+	} else if let Some(shell) = args.debugging.completions {
 		run_completions(shell).await
 	} else {
 		run_watchexec(args).await
