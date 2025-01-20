@@ -412,7 +412,7 @@ impl FdSpec {
 		};
 
 		let sock = Socket::new(dom, ty, None).into_diagnostic()?;
-		sock.set_reuse_address(true);
+		sock.set_reuse_address(true).into_diagnostic()?;
 		sock.bind(&addr).into_diagnostic()?;
 
 		if let SocketType::Tcp = self.socket {
