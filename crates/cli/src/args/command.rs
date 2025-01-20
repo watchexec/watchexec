@@ -1,6 +1,16 @@
-use std::{mem::take, path::PathBuf};
+use std::{
+	ffi::OsStr,
+	mem::take,
+	net::{IpAddr, Ipv4Addr, SocketAddr},
+	path::PathBuf,
+	str::FromStr,
+};
 
-use clap::{Parser, ValueEnum, ValueHint};
+use clap::{
+	builder::TypedValueParser,
+	error::{Error, ErrorKind},
+	Parser, ValueEnum, ValueHint,
+};
 use miette::{IntoDiagnostic, Result};
 use tracing::{info, warn};
 use watchexec_signals::Signal;
@@ -202,6 +212,29 @@ pub struct CommandArgs {
 		display_order = 230,
 	)]
 	pub workdir: Option<PathBuf>,
+
+	/// Create listen-fd sockets
+	///
+	/// This implements the systemd socket-passing protocol, like with `systemfd`: sockets are
+	/// opened from the watchexec process, and then passed to the commands it runs. This lets you
+	/// keep sockets open and avoid address reuse issues or dropping packets.
+	///
+	/// This option can be supplied multiple times, to open multiple sockets.
+	///
+	/// The value can be either of `PORT` (opens a TCP listening socket at that port), `HOST:PORT`
+	/// (specify a host IP address; IPv6 addresses can be specified `[bracketed]`), `TYPE::PORT` or
+	/// `TYPE::HOST:PORT` (specify a socket type, `tcp` / `udp` / `unix`).
+	///
+	/// This integration only provides basic support, if you want more control you should use the
+	/// `systemfd` tool from <https://github.com/mitsuhiko/systemfd>.
+	#[arg(
+		long,
+		help_heading = OPTSET_COMMAND,
+		value_name = "PORT",
+		value_parser = FdSpecValueParser,
+		display_order = 60,
+	)]
+	pub fd_socket: Vec<FdSpec>,
 }
 
 impl CommandArgs {
@@ -231,4 +264,58 @@ pub enum WrapMode {
 	Group,
 	Session,
 	None,
+}
+
+#[derive(Clone, Copy, Debug, Default, ValueEnum)]
+pub enum SocketType {
+	#[default]
+	Tcp,
+	Udp,
+	Unix,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct FdSpec {
+	pub socket: SocketType,
+	pub addr: IpAddr,
+	pub port: u16,
+}
+
+#[derive(Clone)]
+struct FdSpecValueParser;
+
+impl TypedValueParser for FdSpecValueParser {
+	type Value = FdSpec;
+
+	fn parse_ref(
+		&self,
+		_cmd: &clap::Command,
+		_arg: Option<&clap::Arg>,
+		value: &OsStr,
+	) -> Result<Self::Value, Error> {
+		let value = value
+			.to_str()
+			.ok_or_else(|| Error::raw(ErrorKind::ValueValidation, "invalid UTF-8"))?
+			.to_ascii_lowercase();
+
+		let (socket, value) = if let Some(val) = value.strip_prefix("tcp:") {
+			(SocketType::Tcp, val)
+		} else if let Some(val) = value.strip_prefix("udp:") {
+			(SocketType::Udp, val)
+		} else if let Some(val) = value.strip_prefix("unix:") {
+			(SocketType::Unix, val)
+		} else {
+			(SocketType::Tcp, value.as_ref())
+		};
+
+		let (addr, port) = if let Ok(addr) = SocketAddr::from_str(value) {
+			(addr.ip(), addr.port())
+		} else if let Ok(port) = u16::from_str(value) {
+			(IpAddr::V4(Ipv4Addr::LOCALHOST), port)
+		} else {
+			return Err(Error::raw(ErrorKind::ValueValidation, "not a port number"));
+		};
+
+		Ok(FdSpec { socket, addr, port })
+	}
 }
