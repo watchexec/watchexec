@@ -4,28 +4,27 @@ watchexec - Execute commands when watched files change
 
 # SYNOPSIS
 
-**watchexec** \[**-w**\|**\--watch**\]
-\[**-W**\|**\--watch-non-recursive**\] \[**-F**\|**\--watch-file**\]
-\[**-c**\|**\--clear**\] \[**-o**\|**\--on-busy-update**\]
-\[**-r**\|**\--restart**\] \[**-s**\|**\--signal**\]
-\[**\--stop-signal**\] \[**\--stop-timeout**\] \[**\--map-signal**\]
+**watchexec** \[**\--manual**\] \[**\--completions**\]
+\[**\--only-emit-events**\] \[**\--shell**\] \[**-n **\]
+\[**-E**\|**\--env**\] \[**\--no-process-group**\]
+\[**\--wrap-process**\] \[**\--stop-signal**\] \[**\--stop-timeout**\]
+\[**\--delay-run**\] \[**\--workdir**\] \[**\--print-events**\]
+\[**-o**\|**\--on-busy-update**\] \[**-r**\|**\--restart**\]
+\[**-s**\|**\--signal**\] \[**\--map-signal**\]
 \[**-d**\|**\--debounce**\] \[**\--stdin-quit**\]
-\[**\--no-vcs-ignore**\] \[**\--no-project-ignore**\]
-\[**\--no-global-ignore**\] \[**\--no-default-ignore**\]
-\[**\--no-discover-ignore**\] \[**\--ignore-nothing**\]
-\[**-p**\|**\--postpone**\] \[**\--delay-run**\] \[**\--poll**\]
-\[**\--shell**\] \[**-n **\] \[**\--emit-events-to**\]
-\[**\--only-emit-events**\] \[**-E**\|**\--env**\]
-\[**\--no-process-group**\] \[**\--wrap-process**\]
-\[**-N**\|**\--notify**\] \[**\--color**\] \[**\--timings**\]
-\[**-q**\|**\--quiet**\] \[**\--bell**\] \[**\--project-origin**\]
-\[**\--workdir**\] \[**-e**\|**\--exts**\] \[**-f**\|**\--filter**\]
-\[**\--filter-file**\] \[**-j**\|**\--filter-prog**\]
+\[**-p**\|**\--postpone**\] \[**\--poll**\] \[**\--emit-events-to**\]
+\[**-w**\|**\--watch**\] \[**-W**\|**\--watch-non-recursive**\]
+\[**-F**\|**\--watch-file**\] \[**\--no-vcs-ignore**\]
+\[**\--no-project-ignore**\] \[**\--no-global-ignore**\]
+\[**\--no-default-ignore**\] \[**\--no-discover-ignore**\]
+\[**\--ignore-nothing**\] \[**-e**\|**\--exts**\]
+\[**-f**\|**\--filter**\] \[**\--filter-file**\]
+\[**\--project-origin**\] \[**-j**\|**\--filter-prog**\]
 \[**-i**\|**\--ignore**\] \[**\--ignore-file**\] \[**\--fs-events**\]
-\[**\--no-meta**\] \[**\--print-events**\] \[**\--manual**\]
-\[**\--completions**\] \[**-v**\|**\--verbose**\]\...
-\[**\--log-file**\] \[**-h**\|**\--help**\] \[**-V**\|**\--version**\]
-\[*COMMAND*\]
+\[**\--no-meta**\] \[**-v**\|**\--verbose**\]\... \[**\--log-file**\]
+\[**-c**\|**\--clear**\] \[**-N**\|**\--notify**\] \[**\--color**\]
+\[**\--timings**\] \[**-q**\|**\--quiet**\] \[**\--bell**\]
+\[**-h**\|**\--help**\] \[**-V**\|**\--version**\] \[*COMMAND*\]
 
 # DESCRIPTION
 
@@ -63,55 +62,126 @@ Watch lib and src directories for changes, rebuilding each time:
 
 # OPTIONS
 
-**-w**, **\--watch**=*PATH*
+**-h**, **\--help**
 
-:   Watch a specific file or directory
+:   Print help (see a summary with -h)
 
-    By default, Watchexec watches the current directory.
+**-V**, **\--version**
 
-    When watching a single file, its often better to watch the
-    containing directory instead, and filter on the filename. Some
-    editors may replace the file with a new one when saving, and some
-    platforms may not detect that or further changes.
+:   Print version
 
-    Upon starting, Watchexec resolves a \"project origin\" from the
-    watched paths. See the help for \--project-origin for more
-    information.
+\[*COMMAND*\]
 
-    This option can be specified multiple times to watch multiple files
-    or directories.
+:   Command (program and arguments) to run on changes
 
-    The special value /dev/null, provided as the only path watched, will
-    cause Watchexec to not watch any paths. Other event sources (like
-    signals or key events) may still be used.
+    Its run when events pass filters and the debounce period (and once
+    at startup unless \--postpone is given). If you pass flags to the
+    command, you should separate it with \-- though that is not strictly
+    required.
 
-**-W**, **\--watch-non-recursive**=*PATH*
+    Examples:
 
-:   Watch a specific directory, non-recursively
+    \$ watchexec -w src npm run build
 
-    Unlike -w, folders watched with this option are not recursed into.
+    \$ watchexec -w src \-- rsync -a src dest
 
-    This option can be specified multiple times to watch multiple
-    directories non-recursively.
+    Take care when using globs or other shell expansions in the command.
+    Your shell may expand them before ever passing them to Watchexec,
+    and the results may not be what you expect. Compare:
 
-**-F**, **\--watch-file**=*PATH*
+    \$ watchexec echo src/\*.rs
 
-:   Watch files and directories from a file
+    \$ watchexec echo src/\*.rs
 
-    Each line in the file will be interpreted as if given to -w.
+    \$ watchexec \--shell=none echo src/\*.rs
 
-    For more complex uses (like watching non-recursively), use the
-    argfile capability: build a file containing command-line options and
-    pass it to watchexec with \`@path/to/argfile\`.
+    Behaviour depends on the value of \--shell: for all except none,
+    every part of the command is joined together into one string with a
+    single ascii space character, and given to the shell as described in
+    the help for \--shell. For none, each distinct element the command
+    is passed as per the execvp(3) convention: first argument is the
+    program, as a path or searched for in the PATH environment variable,
+    rest are arguments.
 
-    The special value - will read from STDIN; this in incompatible with
-    \--stdin-quit.
+# DEBUGGING
 
-**-c**, **\--clear**=*MODE*
+**\--manual**
 
-:   Clear screen before running command
+:   Show the manual page
 
-    If this doesnt completely clear the screen, try \--clear=reset.
+    This shows the manual page for Watchexec, if the output is a
+    terminal and the man program is available. If not, the manual page
+    is printed to stdout in ROFF format (suitable for writing to a
+    watchexec.1 file).
+
+**\--completions**=*COMPLETIONS*
+
+:   Generate a shell completions script
+
+    Provides a completions script or configuration for the given shell.
+    If Watchexec is not distributed with pre-generated completions, you
+    can use this to generate them yourself.
+
+    Supported shells: bash, elvish, fish, nu, powershell, zsh.
+
+**\--print-events**
+
+:   Print events that trigger actions
+
+    This prints the events that triggered the action when handling it
+    (after debouncing), in a human readable form. This is useful for
+    debugging filters.
+
+    Use -vvv instead when you need more diagnostic information.
+
+**-v**, **\--verbose**
+
+:   Set diagnostic log level
+
+    This enables diagnostic logging, which is useful for investigating
+    bugs or gaining more insight into faulty filters or \"missing\"
+    events. Use multiple times to increase verbosity.
+
+    Goes up to -vvvv. When submitting bug reports, default to a -vvv log
+    level.
+
+    You may want to use with \--log-file to avoid polluting your
+    terminal.
+
+    Setting \$RUST_LOG also works, and takes precedence, but is not
+    recommended. However, using \$RUST_LOG is the only way to get logs
+    from before these options are parsed.
+
+**\--log-file**=*PATH*
+
+:   Write diagnostic logs to a file
+
+    This writes diagnostic logs to a file, instead of the terminal, in
+    JSON format. If a log level was not already specified, this will set
+    it to -vvv.
+
+    If a path is not provided, the default is the working directory.
+    Note that with \--ignore-nothing, the write events to the log will
+    likely get picked up by Watchexec, causing a loop; prefer setting a
+    path outside of the watched directory.
+
+    If the path provided is a directory, a file will be created in that
+    directory. The file name will be the current date and time, in the
+    format watchexec.YYYY-MM-DDTHH-MM-SSZ.log.
+
+# EVENTS
+
+**\--only-emit-events**
+
+:   Only emit events to stdout, run no commands.
+
+    This is a convenience option for using Watchexec as a file watcher,
+    without running any commands. It is almost equivalent to using
+    \`cat\` as the command, except that it will not spawn a new process
+    for each event.
+
+    This option implies \`\--emit-events-to=json-stdio\`; you may also
+    use the text mode by specifying \`\--emit-events-to=stdio\`.
 
 **-o**, **\--on-busy-update**=*MODE*
 
@@ -147,48 +217,6 @@ Watch lib and src directories for changes, rebuilding each time:
     Signals are not supported on Windows at the moment, and will always
     be overridden to kill. See \--stop-signal for more on Windows
     \"signals\".
-
-**\--stop-signal**=*SIGNAL*
-
-:   Signal to send to stop the command
-
-    This is used by restart and signal modes of \--on-busy-update
-    (unless \--signal is provided). The restart behaviour is to send the
-    signal, wait for the command to exit, and if it hasnt exited after
-    some time (see \--timeout-stop), forcefully terminate it.
-
-    The default on unix is \"SIGTERM\".
-
-    Input is parsed as a full signal name (like \"SIGTERM\"), a short
-    signal name (like \"TERM\"), or a signal number (like \"15\"). All
-    input is case-insensitive.
-
-    On Windows this option is technically supported but only supports
-    the \"KILL\" event, as Watchexec cannot yet deliver other events.
-    Windows doesnt have signals as such; instead it has termination
-    (here called \"KILL\" or \"STOP\") and \"CTRL+C\", \"CTRL+BREAK\",
-    and \"CTRL+CLOSE\" events. For portability the unix signals
-    \"SIGKILL\", \"SIGINT\", \"SIGTERM\", and \"SIGHUP\" are
-    respectively mapped to these.
-
-**\--stop-timeout**=*TIMEOUT*
-
-:   Time to wait for the command to exit gracefully
-
-    This is used by the restart mode of \--on-busy-update. After the
-    graceful stop signal is sent, Watchexec will wait for the command to
-    exit. If it hasnt exited after this time, it is forcefully
-    terminated.
-
-    Takes a unit-less value in seconds, or a time span value such as
-    \"5min 20s\". Providing a unit-less value is deprecated and will
-    warn; it will be an error in the future.
-
-    The default is 10 seconds. Set to 0 to immediately force-kill the
-    command.
-
-    This has no practical effect on Windows as the command is always
-    forcefully terminated; see \--stop-signal for why.
 
 **\--map-signal**=*SIGNAL:SIGNAL*
 
@@ -245,97 +273,6 @@ Watch lib and src directories for changes, rebuilding each time:
     gracefully when it is closed. This is used by some process managers
     to avoid leaving zombie processes around.
 
-**\--no-vcs-ignore**
-
-:   Dont load gitignores
-
-    Among other VCS exclude files, like for Mercurial, Subversion,
-    Bazaar, DARCS, Fossil. Note that Watchexec will detect which of
-    these is in use, if any, and only load the relevant files. Both
-    global (like \~/.gitignore) and local (like .gitignore) files are
-    considered.
-
-    This option is useful if you want to watch files that are ignored by
-    Git.
-
-**\--no-project-ignore**
-
-:   Dont load project-local ignores
-
-    This disables loading of project-local ignore files, like .gitignore
-    or .ignore in the watched project. This is contrasted with
-    \--no-vcs-ignore, which disables loading of Git and other VCS ignore
-    files, and with \--no-global-ignore, which disables loading of
-    global or user ignore files, like \~/.gitignore or
-    \~/.config/watchexec/ignore.
-
-    Supported project ignore files:
-
-    \- Git: .gitignore at project root and child directories,
-    .git/info/exclude, and the file pointed to by \`core.excludesFile\`
-    in .git/config. - Mercurial: .hgignore at project root and child
-    directories. - Bazaar: .bzrignore at project root. - Darcs:
-    \_darcs/prefs/boring - Fossil: .fossil-settings/ignore-glob -
-    Ripgrep/Watchexec/generic: .ignore at project root and child
-    directories.
-
-    VCS ignore files (Git, Mercurial, Bazaar, Darcs, Fossil) are only
-    used if the corresponding VCS is discovered to be in use for the
-    project/origin. For example, a .bzrignore in a Git repository will
-    be discarded.
-
-**\--no-global-ignore**
-
-:   Dont load global ignores
-
-    This disables loading of global or user ignore files, like
-    \~/.gitignore, \~/.config/watchexec/ignore, or
-    %APPDATA%\\Bazzar\\2.0\\ignore. Contrast with \--no-vcs-ignore and
-    \--no-project-ignore.
-
-    Supported global ignore files
-
-    \- Git (if core.excludesFile is set): the file at that path - Git
-    (otherwise): the first found of \$XDG_CONFIG_HOME/git/ignore,
-    %APPDATA%/.gitignore, %USERPROFILE%/.gitignore,
-    \$HOME/.config/git/ignore, \$HOME/.gitignore. - Bazaar: the first
-    found of %APPDATA%/Bazzar/2.0/ignore, \$HOME/.bazaar/ignore. -
-    Watchexec: the first found of \$XDG_CONFIG_HOME/watchexec/ignore,
-    %APPDATA%/watchexec/ignore, %USERPROFILE%/.watchexec/ignore,
-    \$HOME/.watchexec/ignore.
-
-    Like for project files, Git and Bazaar global files will only be
-    used for the corresponding VCS as used in the project.
-
-**\--no-default-ignore**
-
-:   Dont use internal default ignores
-
-    Watchexec has a set of default ignore patterns, such as editor swap
-    files, \`\*.pyc\`, \`\*.pyo\`, \`.DS_Store\`, \`.bzr\`, \`\_darcs\`,
-    \`.fossil-settings\`, \`.git\`, \`.hg\`, \`.pijul\`, \`.svn\`, and
-    Watchexec log files.
-
-**\--no-discover-ignore**
-
-:   Dont discover ignore files at all
-
-    This is a shorthand for \--no-global-ignore, \--no-vcs-ignore,
-    \--no-project-ignore, but even more efficient as it will skip all
-    the ignore discovery mechanisms from the get go.
-
-    Note that default ignores are still loaded, see
-    \--no-default-ignore.
-
-**\--ignore-nothing**
-
-:   Dont ignore anything at all
-
-    This is a shorthand for \--no-discover-ignore, \--no-default-ignore.
-
-    Note that ignores explicitly loaded via other command line options,
-    such as \--ignore or \--ignore-file, will still be used.
-
 **-p**, **\--postpone**
 
 :   Wait until first change before running command
@@ -343,19 +280,6 @@ Watch lib and src directories for changes, rebuilding each time:
     By default, Watchexec will run the command once immediately. With
     this option, it will instead wait until an event is detected before
     running the command as normal.
-
-**\--delay-run**=*DURATION*
-
-:   Sleep before running the command
-
-    This option will cause Watchexec to sleep for the specified amount
-    of time before running the command, after an event is detected. This
-    is like using \"sleep 5 && command\" in a shell, but portable and
-    slightly more efficient.
-
-    Takes a unit-less value in seconds, or a time span value such as
-    \"2min 5s\". Providing a unit-less value is deprecated and will
-    warn; it will be an error in the future.
 
 **\--poll**=*INTERVAL*
 
@@ -373,63 +297,6 @@ Watch lib and src directories for changes, rebuilding each time:
     deprecated and will warn; it will be an error in the future.
 
     Aliased as \--force-poll.
-
-**\--shell**=*SHELL*
-
-:   Use a different shell
-
-    By default, Watchexec will use \$SHELL if its defined or a default
-    of sh on Unix-likes, and either pwsh, powershell, or cmd (CMD.EXE)
-    on Windows, depending on what Watchexec detects is the running
-    shell.
-
-    With this option, you can override that and use a different shell,
-    for example one with more features or one which has your custom
-    aliases and functions.
-
-    If the value has spaces, it is parsed as a command line, and the
-    first word used as the shell program, with the rest as arguments to
-    the shell.
-
-    The command is run with the -c flag (except for cmd on Windows,
-    where its /C).
-
-    The special value none can be used to disable shell use entirely. In
-    that case, the command provided to Watchexec will be parsed, with
-    the first word being the executable and the rest being the
-    arguments, and executed directly. Note that this parsing is
-    rudimentary, and may not work as expected in all cases.
-
-    Using none is a little more efficient and can enable a stricter
-    interpretation of the input, but it also means that you cant use
-    shell features like globbing, redirection, control flow, logic, or
-    pipes.
-
-    Examples:
-
-    Use without shell:
-
-    \$ watchexec -n \-- zsh -x -o shwordsplit scr
-
-    Use with powershell core:
-
-    \$ watchexec \--shell=pwsh \-- Test-Connection localhost
-
-    Use with CMD.exe:
-
-    \$ watchexec \--shell=cmd \-- dir
-
-    Use with a different unix shell:
-
-    \$ watchexec \--shell=bash \-- echo \$BASH_VERSION
-
-    Use with a unix shell and options:
-
-    \$ watchexec \--shell=zsh -x -o shwordsplit \-- scr
-
-**-n**
-
-:   Shorthand for \--shell=none
 
 **\--emit-events-to**=*MODE*
 
@@ -525,18 +392,64 @@ Watch lib and src directories for changes, rebuilding each time:
     unintuitive, as demonstrated by the multiple confused queries that
     have landed in my inbox over the years.
 
-**\--only-emit-events**
+# COMMAND
 
-:   Only emit events to stdout, run no commands.
+**\--shell**=*SHELL*
 
-    This is a convenience option for using Watchexec as a file watcher,
-    without running any commands. It is almost equivalent to using
-    \`cat\` as the command, except that it will not spawn a new process
-    for each event.
+:   Use a different shell
 
-    This option requires \`\--emit-events-to\` to be set, and restricts
-    the available modes to \`stdio\` and \`json-stdio\`, modifying their
-    behaviour to write to stdout instead of the stdin of the command.
+    By default, Watchexec will use \$SHELL if its defined or a default
+    of sh on Unix-likes, and either pwsh, powershell, or cmd (CMD.EXE)
+    on Windows, depending on what Watchexec detects is the running
+    shell.
+
+    With this option, you can override that and use a different shell,
+    for example one with more features or one which has your custom
+    aliases and functions.
+
+    If the value has spaces, it is parsed as a command line, and the
+    first word used as the shell program, with the rest as arguments to
+    the shell.
+
+    The command is run with the -c flag (except for cmd on Windows,
+    where its /C).
+
+    The special value none can be used to disable shell use entirely. In
+    that case, the command provided to Watchexec will be parsed, with
+    the first word being the executable and the rest being the
+    arguments, and executed directly. Note that this parsing is
+    rudimentary, and may not work as expected in all cases.
+
+    Using none is a little more efficient and can enable a stricter
+    interpretation of the input, but it also means that you cant use
+    shell features like globbing, redirection, control flow, logic, or
+    pipes.
+
+    Examples:
+
+    Use without shell:
+
+    \$ watchexec -n \-- zsh -x -o shwordsplit scr
+
+    Use with powershell core:
+
+    \$ watchexec \--shell=pwsh \-- Test-Connection localhost
+
+    Use with CMD.exe:
+
+    \$ watchexec \--shell=cmd \-- dir
+
+    Use with a different unix shell:
+
+    \$ watchexec \--shell=bash \-- echo \$BASH_VERSION
+
+    Use with a unix shell and options:
+
+    \$ watchexec \--shell=zsh -x -o shwordsplit \-- scr
+
+**-n**
+
+:   Shorthand for \--shell=none
 
 **-E**, **\--env**=*KEY=VALUE*
 
@@ -573,56 +486,60 @@ Watch lib and src directories for changes, rebuilding each time:
     and none to run the command directly. On Windows, either of group or
     session will use a Job Object.
 
-**-N**, **\--notify**
+**\--stop-signal**=*SIGNAL*
 
-:   Alert when commands start and end
+:   Signal to send to stop the command
 
-    With this, Watchexec will emit a desktop notification when a command
-    starts and ends, on supported platforms. On unsupported platforms,
-    it may silently do nothing, or log a warning.
+    This is used by restart and signal modes of \--on-busy-update
+    (unless \--signal is provided). The restart behaviour is to send the
+    signal, wait for the command to exit, and if it hasnt exited after
+    some time (see \--timeout-stop), forcefully terminate it.
 
-**\--color**=*MODE* \[default: auto\]
+    The default on unix is \"SIGTERM\".
 
-:   When to use terminal colours
+    Input is parsed as a full signal name (like \"SIGTERM\"), a short
+    signal name (like \"TERM\"), or a signal number (like \"15\"). All
+    input is case-insensitive.
 
-    Setting the environment variable \`NO_COLOR\` to any value is
-    equivalent to \`\--color=never\`.
+    On Windows this option is technically supported but only supports
+    the \"KILL\" event, as Watchexec cannot yet deliver other events.
+    Windows doesnt have signals as such; instead it has termination
+    (here called \"KILL\" or \"STOP\") and \"CTRL+C\", \"CTRL+BREAK\",
+    and \"CTRL+CLOSE\" events. For portability the unix signals
+    \"SIGKILL\", \"SIGINT\", \"SIGTERM\", and \"SIGHUP\" are
+    respectively mapped to these.
 
-**\--timings**
+**\--stop-timeout**=*TIMEOUT*
 
-:   Print how long the command took to run
+:   Time to wait for the command to exit gracefully
 
-    This may not be exactly accurate, as it includes some overhead from
-    Watchexec itself. Use the \`time\` utility, high-precision timers,
-    or benchmarking tools for more accurate results.
+    This is used by the restart mode of \--on-busy-update. After the
+    graceful stop signal is sent, Watchexec will wait for the command to
+    exit. If it hasnt exited after this time, it is forcefully
+    terminated.
 
-**-q**, **\--quiet**
+    Takes a unit-less value in seconds, or a time span value such as
+    \"5min 20s\". Providing a unit-less value is deprecated and will
+    warn; it will be an error in the future.
 
-:   Dont print starting and stopping messages
+    The default is 10 seconds. Set to 0 to immediately force-kill the
+    command.
 
-    By default Watchexec will print a message when the command starts
-    and stops. This option disables this behaviour, so only the commands
-    output, warnings, and errors will be printed.
+    This has no practical effect on Windows as the command is always
+    forcefully terminated; see \--stop-signal for why.
 
-**\--bell**
+**\--delay-run**=*DURATION*
 
-:   Ring the terminal bell on command completion
+:   Sleep before running the command
 
-**\--project-origin**=*DIRECTORY*
+    This option will cause Watchexec to sleep for the specified amount
+    of time before running the command, after an event is detected. This
+    is like using \"sleep 5 && command\" in a shell, but portable and
+    slightly more efficient.
 
-:   Set the project origin
-
-    Watchexec will attempt to discover the projects \"origin\" (or
-    \"root\") by searching for a variety of markers, like files or
-    directory patterns. It does its best but sometimes gets it it wrong,
-    and you can override that with this option.
-
-    The project origin is used to determine the path of certain ignore
-    files, which VCS is being used, the meaning of a leading / in
-    filtering patterns, and maybe more in the future.
-
-    When set, Watchexec will also not bother searching, which can be
-    significantly faster.
+    Takes a unit-less value in seconds, or a time span value such as
+    \"2min 5s\". Providing a unit-less value is deprecated and will
+    warn; it will be an error in the future.
 
 **\--workdir**=*DIRECTORY*
 
@@ -631,6 +548,143 @@ Watch lib and src directories for changes, rebuilding each time:
     By default, the working directory of the command is the working
     directory of Watchexec. You can change that with this option. Note
     that paths may be less intuitive to use with this.
+
+# FILTERING
+
+**-w**, **\--watch**=*PATH*
+
+:   Watch a specific file or directory
+
+    By default, Watchexec watches the current directory.
+
+    When watching a single file, its often better to watch the
+    containing directory instead, and filter on the filename. Some
+    editors may replace the file with a new one when saving, and some
+    platforms may not detect that or further changes.
+
+    Upon starting, Watchexec resolves a \"project origin\" from the
+    watched paths. See the help for \--project-origin for more
+    information.
+
+    This option can be specified multiple times to watch multiple files
+    or directories.
+
+    The special value /dev/null, provided as the only path watched, will
+    cause Watchexec to not watch any paths. Other event sources (like
+    signals or key events) may still be used.
+
+**-W**, **\--watch-non-recursive**=*PATH*
+
+:   Watch a specific directory, non-recursively
+
+    Unlike -w, folders watched with this option are not recursed into.
+
+    This option can be specified multiple times to watch multiple
+    directories non-recursively.
+
+**-F**, **\--watch-file**=*PATH*
+
+:   Watch files and directories from a file
+
+    Each line in the file will be interpreted as if given to -w.
+
+    For more complex uses (like watching non-recursively), use the
+    argfile capability: build a file containing command-line options and
+    pass it to watchexec with \`@path/to/argfile\`.
+
+    The special value - will read from STDIN; this in incompatible with
+    \--stdin-quit.
+
+**\--no-vcs-ignore**
+
+:   Dont load gitignores
+
+    Among other VCS exclude files, like for Mercurial, Subversion,
+    Bazaar, DARCS, Fossil. Note that Watchexec will detect which of
+    these is in use, if any, and only load the relevant files. Both
+    global (like \~/.gitignore) and local (like .gitignore) files are
+    considered.
+
+    This option is useful if you want to watch files that are ignored by
+    Git.
+
+**\--no-project-ignore**
+
+:   Dont load project-local ignores
+
+    This disables loading of project-local ignore files, like .gitignore
+    or .ignore in the watched project. This is contrasted with
+    \--no-vcs-ignore, which disables loading of Git and other VCS ignore
+    files, and with \--no-global-ignore, which disables loading of
+    global or user ignore files, like \~/.gitignore or
+    \~/.config/watchexec/ignore.
+
+    Supported project ignore files:
+
+    \- Git: .gitignore at project root and child directories,
+    .git/info/exclude, and the file pointed to by \`core.excludesFile\`
+    in .git/config. - Mercurial: .hgignore at project root and child
+    directories. - Bazaar: .bzrignore at project root. - Darcs:
+    \_darcs/prefs/boring - Fossil: .fossil-settings/ignore-glob -
+    Ripgrep/Watchexec/generic: .ignore at project root and child
+    directories.
+
+    VCS ignore files (Git, Mercurial, Bazaar, Darcs, Fossil) are only
+    used if the corresponding VCS is discovered to be in use for the
+    project/origin. For example, a .bzrignore in a Git repository will
+    be discarded.
+
+**\--no-global-ignore**
+
+:   Dont load global ignores
+
+    This disables loading of global or user ignore files, like
+    \~/.gitignore, \~/.config/watchexec/ignore, or
+    %APPDATA%\\Bazzar\\2.0\\ignore. Contrast with \--no-vcs-ignore and
+    \--no-project-ignore.
+
+    Supported global ignore files
+
+    \- Git (if core.excludesFile is set): the file at that path - Git
+    (otherwise): the first found of \$XDG_CONFIG_HOME/git/ignore,
+    %APPDATA%/.gitignore, %USERPROFILE%/.gitignore,
+    \$HOME/.config/git/ignore, \$HOME/.gitignore. - Bazaar: the first
+    found of %APPDATA%/Bazzar/2.0/ignore, \$HOME/.bazaar/ignore. -
+    Watchexec: the first found of \$XDG_CONFIG_HOME/watchexec/ignore,
+    %APPDATA%/watchexec/ignore, %USERPROFILE%/.watchexec/ignore,
+    \$HOME/.watchexec/ignore.
+
+    Like for project files, Git and Bazaar global files will only be
+    used for the corresponding VCS as used in the project.
+
+**\--no-default-ignore**
+
+:   Dont use internal default ignores
+
+    Watchexec has a set of default ignore patterns, such as editor swap
+    files, \`\*.pyc\`, \`\*.pyo\`, \`.DS_Store\`, \`.bzr\`, \`\_darcs\`,
+    \`.fossil-settings\`, \`.git\`, \`.hg\`, \`.pijul\`, \`.svn\`, and
+    Watchexec log files.
+
+**\--no-discover-ignore**
+
+:   Dont discover ignore files at all
+
+    This is a shorthand for \--no-global-ignore, \--no-vcs-ignore,
+    \--no-project-ignore, but even more efficient as it will skip all
+    the ignore discovery mechanisms from the get go.
+
+    Note that default ignores are still loaded, see
+    \--no-default-ignore.
+
+**\--ignore-nothing**
+
+:   Dont ignore anything at all
+
+    This is a shorthand for \--no-discover-ignore, \--no-default-ignore.
+
+    Note that ignores explicitly loaded via other command line options,
+    such as \--ignore or \--ignore-file, will still be used.
 
 **-e**, **\--exts**=*EXTENSIONS*
 
@@ -660,6 +714,22 @@ Watch lib and src directories for changes, rebuilding each time:
 
     This can also be used via the \$WATCHEXEC_FILTER_FILES environment
     variable.
+
+**\--project-origin**=*DIRECTORY*
+
+:   Set the project origin
+
+    Watchexec will attempt to discover the projects \"origin\" (or
+    \"root\") by searching for a variety of markers, like files or
+    directory patterns. It does its best but sometimes gets it it wrong,
+    and you can override that with this option.
+
+    The project origin is used to determine the path of certain ignore
+    files, which VCS is being used, the meaning of a leading / in
+    filtering patterns, and maybe more in the future.
+
+    When set, Watchexec will also not bother searching, which can be
+    significantly faster.
 
 **-j**, **\--filter-prog**=*EXPRESSION*
 
@@ -782,110 +852,48 @@ Watch lib and src directories for changes, rebuilding each time:
     Using it alongside the \--fs-events option is non-sensical and not
     allowed.
 
-**\--print-events**
+# OUTPUT
 
-:   Print events that trigger actions
+**-c**, **\--clear**=*MODE*
 
-    This prints the events that triggered the action when handling it
-    (after debouncing), in a human readable form. This is useful for
-    debugging filters.
+:   Clear screen before running command
 
-    Use -vvv instead when you need more diagnostic information.
+    If this doesnt completely clear the screen, try \--clear=reset.
 
-**\--manual**
+**-N**, **\--notify**
 
-:   Show the manual page
+:   Alert when commands start and end
 
-    This shows the manual page for Watchexec, if the output is a
-    terminal and the man program is available. If not, the manual page
-    is printed to stdout in ROFF format (suitable for writing to a
-    watchexec.1 file).
+    With this, Watchexec will emit a desktop notification when a command
+    starts and ends, on supported platforms. On unsupported platforms,
+    it may silently do nothing, or log a warning.
 
-**\--completions**=*COMPLETIONS*
+**\--color**=*MODE* \[default: auto\]
 
-:   Generate a shell completions script
+:   When to use terminal colours
 
-    Provides a completions script or configuration for the given shell.
-    If Watchexec is not distributed with pre-generated completions, you
-    can use this to generate them yourself.
+    Setting the environment variable \`NO_COLOR\` to any value is
+    equivalent to \`\--color=never\`.
 
-    Supported shells: bash, elvish, fish, nu, powershell, zsh.
+**\--timings**
 
-**-v**, **\--verbose**
+:   Print how long the command took to run
 
-:   Set diagnostic log level
+    This may not be exactly accurate, as it includes some overhead from
+    Watchexec itself. Use the \`time\` utility, high-precision timers,
+    or benchmarking tools for more accurate results.
 
-    This enables diagnostic logging, which is useful for investigating
-    bugs or gaining more insight into faulty filters or \"missing\"
-    events. Use multiple times to increase verbosity.
+**-q**, **\--quiet**
 
-    Goes up to -vvvv. When submitting bug reports, default to a -vvv log
-    level.
+:   Dont print starting and stopping messages
 
-    You may want to use with \--log-file to avoid polluting your
-    terminal.
+    By default Watchexec will print a message when the command starts
+    and stops. This option disables this behaviour, so only the commands
+    output, warnings, and errors will be printed.
 
-    Setting \$RUST_LOG also works, and takes precedence, but is not
-    recommended. However, using \$RUST_LOG is the only way to get logs
-    from before these options are parsed.
+**\--bell**
 
-**\--log-file**=*PATH*
-
-:   Write diagnostic logs to a file
-
-    This writes diagnostic logs to a file, instead of the terminal, in
-    JSON format. If a log level was not already specified, this will set
-    it to -vvv.
-
-    If a path is not provided, the default is the working directory.
-    Note that with \--ignore-nothing, the write events to the log will
-    likely get picked up by Watchexec, causing a loop; prefer setting a
-    path outside of the watched directory.
-
-    If the path provided is a directory, a file will be created in that
-    directory. The file name will be the current date and time, in the
-    format watchexec.YYYY-MM-DDTHH-MM-SSZ.log.
-
-**-h**, **\--help**
-
-:   Print help (see a summary with -h)
-
-**-V**, **\--version**
-
-:   Print version
-
-\[*COMMAND*\]
-
-:   Command to run on changes
-
-    Its run when events pass filters and the debounce period (and once
-    at startup unless \--postpone is given). If you pass flags to the
-    command, you should separate it with \-- though that is not strictly
-    required.
-
-    Examples:
-
-    \$ watchexec -w src npm run build
-
-    \$ watchexec -w src \-- rsync -a src dest
-
-    Take care when using globs or other shell expansions in the command.
-    Your shell may expand them before ever passing them to Watchexec,
-    and the results may not be what you expect. Compare:
-
-    \$ watchexec echo src/\*.rs
-
-    \$ watchexec echo src/\*.rs
-
-    \$ watchexec \--shell=none echo src/\*.rs
-
-    Behaviour depends on the value of \--shell: for all except none,
-    every part of the command is joined together into one string with a
-    single ascii space character, and given to the shell as described in
-    the help for \--shell. For none, each distinct element the command
-    is passed as per the execvp(3) convention: first argument is the
-    program, as a path or searched for in the PATH environment variable,
-    rest are arguments.
+:   Ring the terminal bell on command completion
 
 # EXTRA
 
