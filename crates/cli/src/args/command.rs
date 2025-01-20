@@ -374,13 +374,7 @@ impl FdSpec {
 		let sock = socket(fam, ty, SockFlag::empty(), None)?;
 
 		setsockopt(&sock, sockopt::ReuseAddr, &true)?;
-
-		// port reuse will only work on inet sockets.  On new linux kernels
-		// in particular it will fail with an error if attempted on unix sockets
-		// or others.
-		if matches!(fam, AddressFamily::Inet | AddressFamily::Inet6) {
-			setsockopt(&sock, sockopt::ReusePort, &true)?;
-		}
+		setsockopt(&sock, sockopt::ReusePort, &true)?;
 
 		let rv = bind(sock.as_raw_fd(), &addr)
 			.map_err(From::from)
