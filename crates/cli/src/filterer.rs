@@ -14,7 +14,7 @@ use watchexec_events::{
 };
 use watchexec_filterer_globset::GlobsetFilterer;
 
-use crate::args::{Args, FsEvent};
+use crate::args::{filtering::FsEvent, Args};
 
 pub mod parse;
 mod proglib;
@@ -73,7 +73,7 @@ impl WatchexecFilterer {
 		let project_origin = args.project_origin.clone().unwrap();
 		let workdir = args.workdir.clone().unwrap();
 
-		let ignore_files = if args.no_discover_ignore {
+		let ignore_files = if args.filtering.no_discover_ignore {
 			Vec::new()
 		} else {
 			let vcs_types = crate::dirs::vcs_types(&project_origin).await;
@@ -82,7 +82,7 @@ impl WatchexecFilterer {
 
 		let mut ignores = Vec::new();
 
-		if !args.no_default_ignore {
+		if !args.filtering.no_default_ignore {
 			ignores.extend([
 				(format!("**{MAIN_SEPARATOR}.DS_Store"), None),
 				(String::from("watchexec.*.log"), None),
@@ -106,28 +106,32 @@ impl WatchexecFilterer {
 		}
 
 		let whitelist = args
+			.filtering
 			.paths
 			.iter()
 			.map(std::convert::Into::into)
 			.filter(|p: &PathBuf| p.is_file());
 
 		let mut filters = args
+			.filtering
 			.filter_patterns
 			.iter()
 			.map(|f| (f.to_owned(), Some(workdir.clone())))
 			.collect::<Vec<_>>();
 
-		for filter_file in &args.filter_files {
+		for filter_file in &args.filtering.filter_files {
 			filters.extend(read_filter_file(filter_file).await?);
 		}
 
 		ignores.extend(
-			args.ignore_patterns
+			args.filtering
+				.ignore_patterns
 				.iter()
 				.map(|f| (f.to_owned(), Some(workdir.clone()))),
 		);
 
 		let exts = args
+			.filtering
 			.filter_extensions
 			.iter()
 			.map(|e| OsString::from(e.strip_prefix('.').unwrap_or(e)));
@@ -144,8 +148,8 @@ impl WatchexecFilterer {
 			)
 			.await
 			.into_diagnostic()?,
-			fs_events: args.filter_fs_events.clone(),
-			progs: if args.filter_programs_parsed.is_empty() {
+			fs_events: args.filtering.filter_fs_events.clone(),
+			progs: if args.filtering.filter_programs_parsed.is_empty() {
 				None
 			} else {
 				Some(progs::FilterProgs::new(args)?)
