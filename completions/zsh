@@ -57,11 +57,10 @@ _watchexec() {
 '--color=[When to use terminal colours]:MODE:(auto always never)' \
 '(--completions --only-emit-events)--manual[Show the manual page]' \
 '(--completions --manual)--only-emit-events[Only emit events to stdout, run no commands]' \
+'-1[Testing only\: exit Watchexec after the first run]' \
 '-n[Shorthand for '\''--shell=none'\'']' \
 '--no-environment[Deprecated shorthand for '\''--emit-events=none'\'']' \
 '--no-process-group[Don'\''t use a process group]' \
-'-1[Testing only\: exit Watchexec after the first run]' \
-'--print-events[Print events that trigger actions]' \
 '(-o --on-busy-update)-r[Restart the process if it'\''s still running]' \
 '(-o --on-busy-update)--restart[Restart the process if it'\''s still running]' \
 '--stdin-quit[Exit when stdin closes]' \
@@ -76,6 +75,7 @@ _watchexec() {
 '(--fs-events)--no-meta[Don'\''t emit fs events for metadata changes]' \
 '*-v[Set diagnostic log level]' \
 '*--verbose[Set diagnostic log level]' \
+'--print-events[Print events that trigger actions]' \
 '-N[Alert when commands start and end]' \
 '--notify[Alert when commands start and end]' \
 '--timings[Print how long the command took to run]' \

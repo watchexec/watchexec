@@ -4,7 +4,7 @@
 .SH NAME
 watchexec \- Execute commands when watched files change
 .SH SYNOPSIS
-\fBwatchexec\fR [\fB\-\-manual\fR] [\fB\-\-completions\fR] [\fB\-\-only\-emit\-events\fR] [\fB\-\-shell\fR] [\fB\-n \fR] [\fB\-E\fR|\fB\-\-env\fR] [\fB\-\-no\-process\-group\fR] [\fB\-\-wrap\-process\fR] [\fB\-\-stop\-signal\fR] [\fB\-\-stop\-timeout\fR] [\fB\-\-delay\-run\fR] [\fB\-\-workdir\fR] [\fB\-\-print\-events\fR] [\fB\-o\fR|\fB\-\-on\-busy\-update\fR] [\fB\-r\fR|\fB\-\-restart\fR] [\fB\-s\fR|\fB\-\-signal\fR] [\fB\-\-map\-signal\fR] [\fB\-d\fR|\fB\-\-debounce\fR] [\fB\-\-stdin\-quit\fR] [\fB\-p\fR|\fB\-\-postpone\fR] [\fB\-\-poll\fR] [\fB\-\-emit\-events\-to\fR] [\fB\-w\fR|\fB\-\-watch\fR] [\fB\-W\fR|\fB\-\-watch\-non\-recursive\fR] [\fB\-F\fR|\fB\-\-watch\-file\fR] [\fB\-\-no\-vcs\-ignore\fR] [\fB\-\-no\-project\-ignore\fR] [\fB\-\-no\-global\-ignore\fR] [\fB\-\-no\-default\-ignore\fR] [\fB\-\-no\-discover\-ignore\fR] [\fB\-\-ignore\-nothing\fR] [\fB\-e\fR|\fB\-\-exts\fR] [\fB\-f\fR|\fB\-\-filter\fR] [\fB\-\-filter\-file\fR] [\fB\-\-project\-origin\fR] [\fB\-j\fR|\fB\-\-filter\-prog\fR] [\fB\-i\fR|\fB\-\-ignore\fR] [\fB\-\-ignore\-file\fR] [\fB\-\-fs\-events\fR] [\fB\-\-no\-meta\fR] [\fB\-v\fR|\fB\-\-verbose\fR]... [\fB\-\-log\-file\fR] [\fB\-c\fR|\fB\-\-clear\fR] [\fB\-N\fR|\fB\-\-notify\fR] [\fB\-\-color\fR] [\fB\-\-timings\fR] [\fB\-q\fR|\fB\-\-quiet\fR] [\fB\-\-bell\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fICOMMAND\fR] 
+\fBwatchexec\fR [\fB\-\-manual\fR] [\fB\-\-completions\fR] [\fB\-\-only\-emit\-events\fR] [\fB\-\-shell\fR] [\fB\-n \fR] [\fB\-E\fR|\fB\-\-env\fR] [\fB\-\-no\-process\-group\fR] [\fB\-\-wrap\-process\fR] [\fB\-\-stop\-signal\fR] [\fB\-\-stop\-timeout\fR] [\fB\-\-delay\-run\fR] [\fB\-\-workdir\fR] [\fB\-o\fR|\fB\-\-on\-busy\-update\fR] [\fB\-r\fR|\fB\-\-restart\fR] [\fB\-s\fR|\fB\-\-signal\fR] [\fB\-\-map\-signal\fR] [\fB\-d\fR|\fB\-\-debounce\fR] [\fB\-\-stdin\-quit\fR] [\fB\-p\fR|\fB\-\-postpone\fR] [\fB\-\-poll\fR] [\fB\-\-emit\-events\-to\fR] [\fB\-w\fR|\fB\-\-watch\fR] [\fB\-W\fR|\fB\-\-watch\-non\-recursive\fR] [\fB\-F\fR|\fB\-\-watch\-file\fR] [\fB\-\-no\-vcs\-ignore\fR] [\fB\-\-no\-project\-ignore\fR] [\fB\-\-no\-global\-ignore\fR] [\fB\-\-no\-default\-ignore\fR] [\fB\-\-no\-discover\-ignore\fR] [\fB\-\-ignore\-nothing\fR] [\fB\-e\fR|\fB\-\-exts\fR] [\fB\-f\fR|\fB\-\-filter\fR] [\fB\-\-filter\-file\fR] [\fB\-\-project\-origin\fR] [\fB\-j\fR|\fB\-\-filter\-prog\fR] [\fB\-i\fR|\fB\-\-ignore\fR] [\fB\-\-ignore\-file\fR] [\fB\-\-fs\-events\fR] [\fB\-\-no\-meta\fR] [\fB\-v\fR|\fB\-\-verbose\fR]... [\fB\-\-log\-file\fR] [\fB\-\-print\-events\fR] [\fB\-c\fR|\fB\-\-clear\fR] [\fB\-N\fR|\fB\-\-notify\fR] [\fB\-\-color\fR] [\fB\-\-timings\fR] [\fB\-q\fR|\fB\-\-quiet\fR] [\fB\-\-bell\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fICOMMAND\fR] 
 .SH DESCRIPTION
 Execute commands when watched files change.
 .PP
@@ -178,34 +178,6 @@ Takes a unit\-less value in seconds, or a time span value such as "2min 5s". Pro
 Set the working directory
 
 By default, the working directory of the command is the working directory of Watchexec. You can change that with this option. Note that paths may be less intuitive to use with this.
-.SH DEBUGGING
-.TP
-\fB\-\-print\-events\fR
-Print events that trigger actions
-
-This prints the events that triggered the action when handling it (after debouncing), in a human readable form. This is useful for debugging filters.
-
-Use \*(Aq\-vvv\*(Aq instead when you need more diagnostic information.
-.TP
-\fB\-v\fR, \fB\-\-verbose\fR
-Set diagnostic log level
-
-This enables diagnostic logging, which is useful for investigating bugs or gaining more insight into faulty filters or "missing" events. Use multiple times to increase verbosity.
-
-Goes up to \*(Aq\-vvvv\*(Aq. When submitting bug reports, default to a \*(Aq\-vvv\*(Aq log level.
-
-You may want to use with \*(Aq\-\-log\-file\*(Aq to avoid polluting your terminal.
-
-Setting $RUST_LOG also works, and takes precedence, but is not recommended. However, using $RUST_LOG is the only way to get logs from before these options are parsed.
-.TP
-\fB\-\-log\-file\fR=\fIPATH\fR
-Write diagnostic logs to a file
-
-This writes diagnostic logs to a file, instead of the terminal, in JSON format. If a log level was not already specified, this will set it to \*(Aq\-vvv\*(Aq.
-
-If a path is not provided, the default is the working directory. Note that with \*(Aq\-\-ignore\-nothing\*(Aq, the write events to the log will likely get picked up by Watchexec, causing a loop; prefer setting a path outside of the watched directory.
-
-If the path provided is a directory, a file will be created in that directory. The file name will be the current date and time, in the format \*(Aqwatchexec.YYYY\-MM\-DDTHH\-MM\-SSZ.log\*(Aq.
 .SH EVENTS
 .TP
 \fB\-o\fR, \fB\-\-on\-busy\-update\fR=\fIMODE\fR
@@ -560,6 +532,34 @@ This may apply filtering at the kernel level when possible, which can be more ef
 Don\*(Aqt emit fs events for metadata changes
 
 This is a shorthand for \*(Aq\-\-fs\-events create,remove,rename,modify\*(Aq. Using it alongside the \*(Aq\-\-fs\-events\*(Aq option is non\-sensical and not allowed.
+.SH DEBUGGING
+.TP
+\fB\-v\fR, \fB\-\-verbose\fR
+Set diagnostic log level
+
+This enables diagnostic logging, which is useful for investigating bugs or gaining more insight into faulty filters or "missing" events. Use multiple times to increase verbosity.
+
+Goes up to \*(Aq\-vvvv\*(Aq. When submitting bug reports, default to a \*(Aq\-vvv\*(Aq log level.
+
+You may want to use with \*(Aq\-\-log\-file\*(Aq to avoid polluting your terminal.
+
+Setting $RUST_LOG also works, and takes precedence, but is not recommended. However, using $RUST_LOG is the only way to get logs from before these options are parsed.
+.TP
+\fB\-\-log\-file\fR=\fIPATH\fR
+Write diagnostic logs to a file
+
+This writes diagnostic logs to a file, instead of the terminal, in JSON format. If a log level was not already specified, this will set it to \*(Aq\-vvv\*(Aq.
+
+If a path is not provided, the default is the working directory. Note that with \*(Aq\-\-ignore\-nothing\*(Aq, the write events to the log will likely get picked up by Watchexec, causing a loop; prefer setting a path outside of the watched directory.
+
+If the path provided is a directory, a file will be created in that directory. The file name will be the current date and time, in the format \*(Aqwatchexec.YYYY\-MM\-DDTHH\-MM\-SSZ.log\*(Aq.
+.TP
+\fB\-\-print\-events\fR
+Print events that trigger actions
+
+This prints the events that triggered the action when handling it (after debouncing), in a human readable form. This is useful for debugging filters.
+
+Use \*(Aq\-vvv\*(Aq instead when you need more diagnostic information.
 .SH OUTPUT
 .TP
 \fB\-c\fR, \fB\-\-clear\fR=\fIMODE\fR

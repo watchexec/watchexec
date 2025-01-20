@@ -57,6 +57,7 @@ pub struct CommandArgs {
 		long,
 		help_heading = OPTSET_COMMAND,
 		value_name = "SHELL",
+		display_order = 190,
 	)]
 	pub shell: Option<String>,
 
@@ -64,6 +65,7 @@ pub struct CommandArgs {
 	#[arg(
 		short = 'n',
 		help_heading = OPTSET_COMMAND,
+		display_order = 140,
 	)]
 	pub no_shell: bool,
 
@@ -89,6 +91,7 @@ pub struct CommandArgs {
 		short = 'E',
 		help_heading = OPTSET_COMMAND,
 		value_name = "KEY=VALUE",
+		display_order = 50,
 	)]
 	pub env: Vec<String>,
 
@@ -102,6 +105,7 @@ pub struct CommandArgs {
 	#[arg(
 		long,
 		help_heading = OPTSET_COMMAND,
+		display_order = 141,
 	)]
 	pub no_process_group: bool,
 
@@ -119,6 +123,7 @@ pub struct CommandArgs {
 		help_heading = OPTSET_COMMAND,
 		value_name = "MODE",
 		default_value = "group",
+		display_order = 231,
 	)]
 	pub wrap_process: WrapMode,
 
@@ -142,6 +147,7 @@ pub struct CommandArgs {
 		long,
 		help_heading = OPTSET_COMMAND,
 		value_name = "SIGNAL",
+		display_order = 191,
 	)]
 	pub stop_signal: Option<Signal>,
 
@@ -163,7 +169,8 @@ pub struct CommandArgs {
 		help_heading = OPTSET_COMMAND,
 		default_value = "10s",
 		hide_default_value = true,
-		value_name = "TIMEOUT"
+		value_name = "TIMEOUT",
+		display_order = 192,
 	)]
 	pub stop_timeout: TimeSpan,
 
@@ -179,6 +186,7 @@ pub struct CommandArgs {
 		long,
 		help_heading = OPTSET_COMMAND,
 		value_name = "DURATION",
+		display_order = 40,
 	)]
 	pub delay_run: Option<TimeSpan>,
 
@@ -191,6 +199,7 @@ pub struct CommandArgs {
 		help_heading = OPTSET_COMMAND,
 		value_hint = ValueHint::DirPath,
 		value_name = "DIRECTORY",
+		display_order = 230,
 	)]
 	pub workdir: Option<PathBuf>,
 }
