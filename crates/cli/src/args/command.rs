@@ -231,7 +231,9 @@ pub struct CommandArgs {
 	/// `TYPE::HOST:PORT` (specify a socket type, `tcp` / `udp`).
 	///
 	/// This integration only provides basic support, if you want more control you should use the
-	/// `systemfd` tool from <https://github.com/mitsuhiko/systemfd>, upon which this is based.
+	/// `systemfd` tool from <https://github.com/mitsuhiko/systemfd>, upon which this is based. The
+	/// syntax here and the spawning behaviour is identical to `systemfd`, and both watchexec and
+	/// systemfd are compatible implementations of the systemd socket-activation protocol.
 	#[arg(
 		long,
 		help_heading = OPTSET_COMMAND,
