@@ -24,6 +24,7 @@ _watchexec() {
 '--stop-timeout=[Time to wait for the command to exit gracefully]:TIMEOUT:_default' \
 '--delay-run=[Sleep before running the command]:DURATION:_default' \
 '--workdir=[Set the working directory]:DIRECTORY:_files -/' \
+'*--fd-socket=[Create listen-fd sockets]:PORT:_default' \
 '-o+[What to do when receiving events while the command is running]:MODE:(queue do-nothing restart signal)' \
 '--on-busy-update=[What to do when receiving events while the command is running]:MODE:(queue do-nothing restart signal)' \
 '(-r --restart)-s+[Send a signal to the process when it'\''s still running]:SIGNAL:_default' \

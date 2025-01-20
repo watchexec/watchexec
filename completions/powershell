@@ -30,6 +30,7 @@ Register-ArgumentCompleter -Native -CommandName 'watchexec' -ScriptBlock {
             [CompletionResult]::new('--stop-timeout', '--stop-timeout', [CompletionResultType]::ParameterName, 'Time to wait for the command to exit gracefully')
             [CompletionResult]::new('--delay-run', '--delay-run', [CompletionResultType]::ParameterName, 'Sleep before running the command')
             [CompletionResult]::new('--workdir', '--workdir', [CompletionResultType]::ParameterName, 'Set the working directory')
+            [CompletionResult]::new('--fd-socket', '--fd-socket', [CompletionResultType]::ParameterName, 'Create listen-fd sockets')
             [CompletionResult]::new('-o', '-o', [CompletionResultType]::ParameterName, 'What to do when receiving events while the command is running')
             [CompletionResult]::new('--on-busy-update', '--on-busy-update', [CompletionResultType]::ParameterName, 'What to do when receiving events while the command is running')
             [CompletionResult]::new('-s', '-s', [CompletionResultType]::ParameterName, 'Send a signal to the process when it''s still running')

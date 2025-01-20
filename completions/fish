@@ -13,6 +13,7 @@ complete -c watchexec -l stop-signal -d 'Signal to send to stop the command' -r
 complete -c watchexec -l stop-timeout -d 'Time to wait for the command to exit gracefully' -r
 complete -c watchexec -l delay-run -d 'Sleep before running the command' -r
 complete -c watchexec -l workdir -d 'Set the working directory' -r -f -a "(__fish_complete_directories)"
+complete -c watchexec -l fd-socket -d 'Create listen-fd sockets' -r
 complete -c watchexec -s o -l on-busy-update -d 'What to do when receiving events while the command is running' -r -f -a "queue\t''
 do-nothing\t''
 restart\t''

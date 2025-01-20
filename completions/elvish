@@ -27,6 +27,7 @@ set edit:completion:arg-completer[watchexec] = {|@words|
             cand --stop-timeout 'Time to wait for the command to exit gracefully'
             cand --delay-run 'Sleep before running the command'
             cand --workdir 'Set the working directory'
+            cand --fd-socket 'Create listen-fd sockets'
             cand -o 'What to do when receiving events while the command is running'
             cand --on-busy-update 'What to do when receiving events while the command is running'
             cand -s 'Send a signal to the process when it''s still running'
