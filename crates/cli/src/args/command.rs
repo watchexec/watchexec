@@ -6,6 +6,11 @@ use std::{
 	str::FromStr,
 };
 
+#[cfg(unix)]
+pub use std::os::fd::OwnedFd;
+#[cfg(windows)]
+pub use std::os::windows::io::OwnedSocket as OwnedFd;
+
 use clap::{
 	builder::TypedValueParser,
 	error::{Error, ErrorKind},
@@ -223,10 +228,10 @@ pub struct CommandArgs {
 	///
 	/// The value can be either of `PORT` (opens a TCP listening socket at that port), `HOST:PORT`
 	/// (specify a host IP address; IPv6 addresses can be specified `[bracketed]`), `TYPE::PORT` or
-	/// `TYPE::HOST:PORT` (specify a socket type, `tcp` / `udp` / `unix`).
+	/// `TYPE::HOST:PORT` (specify a socket type, `tcp` / `udp`).
 	///
 	/// This integration only provides basic support, if you want more control you should use the
-	/// `systemfd` tool from <https://github.com/mitsuhiko/systemfd>.
+	/// `systemfd` tool from <https://github.com/mitsuhiko/systemfd>, upon which this is based.
 	#[arg(
 		long,
 		help_heading = OPTSET_COMMAND,
@@ -271,7 +276,6 @@ pub enum SocketType {
 	#[default]
 	Tcp,
 	Udp,
-	Unix,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -298,12 +302,10 @@ impl TypedValueParser for FdSpecValueParser {
 			.ok_or_else(|| Error::raw(ErrorKind::ValueValidation, "invalid UTF-8"))?
 			.to_ascii_lowercase();
 
-		let (socket, value) = if let Some(val) = value.strip_prefix("tcp:") {
+		let (socket, value) = if let Some(val) = value.strip_prefix("tcp::") {
 			(SocketType::Tcp, val)
-		} else if let Some(val) = value.strip_prefix("udp:") {
+		} else if let Some(val) = value.strip_prefix("udp::") {
 			(SocketType::Udp, val)
-		} else if let Some(val) = value.strip_prefix("unix:") {
-			(SocketType::Unix, val)
 		} else {
 			(SocketType::Tcp, value.as_ref())
 		};
@@ -316,6 +318,107 @@ impl TypedValueParser for FdSpecValueParser {
 			return Err(Error::raw(ErrorKind::ValueValidation, "not a port number"));
 		};
 
+		if port == 0 {
+			return Err(Error::raw(
+				ErrorKind::ValueValidation,
+				"port number cannot be zero",
+			));
+		}
+
 		Ok(FdSpec { socket, addr, port })
+	}
+}
+
+impl FdSpec {
+	pub fn create_fd(&self) -> Result<OwnedFd> {
+		#[cfg(not(any(unix, windows)))]
+		{
+			miette::bail!("--fd-socket not supported on this platform");
+		}
+
+		#[cfg(unix)]
+		{
+			self.create_fd_imp().into_diagnostic()
+		}
+
+		#[cfg(windows)]
+		{
+			self.create_fd_imp()
+		}
+	}
+
+	#[cfg(unix)]
+	fn create_fd_imp(&self) -> nix::Result<OwnedFd> {
+		use std::os::fd::AsRawFd;
+
+		use nix::sys::socket::{
+			bind, listen, setsockopt, socket, sockopt, AddressFamily, Backlog, SockFlag, SockType,
+			SockaddrStorage,
+		};
+
+		let sockaddr = SocketAddr::new(self.addr, self.port);
+		let addr = SockaddrStorage::from(sockaddr);
+		let fam = if self.addr.is_ipv4() {
+			AddressFamily::Inet
+		} else {
+			AddressFamily::Inet6
+		};
+		let ty = match self.socket {
+			SocketType::Tcp => SockType::Stream,
+			SocketType::Udp => SockType::Datagram,
+		};
+
+		let sock = socket(fam, ty, SockFlag::empty(), None)?;
+
+		setsockopt(&sock, sockopt::ReuseAddr, &true)?;
+
+		// port reuse will only work on inet sockets.  On new linux kernels
+		// in particular it will fail with an error if attempted on unix sockets
+		// or others.
+		if matches!(fam, AddressFamily::Inet | AddressFamily::Inet6) {
+			setsockopt(&sock, sockopt::ReusePort, &true)?;
+		}
+
+		let rv = bind(sock.as_raw_fd(), &addr)
+			.map_err(From::from)
+			.and_then(|_| {
+				if let SocketType::Tcp = self.socket {
+					listen(&sock, Backlog::new(1).unwrap())?;
+				}
+				Ok(())
+			});
+
+		if rv.is_err() {
+			unsafe { libc::close(sock.as_raw_fd()) };
+		}
+
+		rv.map(|_| sock)
+	}
+
+	#[cfg(windows)]
+	fn create_fd_imp(&self) -> Result<OwnedFd> {
+		use socket2::{Domain, SockAddr, Socket, Type};
+
+		let sockaddr = SocketAddr::new(self.addr, self.port);
+		let addr = SockAddr::from(sockaddr);
+		let dom = if self.addr.is_ipv4() {
+			Domain::IPV4
+		} else {
+			Domain::IPV6
+		};
+		let ty = match self.socket {
+			SocketType::Tcp => Type::STREAM,
+			SocketType::Udp => Type::DGRAM,
+		};
+
+		let sock = Socket::new(dom, ty, None).into_diagnostic()?;
+		sock.set_reuse_address(true);
+		sock.bind(&addr).into_diagnostic()?;
+
+		if let SocketType::Tcp = self.socket {
+			sock.listen(1).into_diagnostic()?;
+		}
+
+		Ok(sock.into())
 	}
 }
