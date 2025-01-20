@@ -4,7 +4,7 @@ use std::{
 	time::Duration,
 };
 
-use clap::Parser;
+use clap::{Parser, ValueEnum, ValueHint};
 use miette::Result;
 use tracing::{debug, info, warn};
 use tracing_appender::non_blocking::WorkerGuard;
@@ -71,6 +71,82 @@ include!(env!("BOSION_PATH"));
 )]
 #[allow(clippy::struct_excessive_bools)]
 pub struct Args {
+	/// Command (program and arguments) to run on changes
+	///
+	/// It's run when events pass filters and the debounce period (and once at startup unless
+	/// '--postpone' is given). If you pass flags to the command, you should separate it with --
+	/// though that is not strictly required.
+	///
+	/// Examples:
+	///
+	///   $ watchexec -w src npm run build
+	///
+	///   $ watchexec -w src -- rsync -a src dest
+	///
+	/// Take care when using globs or other shell expansions in the command. Your shell may expand
+	/// them before ever passing them to Watchexec, and the results may not be what you expect.
+	/// Compare:
+	///
+	///   $ watchexec echo src/*.rs
+	///
+	///   $ watchexec echo 'src/*.rs'
+	///
+	///   $ watchexec --shell=none echo 'src/*.rs'
+	///
+	/// Behaviour depends on the value of '--shell': for all except 'none', every part of the
+	/// command is joined together into one string with a single ascii space character, and given to
+	/// the shell as described in the help for '--shell'. For 'none', each distinct element the
+	/// command is passed as per the execvp(3) convention: first argument is the program, as a path
+	/// or searched for in the 'PATH' environment variable, rest are arguments.
+	#[arg(
+		trailing_var_arg = true,
+		num_args = 1..,
+		value_hint = ValueHint::CommandString,
+		value_name = "COMMAND",
+		required_unless_present_any = ["completions", "manual", "only_emit_events"],
+	)]
+	pub program: Vec<String>,
+
+	/// Show the manual page
+	///
+	/// This shows the manual page for Watchexec, if the output is a terminal and the 'man' program
+	/// is available. If not, the manual page is printed to stdout in ROFF format (suitable for
+	/// writing to a watchexec.1 file).
+	#[arg(
+		long,
+		help_heading = OPTSET_DEBUGGING,
+		conflicts_with_all = ["program", "completions", "only_emit_events"],
+	)]
+	pub manual: bool,
+
+	/// Generate a shell completions script
+	///
+	/// Provides a completions script or configuration for the given shell. If Watchexec is not
+	/// distributed with pre-generated completions, you can use this to generate them yourself.
+	///
+	/// Supported shells: bash, elvish, fish, nu, powershell, zsh.
+	#[arg(
+		long,
+		help_heading = OPTSET_DEBUGGING,
+		conflicts_with_all = ["program", "manual", "only_emit_events"],
+	)]
+	pub completions: Option<ShellCompletion>,
+
+	/// Only emit events to stdout, run no commands.
+	///
+	/// This is a convenience option for using Watchexec as a file watcher, without running any
+	/// commands. It is almost equivalent to using `cat` as the command, except that it will not
+	/// spawn a new process for each event.
+	///
+	/// This option implies `--emit-events-to=json-stdio`; you may also use the text mode by
+	/// specifying `--emit-events-to=stdio`.
+	#[arg(
+		long,
+		help_heading = OPTSET_EVENTS,
+		conflicts_with_all = ["program", "completions", "manual"],
+	)]
+	pub only_emit_events: bool,
+
 	#[command(flatten)]
 	pub command: command::CommandArgs,
 
@@ -151,6 +227,16 @@ fn expand_args_up_to_doubledash() -> Result<Vec<OsString>, std::io::Error> {
 	Ok(expanded_args)
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
+pub enum ShellCompletion {
+	Bash,
+	Elvish,
+	Fish,
+	Nu,
+	Powershell,
+	Zsh,
+}
+
 pub async fn get_args() -> Result<(Args, Option<WorkerGuard>)> {
 	let prearg_logs = logging::preargs();
 	if prearg_logs {
@@ -172,8 +258,15 @@ pub async fn get_args() -> Result<(Args, Option<WorkerGuard>)> {
 	args.output.normalise()?;
 	args.command.normalise()?;
 	args.filtering.normalise(&args.command).await?;
-	args.events.normalise(&args.command, &args.filtering)?;
+	args.events
+		.normalise(&args.command, &args.filtering, args.only_emit_events)?;
 
 	info!(?args, "got arguments");
 	Ok((args, log_guard))
+}
+
+#[test]
+fn verify_cli() {
+	use clap::CommandFactory;
+	Args::command().debug_assert()
 }

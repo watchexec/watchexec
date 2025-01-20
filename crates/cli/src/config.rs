@@ -87,7 +87,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 	let emit_events_to = args.events.emit_events_to;
 	let emit_file = state.emit_file.clone();
 
-	if args.events.only_emit_events {
+	if args.only_emit_events {
 		config.on_action(move |mut action| {
 			// if we got a terminate or interrupt signal, quit
 			if action
@@ -470,7 +470,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 
 #[instrument(level = "debug")]
 fn interpret_command_args(args: &Args) -> Result<Arc<Command>> {
-	let mut cmd = args.command.program.clone();
+	let mut cmd = args.program.clone();
 	assert!(!cmd.is_empty(), "(clap) Bug: command is not present");
 
 	let shell = if args.command.no_shell {
