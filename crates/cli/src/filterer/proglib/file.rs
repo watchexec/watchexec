@@ -105,6 +105,7 @@ pub fn funs() -> [Filter<Native<jaq_json::Val>>; 3] {
 
 fn json_meta(meta: Metadata) -> Value {
 	let perms = meta.permissions();
+	#[cfg_attr(not(unix), allow(unused_mut))]
 	let mut val = json!({
 		"type": filetype_str(meta.file_type()),
 		"size": meta.len(),

@@ -9,10 +9,10 @@ pub use self::{
 };
 
 #[cfg(test)]
-pub(crate) use self::{
-	priority::Priority,
-	testchild::{TestChild, TestChildCall},
-};
+pub(crate) use self::{priority::Priority, testchild::TestChild};
+
+#[cfg(all(unix, test))]
+pub(crate) use self::testchild::TestChildCall;
 
 #[doc(inline)]
 pub use task::start_job;
