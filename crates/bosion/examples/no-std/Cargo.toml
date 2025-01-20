@@ -22,6 +22,6 @@ path = "../.."
 default-features = false
 
 [dependencies]
-leon = { version = "2.0.1", default-features = false }
+leon = { version = "3.0.2", default-features = false }
 snapbox = "0.5.9"
 time = { version = "0.3.30", features = ["formatting", "macros"] }
