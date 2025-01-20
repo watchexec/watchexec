@@ -64,12 +64,6 @@ include!(env!("BOSION_PATH"));
 	after_long_help = "Use @argfile as first argument to load arguments from the file 'argfile' (one argument per line) which will be inserted in place of the @argfile (further arguments on the CLI will override or add onto those in the file).\n\nDidn't expect this much output? Use the short '-h' flag to get short help.",
 	hide_possible_values = true,
 )]
-#[cfg_attr(debug_assertions, command(before_help = "⚠ DEBUG BUILD ⚠"))]
-#[cfg_attr(
-	feature = "dev-console",
-	command(before_help = "⚠ DEV CONSOLE ENABLED ⚠")
-)]
-#[allow(clippy::struct_excessive_bools)]
 pub struct Args {
 	/// Command (program and arguments) to run on changes
 	///
@@ -114,7 +108,6 @@ pub struct Args {
 	/// writing to a watchexec.1 file).
 	#[arg(
 		long,
-		help_heading = OPTSET_DEBUGGING,
 		conflicts_with_all = ["program", "completions", "only_emit_events"],
 	)]
 	pub manual: bool,
@@ -127,7 +120,7 @@ pub struct Args {
 	/// Supported shells: bash, elvish, fish, nu, powershell, zsh.
 	#[arg(
 		long,
-		help_heading = OPTSET_DEBUGGING,
+		value_name = "SHELL",
 		conflicts_with_all = ["program", "manual", "only_emit_events"],
 	)]
 	pub completions: Option<ShellCompletion>,
@@ -142,7 +135,6 @@ pub struct Args {
 	/// specifying `--emit-events-to=stdio`.
 	#[arg(
 		long,
-		help_heading = OPTSET_EVENTS,
 		conflicts_with_all = ["program", "completions", "manual"],
 	)]
 	pub only_emit_events: bool,

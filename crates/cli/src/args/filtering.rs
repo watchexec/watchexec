@@ -236,9 +236,7 @@ pub struct FilteringArgs {
 	)]
 	pub project_origin: Option<PathBuf>,
 
-	/// [experimental] Filter programs.
-	///
-	/// /!\ This option is EXPERIMENTAL and may change and/or vanish without notice.
+	/// Filter programs.
 	///
 	/// Provide your own custom filter programs in jaq (similar to jq) syntax. Programs are given
 	/// an event in the same format as described in '--emit-events-to' and must return a boolean.

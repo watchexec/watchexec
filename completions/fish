@@ -34,7 +34,7 @@ complete -c watchexec -s e -l exts -d 'Filename extensions to filter to' -r
 complete -c watchexec -s f -l filter -d 'Filename patterns to filter to' -r
 complete -c watchexec -l filter-file -d 'Files to load filters from' -r -F
 complete -c watchexec -l project-origin -d 'Set the project origin' -r -f -a "(__fish_complete_directories)"
-complete -c watchexec -s j -l filter-prog -d '[experimental] Filter programs' -r
+complete -c watchexec -s j -l filter-prog -d 'Filter programs' -r
 complete -c watchexec -s i -l ignore -d 'Filename patterns to filter out' -r
 complete -c watchexec -l ignore-file -d 'Files to load ignores from' -r -F
 complete -c watchexec -l fs-events -d 'Filesystem events to filter to' -r -f -a "access\t''
