@@ -34,6 +34,7 @@ module completions {
     --manual                  # Show the manual page
     --completions: string@"nu-complete watchexec completions" # Generate a shell completions script
     --only-emit-events        # Only emit events to stdout, run no commands
+    -1                        # Testing only: exit Watchexec after the first run
     --shell: string           # Use a different shell
     -n                        # Shorthand for '--shell=none'
     --no-environment          # Deprecated shorthand for '--emit-events=none'
@@ -44,8 +45,6 @@ module completions {
     --stop-timeout: string    # Time to wait for the command to exit gracefully
     --delay-run: string       # Sleep before running the command
     --workdir: path           # Set the working directory
-    -1                        # Testing only: exit Watchexec after the first run
-    --print-events            # Print events that trigger actions
     --on-busy-update(-o): string@"nu-complete watchexec on_busy_update" # What to do when receiving events while the command is running
     --restart(-r)             # Restart the process if it's still running
     --signal(-s): string      # Send a signal to the process when it's still running
@@ -75,6 +74,7 @@ module completions {
     --no-meta                 # Don't emit fs events for metadata changes
     --verbose(-v)             # Set diagnostic log level
     --log-file: path          # Write diagnostic logs to a file
+    --print-events            # Print events that trigger actions
     --clear(-c): string@"nu-complete watchexec screen_clear" # Clear screen before running command
     --notify(-N)              # Alert when commands start and end
     --color: string@"nu-complete watchexec color" # When to use terminal colours

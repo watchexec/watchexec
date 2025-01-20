@@ -28,7 +28,8 @@ pub struct EventsArgs {
 		help_heading = OPTSET_EVENTS,
 		default_value = "do-nothing",
 		hide_default_value = true,
-		value_name = "MODE"
+		value_name = "MODE",
+		display_order = 150,
 	)]
 	pub on_busy_update: OnBusyUpdate,
 
@@ -40,6 +41,7 @@ pub struct EventsArgs {
 		long,
 		help_heading = OPTSET_EVENTS,
 		conflicts_with_all = ["on_busy_update"],
+		display_order = 180,
 	)]
 	pub restart: bool,
 
@@ -58,7 +60,8 @@ pub struct EventsArgs {
 		long,
 		help_heading = OPTSET_EVENTS,
 		conflicts_with_all = ["restart"],
-		value_name = "SIGNAL"
+		value_name = "SIGNAL",
+		display_order = 190,
 	)]
 	pub signal: Option<Signal>,
 
@@ -84,6 +87,7 @@ pub struct EventsArgs {
 		help_heading = OPTSET_EVENTS,
 		value_name = "SIGNAL:SIGNAL",
 		value_parser = SignalMappingValueParser,
+		display_order = 130,
 	)]
 	pub signal_map: Vec<SignalMapping>,
 
@@ -110,7 +114,8 @@ pub struct EventsArgs {
 		help_heading = OPTSET_EVENTS,
 		default_value = "50ms",
 		hide_default_value = true,
-		value_name = "TIMEOUT"
+		value_name = "TIMEOUT",
+		display_order = 40,
 	)]
 	pub debounce: TimeSpan<1_000_000>,
 
@@ -121,6 +126,7 @@ pub struct EventsArgs {
 	#[arg(
 		long,
 		help_heading = OPTSET_EVENTS,
+		display_order = 191,
 	)]
 	pub stdin_quit: bool,
 
@@ -132,6 +138,7 @@ pub struct EventsArgs {
 		long,
 		short,
 		help_heading = OPTSET_EVENTS,
+		display_order = 161,
 	)]
 	pub postpone: bool,
 
@@ -154,6 +161,7 @@ pub struct EventsArgs {
 		num_args = 0..=1,
 		default_missing_value = "30s",
 		value_name = "INTERVAL",
+		display_order = 160,
 	)]
 	pub poll: Option<TimeSpan<1_000_000>>,
 
@@ -264,6 +272,7 @@ pub struct EventsArgs {
 		default_value = "none",
 		hide_default_value = true,
 		value_name = "MODE",
+		display_order = 50,
 	)]
 	pub emit_events_to: EmitEvents,
 }

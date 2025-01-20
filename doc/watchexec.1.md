@@ -8,7 +8,7 @@ watchexec - Execute commands when watched files change
 \[**\--only-emit-events**\] \[**\--shell**\] \[**-n **\]
 \[**-E**\|**\--env**\] \[**\--no-process-group**\]
 \[**\--wrap-process**\] \[**\--stop-signal**\] \[**\--stop-timeout**\]
-\[**\--delay-run**\] \[**\--workdir**\] \[**\--print-events**\]
+\[**\--delay-run**\] \[**\--workdir**\]
 \[**-o**\|**\--on-busy-update**\] \[**-r**\|**\--restart**\]
 \[**-s**\|**\--signal**\] \[**\--map-signal**\]
 \[**-d**\|**\--debounce**\] \[**\--stdin-quit**\]
@@ -22,9 +22,10 @@ watchexec - Execute commands when watched files change
 \[**\--project-origin**\] \[**-j**\|**\--filter-prog**\]
 \[**-i**\|**\--ignore**\] \[**\--ignore-file**\] \[**\--fs-events**\]
 \[**\--no-meta**\] \[**-v**\|**\--verbose**\]\... \[**\--log-file**\]
-\[**-c**\|**\--clear**\] \[**-N**\|**\--notify**\] \[**\--color**\]
-\[**\--timings**\] \[**-q**\|**\--quiet**\] \[**\--bell**\]
-\[**-h**\|**\--help**\] \[**-V**\|**\--version**\] \[*COMMAND*\]
+\[**\--print-events**\] \[**-c**\|**\--clear**\]
+\[**-N**\|**\--notify**\] \[**\--color**\] \[**\--timings**\]
+\[**-q**\|**\--quiet**\] \[**\--bell**\] \[**-h**\|**\--help**\]
+\[**-V**\|**\--version**\] \[*COMMAND*\]
 
 # DESCRIPTION
 
@@ -290,53 +291,6 @@ Watch lib and src directories for changes, rebuilding each time:
     By default, the working directory of the command is the working
     directory of Watchexec. You can change that with this option. Note
     that paths may be less intuitive to use with this.
-
-# DEBUGGING
-
-**\--print-events**
-
-:   Print events that trigger actions
-
-    This prints the events that triggered the action when handling it
-    (after debouncing), in a human readable form. This is useful for
-    debugging filters.
-
-    Use -vvv instead when you need more diagnostic information.
-
-**-v**, **\--verbose**
-
-:   Set diagnostic log level
-
-    This enables diagnostic logging, which is useful for investigating
-    bugs or gaining more insight into faulty filters or \"missing\"
-    events. Use multiple times to increase verbosity.
-
-    Goes up to -vvvv. When submitting bug reports, default to a -vvv log
-    level.
-
-    You may want to use with \--log-file to avoid polluting your
-    terminal.
-
-    Setting \$RUST_LOG also works, and takes precedence, but is not
-    recommended. However, using \$RUST_LOG is the only way to get logs
-    from before these options are parsed.
-
-**\--log-file**=*PATH*
-
-:   Write diagnostic logs to a file
-
-    This writes diagnostic logs to a file, instead of the terminal, in
-    JSON format. If a log level was not already specified, this will set
-    it to -vvv.
-
-    If a path is not provided, the default is the working directory.
-    Note that with \--ignore-nothing, the write events to the log will
-    likely get picked up by Watchexec, causing a loop; prefer setting a
-    path outside of the watched directory.
-
-    If the path provided is a directory, a file will be created in that
-    directory. The file name will be the current date and time, in the
-    format watchexec.YYYY-MM-DDTHH-MM-SSZ.log.
 
 # EVENTS
 
@@ -848,6 +802,53 @@ Watch lib and src directories for changes, rebuilding each time:
     This is a shorthand for \--fs-events create,remove,rename,modify.
     Using it alongside the \--fs-events option is non-sensical and not
     allowed.
+
+# DEBUGGING
+
+**-v**, **\--verbose**
+
+:   Set diagnostic log level
+
+    This enables diagnostic logging, which is useful for investigating
+    bugs or gaining more insight into faulty filters or \"missing\"
+    events. Use multiple times to increase verbosity.
+
+    Goes up to -vvvv. When submitting bug reports, default to a -vvv log
+    level.
+
+    You may want to use with \--log-file to avoid polluting your
+    terminal.
+
+    Setting \$RUST_LOG also works, and takes precedence, but is not
+    recommended. However, using \$RUST_LOG is the only way to get logs
+    from before these options are parsed.
+
+**\--log-file**=*PATH*
+
+:   Write diagnostic logs to a file
+
+    This writes diagnostic logs to a file, instead of the terminal, in
+    JSON format. If a log level was not already specified, this will set
+    it to -vvv.
+
+    If a path is not provided, the default is the working directory.
+    Note that with \--ignore-nothing, the write events to the log will
+    likely get picked up by Watchexec, causing a loop; prefer setting a
+    path outside of the watched directory.
+
+    If the path provided is a directory, a file will be created in that
+    directory. The file name will be the current date and time, in the
+    format watchexec.YYYY-MM-DDTHH-MM-SSZ.log.
+
+**\--print-events**
+
+:   Print events that trigger actions
+
+    This prints the events that triggered the action when handling it
+    (after debouncing), in a human readable form. This is useful for
+    debugging filters.
+
+    Use -vvv instead when you need more diagnostic information.
 
 # OUTPUT
 

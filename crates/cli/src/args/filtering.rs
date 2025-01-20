@@ -44,6 +44,7 @@ pub struct FilteringArgs {
 		help_heading = OPTSET_FILTERING,
 		value_hint = ValueHint::AnyPath,
 		value_name = "PATH",
+		display_order = 230,
 	)]
 	pub recursive_paths: Vec<PathBuf>,
 
@@ -58,6 +59,7 @@ pub struct FilteringArgs {
 		help_heading = OPTSET_FILTERING,
 		value_hint = ValueHint::AnyPath,
 		value_name = "PATH",
+		display_order = 231,
 	)]
 	pub non_recursive_paths: Vec<PathBuf>,
 
@@ -75,6 +77,7 @@ pub struct FilteringArgs {
 		help_heading = OPTSET_FILTERING,
 		value_hint = ValueHint::AnyPath,
 		value_name = "PATH",
+		display_order = 232,
 	)]
 	pub watch_file: Option<PathBuf>,
 
@@ -88,6 +91,7 @@ pub struct FilteringArgs {
 	#[arg(
 		long,
 		help_heading = OPTSET_FILTERING,
+		display_order = 145,
 	)]
 	pub no_vcs_ignore: bool,
 
@@ -114,6 +118,7 @@ pub struct FilteringArgs {
 		long,
 		help_heading = OPTSET_FILTERING,
 		verbatim_doc_comment,
+		display_order = 144,
 	)]
 	pub no_project_ignore: bool,
 
@@ -136,6 +141,7 @@ pub struct FilteringArgs {
 		long,
 		help_heading = OPTSET_FILTERING,
 		verbatim_doc_comment,
+		display_order = 142,
 	)]
 	pub no_global_ignore: bool,
 
@@ -147,6 +153,7 @@ pub struct FilteringArgs {
 	#[arg(
 		long,
 		help_heading = OPTSET_FILTERING,
+		display_order = 140,
 	)]
 	pub no_default_ignore: bool,
 
@@ -159,6 +166,7 @@ pub struct FilteringArgs {
 	#[arg(
 		long,
 		help_heading = OPTSET_FILTERING,
+		display_order = 141,
 	)]
 	pub no_discover_ignore: bool,
 
@@ -171,6 +179,7 @@ pub struct FilteringArgs {
 	#[arg(
 		long,
 		help_heading = OPTSET_FILTERING,
+		display_order = 92,
 	)]
 	pub ignore_nothing: bool,
 
@@ -185,6 +194,7 @@ pub struct FilteringArgs {
 		help_heading = OPTSET_FILTERING,
 		value_delimiter = ',',
 		value_name = "EXTENSIONS",
+		display_order = 50,
 	)]
 	pub filter_extensions: Vec<String>,
 
@@ -198,6 +208,7 @@ pub struct FilteringArgs {
 		short = 'f',
 		help_heading = OPTSET_FILTERING,
 		value_name = "PATTERN",
+		display_order = 60,
 	)]
 	pub filter_patterns: Vec<String>,
 
@@ -215,6 +226,7 @@ pub struct FilteringArgs {
 		value_name = "PATH",
 		env = "WATCHEXEC_FILTER_FILES",
 		hide_env = true,
+		display_order = 61,
 	)]
 	pub filter_files: Vec<PathBuf>,
 
@@ -233,6 +245,7 @@ pub struct FilteringArgs {
 		help_heading = OPTSET_FILTERING,
 		value_hint = ValueHint::DirPath,
 		value_name = "DIRECTORY",
+		display_order = 160,
 	)]
 	pub project_origin: Option<PathBuf>,
 
@@ -299,6 +312,7 @@ pub struct FilteringArgs {
 		short = 'j',
 		help_heading = OPTSET_FILTERING,
 		value_name = "EXPRESSION",
+		display_order = 62,
 	)]
 	pub filter_programs: Vec<String>,
 
@@ -316,6 +330,7 @@ pub struct FilteringArgs {
 		short = 'i',
 		help_heading = OPTSET_FILTERING,
 		value_name = "PATTERN",
+		display_order = 90,
 	)]
 	pub ignore_patterns: Vec<String>,
 
@@ -333,6 +348,7 @@ pub struct FilteringArgs {
 		value_name = "PATH",
 		env = "WATCHEXEC_IGNORE_FILES",
 		hide_env = true,
+		display_order = 91,
 	)]
 	pub ignore_files: Vec<PathBuf>,
 
@@ -352,6 +368,7 @@ pub struct FilteringArgs {
 		value_delimiter = ',',
 		hide_default_value = true,
 		value_name = "EVENTS",
+		display_order = 63,
 	)]
 	pub filter_fs_events: Vec<FsEvent>,
 
@@ -363,6 +380,7 @@ pub struct FilteringArgs {
 		long = "no-meta",
 		help_heading = OPTSET_FILTERING,
 		conflicts_with = "filter_fs_events",
+		display_order = 142,
 	)]
 	pub filter_fs_meta: bool,
 }

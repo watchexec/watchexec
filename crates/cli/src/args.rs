@@ -10,7 +10,6 @@ use tracing::{debug, info, warn};
 use tracing_appender::non_blocking::WorkerGuard;
 
 pub(crate) mod command;
-pub(crate) mod debugging;
 pub(crate) mod events;
 pub(crate) mod filtering;
 pub(crate) mod logging;
@@ -109,6 +108,7 @@ pub struct Args {
 	#[arg(
 		long,
 		conflicts_with_all = ["program", "completions", "only_emit_events"],
+		display_order = 130,
 	)]
 	pub manual: bool,
 
@@ -122,6 +122,7 @@ pub struct Args {
 		long,
 		value_name = "SHELL",
 		conflicts_with_all = ["program", "manual", "only_emit_events"],
+		display_order = 30,
 	)]
 	pub completions: Option<ShellCompletion>,
 
@@ -136,14 +137,16 @@ pub struct Args {
 	#[arg(
 		long,
 		conflicts_with_all = ["program", "completions", "manual"],
+		display_order = 150,
 	)]
 	pub only_emit_events: bool,
 
-	#[command(flatten)]
-	pub command: command::CommandArgs,
+	/// Testing only: exit Watchexec after the first run
+	#[arg(short = '1', hide = true)]
+	pub once: bool,
 
 	#[command(flatten)]
-	pub debugging: debugging::DebuggingArgs,
+	pub command: command::CommandArgs,
 
 	#[command(flatten)]
 	pub events: events::EventsArgs,

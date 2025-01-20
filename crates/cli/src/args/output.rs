@@ -15,6 +15,7 @@ pub struct OutputArgs {
 		num_args = 0..=1,
 		default_missing_value = "clear",
 		value_name = "MODE",
+		display_order = 30,
 	)]
 	pub screen_clear: Option<ClearMode>,
 
@@ -26,6 +27,7 @@ pub struct OutputArgs {
 		short = 'N',
 		long,
 		help_heading = OPTSET_OUTPUT,
+		display_order = 140,
 	)]
 	pub notify: bool,
 
@@ -38,6 +40,7 @@ pub struct OutputArgs {
 		default_value = "auto",
 		value_name = "MODE",
 		alias = "colour",
+		display_order = 31,
 	)]
 	pub color: ColourMode,
 
@@ -48,6 +51,7 @@ pub struct OutputArgs {
 	#[arg(
 		long,
 		help_heading = OPTSET_OUTPUT,
+		display_order = 200,
 	)]
 	pub timings: bool,
 
@@ -59,6 +63,7 @@ pub struct OutputArgs {
 		short,
 		long,
 		help_heading = OPTSET_OUTPUT,
+		display_order = 170,
 	)]
 	pub quiet: bool,
 
@@ -66,6 +71,7 @@ pub struct OutputArgs {
 	#[arg(
 		long,
 		help_heading = OPTSET_OUTPUT,
+		display_order = 20,
 	)]
 	pub bell: bool,
 }

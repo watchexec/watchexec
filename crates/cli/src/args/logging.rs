@@ -6,6 +6,8 @@ use tokio::fs::metadata;
 use tracing::{info, warn};
 use tracing_appender::{non_blocking, non_blocking::WorkerGuard, rolling};
 
+use super::OPTSET_DEBUGGING;
+
 #[derive(Debug, Clone, Parser)]
 pub struct LoggingArgs {
 	/// Set diagnostic log level
@@ -22,10 +24,11 @@ pub struct LoggingArgs {
 	#[arg(
 		long,
 		short,
-		help_heading = super::OPTSET_DEBUGGING,
+		help_heading = OPTSET_DEBUGGING,
 		action = ArgAction::Count,
 		default_value = "0",
 		num_args = 0,
+		display_order = 220,
 	)]
 	pub verbose: u8,
 
@@ -42,13 +45,27 @@ pub struct LoggingArgs {
 	/// will be the current date and time, in the format 'watchexec.YYYY-MM-DDTHH-MM-SSZ.log'.
 	#[arg(
 		long,
-		help_heading = super::OPTSET_DEBUGGING,
+		help_heading = OPTSET_DEBUGGING,
 		num_args = 0..=1,
 		default_missing_value = ".",
 		value_hint = ValueHint::AnyPath,
 		value_name = "PATH",
+		display_order = 120,
 	)]
 	pub log_file: Option<PathBuf>,
+
+	/// Print events that trigger actions
+	///
+	/// This prints the events that triggered the action when handling it (after debouncing), in a
+	/// human readable form. This is useful for debugging filters.
+	///
+	/// Use '-vvv' instead when you need more diagnostic information.
+	#[arg(
+		long,
+		help_heading = OPTSET_DEBUGGING,
+		display_order = 160,
+	)]
+	pub print_events: bool,
 }
 
 pub fn preargs() -> bool {
