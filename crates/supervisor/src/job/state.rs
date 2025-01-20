@@ -1,6 +1,8 @@
 use std::{sync::Arc, time::Instant};
 
-use process_wrap::tokio::{TokioChildWrapper, TokioCommandWrap};
+#[cfg(not(test))]
+use process_wrap::tokio::TokioChildWrapper;
+use process_wrap::tokio::TokioCommandWrap;
 use tracing::trace;
 use watchexec_events::ProcessEnd;
 
