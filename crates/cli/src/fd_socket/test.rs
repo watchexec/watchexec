@@ -1,8 +1,11 @@
 use crate::args::Args;
 
 use super::*;
-use clap::CommandFactory;
-use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
+use clap::{builder::TypedValueParser, CommandFactory};
+use std::{
+	ffi::OsStr,
+	net::{Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6},
+};
 
 #[test]
 fn fdspec_parse_port_only() {

@@ -102,6 +102,7 @@ features = [
 	"fs",
 	"io-std",
 	"process",
+	"net",
 	"rt",
 	"rt-multi-thread",
 	"signal",
