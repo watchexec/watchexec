@@ -2,6 +2,7 @@ use std::{
 	ffi::OsStr,
 	mem::take,
 	net::{IpAddr, Ipv4Addr, SocketAddr},
+	num::{IntErrorKind, NonZero},
 	path::PathBuf,
 	str::FromStr,
 };
@@ -276,14 +277,14 @@ pub enum WrapMode {
 // listen-fd code inspired by systemdfd source by @mitsuhiko (Apache-2.0)
 // https://github.com/mitsuhiko/systemfd/blob/master/src/fd.rs
 
-#[derive(Clone, Copy, Debug, Default, ValueEnum)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, ValueEnum)]
 pub enum SocketType {
 	#[default]
 	Tcp,
 	Udp,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct FdSpec {
 	pub socket: SocketType,
 	pub addr: SocketAddr,
@@ -310,24 +311,44 @@ impl TypedValueParser for FdSpecValueParser {
 			(SocketType::Tcp, val)
 		} else if let Some(val) = value.strip_prefix("udp::") {
 			(SocketType::Udp, val)
+		} else if let Some((pre, _)) = value.split_once("::") {
+			if !pre.starts_with("[") {
+				return Err(Error::raw(
+					ErrorKind::ValueValidation,
+					format!("invalid prefix {pre:?}"),
+				));
+			}
+
+			(SocketType::Tcp, value.as_ref())
 		} else {
 			(SocketType::Tcp, value.as_ref())
 		};
 
 		let addr = if let Ok(addr) = SocketAddr::from_str(value) {
 			addr
-		} else if let Ok(port) = u16::from_str(value) {
-			SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), port)
 		} else {
-			return Err(Error::raw(ErrorKind::ValueValidation, "not a port number"));
+			match NonZero::<u16>::from_str(value) {
+				Ok(port) => SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), port.get()),
+				Err(err) if *err.kind() == IntErrorKind::Zero => {
+					return Err(Error::raw(
+						ErrorKind::ValueValidation,
+						"invalid port number: cannot be zero",
+					))
+				}
+				Err(err) if *err.kind() == IntErrorKind::PosOverflow => {
+					return Err(Error::raw(
+						ErrorKind::ValueValidation,
+						"invalid port number: greater than 65535",
+					))
+				}
+				Err(_) => {
+					return Err(Error::raw(
+						ErrorKind::ValueValidation,
+						"invalid port number",
+					))
+				}
+			}
 		};
-
-		if addr.port() == 0 {
-			return Err(Error::raw(
-				ErrorKind::ValueValidation,
-				"port number cannot be zero",
-			));
-		}
 
 		Ok(FdSpec { socket, addr })
 	}
@@ -417,4 +438,215 @@ impl FdSpec {
 
 		Ok(sock.into())
 	}
+}
+
+#[test]
+fn fdspec_parse_port_only() {
+	use clap::CommandFactory;
+	use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+	let cmd = CommandArgs::command();
+	assert_eq!(
+		FdSpecValueParser
+			.parse_ref(&cmd, None, OsStr::new("8080"))
+			.unwrap(),
+		FdSpec {
+			socket: SocketType::Tcp,
+			addr: SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 8080)),
+		}
+	);
+}
+
+#[test]
+fn fdspec_parse_addr_port_v4() {
+	use clap::CommandFactory;
+	use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+	let cmd = CommandArgs::command();
+	assert_eq!(
+		FdSpecValueParser
+			.parse_ref(&cmd, None, OsStr::new("1.2.3.4:38192"))
+			.unwrap(),
+		FdSpec {
+			socket: SocketType::Tcp,
+			addr: SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(1, 2, 3, 4), 38192)),
+		}
+	);
+}
+
+#[test]
+fn fdspec_parse_addr_port_v6() {
+	use clap::CommandFactory;
+	use std::net::{Ipv6Addr, SocketAddr, SocketAddrV6};
+	let cmd = CommandArgs::command();
+	assert_eq!(
+		FdSpecValueParser
+			.parse_ref(&cmd, None, OsStr::new("[ff64::1234]:81"))
+			.unwrap(),
+		FdSpec {
+			socket: SocketType::Tcp,
+			addr: SocketAddr::V6(SocketAddrV6::new(
+				Ipv6Addr::new(0xff64, 0, 0, 0, 0, 0, 0, 0x1234),
+				81,
+				0,
+				0
+			)),
+		}
+	);
+}
+
+#[test]
+fn fdspec_parse_port_only_explicit_tcp() {
+	use clap::CommandFactory;
+	use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+	let cmd = CommandArgs::command();
+	assert_eq!(
+		FdSpecValueParser
+			.parse_ref(&cmd, None, OsStr::new("tcp::443"))
+			.unwrap(),
+		FdSpec {
+			socket: SocketType::Tcp,
+			addr: SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 443)),
+		}
+	);
+}
+
+#[test]
+fn fdspec_parse_addr_port_v4_explicit_tcp() {
+	use clap::CommandFactory;
+	use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+	let cmd = CommandArgs::command();
+	assert_eq!(
+		FdSpecValueParser
+			.parse_ref(&cmd, None, OsStr::new("tcp::1.2.3.4:38192"))
+			.unwrap(),
+		FdSpec {
+			socket: SocketType::Tcp,
+			addr: SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(1, 2, 3, 4), 38192)),
+		}
+	);
+}
+
+#[test]
+fn fdspec_parse_addr_port_v6_explicit_tcp() {
+	use clap::CommandFactory;
+	use std::net::{Ipv6Addr, SocketAddr, SocketAddrV6};
+	let cmd = CommandArgs::command();
+	assert_eq!(
+		FdSpecValueParser
+			.parse_ref(&cmd, None, OsStr::new("tcp::[ff64::1234]:81"))
+			.unwrap(),
+		FdSpec {
+			socket: SocketType::Tcp,
+			addr: SocketAddr::V6(SocketAddrV6::new(
+				Ipv6Addr::new(0xff64, 0, 0, 0, 0, 0, 0, 0x1234),
+				81,
+				0,
+				0
+			)),
+		}
+	);
+}
+
+#[test]
+fn fdspec_parse_port_only_explicit_udp() {
+	use clap::CommandFactory;
+	use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+	let cmd = CommandArgs::command();
+	assert_eq!(
+		FdSpecValueParser
+			.parse_ref(&cmd, None, OsStr::new("udp::443"))
+			.unwrap(),
+		FdSpec {
+			socket: SocketType::Udp,
+			addr: SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 443)),
+		}
+	);
+}
+
+#[test]
+fn fdspec_parse_addr_port_v4_explicit_udp() {
+	use clap::CommandFactory;
+	use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+	let cmd = CommandArgs::command();
+	assert_eq!(
+		FdSpecValueParser
+			.parse_ref(&cmd, None, OsStr::new("udp::1.2.3.4:38192"))
+			.unwrap(),
+		FdSpec {
+			socket: SocketType::Udp,
+			addr: SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(1, 2, 3, 4), 38192)),
+		}
+	);
+}
+
+#[test]
+fn fdspec_parse_addr_port_v6_explicit_udp() {
+	use clap::CommandFactory;
+	use std::net::{Ipv6Addr, SocketAddr, SocketAddrV6};
+	let cmd = CommandArgs::command();
+	assert_eq!(
+		FdSpecValueParser
+			.parse_ref(&cmd, None, OsStr::new("udp::[ff64::1234]:81"))
+			.unwrap(),
+		FdSpec {
+			socket: SocketType::Udp,
+			addr: SocketAddr::V6(SocketAddrV6::new(
+				Ipv6Addr::new(0xff64, 0, 0, 0, 0, 0, 0, 0x1234),
+				81,
+				0,
+				0
+			)),
+		}
+	);
+}
+
+#[test]
+fn fdspec_parse_bad_prefix() {
+	use clap::CommandFactory;
+	let cmd = CommandArgs::command();
+	assert_eq!(
+		FdSpecValueParser
+			.parse_ref(&cmd, None, OsStr::new("gopher::777"))
+			.unwrap_err()
+			.to_string(),
+		String::from(r#"error: invalid prefix "gopher""#),
+	);
+}
+
+#[test]
+fn fdspec_parse_bad_port_zero() {
+	use clap::CommandFactory;
+	let cmd = CommandArgs::command();
+	assert_eq!(
+		FdSpecValueParser
+			.parse_ref(&cmd, None, OsStr::new("0"))
+			.unwrap_err()
+			.to_string(),
+		String::from("error: invalid port number: cannot be zero"),
+	);
+}
+
+#[test]
+fn fdspec_parse_bad_port_high() {
+	use clap::CommandFactory;
+	let cmd = CommandArgs::command();
+	assert_eq!(
+		FdSpecValueParser
+			.parse_ref(&cmd, None, OsStr::new("100000"))
+			.unwrap_err()
+			.to_string(),
+		String::from("error: invalid port number: greater than 65535"),
+	);
+}
+
+#[test]
+fn fdspec_parse_bad_port_alpha() {
+	use clap::CommandFactory;
+	let cmd = CommandArgs::command();
+	assert_eq!(
+		FdSpecValueParser
+			.parse_ref(&cmd, None, OsStr::new("port"))
+			.unwrap_err()
+			.to_string(),
+		String::from("error: invalid port number"),
+	);
 }
