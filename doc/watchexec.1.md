@@ -312,6 +312,9 @@ Watch lib and src directories for changes, rebuilding each time:
     This integration only provides basic support, if you want more
     control you should use the \`systemfd\` tool from
     \<https://github.com/mitsuhiko/systemfd\>, upon which this is based.
+    The syntax here and the spawning behaviour is identical to
+    \`systemfd\`, and both watchexec and systemfd are compatible
+    implementations of the systemd socket-activation protocol.
 
 # EVENTS
 
