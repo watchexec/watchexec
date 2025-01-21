@@ -22,6 +22,7 @@ pub mod args;
 mod config;
 mod dirs;
 mod emits;
+mod fd_socket;
 mod filterer;
 mod state;
 
