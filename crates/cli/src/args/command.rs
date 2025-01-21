@@ -1,11 +1,19 @@
-use std::{mem::take, path::PathBuf};
+use std::{
+	ffi::{OsStr, OsString},
+	mem::take,
+	path::PathBuf,
+};
 
-use clap::{Parser, ValueEnum, ValueHint};
+use clap::{
+	builder::TypedValueParser,
+	error::{Error, ErrorKind},
+	Parser, ValueEnum, ValueHint,
+};
 use miette::{IntoDiagnostic, Result};
 use tracing::{info, warn};
 use watchexec_signals::Signal;
 
-use crate::fd_socket::{FdSpec, FdSpecValueParser};
+use crate::fd_socket::{FdSockets, FdSpec, FdSpecValueParser, Sockets};
 
 use super::{TimeSpan, OPTSET_COMMAND};
 
@@ -93,9 +101,10 @@ pub struct CommandArgs {
 		short = 'E',
 		help_heading = OPTSET_COMMAND,
 		value_name = "KEY=VALUE",
+		value_parser = EnvVarValueParser,
 		display_order = 50,
 	)]
-	pub env: Vec<String>,
+	pub env: Vec<EnvVar>,
 
 	/// Don't use a process group
 	///
@@ -232,7 +241,7 @@ pub struct CommandArgs {
 }
 
 impl CommandArgs {
-	pub(crate) fn normalise(&mut self) -> Result<()> {
+	pub(crate) async fn normalise(&mut self) -> Result<()> {
 		if self.no_process_group {
 			warn!("--no-process-group is deprecated");
 			self.wrap_process = WrapMode::None;
@@ -247,6 +256,12 @@ impl CommandArgs {
 		info!(path=?workdir, "effective working directory");
 		self.workdir = Some(workdir);
 
+		if !self.fd_socket.is_empty() {
+			let mut sockets = FdSockets::create(&self.fd_socket).await?;
+			sockets.serve();
+			self.env.extend(sockets.envs());
+		}
+
 		debug_assert!(self.workdir.is_some());
 		Ok(())
 	}
@@ -258,4 +273,37 @@ pub enum WrapMode {
 	Group,
 	Session,
 	None,
+}
+
+#[derive(Clone, Debug)]
+pub struct EnvVar {
+	pub key: String,
+	pub value: OsString,
+}
+
+#[derive(Clone)]
+pub(crate) struct EnvVarValueParser;
+
+impl TypedValueParser for EnvVarValueParser {
+	type Value = EnvVar;
+
+	fn parse_ref(
+		&self,
+		_cmd: &clap::Command,
+		_arg: Option<&clap::Arg>,
+		value: &OsStr,
+	) -> Result<Self::Value, Error> {
+		let value = value
+			.to_str()
+			.ok_or_else(|| Error::raw(ErrorKind::ValueValidation, "invalid UTF-8"))?;
+
+		let (key, value) = value
+			.split_once('=')
+			.ok_or_else(|| Error::raw(ErrorKind::ValueValidation, "missing = separator"))?;
+
+		Ok(EnvVar {
+			key: key.into(),
+			value: value.into(),
+		})
+	}
 }

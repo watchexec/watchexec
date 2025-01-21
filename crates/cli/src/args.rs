@@ -251,7 +251,7 @@ pub async fn get_args() -> Result<(Args, Option<WorkerGuard>)> {
 	};
 
 	args.output.normalise()?;
-	args.command.normalise()?;
+	args.command.normalise().await?;
 	args.filtering.normalise(&args.command).await?;
 	args.events
 		.normalise(&args.command, &args.filtering, args.only_emit_events)?;

@@ -1,5 +1,7 @@
 use miette::{bail, Result};
 
+use crate::args::command::EnvVar;
+
 use super::{FdSpec, Sockets};
 
 #[derive(Debug)]
@@ -10,7 +12,7 @@ impl Sockets for FdSockets {
 		bail!("--fd-socket is not supported on your platform")
 	}
 
-	fn envs(&self) -> Vec<(&'static str, String)> {
-		Vec::new()
+	fn envs(&self) -> impl Iterator<Item = EnvVar> {
+		std::iter::empty()
 	}
 }

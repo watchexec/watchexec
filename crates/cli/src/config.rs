@@ -2,9 +2,10 @@ use std::{
 	borrow::Cow,
 	collections::HashMap,
 	env::var,
-	ffi::{OsStr, OsString},
+	ffi::OsStr,
 	fs::File,
 	io::{IsTerminal, Write},
+	iter::once,
 	process::Stdio,
 	sync::{
 		atomic::{AtomicBool, AtomicU8, Ordering},
@@ -14,7 +15,7 @@ use std::{
 };
 
 use clearscreen::ClearScreen;
-use miette::{miette, IntoDiagnostic, Report, Result};
+use miette::{IntoDiagnostic, Report, Result};
 use notify_rust::Notification;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use tokio::{process::Command as TokioCommand, time::sleep};
@@ -32,7 +33,7 @@ use watchexec_signals::Signal;
 
 use crate::{
 	args::{
-		command::WrapMode,
+		command::{EnvVar, WrapMode},
 		events::{EmitEvents, OnBusyUpdate, SignalMapping},
 		output::{ClearMode, ColourMode},
 		Args,
@@ -159,16 +160,9 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 
 	let workdir = Arc::new(args.command.workdir.clone());
 
-	let mut add_envs = HashMap::new();
-	for pair in &args.command.env {
-		if let Some((k, v)) = pair.split_once('=') {
-			add_envs.insert(k.to_owned(), OsString::from(v));
-		} else {
-			return Err(miette!("{pair} is not in key=value format"));
-		}
-	}
+	let add_envs: Arc<[EnvVar]> = args.command.env.clone().into();
 	debug!(
-		?add_envs,
+		envs=?args.command.env,
 		"additional environment variables to add to command"
 	);
 
@@ -641,15 +635,18 @@ fn emit_events_to_command(
 	events: Arc<[Event]>,
 	emit_file: RotatingTempFile,
 	emit_events_to: EmitEvents,
-	mut add_envs: HashMap<String, OsString>,
+	add_envs: Arc<[EnvVar]>,
 ) {
 	use crate::emits::{emits_to_environment, emits_to_file, emits_to_json_file};
 
 	let mut stdin = None;
 
+	let add_envs = add_envs.clone();
+	let mut envs = Box::new(add_envs.into_iter().cloned()) as Box<dyn Iterator<Item = EnvVar>>;
+
 	match emit_events_to {
 		EmitEvents::Environment => {
-			add_envs.extend(emits_to_environment(&events));
+			envs = Box::new(envs.chain(emits_to_environment(&events)));
 		}
 		EmitEvents::Stdio => match emits_to_file(&emit_file, &events)
 			.and_then(|path| File::open(path).into_diagnostic())
@@ -663,7 +660,10 @@ fn emit_events_to_command(
 		},
 		EmitEvents::File => match emits_to_file(&emit_file, &events) {
 			Ok(path) => {
-				add_envs.insert("WATCHEXEC_EVENTS_FILE".into(), path.into());
+				envs = Box::new(envs.chain(once(EnvVar {
+					key: "WATCHEXEC_EVENTS_FILE".into(),
+					value: path.into(),
+				})));
 			}
 			Err(err) => {
 				error!("Failed to write WATCHEXEC_EVENTS_FILE, continuing without it: {err}");
@@ -681,7 +681,10 @@ fn emit_events_to_command(
 		},
 		EmitEvents::JsonFile => match emits_to_json_file(&emit_file, &events) {
 			Ok(path) => {
-				add_envs.insert("WATCHEXEC_EVENTS_FILE".into(), path.into());
+				envs = Box::new(envs.chain(once(EnvVar {
+					key: "WATCHEXEC_EVENTS_FILE".into(),
+					value: path.into(),
+				})));
 			}
 			Err(err) => {
 				error!("Failed to write WATCHEXEC_EVENTS_FILE, continuing without it: {err}");
@@ -690,9 +693,9 @@ fn emit_events_to_command(
 		EmitEvents::None => {}
 	}
 
-	for (k, v) in add_envs {
-		debug!(?k, ?v, "inserting environment variable");
-		command.env(k, v);
+	for var in envs {
+		debug!(?var, "inserting environment variable");
+		command.env(var.key, var.value);
 	}
 
 	if let Some(stdin) = stdin {

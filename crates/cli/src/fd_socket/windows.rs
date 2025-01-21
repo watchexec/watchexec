@@ -12,8 +12,11 @@ use tokio::{
 	net::{TcpListener, TcpStream},
 	task::spawn,
 };
+use tracing::instrument;
 use uuid::Uuid;
 use windows_sys::Win32::Networking::WinSock::{WSADuplicateSocketW, SOCKET, WSAPROTOCOL_INFOW};
+
+use crate::args::command::EnvVar;
 
 use super::{FdSpec, SocketType, Sockets};
 
@@ -26,6 +29,7 @@ pub struct FdSockets {
 }
 
 impl Sockets for FdSockets {
+	#[instrument(level = "trace")]
 	async fn create(specs: &[FdSpec]) -> Result<Self> {
 		debug_assert!(!specs.is_empty());
 		let sockets = specs
@@ -44,13 +48,22 @@ impl Sockets for FdSockets {
 		})
 	}
 
-	fn envs(&self) -> Vec<(&'static str, String)> {
+	#[instrument(level = "trace")]
+	fn envs(&self) -> impl Iterator<Item = EnvVar> {
 		vec![
-			("SYSTEMFD_SOCKET_SERVER", self.server_addr.to_string()),
-			("SYSTEMFD_SOCKET_SECRET", self.secret.to_string()),
+			EnvVar {
+				key: "SYSTEMFD_SOCKET_SERVER".into(),
+				value: self.server_addr.to_string().into(),
+			},
+			EnvVar {
+				key: "SYSTEMFD_SOCKET_SECRET".into(),
+				value: self.secret.to_string().into(),
+			},
 		]
+		.into_iter()
 	}
 
+	#[instrument(level = "trace", skip(self))]
 	fn serve(&mut self) {
 		let listener = self.server.take().unwrap();
 		let secret = self.secret;

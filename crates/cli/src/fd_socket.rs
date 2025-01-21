@@ -9,6 +9,8 @@ use miette::Result;
 pub(crate) use imp::*;
 pub(crate) use parser::FdSpecValueParser;
 
+use crate::args::command::EnvVar;
+
 #[cfg(unix)]
 #[path = "fd_socket/unix.rs"]
 mod imp;
@@ -40,6 +42,6 @@ where
 	Self: Sized,
 {
 	async fn create(specs: &[FdSpec]) -> Result<Self>;
-	fn envs(&self) -> Vec<(&'static str, String)>;
+	fn envs(&self) -> impl Iterator<Item = EnvVar>;
 	fn serve(&mut self) {}
 }

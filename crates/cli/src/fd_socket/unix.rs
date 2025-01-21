@@ -4,6 +4,9 @@ use std::{
 };
 
 use miette::{IntoDiagnostic, Result};
+use tracing::instrument;
+
+use crate::args::command::EnvVar;
 
 use super::{FdSpec, SocketType, Sockets};
 
@@ -13,6 +16,7 @@ pub struct FdSockets {
 }
 
 impl Sockets for FdSockets {
+	#[instrument(level = "trace")]
 	async fn create(specs: &[FdSpec]) -> Result<Self> {
 		debug_assert!(!specs.is_empty());
 		specs
@@ -22,15 +26,23 @@ impl Sockets for FdSockets {
 			.map(|fds| Self { fds })
 	}
 
-	fn envs(&self) -> Vec<(&'static str, String)> {
+	#[instrument(level = "trace")]
+	fn envs(&self) -> impl Iterator<Item = EnvVar> {
 		vec![
-			("LISTEN_FDS", self.fds.len().to_string()),
-			(
-				"LISTEN_FDS_FIRST_FD",
-				self.fds.first().unwrap().as_raw_fd().to_string(),
-			),
-			("LISTEN_PID", process::id().to_string()),
+			EnvVar {
+				key: "LISTEN_FDS".into(),
+				value: self.fds.len().to_string().into(),
+			},
+			EnvVar {
+				key: "LISTEN_FDS_FIRST_FD".into(),
+				value: self.fds.first().unwrap().as_raw_fd().to_string().into(),
+			},
+			EnvVar {
+				key: "LISTEN_PID".into(),
+				value: process::id().to_string().into(),
+			},
 		]
+		.into_iter()
 	}
 }
 
