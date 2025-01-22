@@ -75,7 +75,7 @@ Sockets are provided to consumers through the [WSAPROTOCOL_INFOW] structure.
 - The provider starts a TCP server bound to 127.0.0.1 on a random port.
   - It writes the address to the server to the `SYSTEMFD_SOCKET_SERVER` environment variable for the consumer processes.
 - The provider generates and stores a random 128 bit value as a key for a socket set.
-  - It writes the key in UUID form string format (e.g. `59fb60fe-2634-4ec8-aa81-038793888c8e`) to the `SYSTEMFD_SOCKET_SECRET` environment variable for the consumer processes.
+  - It writes the key in UUID hex string format (e.g. `59fb60fe-2634-4ec8-aa81-038793888c8e`) to the `SYSTEMFD_SOCKET_SECRET` environment variable for the consumer processes.
 - The consumer opens a connection to the `SYSTEMFD_SOCKET_SERVER` and:
   1. reads the key from `SYSTEMFD_SOCKET_SECRET`;
   2. writes the key in the same format, then a `|` character, then its own process ID, and then EOF;
