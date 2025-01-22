@@ -78,7 +78,7 @@ Sockets are provided to consumers through the [WSAPROTOCOL_INFOW] structure.
   - It writes the key in UUID hex string format (e.g. `59fb60fe-2634-4ec8-aa81-038793888c8e`) to the `SYSTEMFD_SOCKET_SECRET` environment variable for the consumer processes.
 - The consumer opens a connection to the `SYSTEMFD_SOCKET_SERVER` and:
   1. reads the key from `SYSTEMFD_SOCKET_SECRET`;
-  2. writes the key in the same format, then a `|` character, then its own process ID, and then EOF;
+  2. writes the key in the same format, then a `|` character, then its own process ID as a string (in base 10), and then EOF;
   2. reads the response to EOF.
 - The response will be one or more `WSAPROTOCOL_INFOW` structures, with no padding or separators.
 - If the provider has no record of the key (i.e. if it doesn't match the one provided to the consumer via `SYSTEMFD_SOCKET_SECRET`), it will close the connection without sending any data.
@@ -101,7 +101,7 @@ if !valid_uuid(key) {
 let (writer, reader) = TcpClient::connect(server);
 writer.write(key);
 writer.write("|");
-writer.write(getpid());
+writer.write(getpid().to_string());
 writer.close();
 
 while reader.has_more_data() {
