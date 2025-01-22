@@ -4,6 +4,10 @@ use std::{
 };
 
 use miette::{IntoDiagnostic, Result};
+use nix::sys::socket::{
+	bind, listen, setsockopt, socket, sockopt, AddressFamily, Backlog, SockFlag, SockType,
+	SockaddrStorage,
+};
 use tracing::instrument;
 
 use crate::args::command::EnvVar;
@@ -48,13 +52,6 @@ impl Sockets for FdSockets {
 
 impl FdSpec {
 	fn create(&self) -> Result<OwnedFd> {
-		use std::os::fd::AsRawFd;
-
-		use nix::sys::socket::{
-			bind, listen, setsockopt, socket, sockopt, AddressFamily, Backlog, SockFlag, SockType,
-			SockaddrStorage,
-		};
-
 		let addr = SockaddrStorage::from(self.addr);
 		let fam = if self.addr.is_ipv4() {
 			AddressFamily::Inet
@@ -71,17 +68,12 @@ impl FdSpec {
 		setsockopt(&sock, sockopt::ReuseAddr, &true).into_diagnostic()?;
 		setsockopt(&sock, sockopt::ReusePort, &true).into_diagnostic()?;
 
-		let rv = bind(sock.as_raw_fd(), &addr).and_then(|_| {
-			if let SocketType::Tcp = self.socket {
-				listen(&sock, Backlog::new(1).unwrap())?;
-			}
-			Ok(())
-		});
+		bind(sock.as_raw_fd(), &addr).into_diagnostic()?;
 
-		if rv.is_err() {
-			unsafe { libc::close(sock.as_raw_fd()) };
+		if let SocketType::Tcp = self.socket {
+			listen(&sock, Backlog::new(1).unwrap()).into_diagnostic()?;
 		}
 
-		rv.map(|_| sock).into_diagnostic()
+		Ok(sock)
 	}
 }
