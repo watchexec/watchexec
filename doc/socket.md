@@ -1,12 +1,12 @@
-# `--fd-socket`, `systemd`, `systemfd`
+# `--socket`, `systemd.socket`, `systemfd`
 
-The `--fd-socket` option is a lightweight version of [the `systemfd` tool][systemfd], which itself
-is an implementation of [systemd's socket activation feature][systemd sockets], which itself is a
+The `--socket` option is a lightweight version of [the `systemfd` tool][systemfd], which itself is
+an implementation of [systemd's socket activation feature][systemd sockets], which itself is a
 reimagination of earlier socket activation efforts, such as inetd and launchd.
 
-All three of these are compatible with each other in some ways. This document attempts to describe
-the commonalities and specify minimum behaviour that additional implementations should follow to
-keep compatibility. It does not seek to establish authority over any project.
+All three of these are compatible with each other in some ways.
+This document attempts to describe the commonalities and specify minimum behaviour that additional implementations should follow to keep compatibility.
+It does not seek to establish authority over any project.
 
 [systemfd]: https://github.com/mitsuhiko/systemfd
 [systemd sockets]: https://0pointer.de/blog/projects/socket-activation.html
@@ -16,18 +16,16 @@ keep compatibility. It does not seek to establish authority over any project.
 There's two programs involved: a socket provider, and a socket consumer.
 
 In systemd, the provider is systemd itself, and the consumer is the main service process.
-In watchexec and systemfd, the provider is watchexec itself, and the consumer is the command it runs.
+In watchexec (and systemfd), the provider is watchexec itself, and the consumer is the command it runs.
 
-The provider creates a socket and binds them to an address, and then makes it available to the
-consumer. There is an optional authentication layer to avoid the wrong process from attaching to the
-wrong socket. The consumer that obtains a socket is then able to listen on it. When the consumer
-exits, it doesn't close the socket; the provider then makes it available to the next instance.
+The provider creates a socket and binds them to an address, and then makes it available to the consumer.
+There is an optional authentication layer to avoid the wrong process from attaching to the wrong socket.
+The consumer that obtains a socket is then able to listen on it.
+When the consumer exits, it doesn't close the socket; the provider then makes it available to the next instance.
 
-Socket activation is an advanced behaviour, where the provider listens on the socket itself and uses
-that to start the consumer service. As the provider controls the socket, more behaviours are
-possible such as having the real address bound to a separate socket and passing data through, or
-providing new sockets instead of sharing a single one. The important principle is that the consumer
-should not need to care: socket control is decoupled from application message and stream handling.
+Socket activation is an advanced behaviour, where the provider listens on the socket itself and uses that to start the consumer service.
+As the provider controls the socket, more behaviours are possible such as having the real address bound to a separate socket and passing data through, or providing new sockets instead of sharing a single one.
+The important principle is that the consumer should not need to care: socket control is decoupled from application message and stream handling.
 
 ## Unix
 

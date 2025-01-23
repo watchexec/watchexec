@@ -11,13 +11,13 @@ use clap::{
 };
 use miette::Result;
 
-use super::{FdSpec, SocketType};
+use super::{SocketSpec, SocketType};
 
 #[derive(Clone)]
-pub(crate) struct FdSpecValueParser;
+pub(crate) struct SocketSpecValueParser;
 
-impl TypedValueParser for FdSpecValueParser {
-	type Value = FdSpec;
+impl TypedValueParser for SocketSpecValueParser {
+	type Value = SocketSpec;
 
 	fn parse_ref(
 		&self,
@@ -73,6 +73,6 @@ impl TypedValueParser for FdSpecValueParser {
 			}
 		};
 
-		Ok(FdSpec { socket, addr })
+		Ok(SocketSpec { socket, addr })
 	}
 }

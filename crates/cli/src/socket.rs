@@ -7,18 +7,18 @@ use clap::ValueEnum;
 use miette::Result;
 
 pub(crate) use imp::*;
-pub(crate) use parser::FdSpecValueParser;
+pub(crate) use parser::SocketSpecValueParser;
 
 use crate::args::command::EnvVar;
 
 #[cfg(unix)]
-#[path = "fd_socket/unix.rs"]
+#[path = "socket/unix.rs"]
 mod imp;
 #[cfg(windows)]
-#[path = "fd_socket/windows.rs"]
+#[path = "socket/windows.rs"]
 mod imp;
 #[cfg(not(any(unix, windows)))]
-#[path = "fd_socket/fallback.rs"]
+#[path = "socket/fallback.rs"]
 mod imp;
 mod parser;
 #[cfg(test)]
@@ -32,7 +32,7 @@ pub enum SocketType {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct FdSpec {
+pub struct SocketSpec {
 	pub socket: SocketType,
 	pub addr: SocketAddr,
 }
@@ -41,7 +41,7 @@ pub(crate) trait Sockets
 where
 	Self: Sized,
 {
-	async fn create(specs: &[FdSpec]) -> Result<Self>;
+	async fn create(specs: &[SocketSpec]) -> Result<Self>;
 	fn envs(&self) -> impl Iterator<Item = EnvVar>;
 	fn serve(&mut self) {}
 }

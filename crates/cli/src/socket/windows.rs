@@ -18,23 +18,23 @@ use windows_sys::Win32::Networking::WinSock::{WSADuplicateSocketW, SOCKET, WSAPR
 
 use crate::args::command::EnvVar;
 
-use super::{FdSpec, SocketType, Sockets};
+use super::{SocketSpec, SocketType, Sockets};
 
 #[derive(Debug)]
-pub struct FdSockets {
+pub struct SocketSet {
 	sockets: Arc<[OwnedSocket]>,
 	secret: Uuid,
 	server: Option<TcpListener>,
 	server_addr: SocketAddr,
 }
 
-impl Sockets for FdSockets {
+impl Sockets for SocketSet {
 	#[instrument(level = "trace")]
-	async fn create(specs: &[FdSpec]) -> Result<Self> {
+	async fn create(specs: &[SocketSpec]) -> Result<Self> {
 		debug_assert!(!specs.is_empty());
 		let sockets = specs
 			.into_iter()
-			.map(FdSpec::create)
+			.map(SocketSpec::create)
 			.collect::<Result<Vec<_>>>()?;
 
 		let server = TcpListener::bind("127.0.0.1:0").await.into_diagnostic()?;
@@ -138,7 +138,7 @@ fn socket_to_payload(socket: &OwnedSocket, pid: u32) -> std::io::Result<Vec<u8>>
 	.to_vec())
 }
 
-impl FdSpec {
+impl SocketSpec {
 	fn create(&self) -> Result<OwnedSocket> {
 		use socket2::{Domain, SockAddr, Socket, Type};
 

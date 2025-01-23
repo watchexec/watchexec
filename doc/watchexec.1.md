@@ -8,7 +8,7 @@ watchexec - Execute commands when watched files change
 \[**\--only-emit-events**\] \[**\--shell**\] \[**-n **\]
 \[**-E**\|**\--env**\] \[**\--no-process-group**\]
 \[**\--wrap-process**\] \[**\--stop-signal**\] \[**\--stop-timeout**\]
-\[**\--delay-run**\] \[**\--workdir**\] \[**\--fd-socket**\]
+\[**\--delay-run**\] \[**\--workdir**\] \[**\--socket**\]
 \[**-o**\|**\--on-busy-update**\] \[**-r**\|**\--restart**\]
 \[**-s**\|**\--signal**\] \[**\--map-signal**\]
 \[**-d**\|**\--debounce**\] \[**\--stdin-quit**\]
@@ -292,9 +292,9 @@ Watch lib and src directories for changes, rebuilding each time:
     directory of Watchexec. You can change that with this option. Note
     that paths may be less intuitive to use with this.
 
-**\--fd-socket**=*PORT*
+**\--socket**=*PORT*
 
-:   Create listen-fd sockets
+:   Provide a socket to the command
 
     This implements the systemd socket-passing protocol, like with
     \`systemfd\`: sockets are opened from the watchexec process, and

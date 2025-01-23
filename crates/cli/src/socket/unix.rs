@@ -12,20 +12,20 @@ use tracing::instrument;
 
 use crate::args::command::EnvVar;
 
-use super::{FdSpec, SocketType, Sockets};
+use super::{SocketSpec, SocketType, Sockets};
 
 #[derive(Debug)]
-pub struct FdSockets {
+pub struct SocketSet {
 	fds: Vec<OwnedFd>,
 }
 
-impl Sockets for FdSockets {
+impl Sockets for SocketSet {
 	#[instrument(level = "trace")]
-	async fn create(specs: &[FdSpec]) -> Result<Self> {
+	async fn create(specs: &[SocketSpec]) -> Result<Self> {
 		debug_assert!(!specs.is_empty());
 		specs
 			.into_iter()
-			.map(FdSpec::create)
+			.map(SocketSpec::create)
 			.collect::<Result<Vec<_>>>()
 			.map(|fds| Self { fds })
 	}
@@ -50,7 +50,7 @@ impl Sockets for FdSockets {
 	}
 }
 
-impl FdSpec {
+impl SocketSpec {
 	fn create(&self) -> Result<OwnedFd> {
 		let addr = SockaddrStorage::from(self.addr);
 		let fam = if self.addr.is_ipv4() {

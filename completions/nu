@@ -45,7 +45,7 @@ module completions {
     --stop-timeout: string    # Time to wait for the command to exit gracefully
     --delay-run: string       # Sleep before running the command
     --workdir: path           # Set the working directory
-    --fd-socket: string       # Create listen-fd sockets
+    --socket: string          # Provide a socket to the command
     --on-busy-update(-o): string@"nu-complete watchexec on_busy_update" # What to do when receiving events while the command is running
     --restart(-r)             # Restart the process if it's still running
     --signal(-s): string      # Send a signal to the process when it's still running

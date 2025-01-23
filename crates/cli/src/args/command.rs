@@ -13,7 +13,7 @@ use miette::{IntoDiagnostic, Result};
 use tracing::{info, warn};
 use watchexec_signals::Signal;
 
-use crate::fd_socket::{FdSockets, FdSpec, FdSpecValueParser, Sockets};
+use crate::socket::{SocketSet, SocketSpec, SocketSpecValueParser, Sockets};
 
 use super::{TimeSpan, OPTSET_COMMAND};
 
@@ -214,7 +214,7 @@ pub struct CommandArgs {
 	)]
 	pub workdir: Option<PathBuf>,
 
-	/// Create listen-fd sockets
+	/// Provide a socket to the command
 	///
 	/// This implements the systemd socket-passing protocol, like with `systemfd`: sockets are
 	/// opened from the watchexec process, and then passed to the commands it runs. This lets you
@@ -234,10 +234,10 @@ pub struct CommandArgs {
 		long,
 		help_heading = OPTSET_COMMAND,
 		value_name = "PORT",
-		value_parser = FdSpecValueParser,
+		value_parser = SocketSpecValueParser,
 		display_order = 60,
 	)]
-	pub fd_socket: Vec<FdSpec>,
+	pub socket: Vec<SocketSpec>,
 }
 
 impl CommandArgs {
@@ -256,8 +256,8 @@ impl CommandArgs {
 		info!(path=?workdir, "effective working directory");
 		self.workdir = Some(workdir);
 
-		if !self.fd_socket.is_empty() {
-			let mut sockets = FdSockets::create(&self.fd_socket).await?;
+		if !self.socket.is_empty() {
+			let mut sockets = SocketSet::create(&self.socket).await?;
 			sockets.serve();
 			self.env.extend(sockets.envs());
 		}
