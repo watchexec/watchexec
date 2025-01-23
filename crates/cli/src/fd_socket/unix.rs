@@ -66,7 +66,10 @@ impl FdSpec {
 		let sock = socket(fam, ty, SockFlag::empty(), None).into_diagnostic()?;
 
 		setsockopt(&sock, sockopt::ReuseAddr, &true).into_diagnostic()?;
-		setsockopt(&sock, sockopt::ReusePort, &true).into_diagnostic()?;
+
+		if matches!(fam, AddressFamily::Inet | AddressFamily::Inet6) {
+			setsockopt(&sock, sockopt::ReusePort, &true).into_diagnostic()?;
+		}
 
 		bind(sock.as_raw_fd(), &addr).into_diagnostic()?;
 
