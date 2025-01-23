@@ -22,8 +22,8 @@ pub mod args;
 mod config;
 mod dirs;
 mod emits;
-mod socket;
 mod filterer;
+mod socket;
 mod state;
 
 async fn run_watchexec(args: Args) -> Result<()> {
@@ -122,7 +122,7 @@ async fn run_completions(shell: ShellCompletion) -> Result<()> {
 }
 
 pub async fn run() -> Result<()> {
-	let (args, _log_guard) = args::get_args().await?;
+	let (args, _guards) = args::get_args().await?;
 
 	if args.manual {
 		run_manpage(args).await

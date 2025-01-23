@@ -9,6 +9,8 @@ use miette::Result;
 use tracing::{debug, info, warn};
 use tracing_appender::non_blocking::WorkerGuard;
 
+use crate::socket::SocketSet;
+
 pub(crate) mod command;
 pub(crate) mod events;
 pub(crate) mod filtering;
@@ -232,7 +234,13 @@ pub enum ShellCompletion {
 	Zsh,
 }
 
-pub async fn get_args() -> Result<(Args, Option<WorkerGuard>)> {
+#[derive(Debug, Default)]
+pub struct Guards {
+	_log: Option<WorkerGuard>,
+	_socket: Option<SocketSet>,
+}
+
+pub async fn get_args() -> Result<(Args, Guards)> {
 	let prearg_logs = logging::preargs();
 	if prearg_logs {
 		warn!("⚠ RUST_LOG environment variable set or hardcoded, logging options have no effect");
@@ -244,20 +252,20 @@ pub async fn get_args() -> Result<(Args, Option<WorkerGuard>)> {
 	debug!("parsing arguments");
 	let mut args = Args::parse_from(args);
 
-	let log_guard = if !prearg_logs {
+	let _log = if !prearg_logs {
 		logging::postargs(&args.logging).await?
 	} else {
 		None
 	};
 
 	args.output.normalise()?;
-	args.command.normalise().await?;
+	let _socket = args.command.normalise().await?;
 	args.filtering.normalise(&args.command).await?;
 	args.events
 		.normalise(&args.command, &args.filtering, args.only_emit_events)?;
 
 	info!(?args, "got arguments");
-	Ok((args, log_guard))
+	Ok((args, Guards { _log, _socket }))
 }
 
 #[test]
