@@ -28,7 +28,7 @@ impl Sockets for SocketSet {
 	}
 
 	#[instrument(level = "trace")]
-	fn envs(&self, pid: u32) -> impl Iterator<Item = EnvVar> {
+	fn envs(&self) -> Vec<EnvVar> {
 		vec![
 			EnvVar {
 				key: "LISTEN_FDS".into(),
@@ -38,12 +38,7 @@ impl Sockets for SocketSet {
 				key: "LISTEN_FDS_FIRST_FD".into(),
 				value: self.fds.first().unwrap().as_raw_fd().to_string().into(),
 			},
-			EnvVar {
-				key: "LISTEN_PID".into(),
-				value: pid.to_string().into(),
-			},
 		]
-		.into_iter()
 	}
 }
 

@@ -49,7 +49,7 @@ impl Sockets for SocketSet {
 	}
 
 	#[instrument(level = "trace")]
-	fn envs(&self, _pid: u32) -> impl Iterator<Item = EnvVar> {
+	fn envs(&self) -> Vec<EnvVar> {
 		vec![
 			EnvVar {
 				key: "SYSTEMFD_SOCKET_SERVER".into(),
@@ -60,7 +60,6 @@ impl Sockets for SocketSet {
 				value: self.secret.to_string().into(),
 			},
 		]
-		.into_iter()
 	}
 
 	#[instrument(level = "trace", skip(self))]

@@ -215,28 +215,20 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 						command.command_mut().current_dir(workdir);
 					}
 
-					if state.socket_set.is_some() {
-						#[cfg(unix)]
-						unsafe {
-							let state = state.clone();
-							command.command_mut().pre_exec(move || {
-								// running inside the new process, so PID is correct now
-								for env in
-									state.socket_set.as_ref().unwrap().envs(std::process::id())
-								{
-									// SAFETY: we're right at the start of the new process's life,
-									// so nothing multithreaded should be happening here yet.
-									std::env::set_var(env.key, env.value);
-								}
-								Ok(())
-							});
+					if let Some(ref socket_set) = state.socket_set {
+						for env in socket_set.envs() {
+							command.command_mut().env(env.key, env.value);
 						}
 
-						#[cfg(windows)]
-						{
-							for env in state.socket_set.as_ref().unwrap().envs(0) {
-								command.command_mut().env(env.key, env.value);
-							}
+						#[cfg(unix)]
+						unsafe {
+							command.command_mut().pre_exec(move || {
+								// we're running inside the new process, so PID is correct now.
+								// SAFETY: we're right at the start of the new process's life,
+								// so nothing multithreaded should be happening here yet.
+								std::env::set_var("LISTEN_PID", std::process::id().to_string());
+								Ok(())
+							});
 						}
 					}
 

@@ -9,8 +9,6 @@ use miette::Result;
 use tracing::{debug, info, warn};
 use tracing_appender::non_blocking::WorkerGuard;
 
-use crate::socket::SocketSet;
-
 pub(crate) mod command;
 pub(crate) mod events;
 pub(crate) mod filtering;
@@ -237,7 +235,6 @@ pub enum ShellCompletion {
 #[derive(Debug, Default)]
 pub struct Guards {
 	_log: Option<WorkerGuard>,
-	_socket: Option<SocketSet>,
 }
 
 pub async fn get_args() -> Result<(Args, Guards)> {
@@ -259,13 +256,13 @@ pub async fn get_args() -> Result<(Args, Guards)> {
 	};
 
 	args.output.normalise()?;
-	let _socket = args.command.normalise().await?;
+	args.command.normalise().await?;
 	args.filtering.normalise(&args.command).await?;
 	args.events
 		.normalise(&args.command, &args.filtering, args.only_emit_events)?;
 
 	info!(?args, "got arguments");
-	Ok((args, Guards { _log, _socket }))
+	Ok((args, Guards { _log }))
 }
 
 #[test]

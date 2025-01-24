@@ -13,7 +13,7 @@ use miette::{IntoDiagnostic, Result};
 use tracing::{info, warn};
 use watchexec_signals::Signal;
 
-use crate::socket::{SocketSet, SocketSpec, SocketSpecValueParser, Sockets};
+use crate::socket::{SocketSpec, SocketSpecValueParser};
 
 use super::{TimeSpan, OPTSET_COMMAND};
 
@@ -241,7 +241,7 @@ pub struct CommandArgs {
 }
 
 impl CommandArgs {
-	pub(crate) async fn normalise(&mut self) -> Result<Option<SocketSet>> {
+	pub(crate) async fn normalise(&mut self) -> Result<()> {
 		if self.no_process_group {
 			warn!("--no-process-group is deprecated");
 			self.wrap_process = WrapMode::None;
@@ -256,16 +256,8 @@ impl CommandArgs {
 		info!(path=?workdir, "effective working directory");
 		self.workdir = Some(workdir);
 
-		let socket_guard = if self.socket.is_empty() {
-			None
-		} else {
-			let mut sockets = SocketSet::create(&self.socket).await?;
-			sockets.serve();
-			Some(sockets)
-		};
-
 		debug_assert!(self.workdir.is_some());
-		Ok(socket_guard)
+		Ok(())
 	}
 }
 

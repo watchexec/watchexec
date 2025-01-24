@@ -8,9 +8,24 @@ use std::{
 use miette::{IntoDiagnostic, Result};
 use tempfile::NamedTempFile;
 
-use crate::socket::SocketSet;
+use crate::{args::Args, socket::{SocketSet, Sockets}};
 
 pub type State = Arc<InnerState>;
+
+pub async fn new(args: &Args) -> Result<State> {
+	let socket_set = if args.command.socket.is_empty() {
+		None
+	} else {
+		let mut sockets = SocketSet::create(&args.command.socket).await?;
+		sockets.serve();
+		Some(sockets)
+	};
+
+	Ok(Arc::new(InnerState {
+		emit_file: RotatingTempFile::default(),
+		socket_set,
+	}))
+}
 
 #[derive(Debug, Default)]
 pub struct InnerState {
