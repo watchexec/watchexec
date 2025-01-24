@@ -42,6 +42,6 @@ where
 	Self: Sized,
 {
 	async fn create(specs: &[SocketSpec]) -> Result<Self>;
-	fn envs(&self) -> impl Iterator<Item = EnvVar>;
+	fn envs(&self, pid: u32) -> impl Iterator<Item = EnvVar>;
 	fn serve(&mut self) {}
 }

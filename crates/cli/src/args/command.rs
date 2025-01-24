@@ -261,7 +261,6 @@ impl CommandArgs {
 		} else {
 			let mut sockets = SocketSet::create(&self.socket).await?;
 			sockets.serve();
-			self.env.extend(sockets.envs());
 			Some(sockets)
 		};
 

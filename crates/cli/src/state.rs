@@ -8,13 +8,18 @@ use std::{
 use miette::{IntoDiagnostic, Result};
 use tempfile::NamedTempFile;
 
-#[derive(Clone, Debug, Default)]
-pub struct State {
+use crate::socket::SocketSet;
+
+pub type State = Arc<InnerState>;
+
+#[derive(Debug, Default)]
+pub struct InnerState {
 	pub emit_file: RotatingTempFile,
+	pub socket_set: Option<SocketSet>,
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct RotatingTempFile(Arc<Mutex<Option<NamedTempFile>>>);
+#[derive(Debug, Default)]
+pub struct RotatingTempFile(Mutex<Option<NamedTempFile>>);
 
 impl RotatingTempFile {
 	pub fn rotate(&self) -> Result<()> {

@@ -1,7 +1,4 @@
-use std::{
-	os::fd::{AsRawFd, OwnedFd},
-	process,
-};
+use std::os::fd::{AsRawFd, OwnedFd};
 
 use miette::{IntoDiagnostic, Result};
 use nix::sys::socket::{
@@ -31,7 +28,7 @@ impl Sockets for SocketSet {
 	}
 
 	#[instrument(level = "trace")]
-	fn envs(&self) -> impl Iterator<Item = EnvVar> {
+	fn envs(&self, pid: u32) -> impl Iterator<Item = EnvVar> {
 		vec![
 			EnvVar {
 				key: "LISTEN_FDS".into(),
@@ -43,7 +40,7 @@ impl Sockets for SocketSet {
 			},
 			EnvVar {
 				key: "LISTEN_PID".into(),
-				value: process::id().to_string().into(),
+				value: pid.to_string().into(),
 			},
 		]
 		.into_iter()

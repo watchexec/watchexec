@@ -12,7 +12,7 @@ impl SocketSet for SocketSet {
 		bail!("--socket is not supported on your platform")
 	}
 
-	fn envs(&self) -> impl Iterator<Item = EnvVar> {
+	fn envs(&self, _pid: u32) -> impl Iterator<Item = EnvVar> {
 		std::iter::empty()
 	}
 }

@@ -38,9 +38,10 @@ use crate::{
 		output::{ClearMode, ColourMode},
 		Args,
 	},
-	state::RotatingTempFile,
+	emits::events_to_simple_format,
+	socket::Sockets,
+	state::State,
 };
-use crate::{emits::events_to_simple_format, state::State};
 
 #[derive(Clone, Copy, Debug)]
 struct OutputFlags {
@@ -86,7 +87,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 	let clear = args.output.screen_clear;
 
 	let emit_events_to = args.events.emit_events_to;
-	let emit_file = state.emit_file.clone();
+	let state = state.clone();
 
 	if args.only_emit_events {
 		config.on_action(move |mut action| {
@@ -184,7 +185,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 	config.on_action_async(move |mut action| {
 		let add_envs = add_envs.clone();
 		let command = command.clone();
-		let emit_file = emit_file.clone();
+		let state = state.clone();
 		let queued = queued.clone();
 		let quit_again = quit_again.clone();
 		let signal_map = signal_map.clone();
@@ -195,7 +196,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 
 				let add_envs = add_envs.clone();
 				let command = command.clone();
-				let emit_file = emit_file.clone();
+				let state = state.clone();
 				let queued = queued.clone();
 				let quit_again = quit_again.clone();
 				let signal_map = signal_map.clone();
@@ -206,7 +207,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 				let events = action.events.clone();
 				job.set_spawn_hook(move |command, _| {
 					let add_envs = add_envs.clone();
-					let emit_file = emit_file.clone();
+					let state = state.clone();
 					let events = events.clone();
 
 					if let Some(ref workdir) = workdir.as_ref() {
@@ -214,10 +215,35 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 						command.command_mut().current_dir(workdir);
 					}
 
+					if state.socket_set.is_some() {
+						#[cfg(unix)]
+						unsafe {
+							let state = state.clone();
+							command.command_mut().pre_exec(move || {
+								// running inside the new process, so PID is correct now
+								for env in
+									state.socket_set.as_ref().unwrap().envs(std::process::id())
+								{
+									// SAFETY: we're right at the start of the new process's life,
+									// so nothing multithreaded should be happening here yet.
+									std::env::set_var(env.key, env.value);
+								}
+								Ok(())
+							});
+						}
+
+						#[cfg(windows)]
+						{
+							for env in state.socket_set.as_ref().unwrap().envs(0) {
+								command.command_mut().env(env.key, env.value);
+							}
+						}
+					}
+
 					emit_events_to_command(
 						command.command_mut(),
 						events,
-						emit_file,
+						state,
 						emit_events_to,
 						add_envs,
 					);
@@ -633,7 +659,7 @@ fn end_of_process(state: &CommandState, outflags: OutputFlags) {
 fn emit_events_to_command(
 	command: &mut TokioCommand,
 	events: Arc<[Event]>,
-	emit_file: RotatingTempFile,
+	state: State,
 	emit_events_to: EmitEvents,
 	add_envs: Arc<[EnvVar]>,
 ) {
@@ -648,7 +674,7 @@ fn emit_events_to_command(
 		EmitEvents::Environment => {
 			envs = Box::new(envs.chain(emits_to_environment(&events)));
 		}
-		EmitEvents::Stdio => match emits_to_file(&emit_file, &events)
+		EmitEvents::Stdio => match emits_to_file(&state.emit_file, &events)
 			.and_then(|path| File::open(path).into_diagnostic())
 		{
 			Ok(file) => {
@@ -658,7 +684,7 @@ fn emit_events_to_command(
 				error!("Failed to write events to stdin, continuing without it: {err}");
 			}
 		},
-		EmitEvents::File => match emits_to_file(&emit_file, &events) {
+		EmitEvents::File => match emits_to_file(&state.emit_file, &events) {
 			Ok(path) => {
 				envs = Box::new(envs.chain(once(EnvVar {
 					key: "WATCHEXEC_EVENTS_FILE".into(),
@@ -669,7 +695,7 @@ fn emit_events_to_command(
 				error!("Failed to write WATCHEXEC_EVENTS_FILE, continuing without it: {err}");
 			}
 		},
-		EmitEvents::JsonStdio => match emits_to_json_file(&emit_file, &events)
+		EmitEvents::JsonStdio => match emits_to_json_file(&state.emit_file, &events)
 			.and_then(|path| File::open(path).into_diagnostic())
 		{
 			Ok(file) => {
@@ -679,7 +705,7 @@ fn emit_events_to_command(
 				error!("Failed to write events to stdin, continuing without it: {err}");
 			}
 		},
-		EmitEvents::JsonFile => match emits_to_json_file(&emit_file, &events) {
+		EmitEvents::JsonFile => match emits_to_json_file(&state.emit_file, &events) {
 			Ok(path) => {
 				envs = Box::new(envs.chain(once(EnvVar {
 					key: "WATCHEXEC_EVENTS_FILE".into(),
