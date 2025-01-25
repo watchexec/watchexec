@@ -230,6 +230,10 @@ pub struct CommandArgs {
 	/// `systemfd` tool from <https://github.com/mitsuhiko/systemfd>, upon which this is based. The
 	/// syntax here and the spawning behaviour is identical to `systemfd`, and both watchexec and
 	/// systemfd are compatible implementations of the systemd socket-activation protocol.
+	///
+	/// Watchexec does _not_ set the `LISTEN_PID` variable on unix, which means any child process of
+	/// your command could accidentally bind to the sockets, unless the `LISTEN_*` variables are
+	/// removed from the environment.
 	#[arg(
 		long,
 		help_heading = OPTSET_COMMAND,

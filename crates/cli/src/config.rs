@@ -219,17 +219,6 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 						for env in socket_set.envs() {
 							command.command_mut().env(env.key, env.value);
 						}
-
-						#[cfg(unix)]
-						unsafe {
-							command.command_mut().pre_exec(move || {
-								// we're running inside the new process, so PID is correct now.
-								// SAFETY: we're right at the start of the new process's life,
-								// so nothing multithreaded should be happening here yet.
-								std::env::set_var("LISTEN_PID", std::process::id().to_string());
-								Ok(())
-							});
-						}
 					}
 
 					emit_events_to_command(
