@@ -189,6 +189,8 @@ This option can be supplied multiple times, to open multiple sockets.
 The value can be either of `PORT` (opens a TCP listening socket at that port), `HOST:PORT` (specify a host IP address; IPv6 addresses can be specified `[bracketed]`), `TYPE::PORT` or `TYPE::HOST:PORT` (specify a socket type, `tcp` / `udp`).
 
 This integration only provides basic support, if you want more control you should use the `systemfd` tool from <https://github.com/mitsuhiko/systemfd>, upon which this is based. The syntax here and the spawning behaviour is identical to `systemfd`, and both watchexec and systemfd are compatible implementations of the systemd socket\-activation protocol.
+
+Watchexec does _not_ set the `LISTEN_PID` variable on unix, which means any child process of your command could accidentally bind to the sockets, unless the `LISTEN_*` variables are removed from the environment.
 .SH EVENTS
 .TP
 \fB\-o\fR, \fB\-\-on\-busy\-update\fR=\fIMODE\fR

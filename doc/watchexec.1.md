@@ -316,6 +316,11 @@ Watch lib and src directories for changes, rebuilding each time:
     \`systemfd\`, and both watchexec and systemfd are compatible
     implementations of the systemd socket-activation protocol.
 
+    Watchexec does \_not\_ set the \`LISTEN_PID\` variable on unix,
+    which means any child process of your command could accidentally
+    bind to the sockets, unless the \`LISTEN\_\*\` variables are removed
+    from the environment.
+
 # EVENTS
 
 **-o**, **\--on-busy-update**=*MODE*
