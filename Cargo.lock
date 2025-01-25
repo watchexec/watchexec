@@ -4344,14 +4344,17 @@ dependencies = [
  "jaq-core",
  "jaq-json",
  "jaq-std",
+ "libc",
  "miette",
  "mimalloc",
+ "nix",
  "notify-rust",
  "once_cell",
  "pid1",
  "project-origins",
  "rand",
  "serde_json",
+ "socket2",
  "tempfile",
  "termcolor",
  "tokio",
@@ -4365,6 +4368,7 @@ dependencies = [
  "watchexec-filterer-globset",
  "watchexec-signals",
  "which",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]

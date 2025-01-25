@@ -1,9 +1,19 @@
-use std::{mem::take, path::PathBuf};
+use std::{
+	ffi::{OsStr, OsString},
+	mem::take,
+	path::PathBuf,
+};
 
-use clap::{Parser, ValueEnum, ValueHint};
+use clap::{
+	builder::TypedValueParser,
+	error::{Error, ErrorKind},
+	Parser, ValueEnum, ValueHint,
+};
 use miette::{IntoDiagnostic, Result};
 use tracing::{info, warn};
 use watchexec_signals::Signal;
+
+use crate::socket::{SocketSpec, SocketSpecValueParser};
 
 use super::{TimeSpan, OPTSET_COMMAND};
 
@@ -91,9 +101,10 @@ pub struct CommandArgs {
 		short = 'E',
 		help_heading = OPTSET_COMMAND,
 		value_name = "KEY=VALUE",
+		value_parser = EnvVarValueParser,
 		display_order = 50,
 	)]
-	pub env: Vec<String>,
+	pub env: Vec<EnvVar>,
 
 	/// Don't use a process group
 	///
@@ -202,10 +213,39 @@ pub struct CommandArgs {
 		display_order = 230,
 	)]
 	pub workdir: Option<PathBuf>,
+
+	/// Provide a socket to the command
+	///
+	/// This implements the systemd socket-passing protocol, like with `systemfd`: sockets are
+	/// opened from the watchexec process, and then passed to the commands it runs. This lets you
+	/// keep sockets open and avoid address reuse issues or dropping packets.
+	///
+	/// This option can be supplied multiple times, to open multiple sockets.
+	///
+	/// The value can be either of `PORT` (opens a TCP listening socket at that port), `HOST:PORT`
+	/// (specify a host IP address; IPv6 addresses can be specified `[bracketed]`), `TYPE::PORT` or
+	/// `TYPE::HOST:PORT` (specify a socket type, `tcp` / `udp`).
+	///
+	/// This integration only provides basic support, if you want more control you should use the
+	/// `systemfd` tool from <https://github.com/mitsuhiko/systemfd>, upon which this is based. The
+	/// syntax here and the spawning behaviour is identical to `systemfd`, and both watchexec and
+	/// systemfd are compatible implementations of the systemd socket-activation protocol.
+	///
+	/// Watchexec does _not_ set the `LISTEN_PID` variable on unix, which means any child process of
+	/// your command could accidentally bind to the sockets, unless the `LISTEN_*` variables are
+	/// removed from the environment.
+	#[arg(
+		long,
+		help_heading = OPTSET_COMMAND,
+		value_name = "PORT",
+		value_parser = SocketSpecValueParser,
+		display_order = 60,
+	)]
+	pub socket: Vec<SocketSpec>,
 }
 
 impl CommandArgs {
-	pub(crate) fn normalise(&mut self) -> Result<()> {
+	pub(crate) async fn normalise(&mut self) -> Result<()> {
 		if self.no_process_group {
 			warn!("--no-process-group is deprecated");
 			self.wrap_process = WrapMode::None;
@@ -231,4 +271,37 @@ pub enum WrapMode {
 	Group,
 	Session,
 	None,
+}
+
+#[derive(Clone, Debug)]
+pub struct EnvVar {
+	pub key: String,
+	pub value: OsString,
+}
+
+#[derive(Clone)]
+pub(crate) struct EnvVarValueParser;
+
+impl TypedValueParser for EnvVarValueParser {
+	type Value = EnvVar;
+
+	fn parse_ref(
+		&self,
+		_cmd: &clap::Command,
+		_arg: Option<&clap::Arg>,
+		value: &OsStr,
+	) -> Result<Self::Value, Error> {
+		let value = value
+			.to_str()
+			.ok_or_else(|| Error::raw(ErrorKind::ValueValidation, "invalid UTF-8"))?;
+
+		let (key, value) = value
+			.split_once('=')
+			.ok_or_else(|| Error::raw(ErrorKind::ValueValidation, "missing = separator"))?;
+
+		Ok(EnvVar {
+			key: key.into(),
+			value: value.into(),
+		})
+	}
 }

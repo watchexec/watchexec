@@ -23,12 +23,12 @@ mod config;
 mod dirs;
 mod emits;
 mod filterer;
+mod socket;
 mod state;
 
-async fn run_watchexec(args: Args) -> Result<()> {
+async fn run_watchexec(args: Args, state: state::State) -> Result<()> {
 	info!(version=%env!("CARGO_PKG_VERSION"), "constructing Watchexec from CLI");
 
-	let state = state::State::default();
 	let config = config::make_config(&args, &state)?;
 	config.filterer(WatchexecFilterer::new(&args).await?);
 
@@ -55,7 +55,7 @@ async fn run_watchexec(args: Args) -> Result<()> {
 	Ok(())
 }
 
-async fn run_manpage(_args: Args) -> Result<()> {
+async fn run_manpage() -> Result<()> {
 	info!(version=%env!("CARGO_PKG_VERSION"), "constructing manpage");
 
 	let man = Man::new(Args::command().long_version(None));
@@ -121,13 +121,14 @@ async fn run_completions(shell: ShellCompletion) -> Result<()> {
 }
 
 pub async fn run() -> Result<()> {
-	let (args, _log_guard) = args::get_args().await?;
+	let (args, _guards) = args::get_args().await?;
 
 	if args.manual {
-		run_manpage(args).await
+		run_manpage().await
 	} else if let Some(shell) = args.completions {
 		run_completions(shell).await
 	} else {
-		run_watchexec(args).await
+		let state = state::new(&args).await?;
+		run_watchexec(args, state).await
 	}
 }

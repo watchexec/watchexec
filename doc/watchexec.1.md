@@ -8,7 +8,7 @@ watchexec - Execute commands when watched files change
 \[**\--only-emit-events**\] \[**\--shell**\] \[**-n **\]
 \[**-E**\|**\--env**\] \[**\--no-process-group**\]
 \[**\--wrap-process**\] \[**\--stop-signal**\] \[**\--stop-timeout**\]
-\[**\--delay-run**\] \[**\--workdir**\]
+\[**\--delay-run**\] \[**\--workdir**\] \[**\--socket**\]
 \[**-o**\|**\--on-busy-update**\] \[**-r**\|**\--restart**\]
 \[**-s**\|**\--signal**\] \[**\--map-signal**\]
 \[**-d**\|**\--debounce**\] \[**\--stdin-quit**\]
@@ -291,6 +291,35 @@ Watch lib and src directories for changes, rebuilding each time:
     By default, the working directory of the command is the working
     directory of Watchexec. You can change that with this option. Note
     that paths may be less intuitive to use with this.
+
+**\--socket**=*PORT*
+
+:   Provide a socket to the command
+
+    This implements the systemd socket-passing protocol, like with
+    \`systemfd\`: sockets are opened from the watchexec process, and
+    then passed to the commands it runs. This lets you keep sockets open
+    and avoid address reuse issues or dropping packets.
+
+    This option can be supplied multiple times, to open multiple
+    sockets.
+
+    The value can be either of \`PORT\` (opens a TCP listening socket at
+    that port), \`HOST:PORT\` (specify a host IP address; IPv6 addresses
+    can be specified \`\[bracketed\]\`), \`TYPE::PORT\` or
+    \`TYPE::HOST:PORT\` (specify a socket type, \`tcp\` / \`udp\`).
+
+    This integration only provides basic support, if you want more
+    control you should use the \`systemfd\` tool from
+    \<https://github.com/mitsuhiko/systemfd\>, upon which this is based.
+    The syntax here and the spawning behaviour is identical to
+    \`systemfd\`, and both watchexec and systemfd are compatible
+    implementations of the systemd socket-activation protocol.
+
+    Watchexec does \_not\_ set the \`LISTEN_PID\` variable on unix,
+    which means any child process of your command could accidentally
+    bind to the sockets, unless the \`LISTEN\_\*\` variables are removed
+    from the environment.
 
 # EVENTS
 

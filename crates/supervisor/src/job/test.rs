@@ -20,7 +20,7 @@ use crate::{
 	job::{start_job, CommandState},
 };
 
-use super::{Control, Job, Priority, TestChild};
+use super::{Control, Job, Priority};
 
 const GRACE: u64 = 10; // millis
 
@@ -302,7 +302,7 @@ macro_rules! expect_state {
 }
 
 #[cfg(unix)]
-async fn get_child(job: &Job) -> TestChild {
+async fn get_child(job: &Job) -> super::TestChild {
 	let state = Arc::new(Mutex::new(None));
 	refresh_state(job, &state, true).await;
 	let state = state.lock().unwrap();
