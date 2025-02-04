@@ -172,7 +172,9 @@ impl<const UNITLESS_NANOS_MULTIPLIER: u64> FromStr for TimeSpan<UNITLESS_NANOS_M
 			.map_or_else(
 				|_| humantime::parse_duration(s),
 				|unitless| {
-					eprintln!("Warning: unitless time span values are deprecated and will be removed in an upcoming version");
+					if unitless != 0 {
+						eprintln!("Warning: unitless non-zero time span values are deprecated and will be removed in an upcoming version");
+					}
 					Ok(Duration::from_nanos(unitless * UNITLESS_NANOS_MULTIPLIER))
 				},
 			)
