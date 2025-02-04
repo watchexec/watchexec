@@ -110,6 +110,15 @@ impl IgnoreFilter {
 
 		let mut ignores_trie = Trie::new();
 
+		// add builder for `origin`, so ignores and globs can be added relative to the the watcher origin
+		ignores_trie.insert(
+			origin.display().to_string(),
+			Ignore {
+				gitignore: Gitignore::empty(),
+				builder: Some(GitignoreBuilder::new(&origin)),
+			},
+		);
+
 		// add builder for the root of the file system, so that we can handle global ignores and globs
 		ignores_trie.insert(
 			prefix(&origin),
