@@ -206,6 +206,13 @@ impl IgnoreFilter {
 			.display()
 			.to_string();
 
+		if self.ignores.get(&applies_in).is_none() {
+			self.ignores.insert(applies_in.clone(), Ignore {
+				gitignore: Gitignore::empty(),
+				builder: Some(GitignoreBuilder::new(&applies_in)),
+			});
+		}
+
 		let Some(Ignore {
 			builder: Some(ref mut builder),
 			..
@@ -286,11 +293,19 @@ impl IgnoreFilter {
 	/// Does nothing silently otherwise.
 	pub fn add_globs(&mut self, globs: &[&str], applies_in: Option<&PathBuf>) -> Result<(), Error> {
 		let applies_in = applies_in.unwrap_or(&self.origin);
+		let ignores_key = applies_in.display().to_string();
+
+		if self.ignores.get(&ignores_key).is_none() {
+				self.ignores.insert(ignores_key.clone(), Ignore {
+					gitignore: Gitignore::empty(),
+					builder: Some(GitignoreBuilder::new(&applies_in)),
+				});
+		}
 
 		let Some(Ignore {
 			builder: Some(builder),
 			..
-		}) = self.ignores.get_mut(&applies_in.display().to_string())
+		}) = self.ignores.get_mut(&ignores_key)
 		else {
 			return Ok(());
 		};
