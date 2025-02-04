@@ -110,6 +110,15 @@ impl IgnoreFilter {
 
 		let mut ignores_trie = Trie::new();
 
+		// add builder for `origin`, so ignores and globs can be added relative to the the watcher origin
+		ignores_trie.insert(
+			origin.display().to_string(),
+			Ignore {
+				gitignore: Gitignore::empty(),
+				builder: Some(GitignoreBuilder::new(&origin)),
+			},
+		);
+
 		// add builder for the root of the file system, so that we can handle global ignores and globs
 		ignores_trie.insert(
 			prefix(&origin),
@@ -430,5 +439,17 @@ mod tests {
 	async fn handle_relative_paths() {
 		let ignore = IgnoreFilter::new(".", &[]).await.unwrap();
 		assert!(ignore.origin.is_absolute());
+	}
+
+	#[tokio::test]
+	async fn add_globs_to_origin_with_no_existing_ignore_file() {
+		let origin = std::env::current_dir().unwrap();
+		let mut ignore = IgnoreFilter::new(&origin, &[]).await.unwrap();
+		ignore.add_globs(&["ignored/"], Some(&origin)).expect("Failed to add globs to ignore filter");
+
+		let test_path = origin.join("ignored/some/file.txt");
+		let match_result = ignore.match_path(&test_path, false);
+
+		assert!(match_result.is_ignore(), "Path '{:?}' should be ignored", test_path);
 	}
 }
