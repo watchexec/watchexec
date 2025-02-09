@@ -58,7 +58,7 @@ _watchexec() {
 '--color=[When to use terminal colours]:MODE:(auto always never)' \
 '(--completions --only-emit-events)--manual[Show the manual page]' \
 '(--completions --manual)--only-emit-events[Only emit events to stdout, run no commands]' \
-'-1[Testing only\: exit Watchexec after the first run]' \
+'-1[Testing only\: exit Watchexec after the first run and return the command'\''s exit code]' \
 '-n[Shorthand for '\''--shell=none'\'']' \
 '--no-environment[Deprecated shorthand for '\''--emit-events=none'\'']' \
 '--no-process-group[Don'\''t use a process group]' \

@@ -64,7 +64,7 @@ Register-ArgumentCompleter -Native -CommandName 'watchexec' -ScriptBlock {
             [CompletionResult]::new('--color', '--color', [CompletionResultType]::ParameterName, 'When to use terminal colours')
             [CompletionResult]::new('--manual', '--manual', [CompletionResultType]::ParameterName, 'Show the manual page')
             [CompletionResult]::new('--only-emit-events', '--only-emit-events', [CompletionResultType]::ParameterName, 'Only emit events to stdout, run no commands')
-            [CompletionResult]::new('-1', '-1', [CompletionResultType]::ParameterName, 'Testing only: exit Watchexec after the first run')
+            [CompletionResult]::new('-1', '-1', [CompletionResultType]::ParameterName, 'Testing only: exit Watchexec after the first run and return the command''s exit code')
             [CompletionResult]::new('-n', '-n', [CompletionResultType]::ParameterName, 'Shorthand for ''--shell=none''')
             [CompletionResult]::new('--no-environment', '--no-environment', [CompletionResultType]::ParameterName, 'Deprecated shorthand for ''--emit-events=none''')
             [CompletionResult]::new('--no-process-group', '--no-process-group', [CompletionResultType]::ParameterName, 'Don''t use a process group')

@@ -52,7 +52,7 @@ always\t''
 never\t''"
 complete -c watchexec -l manual -d 'Show the manual page'
 complete -c watchexec -l only-emit-events -d 'Only emit events to stdout, run no commands'
-complete -c watchexec -s 1 -d 'Testing only: exit Watchexec after the first run'
+complete -c watchexec -s 1 -d 'Testing only: exit Watchexec after the first run and return the command\'s exit code'
 complete -c watchexec -s n -d 'Shorthand for \'--shell=none\''
 complete -c watchexec -l no-environment -d 'Deprecated shorthand for \'--emit-events=none\''
 complete -c watchexec -l no-process-group -d 'Don\'t use a process group'
