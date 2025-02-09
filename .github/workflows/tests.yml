@@ -52,7 +52,7 @@ jobs:
     - uses: Swatinem/rust-cache@v2
 
     - name: Run library test suite
-      run: cargo test --workspace --exclude watchexec-cli
+      run: cargo test --workspace --exclude watchexec-cli --exclude watchexec-events
 
     - name: Run watchexec-events integration tests
       run: cargo test -p watchexec-events -F serde
