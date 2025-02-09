@@ -46,7 +46,7 @@ jobs:
           - name: linux-amd64-musl
             os: ubuntu-24.04
             target: x86_64-unknown-linux-musl
-            cross: true
+            cross: false
             experimental: false
 
           - name: linux-i686-musl
@@ -56,7 +56,7 @@ jobs:
             experimental: true
 
           - name: linux-armhf-gnu
-            os: ubuntu-24.04-arm
+            os: ubuntu-24.04
             target: armv7-unknown-linux-gnueabihf
             cross: true
             experimental: false
