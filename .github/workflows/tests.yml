@@ -51,11 +51,12 @@ jobs:
 
     - uses: Swatinem/rust-cache@v2
 
-    - name: Run library test suite
-      run: cargo test --exclude watchexec-cli
-
+    # running this before the main suite allows better cache reuse
     - name: Run watchexec-events integration tests
       run: cargo test -p watchexec-events -F serde
+
+    - name: Run library test suite
+      run: cargo test --exclude watchexec-cli
 
     - name: Install coreutils on mac
       if: ${{ matrix.platform == 'macos' }}
