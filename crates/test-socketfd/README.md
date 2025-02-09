@@ -3,6 +3,7 @@ This is a testing tool for the `--socket` option, which can also be used by thir
 ## Install
 
 ```console
+cargo install --git https://github.com/watchexec/watchexec test-socketfd
 ```
 
 ## Usage
