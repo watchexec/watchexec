@@ -49,23 +49,7 @@ jobs:
         echo "Adding GNU tar to PATH"
         echo C:\Program Files\Git\usr\bin>>"%GITHUB_PATH%"
 
-    - name: Cargo caching
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cargo/registry/index/
-          ~/.cargo/registry/cache/
-          ~/.cargo/git/db/
-        key: ${{ runner.os }}-cargo-stable-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-stable-
-          ${{ runner.os }}-cargo-
-
-    - name: Compilation caching
-      uses: actions/cache@v4
-      with:
-        path: target/
-        key: ${{ runner.os }}-target-stable-${{ hashFiles('**/Cargo.lock') }}
+    - uses: Swatinem/rust-cache@v2
 
     - name: Run test suite
       run: cargo test
@@ -121,17 +105,7 @@ jobs:
       with:
         tool: cross
 
-    - name: Cargo caching
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cargo/registry/index/
-          ~/.cargo/registry/cache/
-          ~/.cargo/git/db/
-        key: ${{ runner.os }}-cargo-stable-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-stable-
-          ${{ runner.os }}-cargo-
+    - uses: Swatinem/rust-cache@v2
 
     - run: cargo check --target x86_64-unknown-linux-musl
     - run: cross check --target x86_64-unknown-freebsd
