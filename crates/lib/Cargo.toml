@@ -47,7 +47,7 @@ version = "3.0.2"
 path = "../ignore-files"
 
 [dependencies.project-origins]
-version = "1.4.0"
+version = "1.4.1"
 path = "../project-origins"
 
 [dependencies.tokio]

@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v1.4.1 (2025-02-09)
+
 ## v1.4.0 (2024-04-28)
 
 - Add out-of-tree Git repositories (`.git` file instead of folder).

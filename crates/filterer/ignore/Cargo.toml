@@ -38,7 +38,7 @@ version = "4.0.1"
 path = "../../signals"
 
 [dev-dependencies.project-origins]
-version = "1.4.0"
+version = "1.4.1"
 path = "../../project-origins"
 
 [dev-dependencies.tokio]
