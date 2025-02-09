@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v7.0.0 (2025-02-09)
+
 ## v6.0.0 (2024-10-14)
 
 - Deps: watchexec 5
