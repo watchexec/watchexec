@@ -933,7 +933,7 @@ Didnt expect this much output? Use the short -h flag to get short help.
 
 # VERSION
 
-v2.2.1
+v2.3.0
 
 # AUTHORS
 
