@@ -180,22 +180,6 @@ jobs:
             --release --locked \
             --target ${{ matrix.target }}
 
-      - name: Make manpage
-        shell: bash
-        run: |
-          cargo run -p watchexec-cli \
-            ${{ (!matrix.cross) && '--release --target' || '' }} \
-            ${{ (!matrix.cross) && matrix.target || '' }} \
-            --locked -- --manual > doc/watchexec.1
-
-      - name: Make completions
-        shell: bash
-        run: |
-          bin/completions \
-            ${{ (!matrix.cross) && '--release --target' || '' }} \
-            ${{ (!matrix.cross) && matrix.target || '' }} \
-            --locked
-
       - name: Package
         shell: bash
         run: |
