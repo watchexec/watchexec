@@ -51,12 +51,11 @@ jobs:
 
     - uses: Swatinem/rust-cache@v2
 
-    # running this before the main suite allows better cache reuse
+    - name: Run library test suite
+      run: cargo test --workspace --exclude watchexec-cli
+
     - name: Run watchexec-events integration tests
       run: cargo test -p watchexec-events -F serde
-
-    - name: Run library test suite
-      run: cargo test --exclude watchexec-cli
 
   cli-e2e:
     strategy:
