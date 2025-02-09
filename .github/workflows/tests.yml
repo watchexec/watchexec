@@ -194,11 +194,10 @@ jobs:
       run: |
         rustup toolchain install --profile minimal --no-self-update stable
         rustup default stable
+        rustup target add ${{ matrix.target }}
 
     - if: matrix.target == 'x86_64-unknown-linux-musl'
-      run: |
-        sudo apt-get install -y musl-tools
-        rustup target add x86_64-unknown-linux-musl
+      run: sudo apt-get install -y musl-tools
 
     - uses: Swatinem/rust-cache@v2
     - run: cargo check --target ${{ matrix.target }}
