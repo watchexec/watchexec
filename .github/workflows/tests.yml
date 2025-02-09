@@ -78,12 +78,15 @@ jobs:
       if: ${{ matrix.platform == 'macos' }}
       run: brew install coreutils
 
-    - name: Run watchexec integration tests (unix)
-      if: ${{ matrix.platform != 'windows' }}
-      run: crates/cli/run-tests.sh
+    - name: Build test-socketfd program
+      run: cargo build -p test-socketfd
+
+    - name: Run watchexec integration tests
+      run: crates/cli/run-tests.sh ${{ matrix.platform }}
       shell: bash
       env:
         WATCHEXEC_BIN: target/debug/watchexec
+        TEST_SOCKETFD_BIN: target/debug/test-socketfd
 
     - name: Run bosion integration tests
       run: ./run-tests.sh
