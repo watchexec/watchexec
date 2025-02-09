@@ -15,6 +15,9 @@ readme = "README.md"
 
 edition = "2021"
 
+# sets the default for the workspace
+default-run = "watchexec"
+
 [[bin]]
 name = "watchexec"
 path = "src/main.rs"
