@@ -2,14 +2,13 @@
 #![allow(clippy::missing_const_for_fn, clippy::future_not_send)]
 
 use std::{
-	io::Write,
+	io::{IsTerminal, Write},
 	process::{ExitCode, Stdio},
 };
 
 use clap::CommandFactory;
 use clap_complete::{Generator, Shell};
 use clap_mangen::Man;
-use is_terminal::IsTerminal;
 use miette::{IntoDiagnostic, Result};
 use tokio::{io::AsyncWriteExt, process::Command};
 use tracing::{debug, info};
