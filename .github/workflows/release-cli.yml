@@ -36,77 +36,65 @@ jobs:
   build:
     strategy:
       matrix:
-        name:
-          - linux-amd64-gnu
-          - linux-amd64-musl
-          - linux-i686-musl
-          - linux-armhf-gnu
-          - linux-arm64-gnu
-          - linux-arm64-musl
-          - linux-s390x-gnu
-          - linux-ppc64le-gnu
-          - mac-x86-64
-          - mac-arm64
-          - windows-x86-64
         include:
           - name: linux-amd64-gnu
-            os: ubuntu-latest
+            os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
             cross: false
             experimental: false
 
           - name: linux-amd64-musl
-            os: ubuntu-latest
+            os: ubuntu-24.04
             target: x86_64-unknown-linux-musl
             cross: true
             experimental: false
 
           - name: linux-i686-musl
-            os: ubuntu-latest
+            os: ubuntu-22.04
             target: i686-unknown-linux-musl
             cross: true
             experimental: true
 
           - name: linux-armhf-gnu
-            os: ubuntu-latest
+            os: ubuntu-24.04-arm
             target: armv7-unknown-linux-gnueabihf
             cross: true
             experimental: false
 
           - name: linux-arm64-gnu
-            os: ubuntu-latest
+            os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
-            cross: true
+            cross: false
             experimental: false
 
           - name: linux-arm64-musl
-            os: ubuntu-latest
+            os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-musl
             cross: true
-            experimental: true
+            experimental: false
 
           - name: linux-s390x-gnu
-            os: ubuntu-latest
+            os: ubuntu-24.04
             target: s390x-unknown-linux-gnu
             cross: true
             experimental: false
 
           - name: linux-ppc64le-gnu
-            os: ubuntu-latest
+            os: ubuntu-24.04
             target: powerpc64le-unknown-linux-gnu
             cross: true
             experimental: false
 
           - name: mac-x86-64
-            os: macos-latest
+            os: macos-14
             target: x86_64-apple-darwin
             cross: false
             experimental: false
 
           - name: mac-arm64
-            os: macos-latest
+            os: macos-15
             target: aarch64-apple-darwin
-            cross: true
+            cross: false
             experimental: false
 
           - name: windows-x86-64
@@ -140,19 +128,6 @@ jobs:
         run: |
           echo "Adding GNU tar to PATH"
           echo C:\Program Files\Git\usr\bin>>"%GITHUB_PATH%"
-
-      - name: Configure caching
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-${{ matrix.target }}-
-            ${{ runner.os }}-cargo-
 
       - run: sudo apt update
         if: startsWith(matrix.os, 'ubuntu-')
@@ -189,6 +164,7 @@ jobs:
           rustup toolchain install --profile minimal --no-self-update stable
           rustup default stable
           rustup target add ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
 
       - name: Install cross
         if: matrix.cross
