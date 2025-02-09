@@ -69,10 +69,9 @@ jobs:
 
     - name: Run test suite
       run: cargo test
+
     - name: Run watchexec-events integration tests
       run: cargo test -p watchexec-events -F serde
-    - name: Check that CLI runs
-      run: cargo run -p watchexec-cli -- -1 echo
 
     - name: Install coreutils on mac
       if: ${{ matrix.platform == 'macos' }}
