@@ -66,7 +66,7 @@ jobs:
           - ubuntu
           - windows
 
-    name: Test ${{ matrix.platform }}
+    name: Test CLI (e2e) ${{ matrix.platform }}
     runs-on: "${{ matrix.platform }}-latest"
 
     steps:
@@ -119,7 +119,7 @@ jobs:
           - ubuntu
           - windows
 
-    name: Test CLI ${{ matrix.platform }}
+    name: Test CLI (unit) ${{ matrix.platform }}
     runs-on: "${{ matrix.platform }}-latest"
 
     steps:
