@@ -51,8 +51,8 @@ jobs:
 
     - uses: Swatinem/rust-cache@v2
 
-    - name: Run test suite
-      run: cargo test
+    - name: Run library test suite
+      run: cargo test --exclude watchexec-cli
 
     - name: Run watchexec-events integration tests
       run: cargo test -p watchexec-events -F serde
@@ -64,17 +64,12 @@ jobs:
     - name: Build test-socketfd program
       run: cargo build -p test-socketfd
 
-    - name: Run watchexec integration tests
+    - name: Run CLI integration tests
       run: crates/cli/run-tests.sh ${{ matrix.platform }}
       shell: bash
       env:
         WATCHEXEC_BIN: target/debug/watchexec
         TEST_SOCKETFD_BIN: target/debug/test-socketfd
-
-    - name: Run bosion integration tests
-      run: ./run-tests.sh
-      working-directory: crates/bosion
-      shell: bash
 
     - name: Generate manpage
       run: cargo run -p watchexec-cli -- --manual > doc/watchexec.1
@@ -85,6 +80,17 @@ jobs:
       run: bin/completions
     - name: Check that completions are up to date
       run: git diff --exit-code -- completions/
+
+    # CLI and bosion tests are long and generally pass, so putting them
+    # at the end makes more common failures appear earlier
+
+    - name: Run CLI unit tests
+      run: cargo test -p watchexec-cli
+
+    - name: Run bosion integration tests
+      run: ./run-tests.sh
+      working-directory: crates/bosion
+      shell: bash
 
   cross-checks:
     name: Checks only against select targets
