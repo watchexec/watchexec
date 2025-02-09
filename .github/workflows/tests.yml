@@ -22,7 +22,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
+  libs:
     strategy:
       fail-fast: false
       matrix:
@@ -31,7 +31,7 @@ jobs:
           - ubuntu
           - windows
 
-    name: Test ${{ matrix.platform }}
+    name: Test libraries ${{ matrix.platform }}
     runs-on: "${{ matrix.platform }}-latest"
 
     steps:
@@ -58,9 +58,38 @@ jobs:
     - name: Run library test suite
       run: cargo test --exclude watchexec-cli
 
+  cli-e2e:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - macos
+          - ubuntu
+          - windows
+
+    name: Test ${{ matrix.platform }}
+    runs-on: "${{ matrix.platform }}-latest"
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Configure toolchain
+      run: |
+        rustup toolchain install --profile minimal --no-self-update stable
+        rustup default stable
+
+    # https://github.com/actions/cache/issues/752
+    - if: ${{ runner.os == 'Windows' }}
+      name: Use GNU tar
+      shell: cmd
+      run: |
+        echo "Adding GNU tar to PATH"
+        echo C:\Program Files\Git\usr\bin>>"%GITHUB_PATH%"
+
     - name: Install coreutils on mac
       if: ${{ matrix.platform == 'macos' }}
       run: brew install coreutils
+
+    - uses: Swatinem/rust-cache@v2
 
     - name: Build CLI programs
       run: cargo build
@@ -82,11 +111,66 @@ jobs:
     - name: Check that completions are up to date
       run: git diff --exit-code -- completions/
 
-    # CLI and bosion tests are long and generally pass, so putting them
-    # at the end makes more common failures appear earlier
+  cli-unit:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - macos
+          - ubuntu
+          - windows
+
+    name: Test CLI ${{ matrix.platform }}
+    runs-on: "${{ matrix.platform }}-latest"
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Configure toolchain
+      run: |
+        rustup toolchain install --profile minimal --no-self-update stable
+        rustup default stable
+
+    # https://github.com/actions/cache/issues/752
+    - if: ${{ runner.os == 'Windows' }}
+      name: Use GNU tar
+      shell: cmd
+      run: |
+        echo "Adding GNU tar to PATH"
+        echo C:\Program Files\Git\usr\bin>>"%GITHUB_PATH%"
+
+    - uses: Swatinem/rust-cache@v2
 
     - name: Run CLI unit tests
       run: cargo test -p watchexec-cli
+
+  bosion:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - macos
+          - ubuntu
+          - windows
+
+    name: Bosion integration tests on ${{ matrix.platform }}
+    runs-on: "${{ matrix.platform }}-latest"
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Configure toolchain
+      run: |
+        rustup toolchain install --profile minimal --no-self-update stable
+        rustup default stable
+
+    # https://github.com/actions/cache/issues/752
+    - if: ${{ runner.os == 'Windows' }}
+      name: Use GNU tar
+      shell: cmd
+      run: |
+        echo "Adding GNU tar to PATH"
+        echo C:\Program Files\Git\usr\bin>>"%GITHUB_PATH%"
+
+    - uses: Swatinem/rust-cache@v2
 
     - name: Run bosion integration tests
       run: ./run-tests.sh
@@ -122,8 +206,11 @@ jobs:
     if: always()
     name: Tests pass
     needs:
-    - test
+    - bosion
+    - cli-e2e
+    - cli-unit
     - cross-checks
+    - libs
     runs-on: ubuntu-latest
     steps:
     - uses: re-actors/alls-green@release/v1
