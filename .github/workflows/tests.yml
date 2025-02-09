@@ -177,7 +177,15 @@ jobs:
       shell: bash
 
   cross-checks:
-    name: Checks only against select targets
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - x86_64-unknown-linux-musl
+          - x86_64-unknown-freebsd
+          - x86_64-unknown-netbsd
+
+    name: Typecheck only on ${{ matrix.target }}
     runs-on: ubuntu-latest
 
     steps:
@@ -187,19 +195,13 @@ jobs:
         rustup toolchain install --profile minimal --no-self-update stable
         rustup default stable
 
+    - if: matrix.target == 'x86_64-unknown-linux-musl'
+      run: |
         sudo apt-get install -y musl-tools
         rustup target add x86_64-unknown-linux-musl
 
-    - name: Install cross
-      uses: taiki-e/install-action@v2
-      with:
-        tool: cross
-
     - uses: Swatinem/rust-cache@v2
-
-    - run: cargo check --target x86_64-unknown-linux-musl
-    - run: cross check --target x86_64-unknown-freebsd
-    - run: cross check --target x86_64-unknown-netbsd
+    - run: cargo check --target ${{ matrix.target }}
 
   tests-pass:
     if: always()
