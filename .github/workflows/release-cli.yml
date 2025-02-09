@@ -70,7 +70,7 @@ jobs:
           - name: linux-arm64-musl
             os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-musl
-            cross: true
+            cross: false
             experimental: false
 
           - name: linux-s390x-gnu
