@@ -1,0 +1,17 @@
+[package]
+name = "test-socketfd"
+version = "0.0.0"
+publish = false
+
+authors = ["Félix Saparelli <felix@passcod.name>"]
+license = "Apache-2.0 OR MIT"
+description = "Test program for --socket"
+
+edition = "2021"
+
+[dependencies]
+listenfd = "1.0.2"
+
+[lints.clippy]
+nursery = "warn"
+pedantic = "warn"
