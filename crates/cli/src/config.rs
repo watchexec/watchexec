@@ -6,7 +6,7 @@ use std::{
 	fs::File,
 	io::{IsTerminal, Write},
 	iter::once,
-	process::Stdio,
+	process::{ExitCode, Stdio},
 	sync::{
 		atomic::{AtomicBool, AtomicU8, Ordering},
 		Arc,
@@ -196,7 +196,6 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 
 				let add_envs = add_envs.clone();
 				let command = command.clone();
-				let state = state.clone();
 				let queued = queued.clone();
 				let quit_again = quit_again.clone();
 				let signal_map = signal_map.clone();
@@ -205,29 +204,32 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 				trace!("set spawn hook for workdir and environment variables");
 				let job = action.get_or_create_job(id, move || command.clone());
 				let events = action.events.clone();
-				job.set_spawn_hook(move |command, _| {
-					let add_envs = add_envs.clone();
+				job.set_spawn_hook({
 					let state = state.clone();
-					let events = events.clone();
+					move |command, _| {
+						let add_envs = add_envs.clone();
+						let state = state.clone();
+						let events = events.clone();
 
-					if let Some(ref workdir) = workdir.as_ref() {
-						debug!(?workdir, "set command workdir");
-						command.command_mut().current_dir(workdir);
-					}
-
-					if let Some(ref socket_set) = state.socket_set {
-						for env in socket_set.envs() {
-							command.command_mut().env(env.key, env.value);
+						if let Some(ref workdir) = workdir.as_ref() {
+							debug!(?workdir, "set command workdir");
+							command.command_mut().current_dir(workdir);
 						}
-					}
 
-					emit_events_to_command(
-						command.command_mut(),
-						events,
-						state,
-						emit_events_to,
-						add_envs,
-					);
+						if let Some(ref socket_set) = state.socket_set {
+							for env in socket_set.envs() {
+								command.command_mut().env(env.key, env.value);
+							}
+						}
+
+						emit_events_to_command(
+							command.command_mut(),
+							events,
+							state,
+							emit_events_to,
+							add_envs,
+						);
+					}
 				});
 
 				let show_events = {
@@ -305,6 +307,21 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 					// this blocks the event loop, but also this is a debug feature so i don't care
 					job.start().await;
 					job.to_wait().await;
+					job.run({
+						let state = state.clone();
+						move |context| {
+							if let Some(end) = end_of_process(context.current, outflags) {
+								*state.exit_code.lock().unwrap() = ExitCode::from(
+									end.into_exitstatus()
+										.code()
+										.unwrap_or(0)
+										.try_into()
+										.unwrap_or(1),
+								);
+							}
+						}
+					})
+					.await;
 					return quit(action);
 				}
 
@@ -573,19 +590,21 @@ fn setup_process(job: Job, command: Arc<Command>, outflags: OutputFlags) {
 
 	tokio::spawn(async move {
 		job.to_wait().await;
-		job.run(move |context| end_of_process(context.current, outflags));
+		job.run(move |context| {
+			end_of_process(context.current, outflags);
+		});
 	});
 }
 
 #[instrument(level = "trace")]
-fn end_of_process(state: &CommandState, outflags: OutputFlags) {
+fn end_of_process(state: &CommandState, outflags: OutputFlags) -> Option<ProcessEnd> {
 	let CommandState::Finished {
 		status,
 		started,
 		finished,
 	} = state
 	else {
-		return;
+		return None;
 	};
 
 	let duration = *finished - *started;
@@ -634,6 +653,8 @@ fn end_of_process(state: &CommandState, outflags: OutputFlags) {
 		stdout.write_all(b"\x07").ok();
 		stdout.flush().ok();
 	}
+
+	Some(*status)
 }
 
 #[instrument(level = "trace")]

@@ -141,7 +141,7 @@ pub struct Args {
 	)]
 	pub only_emit_events: bool,
 
-	/// Testing only: exit Watchexec after the first run
+	/// Testing only: exit Watchexec after the first run and return the command's exit code
 	#[arg(short = '1', hide = true)]
 	pub once: bool,
 

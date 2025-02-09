@@ -2,13 +2,17 @@ use std::{
 	env::var_os,
 	io::Write,
 	path::PathBuf,
+	process::ExitCode,
 	sync::{Arc, Mutex},
 };
 
 use miette::{IntoDiagnostic, Result};
 use tempfile::NamedTempFile;
 
-use crate::{args::Args, socket::{SocketSet, Sockets}};
+use crate::{
+	args::Args,
+	socket::{SocketSet, Sockets},
+};
 
 pub type State = Arc<InnerState>;
 
@@ -24,6 +28,7 @@ pub async fn new(args: &Args) -> Result<State> {
 	Ok(Arc::new(InnerState {
 		emit_file: RotatingTempFile::default(),
 		socket_set,
+		exit_code: Mutex::new(ExitCode::SUCCESS),
 	}))
 }
 
@@ -31,6 +36,7 @@ pub async fn new(args: &Args) -> Result<State> {
 pub struct InnerState {
 	pub emit_file: RotatingTempFile,
 	pub socket_set: Option<SocketSet>,
+	pub exit_code: Mutex<ExitCode>,
 }
 
 #[derive(Debug, Default)]

@@ -1,7 +1,10 @@
 #![deny(rust_2018_idioms)]
 #![allow(clippy::missing_const_for_fn, clippy::future_not_send)]
 
-use std::{io::Write, process::Stdio};
+use std::{
+	io::Write,
+	process::{ExitCode, Stdio},
+};
 
 use clap::CommandFactory;
 use clap_complete::{Generator, Shell};
@@ -120,15 +123,19 @@ async fn run_completions(shell: ShellCompletion) -> Result<()> {
 	Ok(())
 }
 
-pub async fn run() -> Result<()> {
+pub async fn run() -> Result<ExitCode> {
 	let (args, _guards) = args::get_args().await?;
 
-	if args.manual {
-		run_manpage().await
+	Ok(if args.manual {
+		run_manpage().await?;
+		ExitCode::SUCCESS
 	} else if let Some(shell) = args.completions {
-		run_completions(shell).await
+		run_completions(shell).await?;
+		ExitCode::SUCCESS
 	} else {
 		let state = state::new(&args).await?;
-		run_watchexec(args, state).await
-	}
+		run_watchexec(args, state.clone()).await?;
+		let exit = *(state.exit_code.lock().unwrap());
+		exit
+	})
 }
