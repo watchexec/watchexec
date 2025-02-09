@@ -1,10 +1,13 @@
-use std::{fmt, future::Future, sync::Arc};
+use std::{
+	fmt,
+	future::Future,
+	sync::{Arc, OnceLock},
+};
 
 use async_priority_channel as priority;
 use atomic_take::AtomicTake;
 use futures::TryFutureExt;
 use miette::Diagnostic;
-use once_cell::sync::OnceCell;
 use tokio::{
 	spawn,
 	sync::{mpsc, Notify},
@@ -260,7 +263,7 @@ async fn error_hook(
 pub struct ErrorHook {
 	/// The runtime error for which this handler was called.
 	pub error: RuntimeError,
-	critical: Arc<OnceCell<CriticalError>>,
+	critical: Arc<OnceLock<CriticalError>>,
 }
 
 impl ErrorHook {
@@ -271,7 +274,7 @@ impl ErrorHook {
 		}
 	}
 
-	fn handle_crit(crit: Arc<OnceCell<CriticalError>>) -> Result<(), CriticalError> {
+	fn handle_crit(crit: Arc<OnceLock<CriticalError>>) -> Result<(), CriticalError> {
 		match Arc::try_unwrap(crit) {
 			Err(err) => {
 				error!(?err, "error handler hook has an outstanding ref");

@@ -1,16 +1,18 @@
-use std::{iter::once, sync::Arc};
+use std::{
+	iter::once,
+	sync::{Arc, OnceLock},
+};
 
 use dashmap::DashMap;
 use jaq_core::Native;
 use jaq_json::Val;
 use jaq_std::{v, Filter};
-use once_cell::sync::OnceCell;
 
 use crate::filterer::syncval::SyncVal;
 
 type KvStore = Arc<DashMap<String, SyncVal>>;
 fn kv_store() -> KvStore {
-	static KV_STORE: OnceCell<KvStore> = OnceCell::new();
+	static KV_STORE: OnceLock<KvStore> = OnceLock::new();
 	KV_STORE.get_or_init(KvStore::default).clone()
 }
 
