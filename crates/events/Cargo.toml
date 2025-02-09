@@ -24,7 +24,7 @@ optional = true
 features = ["derive"]
 
 [dependencies.watchexec-signals]
-version = "4.0.0"
+version = "4.0.1"
 path = "../signals"
 default-features = false
 
