@@ -42,7 +42,7 @@ version = "0.29.0"
 features = ["signal"]
 
 [dev-dependencies]
-boxcar = "0.2.4"
+boxcar = "0.2.9"
 
 [lints.clippy]
 nursery = "warn"
