@@ -15,12 +15,14 @@ readme = "README.md"
 
 edition = "2021"
 
+# sets the default for the workspace
+default-run = "watchexec"
+
 [[bin]]
 name = "watchexec"
 path = "src/main.rs"
 
 [dependencies]
-foldhash = "0.1.4" # needs to be in sync with jaq's
 argfile = "0.2.0"
 chrono = "0.4.31"
 clap_complete = "4.4.4"
@@ -30,6 +32,7 @@ clearscreen = "4.0.1"
 dashmap = "6.1.0"
 dirs = "5.0.0"
 dunce = "1.0.4"
+foldhash = "0.1.4" # needs to be in sync with jaq's
 futures = "0.3.29"
 humantime = "2.1.0"
 indexmap = "2.2.6" # needs to be in sync with jaq's
@@ -102,6 +105,7 @@ features = [
 	"fs",
 	"io-std",
 	"process",
+	"net",
 	"rt",
 	"rt-multi-thread",
 	"signal",
@@ -117,6 +121,15 @@ features = [
 	"tracing-log",
 	"ansi",
 ]
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2.74"
+nix = { version = "0.29.0", features = ["net"] }
+
+[target.'cfg(windows)'.dependencies]
+socket2 = "0.5.7"
+uuid = { version = "1.1.0", features = ["v4"] }
+windows-sys = { version = "0.52.0", features = ["Win32_Networking_WinSock"] }
 
 [target.'cfg(target_env = "musl")'.dependencies]
 mimalloc = "0.1.39"

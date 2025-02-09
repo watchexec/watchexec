@@ -24,6 +24,7 @@ _watchexec() {
 '--stop-timeout=[Time to wait for the command to exit gracefully]:TIMEOUT:_default' \
 '--delay-run=[Sleep before running the command]:DURATION:_default' \
 '--workdir=[Set the working directory]:DIRECTORY:_files -/' \
+'*--socket=[Provide a socket to the command]:PORT:_default' \
 '-o+[What to do when receiving events while the command is running]:MODE:(queue do-nothing restart signal)' \
 '--on-busy-update=[What to do when receiving events while the command is running]:MODE:(queue do-nothing restart signal)' \
 '(-r --restart)-s+[Send a signal to the process when it'\''s still running]:SIGNAL:_default' \
@@ -57,7 +58,7 @@ _watchexec() {
 '--color=[When to use terminal colours]:MODE:(auto always never)' \
 '(--completions --only-emit-events)--manual[Show the manual page]' \
 '(--completions --manual)--only-emit-events[Only emit events to stdout, run no commands]' \
-'-1[Testing only\: exit Watchexec after the first run]' \
+'-1[Testing only\: exit Watchexec after the first run and return the command'\''s exit code]' \
 '-n[Shorthand for '\''--shell=none'\'']' \
 '--no-environment[Deprecated shorthand for '\''--emit-events=none'\'']' \
 '--no-process-group[Don'\''t use a process group]' \

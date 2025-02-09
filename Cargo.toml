@@ -11,6 +11,7 @@ members = [
 	"crates/bosion",
 	"crates/ignore-files",
 	"crates/project-origins",
+	"crates/test-socketfd",
 ]
 
 [workspace.dependencies]

@@ -2,10 +2,11 @@ use std::{
 	borrow::Cow,
 	collections::HashMap,
 	env::var,
-	ffi::{OsStr, OsString},
+	ffi::OsStr,
 	fs::File,
 	io::{IsTerminal, Write},
-	process::Stdio,
+	iter::once,
+	process::{ExitCode, Stdio},
 	sync::{
 		atomic::{AtomicBool, AtomicU8, Ordering},
 		Arc,
@@ -14,7 +15,7 @@ use std::{
 };
 
 use clearscreen::ClearScreen;
-use miette::{miette, IntoDiagnostic, Report, Result};
+use miette::{IntoDiagnostic, Report, Result};
 use notify_rust::Notification;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use tokio::{process::Command as TokioCommand, time::sleep};
@@ -32,14 +33,15 @@ use watchexec_signals::Signal;
 
 use crate::{
 	args::{
-		command::WrapMode,
+		command::{EnvVar, WrapMode},
 		events::{EmitEvents, OnBusyUpdate, SignalMapping},
 		output::{ClearMode, ColourMode},
 		Args,
 	},
-	state::RotatingTempFile,
+	emits::events_to_simple_format,
+	socket::Sockets,
+	state::State,
 };
-use crate::{emits::events_to_simple_format, state::State};
 
 #[derive(Clone, Copy, Debug)]
 struct OutputFlags {
@@ -85,7 +87,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 	let clear = args.output.screen_clear;
 
 	let emit_events_to = args.events.emit_events_to;
-	let emit_file = state.emit_file.clone();
+	let state = state.clone();
 
 	if args.only_emit_events {
 		config.on_action(move |mut action| {
@@ -159,16 +161,9 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 
 	let workdir = Arc::new(args.command.workdir.clone());
 
-	let mut add_envs = HashMap::new();
-	for pair in &args.command.env {
-		if let Some((k, v)) = pair.split_once('=') {
-			add_envs.insert(k.to_owned(), OsString::from(v));
-		} else {
-			return Err(miette!("{pair} is not in key=value format"));
-		}
-	}
+	let add_envs: Arc<[EnvVar]> = args.command.env.clone().into();
 	debug!(
-		?add_envs,
+		envs=?args.command.env,
 		"additional environment variables to add to command"
 	);
 
@@ -190,7 +185,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 	config.on_action_async(move |mut action| {
 		let add_envs = add_envs.clone();
 		let command = command.clone();
-		let emit_file = emit_file.clone();
+		let state = state.clone();
 		let queued = queued.clone();
 		let quit_again = quit_again.clone();
 		let signal_map = signal_map.clone();
@@ -201,7 +196,6 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 
 				let add_envs = add_envs.clone();
 				let command = command.clone();
-				let emit_file = emit_file.clone();
 				let queued = queued.clone();
 				let quit_again = quit_again.clone();
 				let signal_map = signal_map.clone();
@@ -210,23 +204,32 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 				trace!("set spawn hook for workdir and environment variables");
 				let job = action.get_or_create_job(id, move || command.clone());
 				let events = action.events.clone();
-				job.set_spawn_hook(move |command, _| {
-					let add_envs = add_envs.clone();
-					let emit_file = emit_file.clone();
-					let events = events.clone();
+				job.set_spawn_hook({
+					let state = state.clone();
+					move |command, _| {
+						let add_envs = add_envs.clone();
+						let state = state.clone();
+						let events = events.clone();
 
-					if let Some(ref workdir) = workdir.as_ref() {
-						debug!(?workdir, "set command workdir");
-						command.command_mut().current_dir(workdir);
+						if let Some(ref workdir) = workdir.as_ref() {
+							debug!(?workdir, "set command workdir");
+							command.command_mut().current_dir(workdir);
+						}
+
+						if let Some(ref socket_set) = state.socket_set {
+							for env in socket_set.envs() {
+								command.command_mut().env(env.key, env.value);
+							}
+						}
+
+						emit_events_to_command(
+							command.command_mut(),
+							events,
+							state,
+							emit_events_to,
+							add_envs,
+						);
 					}
-
-					emit_events_to_command(
-						command.command_mut(),
-						events,
-						emit_file,
-						emit_events_to,
-						add_envs,
-					);
 				});
 
 				let show_events = {
@@ -304,6 +307,21 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 					// this blocks the event loop, but also this is a debug feature so i don't care
 					job.start().await;
 					job.to_wait().await;
+					job.run({
+						let state = state.clone();
+						move |context| {
+							if let Some(end) = end_of_process(context.current, outflags) {
+								*state.exit_code.lock().unwrap() = ExitCode::from(
+									end.into_exitstatus()
+										.code()
+										.unwrap_or(0)
+										.try_into()
+										.unwrap_or(1),
+								);
+							}
+						}
+					})
+					.await;
 					return quit(action);
 				}
 
@@ -572,19 +590,21 @@ fn setup_process(job: Job, command: Arc<Command>, outflags: OutputFlags) {
 
 	tokio::spawn(async move {
 		job.to_wait().await;
-		job.run(move |context| end_of_process(context.current, outflags));
+		job.run(move |context| {
+			end_of_process(context.current, outflags);
+		});
 	});
 }
 
 #[instrument(level = "trace")]
-fn end_of_process(state: &CommandState, outflags: OutputFlags) {
+fn end_of_process(state: &CommandState, outflags: OutputFlags) -> Option<ProcessEnd> {
 	let CommandState::Finished {
 		status,
 		started,
 		finished,
 	} = state
 	else {
-		return;
+		return None;
 	};
 
 	let duration = *finished - *started;
@@ -633,25 +653,30 @@ fn end_of_process(state: &CommandState, outflags: OutputFlags) {
 		stdout.write_all(b"\x07").ok();
 		stdout.flush().ok();
 	}
+
+	Some(*status)
 }
 
 #[instrument(level = "trace")]
 fn emit_events_to_command(
 	command: &mut TokioCommand,
 	events: Arc<[Event]>,
-	emit_file: RotatingTempFile,
+	state: State,
 	emit_events_to: EmitEvents,
-	mut add_envs: HashMap<String, OsString>,
+	add_envs: Arc<[EnvVar]>,
 ) {
 	use crate::emits::{emits_to_environment, emits_to_file, emits_to_json_file};
 
 	let mut stdin = None;
 
+	let add_envs = add_envs.clone();
+	let mut envs = Box::new(add_envs.into_iter().cloned()) as Box<dyn Iterator<Item = EnvVar>>;
+
 	match emit_events_to {
 		EmitEvents::Environment => {
-			add_envs.extend(emits_to_environment(&events));
+			envs = Box::new(envs.chain(emits_to_environment(&events)));
 		}
-		EmitEvents::Stdio => match emits_to_file(&emit_file, &events)
+		EmitEvents::Stdio => match emits_to_file(&state.emit_file, &events)
 			.and_then(|path| File::open(path).into_diagnostic())
 		{
 			Ok(file) => {
@@ -661,15 +686,18 @@ fn emit_events_to_command(
 				error!("Failed to write events to stdin, continuing without it: {err}");
 			}
 		},
-		EmitEvents::File => match emits_to_file(&emit_file, &events) {
+		EmitEvents::File => match emits_to_file(&state.emit_file, &events) {
 			Ok(path) => {
-				add_envs.insert("WATCHEXEC_EVENTS_FILE".into(), path.into());
+				envs = Box::new(envs.chain(once(EnvVar {
+					key: "WATCHEXEC_EVENTS_FILE".into(),
+					value: path.into(),
+				})));
 			}
 			Err(err) => {
 				error!("Failed to write WATCHEXEC_EVENTS_FILE, continuing without it: {err}");
 			}
 		},
-		EmitEvents::JsonStdio => match emits_to_json_file(&emit_file, &events)
+		EmitEvents::JsonStdio => match emits_to_json_file(&state.emit_file, &events)
 			.and_then(|path| File::open(path).into_diagnostic())
 		{
 			Ok(file) => {
@@ -679,9 +707,12 @@ fn emit_events_to_command(
 				error!("Failed to write events to stdin, continuing without it: {err}");
 			}
 		},
-		EmitEvents::JsonFile => match emits_to_json_file(&emit_file, &events) {
+		EmitEvents::JsonFile => match emits_to_json_file(&state.emit_file, &events) {
 			Ok(path) => {
-				add_envs.insert("WATCHEXEC_EVENTS_FILE".into(), path.into());
+				envs = Box::new(envs.chain(once(EnvVar {
+					key: "WATCHEXEC_EVENTS_FILE".into(),
+					value: path.into(),
+				})));
 			}
 			Err(err) => {
 				error!("Failed to write WATCHEXEC_EVENTS_FILE, continuing without it: {err}");
@@ -690,9 +721,9 @@ fn emit_events_to_command(
 		EmitEvents::None => {}
 	}
 
-	for (k, v) in add_envs {
-		debug!(?k, ?v, "inserting environment variable");
-		command.env(k, v);
+	for var in envs {
+		debug!(?var, "inserting environment variable");
+		command.env(var.key, var.value);
 	}
 
 	if let Some(stdin) = stdin {

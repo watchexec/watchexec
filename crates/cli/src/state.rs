@@ -2,19 +2,45 @@ use std::{
 	env::var_os,
 	io::Write,
 	path::PathBuf,
+	process::ExitCode,
 	sync::{Arc, Mutex},
 };
 
 use miette::{IntoDiagnostic, Result};
 use tempfile::NamedTempFile;
 
-#[derive(Clone, Debug, Default)]
-pub struct State {
-	pub emit_file: RotatingTempFile,
+use crate::{
+	args::Args,
+	socket::{SocketSet, Sockets},
+};
+
+pub type State = Arc<InnerState>;
+
+pub async fn new(args: &Args) -> Result<State> {
+	let socket_set = if args.command.socket.is_empty() {
+		None
+	} else {
+		let mut sockets = SocketSet::create(&args.command.socket).await?;
+		sockets.serve();
+		Some(sockets)
+	};
+
+	Ok(Arc::new(InnerState {
+		emit_file: RotatingTempFile::default(),
+		socket_set,
+		exit_code: Mutex::new(ExitCode::SUCCESS),
+	}))
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct RotatingTempFile(Arc<Mutex<Option<NamedTempFile>>>);
+#[derive(Debug, Default)]
+pub struct InnerState {
+	pub emit_file: RotatingTempFile,
+	pub socket_set: Option<SocketSet>,
+	pub exit_code: Mutex<ExitCode>,
+}
+
+#[derive(Debug, Default)]
+pub struct RotatingTempFile(Mutex<Option<NamedTempFile>>);
 
 impl RotatingTempFile {
 	pub fn rotate(&self) -> Result<()> {

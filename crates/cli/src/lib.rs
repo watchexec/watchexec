@@ -1,7 +1,10 @@
 #![deny(rust_2018_idioms)]
 #![allow(clippy::missing_const_for_fn, clippy::future_not_send)]
 
-use std::{io::Write, process::Stdio};
+use std::{
+	io::Write,
+	process::{ExitCode, Stdio},
+};
 
 use clap::CommandFactory;
 use clap_complete::{Generator, Shell};
@@ -23,12 +26,12 @@ mod config;
 mod dirs;
 mod emits;
 mod filterer;
+mod socket;
 mod state;
 
-async fn run_watchexec(args: Args) -> Result<()> {
+async fn run_watchexec(args: Args, state: state::State) -> Result<()> {
 	info!(version=%env!("CARGO_PKG_VERSION"), "constructing Watchexec from CLI");
 
-	let state = state::State::default();
 	let config = config::make_config(&args, &state)?;
 	config.filterer(WatchexecFilterer::new(&args).await?);
 
@@ -55,7 +58,7 @@ async fn run_watchexec(args: Args) -> Result<()> {
 	Ok(())
 }
 
-async fn run_manpage(_args: Args) -> Result<()> {
+async fn run_manpage() -> Result<()> {
 	info!(version=%env!("CARGO_PKG_VERSION"), "constructing manpage");
 
 	let man = Man::new(Args::command().long_version(None));
@@ -120,14 +123,19 @@ async fn run_completions(shell: ShellCompletion) -> Result<()> {
 	Ok(())
 }
 
-pub async fn run() -> Result<()> {
-	let (args, _log_guard) = args::get_args().await?;
+pub async fn run() -> Result<ExitCode> {
+	let (args, _guards) = args::get_args().await?;
 
-	if args.manual {
-		run_manpage(args).await
+	Ok(if args.manual {
+		run_manpage().await?;
+		ExitCode::SUCCESS
 	} else if let Some(shell) = args.completions {
-		run_completions(shell).await
+		run_completions(shell).await?;
+		ExitCode::SUCCESS
 	} else {
-		run_watchexec(args).await
-	}
+		let state = state::new(&args).await?;
+		run_watchexec(args, state.clone()).await?;
+		let exit = *(state.exit_code.lock().unwrap());
+		exit
+	})
 }

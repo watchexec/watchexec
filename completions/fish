@@ -13,6 +13,7 @@ complete -c watchexec -l stop-signal -d 'Signal to send to stop the command' -r
 complete -c watchexec -l stop-timeout -d 'Time to wait for the command to exit gracefully' -r
 complete -c watchexec -l delay-run -d 'Sleep before running the command' -r
 complete -c watchexec -l workdir -d 'Set the working directory' -r -f -a "(__fish_complete_directories)"
+complete -c watchexec -l socket -d 'Provide a socket to the command' -r
 complete -c watchexec -s o -l on-busy-update -d 'What to do when receiving events while the command is running' -r -f -a "queue\t''
 do-nothing\t''
 restart\t''
@@ -51,7 +52,7 @@ always\t''
 never\t''"
 complete -c watchexec -l manual -d 'Show the manual page'
 complete -c watchexec -l only-emit-events -d 'Only emit events to stdout, run no commands'
-complete -c watchexec -s 1 -d 'Testing only: exit Watchexec after the first run'
+complete -c watchexec -s 1 -d 'Testing only: exit Watchexec after the first run and return the command\'s exit code'
 complete -c watchexec -s n -d 'Shorthand for \'--shell=none\''
 complete -c watchexec -l no-environment -d 'Deprecated shorthand for \'--emit-events=none\''
 complete -c watchexec -l no-process-group -d 'Don\'t use a process group'

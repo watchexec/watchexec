@@ -4,7 +4,7 @@
 .SH NAME
 watchexec \- Execute commands when watched files change
 .SH SYNOPSIS
-\fBwatchexec\fR [\fB\-\-manual\fR] [\fB\-\-completions\fR] [\fB\-\-only\-emit\-events\fR] [\fB\-\-shell\fR] [\fB\-n \fR] [\fB\-E\fR|\fB\-\-env\fR] [\fB\-\-no\-process\-group\fR] [\fB\-\-wrap\-process\fR] [\fB\-\-stop\-signal\fR] [\fB\-\-stop\-timeout\fR] [\fB\-\-delay\-run\fR] [\fB\-\-workdir\fR] [\fB\-o\fR|\fB\-\-on\-busy\-update\fR] [\fB\-r\fR|\fB\-\-restart\fR] [\fB\-s\fR|\fB\-\-signal\fR] [\fB\-\-map\-signal\fR] [\fB\-d\fR|\fB\-\-debounce\fR] [\fB\-\-stdin\-quit\fR] [\fB\-p\fR|\fB\-\-postpone\fR] [\fB\-\-poll\fR] [\fB\-\-emit\-events\-to\fR] [\fB\-w\fR|\fB\-\-watch\fR] [\fB\-W\fR|\fB\-\-watch\-non\-recursive\fR] [\fB\-F\fR|\fB\-\-watch\-file\fR] [\fB\-\-no\-vcs\-ignore\fR] [\fB\-\-no\-project\-ignore\fR] [\fB\-\-no\-global\-ignore\fR] [\fB\-\-no\-default\-ignore\fR] [\fB\-\-no\-discover\-ignore\fR] [\fB\-\-ignore\-nothing\fR] [\fB\-e\fR|\fB\-\-exts\fR] [\fB\-f\fR|\fB\-\-filter\fR] [\fB\-\-filter\-file\fR] [\fB\-\-project\-origin\fR] [\fB\-j\fR|\fB\-\-filter\-prog\fR] [\fB\-i\fR|\fB\-\-ignore\fR] [\fB\-\-ignore\-file\fR] [\fB\-\-fs\-events\fR] [\fB\-\-no\-meta\fR] [\fB\-v\fR|\fB\-\-verbose\fR]... [\fB\-\-log\-file\fR] [\fB\-\-print\-events\fR] [\fB\-c\fR|\fB\-\-clear\fR] [\fB\-N\fR|\fB\-\-notify\fR] [\fB\-\-color\fR] [\fB\-\-timings\fR] [\fB\-q\fR|\fB\-\-quiet\fR] [\fB\-\-bell\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fICOMMAND\fR] 
+\fBwatchexec\fR [\fB\-\-manual\fR] [\fB\-\-completions\fR] [\fB\-\-only\-emit\-events\fR] [\fB\-\-shell\fR] [\fB\-n \fR] [\fB\-E\fR|\fB\-\-env\fR] [\fB\-\-no\-process\-group\fR] [\fB\-\-wrap\-process\fR] [\fB\-\-stop\-signal\fR] [\fB\-\-stop\-timeout\fR] [\fB\-\-delay\-run\fR] [\fB\-\-workdir\fR] [\fB\-\-socket\fR] [\fB\-o\fR|\fB\-\-on\-busy\-update\fR] [\fB\-r\fR|\fB\-\-restart\fR] [\fB\-s\fR|\fB\-\-signal\fR] [\fB\-\-map\-signal\fR] [\fB\-d\fR|\fB\-\-debounce\fR] [\fB\-\-stdin\-quit\fR] [\fB\-p\fR|\fB\-\-postpone\fR] [\fB\-\-poll\fR] [\fB\-\-emit\-events\-to\fR] [\fB\-w\fR|\fB\-\-watch\fR] [\fB\-W\fR|\fB\-\-watch\-non\-recursive\fR] [\fB\-F\fR|\fB\-\-watch\-file\fR] [\fB\-\-no\-vcs\-ignore\fR] [\fB\-\-no\-project\-ignore\fR] [\fB\-\-no\-global\-ignore\fR] [\fB\-\-no\-default\-ignore\fR] [\fB\-\-no\-discover\-ignore\fR] [\fB\-\-ignore\-nothing\fR] [\fB\-e\fR|\fB\-\-exts\fR] [\fB\-f\fR|\fB\-\-filter\fR] [\fB\-\-filter\-file\fR] [\fB\-\-project\-origin\fR] [\fB\-j\fR|\fB\-\-filter\-prog\fR] [\fB\-i\fR|\fB\-\-ignore\fR] [\fB\-\-ignore\-file\fR] [\fB\-\-fs\-events\fR] [\fB\-\-no\-meta\fR] [\fB\-v\fR|\fB\-\-verbose\fR]... [\fB\-\-log\-file\fR] [\fB\-\-print\-events\fR] [\fB\-c\fR|\fB\-\-clear\fR] [\fB\-N\fR|\fB\-\-notify\fR] [\fB\-\-color\fR] [\fB\-\-timings\fR] [\fB\-q\fR|\fB\-\-quiet\fR] [\fB\-\-bell\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fICOMMAND\fR] 
 .SH DESCRIPTION
 Execute commands when watched files change.
 .PP
@@ -178,6 +178,19 @@ Takes a unit\-less value in seconds, or a time span value such as "2min 5s". Pro
 Set the working directory
 
 By default, the working directory of the command is the working directory of Watchexec. You can change that with this option. Note that paths may be less intuitive to use with this.
+.TP
+\fB\-\-socket\fR=\fIPORT\fR
+Provide a socket to the command
+
+This implements the systemd socket\-passing protocol, like with `systemfd`: sockets are opened from the watchexec process, and then passed to the commands it runs. This lets you keep sockets open and avoid address reuse issues or dropping packets.
+
+This option can be supplied multiple times, to open multiple sockets.
+
+The value can be either of `PORT` (opens a TCP listening socket at that port), `HOST:PORT` (specify a host IP address; IPv6 addresses can be specified `[bracketed]`), `TYPE::PORT` or `TYPE::HOST:PORT` (specify a socket type, `tcp` / `udp`).
+
+This integration only provides basic support, if you want more control you should use the `systemfd` tool from <https://github.com/mitsuhiko/systemfd>, upon which this is based. The syntax here and the spawning behaviour is identical to `systemfd`, and both watchexec and systemfd are compatible implementations of the systemd socket\-activation protocol.
+
+Watchexec does _not_ set the `LISTEN_PID` variable on unix, which means any child process of your command could accidentally bind to the sockets, unless the `LISTEN_*` variables are removed from the environment.
 .SH EVENTS
 .TP
 \fB\-o\fR, \fB\-\-on\-busy\-update\fR=\fIMODE\fR

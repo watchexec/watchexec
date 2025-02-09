@@ -141,7 +141,7 @@ pub struct Args {
 	)]
 	pub only_emit_events: bool,
 
-	/// Testing only: exit Watchexec after the first run
+	/// Testing only: exit Watchexec after the first run and return the command's exit code
 	#[arg(short = '1', hide = true)]
 	pub once: bool,
 
@@ -234,7 +234,12 @@ pub enum ShellCompletion {
 	Zsh,
 }
 
-pub async fn get_args() -> Result<(Args, Option<WorkerGuard>)> {
+#[derive(Debug, Default)]
+pub struct Guards {
+	_log: Option<WorkerGuard>,
+}
+
+pub async fn get_args() -> Result<(Args, Guards)> {
 	let prearg_logs = logging::preargs();
 	if prearg_logs {
 		warn!("⚠ RUST_LOG environment variable set or hardcoded, logging options have no effect");
@@ -246,20 +251,20 @@ pub async fn get_args() -> Result<(Args, Option<WorkerGuard>)> {
 	debug!("parsing arguments");
 	let mut args = Args::parse_from(args);
 
-	let log_guard = if !prearg_logs {
+	let _log = if !prearg_logs {
 		logging::postargs(&args.logging).await?
 	} else {
 		None
 	};
 
 	args.output.normalise()?;
-	args.command.normalise()?;
+	args.command.normalise().await?;
 	args.filtering.normalise(&args.command).await?;
 	args.events
 		.normalise(&args.command, &args.filtering, args.only_emit_events)?;
 
 	info!(?args, "got arguments");
-	Ok((args, log_guard))
+	Ok((args, Guards { _log }))
 }
 
 #[test]
