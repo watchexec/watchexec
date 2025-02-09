@@ -1,0 +1,2 @@
+#!/bin/sh
+exec git cliff --include-path '**/crates/cli/**/*' --count-tags 'v*' --unreleased $*
