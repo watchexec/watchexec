@@ -207,10 +207,13 @@ impl IgnoreFilter {
 			.to_string();
 
 		if self.ignores.get(&applies_in).is_none() {
-			self.ignores.insert(applies_in.clone(), Ignore {
-				gitignore: Gitignore::empty(),
-				builder: Some(GitignoreBuilder::new(&applies_in)),
-			});
+			self.ignores.insert(
+				applies_in.clone(),
+				Ignore {
+					gitignore: Gitignore::empty(),
+					builder: Some(GitignoreBuilder::new(&applies_in)),
+				},
+			);
 		}
 
 		let Some(Ignore {
@@ -296,10 +299,13 @@ impl IgnoreFilter {
 		let ignores_key = applies_in.display().to_string();
 
 		if self.ignores.get(&ignores_key).is_none() {
-				self.ignores.insert(ignores_key.clone(), Ignore {
+			self.ignores.insert(
+				ignores_key.clone(),
+				Ignore {
 					gitignore: Gitignore::empty(),
 					builder: Some(GitignoreBuilder::new(&applies_in)),
-				});
+				},
+			);
 		}
 
 		let Some(Ignore {
