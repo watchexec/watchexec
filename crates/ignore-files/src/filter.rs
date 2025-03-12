@@ -202,14 +202,23 @@ impl IgnoreFilter {
 	///
 	/// Does nothing silently otherwise.
 	pub async fn add_file(&mut self, file: &IgnoreFile) -> Result<(), Error> {
-		let applies_in = get_applies_in_path(&self.origin, file)
-			.display()
-			.to_string();
+		let applies_in = get_applies_in_path(&self.origin, file);
+		let applies_in_str = applies_in.display().to_string();
+
+		if self.ignores.get(&applies_in_str).is_none() {
+			self.ignores.insert(
+				applies_in_str.clone(),
+				Ignore {
+					gitignore: Gitignore::empty(),
+					builder: Some(GitignoreBuilder::new(&applies_in)),
+				},
+			);
+		}
 
 		let Some(Ignore {
 			builder: Some(ref mut builder),
 			..
-		}) = self.ignores.get_mut(&applies_in)
+		}) = self.ignores.get_mut(&applies_in_str)
 		else {
 			return Ok(());
 		};
@@ -230,7 +239,7 @@ impl IgnoreFilter {
 
 			trace!(?line, "adding ignore line");
 			builder
-				.add_line(file.applies_in.clone(), line)
+				.add_line(Some(applies_in.clone()), line)
 				.map_err(|err| Error::Glob {
 					file: Some(file.path.clone()),
 					err,
@@ -285,12 +294,28 @@ impl IgnoreFilter {
 	///
 	/// Does nothing silently otherwise.
 	pub fn add_globs(&mut self, globs: &[&str], applies_in: Option<&PathBuf>) -> Result<(), Error> {
-		let applies_in = applies_in.unwrap_or(&self.origin);
+		let virtual_ignore_file = IgnoreFile {
+			path: "manual glob".into(),
+			applies_in: applies_in.cloned(),
+			applies_to: None,
+		};
+		let applies_in = get_applies_in_path(&self.origin, &virtual_ignore_file);
+		let applies_in_str = applies_in.display().to_string();
+
+		if self.ignores.get(&applies_in_str).is_none() {
+			self.ignores.insert(
+				applies_in_str.clone(),
+				Ignore {
+					gitignore: Gitignore::empty(),
+					builder: Some(GitignoreBuilder::new(&applies_in)),
+				},
+			);
+		}
 
 		let Some(Ignore {
 			builder: Some(builder),
 			..
-		}) = self.ignores.get_mut(&applies_in.display().to_string())
+		}) = self.ignores.get_mut(&applies_in_str)
 		else {
 			return Ok(());
 		};
@@ -307,11 +332,7 @@ impl IgnoreFilter {
 				.map_err(|err| Error::Glob { file: None, err })?;
 		}
 
-		self.recompile(&IgnoreFile {
-			path: "manual glob".into(),
-			applies_in: Some(applies_in.clone()),
-			applies_to: None,
-		})?;
+		self.recompile(&virtual_ignore_file)?;
 
 		Ok(())
 	}

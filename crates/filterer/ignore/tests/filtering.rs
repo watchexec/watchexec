@@ -1,3 +1,4 @@
+use ignore_files::IgnoreFilter;
 use watchexec_filterer_ignore::IgnoreFilterer;
 
 mod helpers;
@@ -254,4 +255,59 @@ async fn self_ignored() {
 
 	filterer.file_doesnt_pass("tests/ignores/self.ignore");
 	filterer.file_does_pass("self.ignore");
+}
+
+#[tokio::test]
+async fn add_globs_without_any_ignore_file() {
+	let origin = std::fs::canonicalize(".").unwrap();
+	let mut ignore_filter = IgnoreFilter::new(&origin, &[]).await.unwrap();
+	ignore_filter
+		.add_globs(&["other/"], Some(&origin))
+		.expect("Failed to add globs to ignore filter");
+
+	let filterer = IgnoreFilterer(ignore_filter);
+	filterer.file_doesnt_pass("other/some/file.txt");
+	filterer.file_does_pass("tests/ignores/self.ignore");
+}
+
+#[tokio::test]
+async fn add_globs_to_existing_ignore_file() {
+	let ignore_file = file("self.ignore").applies_in("tests/ignores");
+	let ignore_file_applies_in = ignore_file.applies_in.clone().unwrap();
+	let origin = std::fs::canonicalize(".").unwrap();
+	let mut ignore_filter = IgnoreFilter::new(&origin, &[ignore_file]).await.unwrap();
+	ignore_filter
+		.add_globs(&["other/"], Some(&ignore_file_applies_in))
+		.expect("Failed to add globs to ignore filter");
+
+	let filterer = IgnoreFilterer(ignore_filter);
+	filterer.file_doesnt_pass("tests/ignores/other/some/file.txt");
+	filterer.file_doesnt_pass("tests/ignores/self.ignore");
+	filterer.file_does_pass("README.md");
+}
+
+#[tokio::test]
+async fn add_ignore_file_without_any_preexisting_ignore_file() {
+	let origin = std::fs::canonicalize(".").unwrap();
+	let mut ignore_filter = IgnoreFilter::new(&origin, &[]).await.unwrap();
+	let new_ignore_file = file("self.ignore").applies_in("tests/ignores");
+	ignore_filter.add_file(&new_ignore_file).await.unwrap();
+
+	let filterer = IgnoreFilterer(ignore_filter);
+	filterer.file_doesnt_pass("tests/ignores/self.ignore");
+	filterer.file_does_pass("README.md");
+}
+
+#[tokio::test]
+async fn add_ignore_file_to_existing_ignore_file() {
+	let ignore_file = file("scopes-global").applies_in("tests/ignores");
+	let origin = std::fs::canonicalize(".").unwrap();
+	let mut ignore_filter = IgnoreFilter::new(&origin, &[ignore_file]).await.unwrap();
+	let new_ignore_file = file("self.ignore").applies_in("tests/ignores");
+	ignore_filter.add_file(&new_ignore_file).await.unwrap();
+
+	let filterer = IgnoreFilterer(ignore_filter);
+	filterer.file_doesnt_pass("tests/ignores/self.ignore");
+	filterer.file_doesnt_pass("tests/ignores/global.txt");
+	filterer.file_does_pass("README.md");
 }
