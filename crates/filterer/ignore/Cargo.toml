@@ -42,7 +42,7 @@ version = "1.4.1"
 path = "../../project-origins"
 
 [dev-dependencies.tokio]
-version = "1.33.0"
+version = "1.43.1"
 features = [
 	"fs",
 	"io-std",

@@ -26,7 +26,7 @@ radix_trie = "0.2.1"
 dunce = "1.0.4"
 
 [dependencies.tokio]
-version = "1.33.0"
+version = "1.43.1"
 default-features = false
 features = [
 	"fs",

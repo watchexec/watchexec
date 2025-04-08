@@ -23,7 +23,7 @@ version = "8.1.0"
 features = ["reset-sigmask", "tokio1"]
 
 [dependencies.tokio]
-version = "1.38.0"
+version = "1.43.1"
 default-features = false
 features = ["macros", "process", "rt", "sync", "time"]
 
