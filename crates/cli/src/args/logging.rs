@@ -5,6 +5,7 @@ use miette::{bail, Result};
 use tokio::fs::metadata;
 use tracing::{info, warn};
 use tracing_appender::{non_blocking, non_blocking::WorkerGuard, rolling};
+use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 use super::OPTSET_DEBUGGING;
 
@@ -82,13 +83,17 @@ pub fn preargs() -> bool {
 		}
 	}
 
-	if !log_on && var("RUST_LOG").is_ok() {
-		match tracing_subscriber::fmt::try_init() {
+	if !log_on && var("WATCHEXEC_LOG").is_ok() {
+		let subscriber =
+			FmtSubscriber::builder().with_env_filter(EnvFilter::from_env("WATCHEXEC_LOG"));
+		match subscriber.try_init() {
 			Ok(()) => {
-				warn!(RUST_LOG=%var("RUST_LOG").unwrap(), "logging configured from RUST_LOG");
+				warn!(RUST_LOG=%var("WATCHEXEC_LOG").unwrap(), "logging configured from WATCHEXEC_LOG");
 				log_on = true;
 			}
-			Err(e) => eprintln!("Failed to initialise logging with RUST_LOG, falling back\n{e}"),
+			Err(e) => {
+				eprintln!("Failed to initialise logging with WATCHEXEC_LOG, falling back\n{e}");
+			}
 		}
 	}
 
