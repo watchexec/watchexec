@@ -20,8 +20,8 @@ pub struct LoggingArgs {
 	///
 	/// You may want to use with '--log-file' to avoid polluting your terminal.
 	///
-	/// Setting $RUST_LOG also works, and takes precedence, but is not recommended. However, using
-	/// $RUST_LOG is the only way to get logs from before these options are parsed.
+	/// Setting $WATCHEXEC_LOG also works, and takes precedence, but is not recommended. However, using
+	/// $WATCHEXEC_LOG is the only way to get logs from before these options are parsed.
 	#[arg(
 		long,
 		short,
@@ -88,7 +88,7 @@ pub fn preargs() -> bool {
 			FmtSubscriber::builder().with_env_filter(EnvFilter::from_env("WATCHEXEC_LOG"));
 		match subscriber.try_init() {
 			Ok(()) => {
-				warn!(RUST_LOG=%var("WATCHEXEC_LOG").unwrap(), "logging configured from WATCHEXEC_LOG");
+				warn!(WATCHEXEC_LOG=%var("WATCHEXEC_LOG").unwrap(), "logging configured from WATCHEXEC_LOG");
 				log_on = true;
 			}
 			Err(e) => {
