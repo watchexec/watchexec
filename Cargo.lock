@@ -4409,7 +4409,6 @@ dependencies = [
  "async-recursion",
  "atomic-take",
  "futures",
- "ignore-files",
  "miette",
  "nix",
  "normalize-path",

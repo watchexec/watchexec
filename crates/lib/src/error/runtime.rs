@@ -176,19 +176,6 @@ pub enum RuntimeError {
 	#[error("empty shell program")]
 	CommandShellEmptyShell,
 
-	/// Error received from the [`ignore-files`](ignore_files) crate.
-	#[error("ignore files: {0}")]
-	#[deprecated(
-		since = "3.0.2",
-		note = "ignore-files is no longer part of Watchexec directly"
-	)]
-	// on removal, delete the dependency too
-	IgnoreFiles(
-		#[diagnostic_source]
-		#[from]
-		ignore_files::Error,
-	),
-
 	/// Error emitted by a [`Filterer`](crate::filter::Filterer).
 	#[error("{kind} filterer: {err}")]
 	Filterer {
