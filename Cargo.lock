@@ -4406,7 +4406,6 @@ name = "watchexec"
 version = "6.0.0"
 dependencies = [
  "async-priority-channel",
- "async-recursion",
  "atomic-take",
  "futures",
  "ignore-files",
@@ -4414,8 +4413,6 @@ dependencies = [
  "nix",
  "normalize-path",
  "notify",
- "process-wrap",
- "project-origins",
  "thiserror 2.0.11",
  "tokio",
  "tracing",
@@ -4482,7 +4479,6 @@ dependencies = [
 name = "watchexec-events"
 version = "5.0.0"
 dependencies = [
- "nix",
  "notify-types",
  "serde",
  "serde_json",
@@ -4519,7 +4515,6 @@ dependencies = [
  "tracing-subscriber",
  "watchexec",
  "watchexec-events",
- "watchexec-signals",
 ]
 
 [[package]]

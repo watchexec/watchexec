@@ -10,6 +10,8 @@
 //! directory and walking up, [`origins`] returns a set, rather than a single path. Determining
 //! which of these is the "one true origin" (if necessary) is left to the caller.
 
+#![cfg_attr(not(test), warn(unused_crate_dependencies))]
+
 use std::{
 	collections::{HashMap, HashSet},
 	fs::FileType,
@@ -270,7 +272,6 @@ pub async fn origins(path: impl AsRef<Path> + Send) -> HashSet<PathBuf> {
 		current = parent;
 		if check_list(&DirList::obtain(current).await) {
 			origins.insert(current.to_owned());
-			continue;
 		}
 	}
 

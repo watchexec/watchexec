@@ -1,4 +1,3 @@
-use std::fmt;
 use std::path::{Path, PathBuf};
 
 use futures::stream::{FuturesUnordered, StreamExt};
@@ -20,8 +19,8 @@ struct Ignore {
 }
 
 #[cfg(not(feature = "full_debug"))]
-impl fmt::Debug for Ignore {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl std::fmt::Debug for Ignore {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Ignore")
 			.field("gitignore", &"ignore::gitignore::Gitignore{...}")
 			.field("builder", &"ignore::gitignore::GitignoreBuilder{...}")

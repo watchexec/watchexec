@@ -17,17 +17,12 @@ edition = "2021"
 
 [dependencies]
 async-priority-channel = "0.2.0"
-async-recursion = "1.0.5"
 atomic-take = "1.0.0"
 futures = "0.3.29"
 miette = "7.2.0"
 notify = "8.0.0"
 thiserror = "2.0.11"
 normalize-path = "0.2.0"
-
-[dependencies.process-wrap]
-version = "8.0.0"
-features = ["tokio1"]
 
 [dependencies.watchexec-events]
 version = "5.0.0"
@@ -45,10 +40,6 @@ path = "../supervisor"
 version = "3.0.3"
 path = "../ignore-files"
 
-[dependencies.project-origins]
-version = "1.4.1"
-path = "../project-origins"
-
 [dependencies.tokio]
 version = "1.33.0"
 features = [
@@ -65,13 +56,13 @@ features = [
 version = "0.1.40"
 features = ["log"]
 
-[target.'cfg(unix)'.dependencies.nix]
-version = "0.29.0"
-features = ["signal"]
-
 [dev-dependencies.tracing-subscriber]
 version = "0.3.6"
 features = ["env-filter"]
+
+[target.'cfg(unix)'.dev-dependencies.nix]
+version = "0.29.0"
+features = ["signal"]
 
 [lints.clippy]
 nursery = "warn"
