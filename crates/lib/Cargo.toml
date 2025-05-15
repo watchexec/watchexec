@@ -41,10 +41,6 @@ path = "../signals"
 version = "4.0.0"
 path = "../supervisor"
 
-[dependencies.ignore-files]
-version = "3.0.3"
-path = "../ignore-files"
-
 [dependencies.project-origins]
 version = "1.4.1"
 path = "../project-origins"
