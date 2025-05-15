@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v8.0.0 (2025-05-15)
+
 ## v7.0.0 (2025-05-15)
 
 - Deps: remove unused dependency `async-recursion` ([#930](https://github.com/watchexec/watchexec/pull/930))
