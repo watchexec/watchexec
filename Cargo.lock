@@ -4433,7 +4433,6 @@ dependencies = [
  "async-priority-channel",
  "atomic-take",
  "futures",
- "ignore-files",
  "miette",
  "nix 0.29.0",
  "normalize-path",
@@ -4558,7 +4557,7 @@ version = "4.0.0"
 dependencies = [
  "boxcar",
  "futures",
- "nix 0.29.0",
+ "nix 0.30.1",
  "process-wrap",
  "tokio",
  "tracing",
