@@ -6,11 +6,11 @@
 #![doc(html_favicon_url = "https://watchexec.github.io/logo:watchexec.svg")]
 #![doc(html_logo_url = "https://watchexec.github.io/logo:watchexec.svg")]
 #![warn(clippy::unwrap_used, missing_docs)]
+#![cfg_attr(not(test), warn(unused_crate_dependencies))]
 #![deny(rust_2018_idioms)]
 
 use std::{
 	ffi::OsString,
-	fmt,
 	path::{Path, PathBuf},
 };
 
@@ -34,8 +34,8 @@ pub struct GlobsetFilterer {
 }
 
 #[cfg(not(feature = "full_debug"))]
-impl fmt::Debug for GlobsetFilterer {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl std::fmt::Debug for GlobsetFilterer {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("GlobsetFilterer")
 			.field("origin", &self.origin)
 			.field("filters", &"ignore::gitignore::Gitignore{...}")

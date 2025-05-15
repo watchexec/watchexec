@@ -9,6 +9,7 @@
 #![doc(html_favicon_url = "https://watchexec.github.io/logo:watchexec.svg")]
 #![doc(html_logo_url = "https://watchexec.github.io/logo:watchexec.svg")]
 #![warn(clippy::unwrap_used, missing_docs)]
+#![cfg_attr(not(test), warn(unused_crate_dependencies))]
 #![deny(rust_2018_idioms)]
 
 use ignore::Match;
