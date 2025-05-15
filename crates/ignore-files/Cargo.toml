@@ -35,7 +35,7 @@ features = [
 ]
 
 [dependencies.project-origins]
-version = "1.4.1"
+version = "1.4.2"
 path = "../project-origins"
 
 [dev-dependencies]
