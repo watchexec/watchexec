@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v5.0.1 (2025-05-15)
+
 ## v5.0.0 (2025-05-15)
 
 - Deps: process-wrap 8.2.1

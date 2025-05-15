@@ -4571,7 +4571,7 @@ dependencies = [
 
 [[package]]
 name = "watchexec-supervisor"
-version = "5.0.0"
+version = "5.0.1"
 dependencies = [
  "boxcar",
  "futures",
