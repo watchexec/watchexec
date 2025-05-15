@@ -30,7 +30,7 @@ version = "6.0.0"
 path = "../../lib"
 
 [dependencies.watchexec-events]
-version = "5.0.0"
+version = "5.0.1"
 path = "../../events"
 
 [dev-dependencies.project-origins]

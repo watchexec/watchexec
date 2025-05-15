@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v5.0.1 (2025-05-15)
+
 - Deps: remove unused dependency `nix` ([#930](https://github.com/watchexec/watchexec/pull/930))
 
 ## v5.0.0 (2025-02-09)
