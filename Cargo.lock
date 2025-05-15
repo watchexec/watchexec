@@ -4498,7 +4498,7 @@ dependencies = [
  "notify-rust",
  "pid1",
  "project-origins",
- "rand 0.8.5",
+ "rand 0.9.1",
  "serde_json",
  "socket2",
  "tempfile",

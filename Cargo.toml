@@ -18,7 +18,7 @@ members = [
 miette = "5.10.0"
 tempfile = "3.8.0"
 tracing-test = "0.2.4"
-rand = "0.8"
+rand = "0.9.1"
 uuid = "1.5.0"
 
 [profile.release]
