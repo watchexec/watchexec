@@ -4408,7 +4408,6 @@ dependencies = [
  "async-priority-channel",
  "atomic-take",
  "futures",
- "ignore-files",
  "miette",
  "nix",
  "normalize-path",
