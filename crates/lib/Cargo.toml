@@ -1,6 +1,6 @@
 [package]
 name = "watchexec"
-version = "6.0.0"
+version = "7.0.0"
 
 authors = ["Félix Saparelli <felix@passcod.name>", "Matt Green <mattgreenrocks@gmail.com>"]
 license = "Apache-2.0"

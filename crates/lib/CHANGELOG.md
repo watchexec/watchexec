@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v7.0.0 (2025-05-15)
+
 - Deps: remove unused dependency `async-recursion` ([#930](https://github.com/watchexec/watchexec/pull/930))
 - Deps: remove unused dependency `process-wrap` ([#930](https://github.com/watchexec/watchexec/pull/930))
 - Deps: remove unused dependency `project-origins` ([#930](https://github.com/watchexec/watchexec/pull/930))
