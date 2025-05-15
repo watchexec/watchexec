@@ -36,10 +36,6 @@ path = "../signals"
 version = "4.0.0"
 path = "../supervisor"
 
-[dependencies.ignore-files]
-version = "3.0.3"
-path = "../ignore-files"
-
 [dependencies.tokio]
 version = "1.33.0"
 features = [
