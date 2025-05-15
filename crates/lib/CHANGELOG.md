@@ -2,6 +2,12 @@
 
 ## Next (YYYY-MM-DD)
 
+- Deps: remove unused dependency `async-recursion` ([#930](https://github.com/watchexec/watchexec/pull/930))
+- Deps: remove unused dependency `process-wrap` ([#930](https://github.com/watchexec/watchexec/pull/930))
+- Deps: remove unused dependency `project-origins` ([#930](https://github.com/watchexec/watchexec/pull/930))
+- Deps: remove ignore-files dependency ([#929](https://github.com/watchexec/watchexec/pull/929))
+- Breaking: remove deprecated IgnoreFiles variant on RuntimeError ([#929](https://github.com/watchexec/watchexec/pull/929))
+
 ## v6.0.0 (2025-02-09)
 
 ## v5.0.0 (2024-10-14)
