@@ -4530,7 +4530,7 @@ dependencies = [
 
 [[package]]
 name = "watchexec-filterer-globset"
-version = "7.0.0"
+version = "8.0.0"
 dependencies = [
  "ignore",
  "ignore-files",
