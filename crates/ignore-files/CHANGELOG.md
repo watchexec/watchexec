@@ -3,8 +3,11 @@
 ## Next (YYYY-MM-DD)
 
 - Calls to `add_globs()` and `add_file()` dynamically create a new ignore entry if there isn't one at the location of `applies_in` param. This allows users to e.g. add globs to a path that previously has no ignore files in. ([#908](https://github.com/watchexec/watchexec/pull/908))
+- Deps: gix-config 0.45
 
 ## v3.0.3 (2025-02-09)
+
+- Deps: gix-config 0.43
 
 ## v3.0.2 (2024-10-14)
 
