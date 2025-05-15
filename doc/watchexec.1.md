@@ -5,7 +5,7 @@ watchexec - Execute commands when watched files change
 # SYNOPSIS
 
 **watchexec** \[**\--manual**\] \[**\--completions**\]
-\[**\--only-emit-events**\] \[**\--shell**\] \[**-n **\]
+\[**\--only-emit-events**\] \[**\--shell**\] \[**-n** \]
 \[**-E**\|**\--env**\] \[**\--no-process-group**\]
 \[**\--wrap-process**\] \[**\--stop-signal**\] \[**\--stop-timeout**\]
 \[**\--delay-run**\] \[**\--workdir**\] \[**\--socket**\]
@@ -849,8 +849,8 @@ Watch lib and src directories for changes, rebuilding each time:
     terminal.
 
     Setting \$WATCHEXEC_LOG also works, and takes precedence, but is not
-    recommended. However, using \$WATCHEXEC_LOG is the only way to get logs
-    from before these options are parsed.
+    recommended. However, using \$WATCHEXEC_LOG is the only way to get
+    logs from before these options are parsed.
 
 **\--log-file**=*PATH*
 
