@@ -24,7 +24,7 @@ version = "3.0.4"
 path = "../../ignore-files"
 
 [dependencies.watchexec]
-version = "8.0.0"
+version = "8.0.1"
 path = "../../lib"
 
 [dependencies.watchexec-events]
