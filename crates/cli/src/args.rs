@@ -242,7 +242,9 @@ pub struct Guards {
 pub async fn get_args() -> Result<(Args, Guards)> {
 	let prearg_logs = logging::preargs();
 	if prearg_logs {
-		warn!("⚠ RUST_LOG environment variable set or hardcoded, logging options have no effect");
+		warn!(
+			"⚠ WATCHEXEC_LOG environment variable set or hardcoded, logging options have no effect"
+		);
 	}
 
 	debug!("expanding @argfile arguments if any");
