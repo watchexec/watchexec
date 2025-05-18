@@ -122,18 +122,23 @@ pub struct CommandArgs {
 
 	/// Configure how the process is wrapped
 	///
-	/// By default, Watchexec will run the command in a process group in Unix, and in a Job Object
-	/// in Windows.
+	/// By default, Watchexec will run the command in a session on Mac, in a process group in Unix,
+	/// and in a Job Object in Windows.
 	///
 	/// Some Unix programs prefer running in a session, while others do not work in a process group.
 	///
 	/// Use 'group' to use a process group, 'session' to use a process session, and 'none' to run
 	/// the command directly. On Windows, either of 'group' or 'session' will use a Job Object.
+	///
+	/// If you find you need to specify this frequently for different kinds of programs, file an
+	/// issue at <https://github.com/watchexec/watchexec>. As errors of this nature are hard to
+	/// debug and can be highly environment-dependent, reports from *multiple affected people* are
+	/// more likely to be actioned promptly. Ask your friends/colleagues!
 	#[arg(
 		long,
 		help_heading = OPTSET_COMMAND,
 		value_name = "MODE",
-		default_value = "group",
+		default_value = WRAP_DEFAULT,
 		display_order = 231,
 	)]
 	pub wrap_process: WrapMode,
@@ -272,6 +277,8 @@ pub enum WrapMode {
 	Session,
 	None,
 }
+
+pub const WRAP_DEFAULT: &str = if cfg!(target_os = "macos") { "session" } else { "group" };
 
 #[derive(Clone, Debug)]
 pub struct EnvVar {
