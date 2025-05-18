@@ -131,7 +131,7 @@ pub struct CommandArgs {
 	/// the command directly. On Windows, either of 'group' or 'session' will use a Job Object.
 	///
 	/// If you find you need to specify this frequently for different kinds of programs, file an
-	/// issue at <https://github.com/watchexec/watchexec>. As errors of this nature are hard to
+	/// issue at <https://github.com/watchexec/watchexec/issues>. As errors of this nature are hard to
 	/// debug and can be highly environment-dependent, reports from *multiple affected people* are
 	/// more likely to be actioned promptly. Ask your friends/colleagues!
 	#[arg(

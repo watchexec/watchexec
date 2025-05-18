@@ -1,6 +1,6 @@
 .ie \n(.g .ds Aq \(aq
 .el .ds Aq '
-.TH watchexec 1  "watchexec 2.3.1" 
+.TH watchexec 1  "watchexec 2.3.2" 
 .SH NAME
 watchexec \- Execute commands when watched files change
 .SH SYNOPSIS
@@ -139,11 +139,13 @@ Deprecated, use \*(Aq\-\-wrap\-process=none\*(Aq instead.
 \fB\-\-wrap\-process\fR=\fIMODE\fR [default: group]
 Configure how the process is wrapped
 
-By default, Watchexec will run the command in a process group in Unix, and in a Job Object in Windows.
+By default, Watchexec will run the command in a session on Mac, in a process group in Unix, and in a Job Object in Windows.
 
 Some Unix programs prefer running in a session, while others do not work in a process group.
 
 Use \*(Aqgroup\*(Aq to use a process group, \*(Aqsession\*(Aq to use a process session, and \*(Aqnone\*(Aq to run the command directly. On Windows, either of \*(Aqgroup\*(Aq or \*(Aqsession\*(Aq will use a Job Object.
+
+If you find you need to specify this frequently for different kinds of programs, file an issue at <https://github.com/watchexec/watchexec/issues>. As errors of this nature are hard to debug and can be highly environment\-dependent, reports from *multiple affected people* are more likely to be actioned promptly. Ask your friends/colleagues!
 .TP
 \fB\-\-stop\-signal\fR=\fISIGNAL\fR
 Signal to send to stop the command
@@ -607,6 +609,6 @@ Use @argfile as first argument to load arguments from the file \*(Aqargfile\*(Aq
 
 Didn\*(Aqt expect this much output? Use the short \*(Aq\-h\*(Aq flag to get short help.
 .SH VERSION
-v2.3.1
+v2.3.2
 .SH AUTHORS
 Félix Saparelli <felix@passcod.name>, Matt Green <mattgreenrocks@gmail.com>

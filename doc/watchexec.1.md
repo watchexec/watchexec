@@ -219,8 +219,8 @@ Watch lib and src directories for changes, rebuilding each time:
 
 :   Configure how the process is wrapped
 
-    By default, Watchexec will run the command in a process group in
-    Unix, and in a Job Object in Windows.
+    By default, Watchexec will run the command in a session on Mac, in a
+    process group in Unix, and in a Job Object in Windows.
 
     Some Unix programs prefer running in a session, while others do not
     work in a process group.
@@ -228,6 +228,13 @@ Watch lib and src directories for changes, rebuilding each time:
     Use group to use a process group, session to use a process session,
     and none to run the command directly. On Windows, either of group or
     session will use a Job Object.
+
+    If you find you need to specify this frequently for different kinds
+    of programs, file an issue at
+    \<https://github.com/watchexec/watchexec/issues\>. As errors of this
+    nature are hard to debug and can be highly environment-dependent,
+    reports from \*multiple affected people\* are more likely to be
+    actioned promptly. Ask your friends/colleagues!
 
 **\--stop-signal**=*SIGNAL*
 
@@ -933,7 +940,7 @@ Didnt expect this much output? Use the short -h flag to get short help.
 
 # VERSION
 
-v2.3.1
+v2.3.2
 
 # AUTHORS
 
