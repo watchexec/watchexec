@@ -24,22 +24,19 @@ thiserror = "2.0.11"
 tracing = "0.1.40"
 radix_trie = "0.2.1"
 dunce = "1.0.4"
+winnow = "0.7.10"
 
 [dependencies.tokio]
 version = "1.33.0"
 default-features = false
-features = [
-	"fs",
-	"macros",
-	"rt",
-]
+features = ["fs", "macros", "rt"]
 
 [dependencies.project-origins]
 version = "1.4.2"
 path = "../project-origins"
 
 [dev-dependencies]
-tracing-subscriber = "0.3.6"
+tracing-subscriber = { version = "0.3.6", features = ["env-filter"] }
 
 [features]
 default = []

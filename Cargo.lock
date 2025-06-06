@@ -2235,6 +2235,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "winnow",
 ]
 
 [[package]]
