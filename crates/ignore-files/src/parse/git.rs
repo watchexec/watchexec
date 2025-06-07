@@ -38,23 +38,36 @@ pub enum CharClass {
 	Equivalence(char), // [=a=]
 }
 
-fn wildcard<'src>() -> impl Parser<'src, &'src str, Vec<WildcardToken>> {
+type ParserErr<'src> = chumsky::extra::Err<chumsky::error::Rich<'src, char>>;
+
+fn class<'src>() -> impl Parser<'src, &'src str, WildcardToken, ParserErr<'src>> {
 	use CharClass::*;
-	use WildcardToken::*;
 
 	let negator = just('!').or_not().map(|bang| bang.is_some());
 	let initial_bracket = just(']').or_not();
-	let class = negator
+	negator
 		.then(initial_bracket)
 		.then(
 			choice((
 				just('[')
 					.ignore_then(choice((
 						just(':')
-							.ignore_then(none_of(':').repeated().collect::<String>().map(Named))
+							.ignore_then(
+								none_of(':')
+									.repeated()
+									.at_least(1)
+									.collect::<String>()
+									.map(Named),
+							)
 							.then_ignore(just(':')),
 						just('.')
-							.ignore_then(none_of('.').repeated().collect::<String>().map(Collating))
+							.ignore_then(
+								none_of('.')
+									.repeated()
+									.at_least(1)
+									.collect::<String>()
+									.map(Collating),
+							)
 							.then_ignore(just('.')),
 						just('=')
 							.ignore_then(any().map(Equivalence))
@@ -71,7 +84,7 @@ fn wildcard<'src>() -> impl Parser<'src, &'src str, Vec<WildcardToken>> {
 			.at_least(1)
 			.collect::<Vec<_>>(),
 		)
-		.map(|((negated, initial), mut rest)| Class {
+		.map(|((negated, initial), mut rest)| WildcardToken::Class {
 			negated,
 			classes: {
 				if let Some(c) = initial {
@@ -79,7 +92,11 @@ fn wildcard<'src>() -> impl Parser<'src, &'src str, Vec<WildcardToken>> {
 				}
 				rest
 			},
-		});
+		})
+}
+
+fn wildcard<'src>() -> impl Parser<'src, &'src str, Vec<WildcardToken>, ParserErr<'src>> {
+	use WildcardToken::*;
 
 	choice((
 		just('*').to(Any),
@@ -90,7 +107,7 @@ fn wildcard<'src>() -> impl Parser<'src, &'src str, Vec<WildcardToken>> {
 			just('[').to(Literal(r"[".into())),
 			just('*').to(Literal(r"*".into())),
 		))),
-		just('[').ignore_then(class.then_ignore(just(']'))),
+		just('[').ignore_then(class().then_ignore(just(']'))),
 	))
 	.or(any()
 		.repeated()
@@ -112,7 +129,7 @@ fn wildcard<'src>() -> impl Parser<'src, &'src str, Vec<WildcardToken>> {
 	})
 }
 
-fn line<'src>() -> impl Parser<'src, &'src str, Line> {
+fn line<'src>() -> impl Parser<'src, &'src str, Line, ParserErr<'src>> {
 	let comment = just('#').ignore_then(any().repeated().collect::<String>());
 
 	let negator = just('!').or_not().map(|exists| exists.is_some());
@@ -346,6 +363,19 @@ mod tests {
 				negated: true,
 				classes: vec![Single(']'), Single('a'), Single('-'),],
 			}])
+		);
+	}
+
+	#[test]
+	fn wildcard_class_negated_inner_close_bracket_single() {
+		use CharClass::*;
+		use WildcardToken::*;
+		assert_eq!(
+			class().parse(r"[!]a-]").into_result(),
+			Ok(Class {
+				negated: true,
+				classes: vec![Single(']'), Single('a'), Single('-'),],
+			})
 		);
 	}
 
