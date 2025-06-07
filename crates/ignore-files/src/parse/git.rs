@@ -17,12 +17,37 @@ pub enum Segment {
 	All,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum WildcardToken {
+	Any, // *
+	One, // ?
+	Class {
+		// [afg] and [!afg]
+		negated: bool,
+		classes: Vec<CharClass>,
+	},
+	Literal(String),
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum CharClass {
+	Single(char),      // e
+	Range(char, char), // A-Z
+	Named(String),     // [:alnum:]
+	Collating(String), // [.ch.]
+	Equivalence(char), // [=a=]
+}
+
+fn wildcard<'src>() -> impl Parser<'src, &'src str, Vec<WildcardToken>> {
+	todo()
+}
+
 fn line<'src>() -> impl Parser<'src, &'src str, Line> {
 	let comment = just('#').ignore_then(any().repeated().collect::<String>());
 
 	let negator = just('!').or_not().map(|exists| exists.is_some());
 
-	let segments = none_of("/")
+	let segments = none_of('/')
 		.repeated()
 		.collect::<String>()
 		.map(|seg| {
@@ -63,6 +88,235 @@ fn line<'src>() -> impl Parser<'src, &'src str, Line> {
 #[cfg(test)]
 mod tests {
 	use super::*;
+
+	#[test]
+	fn wildcard_exercise() {
+		use CharClass::*;
+		use WildcardToken::*;
+		assert_eq!(
+			wildcard()
+				.parse(
+					r"lit[A-Z][!a-z]*?[*!?][0a-cf][[=a=]x[:alnum:]y[.ch.]][[?*\][!]a-][][!][]-][--0]\\\*\?lit"
+				)
+				.into_result(),
+			Ok(vec![
+				Literal("lit".into()),
+				Class {
+					negated: false,
+					classes: vec![Range('A', 'Z')],
+				},
+				Class {
+					negated: true,
+					classes: vec![Range('a', 'z')],
+				},
+				Any,
+				One,
+				Class {
+					negated: false,
+					classes: vec![Single('*'), Single('!'), Single('?'),],
+				},
+				Class {
+					negated: false,
+					classes: vec![Single('0'), Range('a', 'c'), Single('f'),],
+				},
+				Class {
+					negated: false,
+					classes: vec![
+						Equivalence('a'),
+						Single('x'),
+						Named("alnum".into()),
+						Single('y'),
+						Collating("ch".into()),
+					],
+				},
+				Class {
+					negated: false,
+					classes: vec![Single('['), Single('?'), Single('*'), Single('\\'),],
+				},
+				Class {
+					negated: true,
+					classes: vec![Single(']'), Single('a'), Single('-'),],
+				},
+				Class {
+					negated: false,
+					classes: vec![Single(']'), Single('['), Single('!'),],
+				},
+				Class {
+					negated: false,
+					classes: vec![Single(']'), Single('-'),],
+				},
+				Class {
+					negated: false,
+					classes: vec![Range('-', '0')],
+				},
+				Literal(r"\*?lit".into()),
+			])
+		);
+	}
+
+	#[test]
+	fn wildcard_empty() {
+		assert_eq!(wildcard().parse(r"").into_result(), Ok(vec![]));
+	}
+
+	#[test]
+	fn wildcard_any() {
+		use WildcardToken::*;
+		assert_eq!(wildcard().parse(r"*").into_result(), Ok(vec![Any]));
+	}
+
+	#[test]
+	fn wildcard_one() {
+		use WildcardToken::*;
+		assert_eq!(wildcard().parse(r"?").into_result(), Ok(vec![One]));
+	}
+
+	#[test]
+	fn wildcard_literal() {
+		use WildcardToken::*;
+		assert_eq!(
+			wildcard().parse(r"lit").into_result(),
+			Ok(vec![Literal("lit".into())])
+		);
+	}
+
+	#[test]
+	fn wildcard_class_range() {
+		use CharClass::*;
+		use WildcardToken::*;
+		assert_eq!(
+			wildcard().parse(r"[A-Z]").into_result(),
+			Ok(vec![Class {
+				negated: false,
+				classes: vec![Range('A', 'Z')],
+			}])
+		);
+	}
+
+	#[test]
+	fn wildcard_class_negated_range() {
+		use CharClass::*;
+		use WildcardToken::*;
+		assert_eq!(
+			wildcard().parse(r"[!a-z]").into_result(),
+			Ok(vec![Class {
+				negated: true,
+				classes: vec![Range('a', 'z')],
+			}])
+		);
+	}
+
+	#[test]
+	fn wildcard_class_special_chars() {
+		use CharClass::*;
+		use WildcardToken::*;
+		assert_eq!(
+			wildcard().parse(r"[*!?]").into_result(),
+			Ok(vec![Class {
+				negated: false,
+				classes: vec![Single('*'), Single('!'), Single('?'),],
+			}])
+		);
+	}
+
+	#[test]
+	fn wildcard_class_mixed() {
+		use CharClass::*;
+		use WildcardToken::*;
+		assert_eq!(
+			wildcard().parse(r"[0a-cf]").into_result(),
+			Ok(vec![Class {
+				negated: false,
+				classes: vec![Single('0'), Range('a', 'c'), Single('f'),],
+			}])
+		);
+	}
+
+	#[test]
+	fn wildcard_class_unicode() {
+		use CharClass::*;
+		use WildcardToken::*;
+		assert_eq!(
+			wildcard().parse(r"[[=a=]x[:alnum:]y[.ch.]]").into_result(),
+			Ok(vec![Class {
+				negated: false,
+				classes: vec![
+					Equivalence('a'),
+					Single('x'),
+					Named("alnum".into()),
+					Single('y'),
+					Collating("ch".into()),
+				],
+			}])
+		);
+	}
+
+	#[test]
+	fn wildcard_class_opening_inner_open_bracket() {
+		use CharClass::*;
+		use WildcardToken::*;
+		assert_eq!(
+			wildcard().parse(r"[[?*\]").into_result(),
+			Ok(vec![Class {
+				negated: false,
+				classes: vec![Single('['), Single('?'), Single('*'), Single('\\'),],
+			}])
+		);
+	}
+
+	#[test]
+	fn wildcard_class_negated_inner_close_bracket() {
+		use CharClass::*;
+		use WildcardToken::*;
+		assert_eq!(
+			wildcard().parse(r"[!]a-]").into_result(),
+			Ok(vec![Class {
+				negated: true,
+				classes: vec![Single(']'), Single('a'), Single('-'),],
+			}])
+		);
+	}
+
+	#[test]
+	fn wildcard_classes_inner_close_bracket() {
+		use CharClass::*;
+		use WildcardToken::*;
+		assert_eq!(
+			wildcard().parse(r"[][!][]-]").into_result(),
+			Ok(vec![
+				Class {
+					negated: false,
+					classes: vec![Single(']'), Single('['), Single('!'),],
+				},
+				Class {
+					negated: false,
+					classes: vec![Single(']'), Single('-'),],
+				}
+			])
+		);
+	}
+
+	#[test]
+	fn wildcard_class_hyphen_start_range() {
+		use CharClass::*;
+		use WildcardToken::*;
+		assert_eq!(
+			wildcard().parse(r"[--0]").into_result(),
+			Ok(vec![Class {
+				negated: false,
+				classes: vec![Range('-', '0')],
+			}])
+		);
+	}
+
+	#[test]
+	fn wildcard_escaped_literals() {
+		use WildcardToken::*;
+		assert_eq!(
+			wildcard().parse(r"\\\*\?lit").into_result(),
+			Ok(vec![Literal(r"\*?lit".into())])
+		);
+	}
 
 	#[test]
 	fn pattern_simple() {
