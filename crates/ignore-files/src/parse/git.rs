@@ -43,11 +43,13 @@ pub enum CharClass {
 fn wildcard<'src>() -> impl Parser<'src, &'src str, Vec<WildcardToken>> {
 	use WildcardToken::*;
 
-	let class = just(']')
-		.or_not()
+	let negator = just('!').or_not().map(|bang| bang.is_some());
+	let initial_bracket = just(']').or_not();
+	let class = negator
+		.then(initial_bracket)
 		.then(none_of(']').repeated().collect::<Vec<char>>())
-		.map(|(initial, mut rest)| Class {
-			negated: false,
+		.map(|((negated, initial), mut rest)| Class {
+			negated,
 			classes: {
 				if let Some(c) = initial {
 					rest.insert(0, c);
