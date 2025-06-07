@@ -1,3 +1,5 @@
+use std::iter::once;
+
 use chumsky::prelude::*;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -40,14 +42,30 @@ pub enum CharClass {
 
 fn wildcard<'src>() -> impl Parser<'src, &'src str, Vec<WildcardToken>> {
 	use WildcardToken::*;
+
+	let class = just(']')
+		.or_not()
+		.then(none_of(']').repeated().collect::<Vec<char>>())
+		.map(|(initial, mut rest)| Class {
+			negated: false,
+			classes: {
+				if let Some(c) = initial {
+					rest.insert(0, c);
+				}
+				rest.into_iter().map(CharClass::Single).collect()
+			},
+		});
+
 	choice((
 		just('*').to(Any),
 		just('?').to(One),
 		just('\\').ignore_then(choice((
 			just('\\').to(Literal(r"\".into())),
 			just('?').to(Literal(r"?".into())),
+			just('[').to(Literal(r"[".into())),
 			just('*').to(Literal(r"*".into())),
 		))),
+		just('[').ignore_then(class.then_ignore(just(']'))),
 	))
 	.or(any()
 		.repeated()
