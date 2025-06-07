@@ -39,7 +39,34 @@ pub enum CharClass {
 }
 
 fn wildcard<'src>() -> impl Parser<'src, &'src str, Vec<WildcardToken>> {
-	todo()
+	use WildcardToken::*;
+	choice((
+		just('*').to(Any),
+		just('?').to(One),
+		just('\\').ignore_then(choice((
+			just('\\').to(Literal(r"\".into())),
+			just('?').to(Literal(r"?".into())),
+			just('*').to(Literal(r"*".into())),
+		))),
+	))
+	.or(any()
+		.repeated()
+		.at_least(1)
+		.collect::<String>()
+		.map(Literal))
+	.repeated()
+	.collect::<Vec<_>>()
+	.map(|toks| {
+		toks.into_iter().fold(Vec::new(), |mut acc, tok| {
+			match (tok, acc.last_mut()) {
+				(Literal(tok), Some(&mut Literal(ref mut last))) => {
+					last.push_str(&tok);
+				}
+				(tok, _) => acc.push(tok),
+			}
+			acc
+		})
+	})
 }
 
 fn line<'src>() -> impl Parser<'src, &'src str, Line> {
