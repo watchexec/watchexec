@@ -1,5 +1,3 @@
-use std::iter::once;
-
 use chumsky::prelude::*;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -41,20 +39,45 @@ pub enum CharClass {
 }
 
 fn wildcard<'src>() -> impl Parser<'src, &'src str, Vec<WildcardToken>> {
+	use CharClass::*;
 	use WildcardToken::*;
 
 	let negator = just('!').or_not().map(|bang| bang.is_some());
 	let initial_bracket = just(']').or_not();
 	let class = negator
 		.then(initial_bracket)
-		.then(none_of(']').repeated().collect::<Vec<char>>())
+		.then(
+			choice((
+				just('[')
+					.ignore_then(choice((
+						just(':')
+							.ignore_then(none_of(':').repeated().collect::<String>().map(Named))
+							.then_ignore(just(':')),
+						just('.')
+							.ignore_then(none_of('.').repeated().collect::<String>().map(Collating))
+							.then_ignore(just('.')),
+						just('=')
+							.ignore_then(any().map(Equivalence))
+							.then_ignore(just('=')),
+					)))
+					.then_ignore(just(']')),
+				none_of(']')
+					.then_ignore(just('-'))
+					.then(any())
+					.map(|(a, b)| Range(a, b)),
+				none_of(']').map(Single),
+			))
+			.repeated()
+			.at_least(1)
+			.collect::<Vec<_>>(),
+		)
 		.map(|((negated, initial), mut rest)| Class {
 			negated,
 			classes: {
 				if let Some(c) = initial {
-					rest.insert(0, c);
+					rest.insert(0, Single(c));
 				}
-				rest.into_iter().map(CharClass::Single).collect()
+				rest
 			},
 		});
 
@@ -143,21 +166,23 @@ mod tests {
 		assert_eq!(
 			wildcard()
 				.parse(
-					r"lit[A-Z][!a-z]*?[*!?][0a-cf][[=a=]x[:alnum:]y[.ch.]][[?*\][!]a-][][!][]-][--0]\\\*\?lit"
+					r"lit[][!][]-]lit*?lit[*!?][0a-cf][A-Z][!a-z][[=a=]x[:alnum:]y[.ch.]][[?*\][!]a-][--0]\\\*\?lit"
 				)
 				.into_result(),
 			Ok(vec![
 				Literal("lit".into()),
 				Class {
 					negated: false,
-					classes: vec![Range('A', 'Z')],
+					classes: vec![Single(']'), Single('['), Single('!'),],
 				},
 				Class {
-					negated: true,
-					classes: vec![Range('a', 'z')],
+					negated: false,
+					classes: vec![Single(']'), Single('-'),],
 				},
+				Literal("lit".into()),
 				Any,
 				One,
+				Literal("lit".into()),
 				Class {
 					negated: false,
 					classes: vec![Single('*'), Single('!'), Single('?'),],
@@ -165,6 +190,14 @@ mod tests {
 				Class {
 					negated: false,
 					classes: vec![Single('0'), Range('a', 'c'), Single('f'),],
+				},
+				Class {
+					negated: false,
+					classes: vec![Range('A', 'Z')],
+				},
+				Class {
+					negated: true,
+					classes: vec![Range('a', 'z')],
 				},
 				Class {
 					negated: false,
@@ -183,14 +216,6 @@ mod tests {
 				Class {
 					negated: true,
 					classes: vec![Single(']'), Single('a'), Single('-'),],
-				},
-				Class {
-					negated: false,
-					classes: vec![Single(']'), Single('['), Single('!'),],
-				},
-				Class {
-					negated: false,
-					classes: vec![Single(']'), Single('-'),],
 				},
 				Class {
 					negated: false,
