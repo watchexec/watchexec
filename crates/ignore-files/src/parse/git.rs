@@ -1,4 +1,8 @@
-use chumsky::prelude::*;
+use chumsky::{
+	input::{Checkpoint, Cursor},
+	inspector::Inspector,
+	prelude::*,
+};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Line {
@@ -38,82 +42,204 @@ pub enum CharClass {
 	Equivalence(char), // [=a=]
 }
 
-type ParserErr<'src> = chumsky::extra::Err<chumsky::error::Rich<'src, char>>;
+#[derive(Clone, Copy, Debug, Default)]
+struct LogInspector<T>(pub T);
+
+impl<'src, T, I: Input<'src>> Inspector<'src, I> for LogInspector<T>
+where
+	<I as Input<'src>>::Token: std::fmt::Debug,
+	<I as Input<'src>>::Cursor: std::fmt::Debug,
+{
+	type Checkpoint = ();
+
+	#[inline(always)]
+	fn on_token(&mut self, token: &<I as Input<'src>>::Token) {
+		eprint!("{token:?} ");
+	}
+
+	#[inline(always)]
+	fn on_save<'parse>(&self, _: &Cursor<'src, 'parse, I>) -> Self::Checkpoint {}
+
+	#[inline(always)]
+	fn on_rewind<'parse>(&mut self, checkpoint: &Checkpoint<'src, 'parse, I, Self::Checkpoint>) {
+		eprint!(":{:?} ", checkpoint.cursor().inner());
+	}
+}
+
+fn debug<'src, P, I, O, E>(name: &'static str, parser: P) -> DebugParser<P, O>
+where
+	I: Input<'src>,
+	E: extra::ParserExtra<'src, I>,
+	P: Parser<'src, I, O, E>,
+{
+	DebugParser {
+		parser,
+		name,
+		phantom: std::marker::PhantomData,
+	}
+}
+
+#[derive(Clone, Copy)]
+pub struct DebugParser<A, OA> {
+	parser: A,
+	name: &'static str,
+	#[allow(dead_code)]
+	phantom: std::marker::PhantomData<OA>,
+}
+
+impl<'src, I, O, E, A> Parser<'src, I, O, E> for DebugParser<A, O>
+where
+	I: Input<'src>,
+	E: extra::ParserExtra<'src, I>,
+	A: Parser<'src, I, O, E>,
+{
+	#[inline(always)]
+	fn go<M: chumsky::private::Mode>(
+		&self,
+		inp: &mut chumsky::input::InputRef<'src, '_, I, E>,
+	) -> Result<<M as chumsky::private::Mode>::Output<O>, ()> {
+		eprint!("[{}] ", self.name);
+		self.parser.go::<M>(inp)
+	}
+
+	chumsky::go_extra!(O);
+}
+
+type ParserErr<'src> =
+	chumsky::extra::Full<chumsky::error::Rich<'src, char>, LogInspector<char>, ()>;
 
 fn class<'src>() -> impl Parser<'src, &'src str, WildcardToken, ParserErr<'src>> {
 	use CharClass::*;
 
-	let negator = just('!').or_not().map(|bang| bang.is_some());
-	let initial_bracket = just(']').or_not();
-	negator
-		.then(initial_bracket)
-		.then(
-			choice((
-				just('[')
-					.ignore_then(choice((
-						just(':')
-							.ignore_then(
-								none_of(':')
-									.repeated()
-									.at_least(1)
-									.collect::<String>()
-									.map(Named),
-							)
-							.then_ignore(just(':')),
-						just('.')
-							.ignore_then(
-								none_of('.')
-									.repeated()
-									.at_least(1)
-									.collect::<String>()
-									.map(Collating),
-							)
-							.then_ignore(just('.')),
-						just('=')
-							.ignore_then(any().map(Equivalence))
-							.then_ignore(just('=')),
-					)))
-					.then_ignore(just(']')),
-				none_of(']')
-					.then_ignore(just('-'))
-					.then(any())
-					.map(|(a, b)| Range(a, b)),
-				none_of(']').map(Single),
-			))
+	let single = debug("single", none_of(']').map(Single));
+	let range = debug(
+		"range",
+		none_of(']')
+			.then_ignore(just('-'))
+			.then(any())
+			.map(|(a, b)| Range(a, b)),
+	);
+	let named = debug(
+		"named",
+		none_of(':')
 			.repeated()
 			.at_least(1)
-			.collect::<Vec<_>>(),
-		)
-		.map(|((negated, initial), mut rest)| WildcardToken::Class {
-			negated,
-			classes: {
-				if let Some(c) = initial {
-					rest.insert(0, Single(c));
-				}
-				rest
-			},
-		})
+			.collect::<String>()
+			.map(Named)
+			.delimited_by(just("[:"), just(":]")),
+	);
+	let collating = debug(
+		"collating",
+		none_of('.')
+			.repeated()
+			.at_least(1)
+			.collect::<String>()
+			.map(Collating)
+			.delimited_by(just("[."), just(".]")),
+	);
+	let equivalence = debug(
+		"equivalence",
+		any().map(Equivalence).delimited_by(just("[="), just("=]")),
+	);
+	let alts = debug(
+		"alts",
+		choice((named, collating, equivalence, range, single.clone())).or(single),
+	)
+	.boxed();
+
+	let inner0 = debug("inner0", alts.clone().repeated().collect::<Vec<_>>()).boxed();
+	let inner1 = debug("inner1", alts.repeated().at_least(1).collect::<Vec<_>>()).boxed();
+
+	choice((
+		debug(
+			"negbraran",
+			inner1
+				.clone()
+				.delimited_by(just("[!]-"), just(']'))
+				.map(|mut classes| WildcardToken::Class {
+					negated: true,
+					classes: {
+						if let Single(c) = *classes.first().unwrap() {
+							classes[0] = Range(']', c);
+							classes
+						} else {
+							classes.insert(0, Single(']'));
+							classes.insert(1, Single('-'));
+							classes
+						}
+					},
+				}),
+		),
+		debug(
+			"negbra",
+			inner0
+				.clone()
+				.delimited_by(just("[!]"), just(']'))
+				.map(|mut classes| WildcardToken::Class {
+					negated: true,
+					classes: {
+						classes.insert(0, Single(']'));
+						classes
+					},
+				}),
+		),
+		debug(
+			"posbra",
+			inner0
+				.delimited_by(just("[]"), just(']'))
+				.map(|mut classes| WildcardToken::Class {
+					negated: false,
+					classes: {
+						classes.insert(0, Single(']'));
+						classes
+					},
+				}),
+		),
+		debug(
+			"negother",
+			inner1
+				.clone()
+				.delimited_by(just("[!"), just(']'))
+				.map(|classes| WildcardToken::Class {
+					negated: true,
+					classes,
+				}),
+		),
+		debug(
+			"posother",
+			inner1
+				.delimited_by(just('['), just(']'))
+				.map(|classes| WildcardToken::Class {
+					negated: false,
+					classes,
+				}),
+		),
+	))
 }
 
 fn wildcard<'src>() -> impl Parser<'src, &'src str, Vec<WildcardToken>, ParserErr<'src>> {
 	use WildcardToken::*;
 
+	let literal = debug(
+		"literal",
+		none_of("[]*?\\")
+			.repeated()
+			.at_least(1)
+			.collect::<String>()
+			.map(Literal),
+	);
+
 	choice((
 		just('*').to(Any),
 		just('?').to(One),
-		just('\\').ignore_then(choice((
-			just('\\').to(Literal(r"\".into())),
-			just('?').to(Literal(r"?".into())),
-			just('[').to(Literal(r"[".into())),
-			just('*').to(Literal(r"*".into())),
-		))),
-		just('[').ignore_then(class().then_ignore(just(']'))),
+		just(r"\\").to(Literal(r"\".into())),
+		just(r"\?").to(Literal(r"?".into())),
+		just(r"\[").to(Literal(r"[".into())),
+		just(r"\*").to(Literal(r"*".into())),
+		class(),
+		literal,
+		one_of("[]").map(|c: char| Literal(c.into())),
 	))
-	.or(any()
-		.repeated()
-		.at_least(1)
-		.collect::<String>()
-		.map(Literal))
 	.repeated()
 	.collect::<Vec<_>>()
 	.map(|toks| {
@@ -354,6 +480,23 @@ mod tests {
 	}
 
 	#[test]
+	fn wildcard_class_opening_inner_open_bracket_single() {
+		use CharClass::*;
+		use WildcardToken::*;
+		assert_eq!(
+			class().parse(r"[[?*\]").into_output_errors(),
+			(
+				Some(Class {
+					negated: false,
+					classes: vec![Single('['), Single('?'), Single('*'), Single('\\'),],
+				}),
+				Vec::new()
+			),
+			r"parsing [[?*\]"
+		);
+	}
+
+	#[test]
 	fn wildcard_class_negated_inner_close_bracket() {
 		use CharClass::*;
 		use WildcardToken::*;
@@ -370,12 +513,51 @@ mod tests {
 	fn wildcard_class_negated_inner_close_bracket_single() {
 		use CharClass::*;
 		use WildcardToken::*;
+
 		assert_eq!(
-			class().parse(r"[!]a-]").into_result(),
-			Ok(Class {
-				negated: true,
-				classes: vec![Single(']'), Single('a'), Single('-'),],
-			})
+			class().parse(r"[!]a-]").into_output_errors(),
+			(
+				Some(Class {
+					negated: true,
+					classes: vec![Single(']'), Single('a'), Single('-'),],
+				}),
+				Vec::new()
+			),
+			r"parsing [!]a-]"
+		);
+	}
+
+	#[test]
+	fn wildcard_class_inner_close_bracket_and_bang() {
+		use CharClass::*;
+		use WildcardToken::*;
+		assert_eq!(
+			class().parse(r"[][!]").into_output_errors(),
+			(
+				Some(Class {
+					negated: false,
+					classes: vec![Single(']'), Single('['), Single('!'),],
+				},),
+				Vec::new()
+			),
+			r"parsing [][!]"
+		);
+	}
+
+	#[test]
+	fn wildcard_class_inner_close_bracket_and_dash() {
+		use CharClass::*;
+		use WildcardToken::*;
+		assert_eq!(
+			class().parse(r"[]-]").into_output_errors(),
+			(
+				Some(Class {
+					negated: false,
+					classes: vec![Single(']'), Single('-'),],
+				},),
+				Vec::new()
+			),
+			r"parsing []-]"
 		);
 	}
 
