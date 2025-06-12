@@ -116,7 +116,7 @@ fn class<'src>() -> impl Parser<'src, &'src str, WildcardToken, ParserErr<'src>>
 		"range",
 		none_of(']')
 			.then_ignore(just('-'))
-			.then(any())
+			.then(none_of(']'))
 			.map(|(a, b)| Range(a, b)),
 	);
 	let named = debug(
