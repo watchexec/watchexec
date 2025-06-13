@@ -265,6 +265,7 @@ fn wildcard<'src>() -> impl Parser<'src, &'src str, Vec<WildcardToken>, ParserEr
 		just(r"\[").to(Literal(r"[".into())),
 		just(r"\*").to(Literal(r"*".into())),
 		just(r"\!").to(Literal(r"\!".into())), // bangs don't need escaping except at the very start, but we still need to parse that here
+		just(r"\#").to(Literal(r"\#".into())), // hashes don't need escaping except at the very start, but we still need to parse that here
 		just(r"\ ").to(Literal(r"\ ".into())), // spaces don't need escaping except at the end, where we have special handling in line()
 		class(),
 		literal,
@@ -324,11 +325,11 @@ fn line<'src>() -> impl Parser<'src, &'src str, Line, ParserErr<'src>> {
 
 			match segments.first_mut() {
 				Some(Segment::Fixed(first)) => {
-					handle_escaped_bang(first);
+					handle_escaped_starts(first);
 				}
 				Some(Segment::Wildcard(first)) => {
 					if let Some(WildcardToken::Literal(ref mut first)) = first.first_mut() {
-						handle_escaped_bang(first);
+						handle_escaped_starts(first);
 					}
 				}
 				_ => {}
@@ -354,8 +355,8 @@ fn file<'src>() -> impl Parser<'src, &'src str, Vec<Line>, ParserErr<'src>> {
 	line().separated_by(newline()).collect::<Vec<_>>()
 }
 
-fn handle_escaped_bang(s: &mut String) {
-	if s.starts_with(r"\!") {
+fn handle_escaped_starts(s: &mut String) {
+	if s.starts_with(r"\!") || s.starts_with(r"\#") {
 		*s = s[1..].into();
 	}
 }
@@ -837,6 +838,46 @@ mod tests {
 				segments: vec![
 					Segment::Terminal,
 					Segment::Fixed(r"fo\!o".into()),
+					Segment::All,
+					Segment::Wildcard(vec![
+						WildcardToken::Literal("b".into()),
+						WildcardToken::Any,
+						WildcardToken::Literal("z".into()),
+					])
+				],
+			})
+		);
+	}
+
+	#[test]
+	fn pattern_escaped_hash() {
+		assert_eq!(
+			line().parse(r"\#/foo/**/b*z").into_result(),
+			Ok(Line::Pattern {
+				negated: false,
+				segments: vec![
+					Segment::Fixed(r"#".into()),
+					Segment::Fixed("foo".into()),
+					Segment::All,
+					Segment::Wildcard(vec![
+						WildcardToken::Literal("b".into()),
+						WildcardToken::Any,
+						WildcardToken::Literal("z".into()),
+					])
+				],
+			})
+		);
+	}
+
+	#[test]
+	fn pattern_faux_escaped_hash() {
+		assert_eq!(
+			line().parse(r"/fo\#o/**/b*z").into_result(),
+			Ok(Line::Pattern {
+				negated: false,
+				segments: vec![
+					Segment::Terminal,
+					Segment::Fixed(r"fo\#o".into()),
 					Segment::All,
 					Segment::Wildcard(vec![
 						WildcardToken::Literal("b".into()),
