@@ -1,5 +1,3 @@
-use std::io::BufRead;
-
 use chumsky::{
 	input::{Checkpoint, Cursor},
 	inspector::Inspector,
@@ -349,19 +347,6 @@ fn line<'src>() -> impl Parser<'src, &'src str, Line, ParserErr<'src>> {
 
 			Line::Pattern { negated, segments }
 		}))
-}
-
-fn parse_file(buf: impl BufRead) -> Result<Vec<Line>, Vec<String>> {
-	let mut lines = Vec::new();
-	for l in buf.lines() {
-		let l = l.unwrap();
-		lines.push(line().parse(&l).into_result().map_err(|errs| {
-			errs.into_iter()
-				.map(|err| err.to_string())
-				.collect::<Vec<_>>()
-		})?);
-	}
-	Ok(lines)
 }
 
 fn file<'src>() -> impl Parser<'src, &'src str, Vec<Line>, ParserErr<'src>> {
@@ -889,42 +874,48 @@ mod tests {
 	#[test]
 	fn inline_file() {
 		assert_eq!(
-			parse_file(std::io::Cursor::new(
-				r"
+			file()
+				.parse(
+					r"
 target
 /watchexec-*
 
 # log files
 watchexec.*.log
 "
-			)),
-			Ok(vec![
-				Line::Empty,
-				Line::Pattern {
-					negated: false,
-					segments: vec![Segment::Fixed("target".into())],
-				},
-				Line::Pattern {
-					negated: false,
-					segments: vec![
-						Segment::Terminal,
-						Segment::Wildcard(vec![
-							WildcardToken::Literal("watchexec-".into()),
+				)
+				.into_output_errors(),
+			(
+				Some(vec![
+					Line::Empty,
+					Line::Pattern {
+						negated: false,
+						segments: vec![Segment::Fixed("target".into())],
+					},
+					Line::Pattern {
+						negated: false,
+						segments: vec![
+							Segment::Terminal,
+							Segment::Wildcard(vec![
+								WildcardToken::Literal("watchexec-".into()),
+								WildcardToken::Any,
+							]),
+						],
+					},
+					Line::Empty,
+					Line::Comment(" log files".into()),
+					Line::Pattern {
+						negated: false,
+						segments: vec![Segment::Wildcard(vec![
+							WildcardToken::Literal("watchexec.".into()),
 							WildcardToken::Any,
-						]),
-					],
-				},
-				Line::Empty,
-				Line::Comment(" log files".into()),
-				Line::Pattern {
-					negated: false,
-					segments: vec![Segment::Wildcard(vec![
-						WildcardToken::Literal("watchexec.".into()),
-						WildcardToken::Any,
-						WildcardToken::Literal(".log".into())
-					])]
-				},
-			])
+							WildcardToken::Literal(".log".into())
+						])]
+					},
+					Line::Empty,
+				]),
+				Vec::new()
+			)
 		);
 	}
 }
