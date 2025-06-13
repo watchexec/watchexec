@@ -2,10 +2,12 @@ use chumsky::{
 	input::{Checkpoint, Cursor},
 	inspector::Inspector,
 	prelude::*,
+	text::newline,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Line {
+	Empty,
 	Comment(String),
 	Pattern {
 		negated: bool,
@@ -17,7 +19,7 @@ pub enum Line {
 pub enum Segment {
 	Terminal,
 	Fixed(String),
-	Wildcard(String),
+	Wildcard(Vec<WildcardToken>),
 	All,
 }
 
@@ -79,12 +81,22 @@ where
 	}
 }
 
-#[derive(Clone, Copy)]
+#[derive(Copy)]
 pub struct DebugParser<A, OA> {
 	parser: A,
 	name: &'static str,
 	#[allow(dead_code)]
 	phantom: std::marker::PhantomData<OA>,
+}
+
+impl<A: Clone, OA: Clone> Clone for DebugParser<A, OA> {
+	fn clone(&self) -> Self {
+		Self {
+			parser: self.parser.clone(),
+			name: self.name.clone(),
+			phantom: std::marker::PhantomData,
+		}
+	}
 }
 
 impl<'src, I, O, E, A> Parser<'src, I, O, E> for DebugParser<A, O>
@@ -108,20 +120,33 @@ where
 type ParserErr<'src> =
 	chumsky::extra::Full<chumsky::error::Rich<'src, char>, LogInspector<char>, ()>;
 
+fn any_nonl<'src>() -> impl Parser<'src, &'src str, char, ParserErr<'src>> + Clone {
+	debug("any", any().and_is(newline().not()))
+}
+
+fn none_of_nonl<'src>(
+	none: &'src str,
+) -> impl Parser<'src, &'src str, char, ParserErr<'src>> + Clone {
+	debug(
+		"none_of",
+		any().and_is(newline().or(one_of(none).to(())).not()),
+	)
+}
+
 fn class<'src>() -> impl Parser<'src, &'src str, WildcardToken, ParserErr<'src>> {
 	use CharClass::*;
 
-	let single = debug("single", none_of(']').map(Single));
+	let single = debug("single", none_of_nonl("/]").map(Single));
 	let range = debug(
 		"range",
-		none_of(']')
+		none_of_nonl("/]")
 			.then_ignore(just('-'))
-			.then(none_of(']'))
+			.then(none_of_nonl("/]"))
 			.map(|(a, b)| Range(a, b)),
 	);
 	let named = debug(
 		"named",
-		none_of(':')
+		none_of_nonl(":/")
 			.repeated()
 			.at_least(1)
 			.collect::<String>()
@@ -130,7 +155,7 @@ fn class<'src>() -> impl Parser<'src, &'src str, WildcardToken, ParserErr<'src>>
 	);
 	let collating = debug(
 		"collating",
-		none_of('.')
+		none_of_nonl("./")
 			.repeated()
 			.at_least(1)
 			.collect::<String>()
@@ -139,7 +164,9 @@ fn class<'src>() -> impl Parser<'src, &'src str, WildcardToken, ParserErr<'src>>
 	);
 	let equivalence = debug(
 		"equivalence",
-		any().map(Equivalence).delimited_by(just("[="), just("=]")),
+		none_of_nonl("/")
+			.map(Equivalence)
+			.delimited_by(just("[="), just("=]")),
 	);
 	let alts = debug(
 		"alts",
@@ -222,7 +249,7 @@ fn wildcard<'src>() -> impl Parser<'src, &'src str, Vec<WildcardToken>, ParserEr
 
 	let literal = debug(
 		"literal",
-		none_of("[]*?\\")
+		none_of_nonl("/[]*?\\")
 			.repeated()
 			.at_least(1)
 			.collect::<String>()
@@ -236,6 +263,8 @@ fn wildcard<'src>() -> impl Parser<'src, &'src str, Vec<WildcardToken>, ParserEr
 		just(r"\?").to(Literal(r"?".into())),
 		just(r"\[").to(Literal(r"[".into())),
 		just(r"\*").to(Literal(r"*".into())),
+		just(r"\!").to(Literal(r"\!".into())), // bangs don't need escaping except at the very start, but we still need to parse that here
+		just(r"\ ").to(Literal(r"\ ".into())), // spaces don't need escaping except at the end, where we have special handling in line()
 		class(),
 		literal,
 		one_of("[]").map(|c: char| Literal(c.into())),
@@ -256,22 +285,30 @@ fn wildcard<'src>() -> impl Parser<'src, &'src str, Vec<WildcardToken>, ParserEr
 }
 
 fn line<'src>() -> impl Parser<'src, &'src str, Line, ParserErr<'src>> {
-	let comment = just('#').ignore_then(any().repeated().collect::<String>());
+	let comment = just('#').ignore_then(any_nonl().repeated().collect::<String>());
 
 	let negator = just('!').or_not().map(|exists| exists.is_some());
 
-	let segments = none_of('/')
-		.repeated()
-		.collect::<String>()
+	let segments = wildcard()
 		.map(|seg| {
 			if seg.is_empty() {
 				Segment::Terminal
-			} else if seg == "**" {
+			} else if &seg == &[WildcardToken::Any, WildcardToken::Any] {
 				Segment::All
-			} else if seg.contains(['*', '?', '[']) {
-				Segment::Wildcard(seg)
+			} else if seg.iter().all(|w| matches!(w, WildcardToken::Literal(_))) {
+				Segment::Fixed(
+					seg.into_iter()
+						.map(|w| {
+							if let WildcardToken::Literal(l) = w {
+								l
+							} else {
+								unreachable!()
+							}
+						})
+						.collect(),
+				)
 			} else {
-				Segment::Fixed(seg)
+				Segment::Wildcard(seg)
 			}
 		})
 		.separated_by(just('/'))
@@ -280,22 +317,65 @@ fn line<'src>() -> impl Parser<'src, &'src str, Line, ParserErr<'src>> {
 	comment
 		.map(|content| Line::Comment(content))
 		.or(negator.then(segments).map(|(negated, mut segments)| {
-			if let Some(Segment::Wildcard(ref mut last) | Segment::Fixed(ref mut last)) =
-				segments.last_mut()
-			{
-				let final_length = {
-					let without_trailing_whitespace = last.trim_end();
-					if without_trailing_whitespace.ends_with('\\') {
-						without_trailing_whitespace.len() + 1
-					} else {
-						without_trailing_whitespace.len()
+			if segments == [Segment::Terminal] {
+				return Line::Empty;
+			}
+
+			match segments.first_mut() {
+				Some(Segment::Fixed(first)) => {
+					handle_escaped_bang(first);
+				}
+				Some(Segment::Wildcard(first)) => {
+					if let Some(WildcardToken::Literal(ref mut first)) = first.first_mut() {
+						handle_escaped_bang(first);
 					}
-				};
-				let _ = last.split_off(final_length);
+				}
+				_ => {}
+			}
+
+			match segments.last_mut() {
+				Some(Segment::Fixed(ref mut last)) => {
+					trim_and_handle_whitespace_escape(last);
+				}
+				Some(Segment::Wildcard(ref mut last)) => {
+					if let Some(WildcardToken::Literal(ref mut last)) = last.last_mut() {
+						trim_and_handle_whitespace_escape(last);
+					}
+				}
+				_ => {}
 			}
 
 			Line::Pattern { negated, segments }
 		}))
+}
+
+fn file<'src>() -> impl Parser<'src, &'src str, Vec<Line>, ParserErr<'src>> {
+	line().separated_by(newline()).collect::<Vec<_>>()
+}
+
+fn handle_escaped_bang(s: &mut String) {
+	if s.starts_with(r"\!") {
+		*s = s[1..].into();
+	}
+}
+
+fn trim_and_handle_whitespace_escape(s: &mut String) {
+	let without_trailing_whitespace = s.trim_end();
+	if let Some(without_backslash) = without_trailing_whitespace.strip_suffix(r"\") {
+		if s.len() >= without_trailing_whitespace.len() + 2 {
+			dbg!(&s, &without_trailing_whitespace, &without_backslash);
+			*s = format!(
+				"{without_backslash}{}",
+				// the next char after the backslash
+				s.get(without_trailing_whitespace.len()..)
+					.and_then(|it| it.chars().next())
+					.unwrap_or(' ')
+			);
+			return;
+		}
+	}
+
+	*s = without_trailing_whitespace.into();
 }
 
 #[cfg(test)]
@@ -630,7 +710,22 @@ mod tests {
 			line().parse(r"test\    ").into_result(),
 			Ok(Line::Pattern {
 				negated: false,
-				segments: vec![Segment::Fixed(r"test\ ".into())],
+				segments: vec![Segment::Fixed(r"test ".into())],
+			})
+		);
+	}
+
+	#[test]
+	fn pattern_faux_escaped_trailing_whitespace() {
+		assert_eq!(
+			line().parse(r"foo/te\ st/bar").into_result(),
+			Ok(Line::Pattern {
+				negated: false,
+				segments: vec![
+					Segment::Fixed("foo".into()),
+					Segment::Fixed(r"te\ st".into()),
+					Segment::Fixed("bar".into())
+				],
 			})
 		);
 	}
@@ -682,7 +777,11 @@ mod tests {
 					Segment::Terminal,
 					Segment::Fixed("foo".into()),
 					Segment::All,
-					Segment::Wildcard("b*z".into())
+					Segment::Wildcard(vec![
+						WildcardToken::Literal("b".into()),
+						WildcardToken::Any,
+						WildcardToken::Literal("z".into()),
+					])
 				],
 			})
 		);
@@ -698,7 +797,11 @@ mod tests {
 					Segment::Terminal,
 					Segment::Fixed("foo".into()),
 					Segment::All,
-					Segment::Wildcard("b*z".into())
+					Segment::Wildcard(vec![
+						WildcardToken::Literal("b".into()),
+						WildcardToken::Any,
+						WildcardToken::Literal("z".into()),
+					])
 				],
 			})
 		);
@@ -711,10 +814,34 @@ mod tests {
 			Ok(Line::Pattern {
 				negated: false,
 				segments: vec![
-					Segment::Fixed(r"\!".into()),
+					Segment::Fixed(r"!".into()),
 					Segment::Fixed("foo".into()),
 					Segment::All,
-					Segment::Wildcard("b*z".into())
+					Segment::Wildcard(vec![
+						WildcardToken::Literal("b".into()),
+						WildcardToken::Any,
+						WildcardToken::Literal("z".into()),
+					])
+				],
+			})
+		);
+	}
+
+	#[test]
+	fn pattern_faux_escaped_exclamation() {
+		assert_eq!(
+			line().parse(r"/fo\!o/**/b*z").into_result(),
+			Ok(Line::Pattern {
+				negated: false,
+				segments: vec![
+					Segment::Terminal,
+					Segment::Fixed(r"fo\!o".into()),
+					Segment::All,
+					Segment::Wildcard(vec![
+						WildcardToken::Literal("b".into()),
+						WildcardToken::Any,
+						WildcardToken::Literal("z".into()),
+					])
 				],
 			})
 		);
