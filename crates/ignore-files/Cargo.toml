@@ -34,6 +34,7 @@ tracing = "0.1.40"
 
 
 [dev-dependencies]
+gitignores = "4.5.0"
 tracing-subscriber = { version = "0.3.6", features = ["env-filter"] }
 
 [features]

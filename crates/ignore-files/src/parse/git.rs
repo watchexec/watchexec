@@ -977,4 +977,46 @@ watchexec.*.log
 			)
 		);
 	}
+
+	#[test]
+	fn github_corpus_root() {
+		use gitignores::GitIgnore;
+		for variant in gitignores::Root::list() {
+			let ignore = gitignores::Root::get(variant).unwrap();
+			assert_eq!(
+				file().parse(ignore.contents()).into_output_errors().1,
+				Vec::new(),
+				"{variant} ({})",
+				ignore.file_path(),
+			);
+		}
+	}
+
+	#[test]
+	fn github_corpus_global() {
+		use gitignores::GitIgnore;
+		for variant in gitignores::Global::list() {
+			let ignore = gitignores::Global::get(variant).unwrap();
+			assert_eq!(
+				file().parse(ignore.contents()).into_output_errors().1,
+				Vec::new(),
+				"{variant} ({})",
+				ignore.file_path(),
+			);
+		}
+	}
+
+	#[test]
+	fn github_corpus_community() {
+		use gitignores::GitIgnore;
+		for variant in gitignores::Community::list() {
+			let ignore = gitignores::Community::get(variant).unwrap();
+			assert_eq!(
+				file().parse(ignore.contents()).into_output_errors().1,
+				Vec::new(),
+				"{variant} ({})",
+				ignore.file_path(),
+			);
+		}
+	}
 }
