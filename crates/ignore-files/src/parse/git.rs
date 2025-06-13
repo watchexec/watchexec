@@ -260,6 +260,7 @@ fn wildcard<'src>() -> impl Parser<'src, &'src str, Vec<WildcardToken>, ParserEr
 		just('*').to(Any),
 		just('?').to(One),
 		just(r"\\").to(Literal(r"\".into())),
+		just(r"\.").to(Literal(r".".into())), // undocumented
 		just(r"\?").to(Literal(r"?".into())),
 		just(r"\[").to(Literal(r"[".into())),
 		just(r"\*").to(Literal(r"*".into())),
@@ -841,6 +842,23 @@ mod tests {
 						WildcardToken::Literal("b".into()),
 						WildcardToken::Any,
 						WildcardToken::Literal("z".into()),
+					])
+				],
+			})
+		);
+	}
+
+	#[test]
+	fn pattern_escaped_periods() {
+		assert_eq!(
+			line().parse(r"\.foo/\.bar*").into_result(),
+			Ok(Line::Pattern {
+				negated: false,
+				segments: vec![
+					Segment::Fixed(".foo".into()),
+					Segment::Wildcard(vec![
+						WildcardToken::Literal(".bar".into()),
+						WildcardToken::Any,
 					])
 				],
 			})
