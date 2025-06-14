@@ -1,9 +1,6 @@
-use chumsky::{
-	input::{Checkpoint, Cursor},
-	inspector::Inspector,
-	prelude::*,
-	text::newline,
-};
+use chumsky::{prelude::*, text::newline};
+
+use super::common::{ParserDebugExt as _, ParserErr};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Line {
@@ -44,217 +41,129 @@ pub enum CharClass {
 	Equivalence(char), // [=a=]
 }
 
-#[derive(Clone, Copy, Debug, Default)]
-struct LogInspector<T>(pub T);
-
-impl<'src, T, I: Input<'src>> Inspector<'src, I> for LogInspector<T>
-where
-	<I as Input<'src>>::Token: std::fmt::Debug,
-	<I as Input<'src>>::Cursor: std::fmt::Debug,
-{
-	type Checkpoint = ();
-
-	#[inline(always)]
-	fn on_token(&mut self, token: &<I as Input<'src>>::Token) {
-		eprint!("{token:?} ");
-	}
-
-	#[inline(always)]
-	fn on_save<'parse>(&self, _: &Cursor<'src, 'parse, I>) -> Self::Checkpoint {}
-
-	#[inline(always)]
-	fn on_rewind<'parse>(&mut self, checkpoint: &Checkpoint<'src, 'parse, I, Self::Checkpoint>) {
-		eprint!(":{:?} ", checkpoint.cursor().inner());
-	}
-}
-
-fn debug<'src, P, I, O, E>(name: &'static str, parser: P) -> DebugParser<P, O>
-where
-	I: Input<'src>,
-	E: extra::ParserExtra<'src, I>,
-	P: Parser<'src, I, O, E>,
-{
-	DebugParser {
-		parser,
-		name,
-		phantom: std::marker::PhantomData,
-	}
-}
-
-#[derive(Copy)]
-pub struct DebugParser<A, OA> {
-	parser: A,
-	name: &'static str,
-	#[allow(dead_code)]
-	phantom: std::marker::PhantomData<OA>,
-}
-
-impl<A: Clone, OA: Clone> Clone for DebugParser<A, OA> {
-	fn clone(&self) -> Self {
-		Self {
-			parser: self.parser.clone(),
-			name: self.name.clone(),
-			phantom: std::marker::PhantomData,
-		}
-	}
-}
-
-impl<'src, I, O, E, A> Parser<'src, I, O, E> for DebugParser<A, O>
-where
-	I: Input<'src>,
-	E: extra::ParserExtra<'src, I>,
-	A: Parser<'src, I, O, E>,
-{
-	#[inline(always)]
-	fn go<M: chumsky::private::Mode>(
-		&self,
-		inp: &mut chumsky::input::InputRef<'src, '_, I, E>,
-	) -> Result<<M as chumsky::private::Mode>::Output<O>, ()> {
-		eprint!("[{}] ", self.name);
-		self.parser.go::<M>(inp)
-	}
-
-	chumsky::go_extra!(O);
-}
-
-type ParserErr<'src> =
-	chumsky::extra::Full<chumsky::error::Rich<'src, char>, LogInspector<char>, ()>;
-
 fn any_nonl<'src>() -> impl Parser<'src, &'src str, char, ParserErr<'src>> + Clone {
-	debug("any", any().and_is(newline().not()))
+	any().and_is(newline().not()).debug("any")
 }
 
 fn none_of_nonl<'src>(
 	none: &'src str,
 ) -> impl Parser<'src, &'src str, char, ParserErr<'src>> + Clone {
-	debug(
-		"none_of",
-		any().and_is(newline().or(one_of(none).to(())).not()),
-	)
+	any()
+		.and_is(newline().or(one_of(none).to(())).not())
+		.debug("none_of")
 }
 
 fn class<'src>() -> impl Parser<'src, &'src str, WildcardToken, ParserErr<'src>> {
 	use CharClass::*;
 
-	let single = debug("single", none_of_nonl("/]").map(Single));
-	let range = debug(
-		"range",
-		none_of_nonl("/]")
-			.then_ignore(just('-'))
-			.then(none_of_nonl("/]"))
-			.map(|(a, b)| Range(a, b)),
-	);
-	let named = debug(
-		"named",
-		none_of_nonl(":/")
-			.repeated()
-			.at_least(1)
-			.collect::<String>()
-			.map(Named)
-			.delimited_by(just("[:"), just(":]")),
-	);
-	let collating = debug(
-		"collating",
-		none_of_nonl("./")
-			.repeated()
-			.at_least(1)
-			.collect::<String>()
-			.map(Collating)
-			.delimited_by(just("[."), just(".]")),
-	);
-	let equivalence = debug(
-		"equivalence",
-		none_of_nonl("/")
-			.map(Equivalence)
-			.delimited_by(just("[="), just("=]")),
-	);
-	let alts = debug(
-		"alts",
-		choice((named, collating, equivalence, range, single.clone())).or(single),
-	)
-	.boxed();
+	let single = none_of_nonl("/]").map(Single).debug("single");
+	let range = none_of_nonl("/]")
+		.then_ignore(just('-'))
+		.then(none_of_nonl("/]"))
+		.map(|(a, b)| Range(a, b))
+		.debug("range");
+	let named = none_of_nonl(":/")
+		.repeated()
+		.at_least(1)
+		.collect::<String>()
+		.map(Named)
+		.delimited_by(just("[:"), just(":]"))
+		.debug("named");
+	let collating = none_of_nonl("./")
+		.repeated()
+		.at_least(1)
+		.collect::<String>()
+		.map(Collating)
+		.delimited_by(just("[."), just(".]"))
+		.debug("collating");
+	let equivalence = none_of_nonl("/")
+		.map(Equivalence)
+		.delimited_by(just("[="), just("=]"))
+		.debug("equivalence");
+	let alts = choice((named, collating, equivalence, range, single.clone()))
+		.or(single)
+		.debug("alts")
+		.boxed();
 
-	let inner0 = debug("inner0", alts.clone().repeated().collect::<Vec<_>>()).boxed();
-	let inner1 = debug("inner1", alts.repeated().at_least(1).collect::<Vec<_>>()).boxed();
+	let inner0 = alts
+		.clone()
+		.repeated()
+		.collect::<Vec<_>>()
+		.debug("inner0")
+		.boxed();
+	let inner1 = alts
+		.repeated()
+		.at_least(1)
+		.collect::<Vec<_>>()
+		.debug("inner1")
+		.boxed();
 
 	choice((
-		debug(
-			"negbraran",
-			inner1
-				.clone()
-				.delimited_by(just("[!]-"), just(']'))
-				.map(|mut classes| WildcardToken::Class {
-					negated: true,
-					classes: {
-						if let Single(c) = *classes.first().unwrap() {
-							classes[0] = Range(']', c);
-							classes
-						} else {
-							classes.insert(0, Single(']'));
-							classes.insert(1, Single('-'));
-							classes
-						}
-					},
-				}),
-		),
-		debug(
-			"negbra",
-			inner0
-				.clone()
-				.delimited_by(just("[!]"), just(']'))
-				.map(|mut classes| WildcardToken::Class {
-					negated: true,
-					classes: {
-						classes.insert(0, Single(']'));
+		inner1
+			.clone()
+			.delimited_by(just("[!]-"), just(']'))
+			.map(|mut classes| WildcardToken::Class {
+				negated: true,
+				classes: {
+					if let Single(c) = *classes.first().unwrap() {
+						classes[0] = Range(']', c);
 						classes
-					},
-				}),
-		),
-		debug(
-			"posbra",
-			inner0
-				.delimited_by(just("[]"), just(']'))
-				.map(|mut classes| WildcardToken::Class {
-					negated: false,
-					classes: {
+					} else {
 						classes.insert(0, Single(']'));
+						classes.insert(1, Single('-'));
 						classes
-					},
-				}),
-		),
-		debug(
-			"negother",
-			inner1
-				.clone()
-				.delimited_by(just("[!"), just(']'))
-				.map(|classes| WildcardToken::Class {
-					negated: true,
-					classes,
-				}),
-		),
-		debug(
-			"posother",
-			inner1
-				.delimited_by(just('['), just(']'))
-				.map(|classes| WildcardToken::Class {
-					negated: false,
-					classes,
-				}),
-		),
+					}
+				},
+			})
+			.debug("negbraran"),
+		inner0
+			.clone()
+			.delimited_by(just("[!]"), just(']'))
+			.map(|mut classes| WildcardToken::Class {
+				negated: true,
+				classes: {
+					classes.insert(0, Single(']'));
+					classes
+				},
+			})
+			.debug("negbra"),
+		inner0
+			.delimited_by(just("[]"), just(']'))
+			.map(|mut classes| WildcardToken::Class {
+				negated: false,
+				classes: {
+					classes.insert(0, Single(']'));
+					classes
+				},
+			})
+			.debug("posbra"),
+		inner1
+			.clone()
+			.delimited_by(just("[!"), just(']'))
+			.map(|classes| WildcardToken::Class {
+				negated: true,
+				classes,
+			})
+			.debug("negother"),
+		inner1
+			.delimited_by(just('['), just(']'))
+			.map(|classes| WildcardToken::Class {
+				negated: false,
+				classes,
+			})
+			.debug("posother"),
 	))
 }
 
 fn wildcard<'src>() -> impl Parser<'src, &'src str, Vec<WildcardToken>, ParserErr<'src>> {
 	use WildcardToken::*;
 
-	let literal = debug(
-		"literal",
-		none_of_nonl("/[]*?\\")
-			.repeated()
-			.at_least(1)
-			.collect::<String>()
-			.map(Literal),
-	);
+	let literal = none_of_nonl("/[]*?\\")
+		.repeated()
+		.at_least(1)
+		.collect::<String>()
+		.map(Literal)
+		.debug("literal");
 
 	choice((
 		just('*').to(Any),

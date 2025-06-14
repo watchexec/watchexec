@@ -15,7 +15,7 @@ rust-version = "1.70.0"
 edition = "2021"
 
 [dependencies]
-chumsky = "0.10.1"
+chumsky = { version = "0.10.1", features = ["extension"] }
 dunce = "1.0.4"
 futures = "0.3.29"
 gix-config = "0.45.1"
@@ -31,7 +31,6 @@ tokio = { version = "1.33.0", default-features = false, features = [
 	"rt",
 ] }
 tracing = "0.1.40"
-
 
 [dev-dependencies]
 gitignores = "4.5.0"
