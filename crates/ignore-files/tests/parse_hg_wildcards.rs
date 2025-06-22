@@ -11,7 +11,7 @@ fn exercise() {
 	assert_eq!(
 		glob()
 			.parse(
-				r"lit,[][!][]-]lit*?lit[*!?][0a-cf][A-Z][!a-z][[=a=]x[:alnum:]y[.ch.]][[?*\][!]a-][--0]\\\*\?\{\[{a,b,c*d}lit"
+				r"lit,[][!][]-]/lit*?lit[*!?][0a-cf][A-Z][!a-z][[=a=]x[:alnum:]/[.ch.]][[?*\][!]a-][--0]\\\*\?\{\[{a,b*c,d/e}lit"
 			)
 			.into_result(),
 		Ok(Glob(vec![
@@ -24,6 +24,7 @@ fn exercise() {
 				negated: false,
 				classes: vec![Single(']'), Single('-'),],
 			}),
+			Separator,
 			Literal("lit".into()),
 			AnyInSegment,
 			One,
@@ -50,7 +51,7 @@ fn exercise() {
 					Equivalence('a'),
 					Single('x'),
 					Named("alnum".into()),
-					Single('y'),
+					Single('/'),
 					Collating("ch".into()),
 				],
 			}),
@@ -69,8 +70,8 @@ fn exercise() {
 			Literal(r"\*?{[".into()),
 			Alt(vec![
 				Glob(vec![Literal("a".into())]),
-				Glob(vec![Literal("b".into())]),
-				Glob(vec![Literal("c".into()), AnyInSegment, Literal("d".into())]),
+				Glob(vec![Literal("b".into()), AnyInSegment, Literal("c".into())]),
+				Glob(vec![Literal("d".into()), Separator, Literal("e".into())]),
 			]),
 			Literal("lit".into()),
 		]))
@@ -83,12 +84,13 @@ fn empty() {
 }
 
 #[test]
-fn any() {
+fn anys() {
 	use Token::*;
 	assert_eq!(
 		glob().parse(r"*").into_result(),
 		Ok(Glob(vec![AnyInSegment]))
 	);
+	assert_eq!(glob().parse(r"**").into_result(), Ok(Glob(vec![AnyInPath])));
 }
 
 #[test]
@@ -103,6 +105,21 @@ fn literal() {
 	assert_eq!(
 		glob().parse(r"lit").into_result(),
 		Ok(Glob(vec![Literal("lit".into())]))
+	);
+}
+
+#[test]
+fn segmented() {
+	use Token::*;
+	assert_eq!(
+		glob().parse(r"a/b/c").into_result(),
+		Ok(Glob(vec![
+			Literal("a".into()),
+			Separator,
+			Literal("b".into()),
+			Separator,
+			Literal("c".into())
+		]))
 	);
 }
 

@@ -10,6 +10,7 @@ pub struct Glob(pub Vec<Token>);
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Token {
+	Separator,      // /
 	AnyInSegment,   // *
 	AnyInPath,      // **
 	One,            // ?
@@ -22,7 +23,7 @@ pub fn glob<'src>() -> impl Parser<'src, &'src str, Glob, ParserErr<'src>> {
 	recursive(|glob| {
 		use Token::*;
 
-		let literal = none_of_nonl("/[]*?\\{},")
+		let literal = none_of_nonl("[]*?\\{},")
 			.repeated()
 			.at_least(1)
 			.collect::<String>()
@@ -43,6 +44,7 @@ pub fn glob<'src>() -> impl Parser<'src, &'src str, Glob, ParserErr<'src>> {
 			.debug("alt");
 
 		choice((
+			just('/').to(Separator),
 			just("**").to(AnyInPath),
 			just('*').to(AnyInSegment),
 			just('?').to(One),
