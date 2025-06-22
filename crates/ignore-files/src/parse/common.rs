@@ -3,6 +3,7 @@ use chumsky::{
 	input::{Checkpoint, Cursor, InputRef},
 	inspector::Inspector,
 	prelude::*,
+	text::newline,
 };
 use tracing::trace;
 
@@ -80,4 +81,16 @@ where
 	fn on_rewind<'parse>(&mut self, checkpoint: &Checkpoint<'src, 'parse, I, Self::Checkpoint>) {
 		trace!("rewound to {:?}", checkpoint.cursor().inner());
 	}
+}
+
+pub fn any_nonl<'src>() -> impl Parser<'src, &'src str, char, ParserErr<'src>> + Clone {
+	any().and_is(newline().not()).debug("any")
+}
+
+pub fn none_of_nonl<'src>(
+	none: &'src str,
+) -> impl Parser<'src, &'src str, char, ParserErr<'src>> + Clone {
+	any()
+		.and_is(newline().or(one_of(none).to(())).not())
+		.debug("none_of")
 }

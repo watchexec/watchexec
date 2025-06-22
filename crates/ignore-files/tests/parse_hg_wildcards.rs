@@ -1,21 +1,21 @@
 use chumsky::prelude::*;
 use ignore_files::parse::{
 	charclass::{CharClass, Class as Klass},
-	git::*,
+	hg::glob::*,
 };
 
 #[test]
 fn exercise() {
 	use CharClass::*;
-	use WildcardToken::*;
+	use Token::*;
 	assert_eq!(
-		wildcard()
+		glob()
 			.parse(
-				r"lit[][!][]-]lit*?lit[*!?][0a-cf][A-Z][!a-z][[=a=]x[:alnum:]y[.ch.]][[?*\][!]a-][--0]\\\*\?lit"
+				r"lit,[][!][]-]lit*?lit[*!?][0a-cf][A-Z][!a-z][[=a=]x[:alnum:]y[.ch.]][[?*\][!]a-][--0]\\\*\?\{\[{a,b,c*d}lit"
 			)
 			.into_result(),
-		Ok(vec![
-			Literal("lit".into()),
+		Ok(Glob(vec![
+			Literal("lit,".into()),
 			Class(Klass {
 				negated: false,
 				classes: vec![Single(']'), Single('['), Single('!'),],
@@ -25,7 +25,7 @@ fn exercise() {
 				classes: vec![Single(']'), Single('-'),],
 			}),
 			Literal("lit".into()),
-			Any,
+			AnyInSegment,
 			One,
 			Literal("lit".into()),
 			Class(Klass {
@@ -66,96 +66,105 @@ fn exercise() {
 				negated: false,
 				classes: vec![Range('-', '0')],
 			}),
-			Literal(r"\*?lit".into()),
-		])
+			Literal(r"\*?{[".into()),
+			Alt(vec![
+				Glob(vec![Literal("a".into())]),
+				Glob(vec![Literal("b".into())]),
+				Glob(vec![Literal("c".into()), AnyInSegment, Literal("d".into())]),
+			]),
+			Literal("lit".into()),
+		]))
 	);
 }
 
 #[test]
 fn empty() {
-	assert_eq!(wildcard().parse(r"").into_result(), Ok(vec![]));
+	assert_eq!(glob().parse(r"").into_result(), Ok(Glob(vec![])));
 }
 
 #[test]
 fn any() {
-	use WildcardToken::*;
-	assert_eq!(wildcard().parse(r"*").into_result(), Ok(vec![Any]));
+	use Token::*;
+	assert_eq!(
+		glob().parse(r"*").into_result(),
+		Ok(Glob(vec![AnyInSegment]))
+	);
 }
 
 #[test]
 fn one() {
-	use WildcardToken::*;
-	assert_eq!(wildcard().parse(r"?").into_result(), Ok(vec![One]));
+	use Token::*;
+	assert_eq!(glob().parse(r"?").into_result(), Ok(Glob(vec![One])));
 }
 
 #[test]
 fn literal() {
-	use WildcardToken::*;
+	use Token::*;
 	assert_eq!(
-		wildcard().parse(r"lit").into_result(),
-		Ok(vec![Literal("lit".into())])
+		glob().parse(r"lit").into_result(),
+		Ok(Glob(vec![Literal("lit".into())]))
 	);
 }
 
 #[test]
 fn class_range() {
 	use CharClass::*;
-	use WildcardToken::*;
+	use Token::*;
 	assert_eq!(
-		wildcard().parse(r"[A-Z]").into_result(),
-		Ok(vec![Class(Klass {
+		glob().parse(r"[A-Z]").into_result(),
+		Ok(Glob(vec![Class(Klass {
 			negated: false,
 			classes: vec![Range('A', 'Z')],
-		})])
+		})]))
 	);
 }
 
 #[test]
 fn class_negated_range() {
 	use CharClass::*;
-	use WildcardToken::*;
+	use Token::*;
 	assert_eq!(
-		wildcard().parse(r"[!a-z]").into_result(),
-		Ok(vec![Class(Klass {
+		glob().parse(r"[!a-z]").into_result(),
+		Ok(Glob(vec![Class(Klass {
 			negated: true,
 			classes: vec![Range('a', 'z')],
-		})])
+		})]))
 	);
 }
 
 #[test]
 fn class_special_chars() {
 	use CharClass::*;
-	use WildcardToken::*;
+	use Token::*;
 	assert_eq!(
-		wildcard().parse(r"[*!?]").into_result(),
-		Ok(vec![Class(Klass {
+		glob().parse(r"[*!?]").into_result(),
+		Ok(Glob(vec![Class(Klass {
 			negated: false,
 			classes: vec![Single('*'), Single('!'), Single('?'),],
-		})])
+		})]))
 	);
 }
 
 #[test]
 fn class_mixed() {
 	use CharClass::*;
-	use WildcardToken::*;
+	use Token::*;
 	assert_eq!(
-		wildcard().parse(r"[0a-cf]").into_result(),
-		Ok(vec![Class(Klass {
+		glob().parse(r"[0a-cf]").into_result(),
+		Ok(Glob(vec![Class(Klass {
 			negated: false,
 			classes: vec![Single('0'), Range('a', 'c'), Single('f'),],
-		})])
+		})]))
 	);
 }
 
 #[test]
 fn class_unicode() {
 	use CharClass::*;
-	use WildcardToken::*;
+	use Token::*;
 	assert_eq!(
-		wildcard().parse(r"[[=a=]x[:alnum:]y[.ch.]]").into_result(),
-		Ok(vec![Class(Klass {
+		glob().parse(r"[[=a=]x[:alnum:]y[.ch.]]").into_result(),
+		Ok(Glob(vec![Class(Klass {
 			negated: false,
 			classes: vec![
 				Equivalence('a'),
@@ -164,47 +173,47 @@ fn class_unicode() {
 				Single('y'),
 				Collating("ch".into()),
 			],
-		})])
+		})]))
 	);
 }
 
 #[test]
 fn class_opening_inner_open_bracket() {
 	use CharClass::*;
-	use WildcardToken::*;
+	use Token::*;
 	assert_eq!(
-		wildcard().parse(r"[[?*\]").into_result(),
-		Ok(vec![Class(Klass {
+		glob().parse(r"[[?*\]").into_result(),
+		Ok(Glob(vec![Class(Klass {
 			negated: false,
 			classes: vec![Single('['), Single('?'), Single('*'), Single('\\'),],
-		})])
+		})]))
 	);
 }
 
 #[test]
 fn class_negated_inner_close_bracket() {
 	use CharClass::*;
-	use WildcardToken::*;
+	use Token::*;
 	assert_eq!(
-		wildcard().parse(r"[!]a-]").into_result(),
-		Ok(vec![Class(Klass {
+		glob().parse(r"[!]a-]").into_result(),
+		Ok(Glob(vec![Class(Klass {
 			negated: true,
 			classes: vec![Single(']'), Single('a'), Single('-'),],
-		})])
+		})]))
 	);
 }
 
 #[test]
 fn class_inner_close_bracket_and_bang() {
 	use CharClass::*;
-	use WildcardToken::*;
+	use Token::*;
 	assert_eq!(
-		wildcard().parse(r"[][!]").into_output_errors(),
+		glob().parse(r"[][!]").into_output_errors(),
 		(
-			Some(vec![Class(Klass {
+			Some(Glob(vec![Class(Klass {
 				negated: false,
 				classes: vec![Single(']'), Single('['), Single('!'),],
-			})]),
+			})])),
 			Vec::new()
 		),
 		r"parsing [][!]"
@@ -214,14 +223,14 @@ fn class_inner_close_bracket_and_bang() {
 #[test]
 fn class_inner_close_bracket_and_dash() {
 	use CharClass::*;
-	use WildcardToken::*;
+	use Token::*;
 	assert_eq!(
-		wildcard().parse(r"[]-]").into_output_errors(),
+		glob().parse(r"[]-]").into_output_errors(),
 		(
-			Some(vec![Class(Klass {
+			Some(Glob(vec![Class(Klass {
 				negated: false,
 				classes: vec![Single(']'), Single('-'),],
-			})]),
+			})])),
 			Vec::new()
 		),
 		r"parsing []-]"
@@ -231,10 +240,10 @@ fn class_inner_close_bracket_and_dash() {
 #[test]
 fn classes_inner_close_bracket() {
 	use CharClass::*;
-	use WildcardToken::*;
+	use Token::*;
 	assert_eq!(
-		wildcard().parse(r"[][!][]-]").into_result(),
-		Ok(vec![
+		glob().parse(r"[][!][]-]").into_result(),
+		Ok(Glob(vec![
 			Class(Klass {
 				negated: false,
 				classes: vec![Single(']'), Single('['), Single('!'),],
@@ -243,28 +252,71 @@ fn classes_inner_close_bracket() {
 				negated: false,
 				classes: vec![Single(']'), Single('-'),],
 			})
-		])
+		]))
 	);
 }
 
 #[test]
 fn class_hyphen_start_range() {
 	use CharClass::*;
-	use WildcardToken::*;
+	use Token::*;
 	assert_eq!(
-		wildcard().parse(r"[--0]").into_result(),
-		Ok(vec![Class(Klass {
+		glob().parse(r"[--0]").into_result(),
+		Ok(Glob(vec![Class(Klass {
 			negated: false,
 			classes: vec![Range('-', '0')],
-		})])
+		})]))
 	);
 }
 
 #[test]
 fn escaped_literals() {
-	use WildcardToken::*;
+	use Token::*;
 	assert_eq!(
-		wildcard().parse(r"\\\*\?lit").into_result(),
-		Ok(vec![Literal(r"\*?lit".into())])
+		glob().parse(r"\\\*\?lit").into_result(),
+		Ok(Glob(vec![Literal(r"\*?lit".into())]))
+	);
+}
+
+#[test]
+fn alt_simple() {
+	use Token::*;
+	assert_eq!(
+		glob().parse(r"{a,b}").into_result(),
+		Ok(Glob(vec![Alt(vec![
+			Glob(vec![Literal("a".into())]),
+			Glob(vec![Literal("b".into())]),
+		])]))
+	);
+}
+
+#[test]
+fn alt_single() {
+	use Token::*;
+	assert_eq!(
+		glob().parse(r"{a}").into_result(),
+		Ok(Glob(vec![Alt(vec![Glob(vec![Literal("a".into())]),])]))
+	);
+}
+
+#[test]
+fn alt_with_glob() {
+	use Token::*;
+	assert_eq!(
+		glob().parse(r"{a,b,c*d}").into_result(),
+		Ok(Glob(vec![Alt(vec![
+			Glob(vec![Literal("a".into())]),
+			Glob(vec![Literal("b".into())]),
+			Glob(vec![Literal("c".into()), AnyInSegment, Literal("d".into())]),
+		])]))
+	);
+}
+
+#[test]
+fn alt_empty() {
+	use Token::*;
+	assert_eq!(
+		glob().parse(r"{}").into_result(),
+		Ok(Glob(vec![Alt(vec![])]))
 	);
 }
