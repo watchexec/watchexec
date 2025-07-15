@@ -172,7 +172,7 @@ fn exercise_debug_parts() {
 		})]))
 	);
 	assert_eq!(
-		glob().parse(r"\*?{[").into_result(),
+		glob().parse(r"\\\*\?\{\[").into_result(),
 		Ok(Glob(vec![Literal(r"\*?{[".into())]))
 	);
 	assert_eq!(

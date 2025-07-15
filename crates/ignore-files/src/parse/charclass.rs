@@ -21,39 +21,32 @@ pub enum CharClass {
 pub fn charclass<'src>() -> impl Parser<'src, &'src str, Class, ParserErr<'src>> + Clone {
 	use CharClass::*;
 
-	let single = none_of_nonl("/]").map(Single).debug("single");
-	let range = none_of_nonl("/]")
+	let single = none_of_nonl("]").map(Single).debug("single");
+	let range = none_of_nonl("]")
 		.then_ignore(just('-'))
-		.then(none_of_nonl("/]"))
+		.then(none_of_nonl("]"))
 		.map(|(a, b)| Range(a, b))
 		.debug("range");
-	let named = none_of_nonl(":/")
+	let named = none_of_nonl(":")
 		.repeated()
 		.at_least(1)
 		.collect::<String>()
 		.map(Named)
 		.delimited_by(just("[:"), just(":]"))
 		.debug("named");
-	let collating = none_of_nonl("./")
+	let collating = none_of_nonl(".")
 		.repeated()
 		.at_least(1)
 		.collect::<String>()
 		.map(Collating)
 		.delimited_by(just("[."), just(".]"))
 		.debug("collating");
-	let equivalence = none_of_nonl("/")
+	let equivalence = none_of_nonl("")
 		.map(Equivalence)
 		.delimited_by(just("[="), just("=]"))
 		.debug("equivalence");
 	let bracketed = choice((named.clone(), collating.clone(), equivalence.clone()));
-	let alts = choice((bracketed.clone(), range.clone(), single.clone()))
-		.or(named)
-		.or(collating)
-		.or(equivalence)
-		.or(range)
-		.or(single)
-		.debug("alts")
-		.boxed();
+	let alts = choice((bracketed, range, single)).debug("alts").boxed();
 
 	let inner0 = alts
 		.clone()
