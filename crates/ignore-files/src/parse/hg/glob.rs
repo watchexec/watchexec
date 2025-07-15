@@ -23,7 +23,7 @@ pub fn glob<'src>() -> impl Parser<'src, &'src str, Glob, ParserErr<'src>> {
 	recursive(|glob| {
 		use Token::*;
 
-		let literal = none_of_nonl("[]*?\\{},")
+		let literal = none_of_nonl("[]*?\\{}/,")
 			.repeated()
 			.at_least(1)
 			.collect::<String>()
@@ -48,52 +48,42 @@ pub fn glob<'src>() -> impl Parser<'src, &'src str, Glob, ParserErr<'src>> {
 			just("**").to(AnyInPath),
 			just('*').to(AnyInSegment),
 			just('?').to(One),
-			just(r"\").ignore_then(
-				// as defined in the mercurial repo at rust/hg-core/src/filepatterns.rs
-				choice((
-					just('('),
-					just(')'),
-					just('['),
-					just(']'),
-					just('{'),
-					just('}'),
-					just('?'),
-					just('*'),
-					just('+'),
-					just('-'),
-					just('|'),
-					just('^'),
-					just('$'),
-					just('\\'),
-					just('.'),
-					just('&'),
-					just('~'),
-					just('#'),
-					just('\t'),
-					just('\n'),
-					just('\r'),
-					just('\x0b'),
-					just('\x0c'),
-				))
-				.map(|lit| Literal(lit.into())),
-			),
+			// Improved escape handling: treat backslash escapes as single literal characters
+			just('\\')
+				.then(none_of_nonl(""))
+				.map(|(_, c)| Literal(c.to_string())),
 			charclass().map(Class),
 			alt,
 			literal,
-			one_of("[],").map(|c: char| Literal(c.into())),
 		))
 		.repeated()
 		.collect::<Vec<_>>()
 		.map(|toks| {
-			Glob(toks.into_iter().fold(Vec::new(), |mut acc, tok| {
-				match (tok, acc.last_mut()) {
-					(Literal(tok), Some(&mut Literal(ref mut last))) => {
-						last.push_str(&tok);
+			// Split any Literal containing '/' into segments
+			let mut acc = Vec::new();
+			for tok in toks {
+				match tok {
+					Literal(s) => {
+						let mut buf = String::new();
+						for c in s.chars() {
+							if c == '/' {
+								if !buf.is_empty() {
+									acc.push(Token::Literal(buf.clone()));
+									buf.clear();
+								}
+								acc.push(Token::Separator);
+							} else {
+								buf.push(c);
+							}
+						}
+						if !buf.is_empty() {
+							acc.push(Token::Literal(buf));
+						}
 					}
-					(tok, _) => acc.push(tok),
+					_ => acc.push(tok),
 				}
-				acc
-			}))
+			}
+			Glob(acc)
 		})
 	})
 }
