@@ -79,6 +79,116 @@ fn exercise() {
 }
 
 #[test]
+fn exercise_debug_parts() {
+	use CharClass::*;
+	use Token::*;
+	// Each part of the original exercise pattern, tested individually
+	assert_eq!(
+		glob().parse("lit,").into_result(),
+		Ok(Glob(vec![Literal("lit,".into())]))
+	);
+	assert_eq!(
+		glob().parse("[][!]").into_result(),
+		Ok(Glob(vec![Class(Klass {
+			negated: false,
+			classes: vec![Single(']'), Single('['), Single('!')],
+		})]))
+	);
+	assert_eq!(
+		glob().parse("[]-]").into_result(),
+		Ok(Glob(vec![Class(Klass {
+			negated: false,
+			classes: vec![Single(']'), Single('-')],
+		})]))
+	);
+	assert_eq!(
+		glob().parse("/lit").into_result(),
+		Ok(Glob(vec![Separator, Literal("lit".into())]))
+	);
+	assert_eq!(
+		glob().parse("*?lit").into_result(),
+		Ok(Glob(vec![AnyInSegment, One, Literal("lit".into())]))
+	);
+	assert_eq!(
+		glob().parse("[*!?]").into_result(),
+		Ok(Glob(vec![Class(Klass {
+			negated: false,
+			classes: vec![Single('*'), Single('!'), Single('?')],
+		})]))
+	);
+	assert_eq!(
+		glob().parse("[0a-cf]").into_result(),
+		Ok(Glob(vec![Class(Klass {
+			negated: false,
+			classes: vec![Single('0'), Range('a', 'c'), Single('f')],
+		})]))
+	);
+	assert_eq!(
+		glob().parse("[A-Z]").into_result(),
+		Ok(Glob(vec![Class(Klass {
+			negated: false,
+			classes: vec![Range('A', 'Z')],
+		})]))
+	);
+	assert_eq!(
+		glob().parse("[!a-z]").into_result(),
+		Ok(Glob(vec![Class(Klass {
+			negated: true,
+			classes: vec![Range('a', 'z')],
+		})]))
+	);
+	assert_eq!(
+		glob().parse("[[=a=]x[:alnum:]/[.ch.]]").into_result(),
+		Ok(Glob(vec![Class(Klass {
+			negated: false,
+			classes: vec![
+				Equivalence('a'),
+				Single('x'),
+				Named("alnum".into()),
+				Single('/'),
+				Collating("ch".into()),
+			],
+		})]))
+	);
+	assert_eq!(
+		glob().parse("[[?*\\]").into_result(),
+		Ok(Glob(vec![Class(Klass {
+			negated: false,
+			classes: vec![Single('['), Single('?'), Single('*'), Single('\\')],
+		})]))
+	);
+	assert_eq!(
+		glob().parse("[!]a-]").into_result(),
+		Ok(Glob(vec![Class(Klass {
+			negated: true,
+			classes: vec![Single(']'), Single('a'), Single('-')],
+		})]))
+	);
+	assert_eq!(
+		glob().parse("[--0]").into_result(),
+		Ok(Glob(vec![Class(Klass {
+			negated: false,
+			classes: vec![Range('-', '0')],
+		})]))
+	);
+	assert_eq!(
+		glob().parse(r"\*?{[").into_result(),
+		Ok(Glob(vec![Literal(r"\*?{[".into())]))
+	);
+	assert_eq!(
+		glob().parse("{a,b*c,d/e}lit").into_result(),
+		Ok(Glob(vec![
+			Alt(vec![
+				Glob(vec![Literal("a".into())]),
+				Glob(vec![Literal("b".into()), AnyInSegment, Literal("c".into())]),
+				Glob(vec![Literal("d".into()), Separator, Literal("e".into())]),
+			]),
+			Literal("lit".into()),
+		]))
+	);
+}
+
+#[test]
 fn empty() {
 	assert_eq!(glob().parse(r"").into_result(), Ok(Glob(vec![])));
 }
