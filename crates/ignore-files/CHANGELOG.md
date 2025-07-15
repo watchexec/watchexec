@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+- Add parser for Bazaar ignore files (`.bzrignore`). Supports glob patterns, regular expressions with `RE:` prefix, case-insensitive regex with `RE:(?i)`, and pattern negation with `!`.
+
 ## v3.0.4 (2025-05-15)
 
 - Calls to `add_globs()` and `add_file()` dynamically create a new ignore entry if there isn't one at the location of `applies_in` param. This allows users to e.g. add globs to a path that previously has no ignore files in. ([#908](https://github.com/watchexec/watchexec/pull/908))
