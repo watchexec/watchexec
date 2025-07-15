@@ -2,7 +2,7 @@
 
 ## Next (YYYY-MM-DD)
 
-- Add parser for Bazaar ignore files (`.bzrignore`). Supports glob patterns, regular expressions with `RE:` prefix, case-insensitive regex with `RE:(?i)`, and pattern negation with `!`.
+- Add homegrown parsers for Git (`.gitignore`), Mercurial (`.hgignore`), Bazaar (`.bzrignore`), Darcs boring (`_darcs/prefs/boring`), and Fossil (`.fossil-settings/ignore-glob`) ignore files.
 
 ## v3.0.4 (2025-05-15)
 
