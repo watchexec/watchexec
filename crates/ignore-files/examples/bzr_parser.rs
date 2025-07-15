@@ -1,7 +1,4 @@
-//! Example usage of the Bazaar ignore file parser.
-//!
-//! This example demonstrates how to use the bazaar parser to parse .bzrignore files
-//! and understand the different types of patterns supported.
+//! This is used for debugging the bzrignore file parser.
 
 use chumsky::prelude::*;
 use ignore_files::parse::bzr::{file, line, Line, PatternKind};

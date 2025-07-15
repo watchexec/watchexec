@@ -1,7 +1,4 @@
-//! Example usage of the Fossil ignore file parser.
-//!
-//! This example demonstrates how to use the fossil parser to parse .fossil-settings/ignore-glob files
-//! and understand the glob patterns supported by Fossil SCM.
+//! This is used for debugging the fossil ignore-glob file parser.
 
 use chumsky::prelude::*;
 use ignore_files::parse::fossil::{file, line, Line, Pattern, Segment, WildcardToken};

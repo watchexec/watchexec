@@ -1,7 +1,4 @@
-//! Example usage of the Darcs boring file parser.
-//!
-//! This example demonstrates how to use the darcs parser to parse _darcs/prefs/boring files
-//! and understand the regex patterns used by Darcs to ignore files.
+//! This is used for debugging the darcs boring file parser.
 
 use chumsky::prelude::*;
 use ignore_files::parse::darcs::{file, line, Line};
