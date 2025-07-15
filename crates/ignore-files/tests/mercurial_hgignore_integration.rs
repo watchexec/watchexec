@@ -98,7 +98,7 @@ syntax: regexp
 	let lines: Vec<&str> = hgignore_content.lines().collect();
 	let mut parsed_lines = Vec::new();
 	let mut syntax_sections = Vec::new();
-	let mut current_syntax = "glob"; // Default syntax
+
 	let mut parse_errors = Vec::new();
 	let mut known_limitations = Vec::new();
 
@@ -113,8 +113,7 @@ syntax: regexp
 				if line_content.starts_with("syntax:") {
 					if let Some(new_syntax) = line_content.strip_prefix("syntax:").map(|s| s.trim())
 					{
-						current_syntax = new_syntax;
-						syntax_sections.push((line_number, current_syntax.to_string()));
+						syntax_sections.push((line_number, new_syntax.to_string()));
 					}
 				}
 				parsed_lines.push((line_number, line_content.to_string(), parsed));
