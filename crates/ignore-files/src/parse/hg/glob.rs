@@ -100,11 +100,11 @@ pub fn glob<'src>() -> impl Parser<'src, &'src str, Glob, ParserErr<'src>> {
 
 		// Main glob parser uses the outside-alt literal parser
 		choice((
+			charclass().map(Class), // prioritize charclass as first token
 			just('/').to(Separator),
 			just("**").to(AnyInPath),
 			just('*').to(AnyInSegment),
 			just('?').to(One),
-			charclass().map(Class),
 			alt,
 			literal_outside_alt,
 		))

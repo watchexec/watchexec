@@ -45,7 +45,12 @@ pub fn charclass<'src>() -> impl Parser<'src, &'src str, Class, ParserErr<'src>>
 		.map(Equivalence)
 		.delimited_by(just("[="), just("=]"))
 		.debug("equivalence");
-	let alts = choice((named, collating, equivalence, range, single.clone()))
+	let bracketed = choice((named.clone(), collating.clone(), equivalence.clone()));
+	let alts = choice((bracketed.clone(), range.clone(), single.clone()))
+		.or(named)
+		.or(collating)
+		.or(equivalence)
+		.or(range)
 		.or(single)
 		.debug("alts")
 		.boxed();
