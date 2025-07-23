@@ -42,8 +42,8 @@
 //! ```
 //!
 //! Alternatively, you can use the modules exposed by the crate and the external crates such as
-//! [`notify`], [`clearscreen`], [`process_wrap`]... to build something more advanced, at the cost
-//! of reimplementing the glue code.
+//! [`notify`], [`clearscreen`](https://docs.rs/clearscreen), [`process_wrap`]... to build something
+//! more advanced, at the cost of reimplementing the glue code.
 //!
 //! Note that the library generates a _lot_ of debug messaging with [tracing]. **You should not
 //! enable printing even `error`-level log messages for this crate unless it's for debugging.**
@@ -53,6 +53,7 @@
 #![doc(html_favicon_url = "https://watchexec.github.io/logo:watchexec.svg")]
 #![doc(html_logo_url = "https://watchexec.github.io/logo:watchexec.svg")]
 #![warn(clippy::unwrap_used, missing_docs)]
+#![cfg_attr(not(test), warn(unused_crate_dependencies))]
 #![deny(rust_2018_idioms)]
 
 // the toolkit to make your own

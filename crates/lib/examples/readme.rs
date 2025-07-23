@@ -91,7 +91,7 @@ async fn main() -> Result<()> {
 				} = context.current
 				{
 					let duration = *finished - *started;
-					eprintln!("[Program stopped with {status:?}; ran for {duration:?}]")
+					eprintln!("[Program stopped with {status:?}; ran for {duration:?}]");
 				}
 			})
 			.await;
@@ -116,7 +116,7 @@ async fn main() -> Result<()> {
 		if action.paths().next().is_some() {
 			// watchexec can manage ("supervise") more than one program;
 			// here we only have one but we don't know its Id so we grab it out of the iterator
-			if let Some(job) = action.list_jobs().next().map(|(_, job)| job.clone()) {
+			if let Some(job) = action.list_jobs().next().map(|(_, job)| job) {
 				eprintln!("[Asking program to stop...]");
 				job.stop_with_signal(Signal::Terminate, Duration::from_secs(5));
 			}

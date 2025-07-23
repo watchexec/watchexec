@@ -93,7 +93,7 @@ impl ProcessEnd {
 	/// Convert a `ProcessEnd` to an `ExitStatus`.
 	///
 	/// This is a testing function only! **It will panic** if the `ProcessEnd` is not representable
-	/// as an `ExitStatus` on Unix. This is also not guaranteed to be accurate, as the waitpid()
+	/// as an `ExitStatus` on Unix. This is also not guaranteed to be accurate, as the `waitpid()`
 	/// status union is platform-specific. Exit codes and signals are implemented, other variants
 	/// are not.
 	#[cfg(unix)]

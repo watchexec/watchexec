@@ -57,6 +57,4 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-cargo-
 
-    - name: Clippy
-      run: cargo clippy -- $(cat .clippy-lints | tr -d '\r' | xargs)
-      shell: bash
+    - run: cargo clippy

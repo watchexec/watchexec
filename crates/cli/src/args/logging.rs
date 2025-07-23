@@ -5,6 +5,9 @@ use miette::{bail, Result};
 use tokio::fs::metadata;
 use tracing::{info, warn};
 use tracing_appender::{non_blocking, non_blocking::WorkerGuard, rolling};
+use tracing_subscriber::{EnvFilter, FmtSubscriber};
+
+use super::OPTSET_DEBUGGING;
 
 #[derive(Debug, Clone, Parser)]
 pub struct LoggingArgs {
@@ -17,15 +20,16 @@ pub struct LoggingArgs {
 	///
 	/// You may want to use with '--log-file' to avoid polluting your terminal.
 	///
-	/// Setting $RUST_LOG also works, and takes precedence, but is not recommended. However, using
-	/// $RUST_LOG is the only way to get logs from before these options are parsed.
+	/// Setting $WATCHEXEC_LOG also works, and takes precedence, but is not recommended. However, using
+	/// $WATCHEXEC_LOG is the only way to get logs from before these options are parsed.
 	#[arg(
 		long,
 		short,
-		help_heading = super::OPTSET_DEBUGGING,
+		help_heading = OPTSET_DEBUGGING,
 		action = ArgAction::Count,
 		default_value = "0",
 		num_args = 0,
+		display_order = 220,
 	)]
 	pub verbose: u8,
 
@@ -42,13 +46,27 @@ pub struct LoggingArgs {
 	/// will be the current date and time, in the format 'watchexec.YYYY-MM-DDTHH-MM-SSZ.log'.
 	#[arg(
 		long,
-		help_heading = super::OPTSET_DEBUGGING,
+		help_heading = OPTSET_DEBUGGING,
 		num_args = 0..=1,
 		default_missing_value = ".",
 		value_hint = ValueHint::AnyPath,
 		value_name = "PATH",
+		display_order = 120,
 	)]
 	pub log_file: Option<PathBuf>,
+
+	/// Print events that trigger actions
+	///
+	/// This prints the events that triggered the action when handling it (after debouncing), in a
+	/// human readable form. This is useful for debugging filters.
+	///
+	/// Use '-vvv' instead when you need more diagnostic information.
+	#[arg(
+		long,
+		help_heading = OPTSET_DEBUGGING,
+		display_order = 160,
+	)]
+	pub print_events: bool,
 }
 
 pub fn preargs() -> bool {
@@ -65,13 +83,17 @@ pub fn preargs() -> bool {
 		}
 	}
 
-	if !log_on && var("RUST_LOG").is_ok() {
-		match tracing_subscriber::fmt::try_init() {
+	if !log_on && var("WATCHEXEC_LOG").is_ok() {
+		let subscriber =
+			FmtSubscriber::builder().with_env_filter(EnvFilter::from_env("WATCHEXEC_LOG"));
+		match subscriber.try_init() {
 			Ok(()) => {
-				warn!(RUST_LOG=%var("RUST_LOG").unwrap(), "logging configured from RUST_LOG");
+				warn!(WATCHEXEC_LOG=%var("WATCHEXEC_LOG").unwrap(), "logging configured from WATCHEXEC_LOG");
 				log_on = true;
 			}
-			Err(e) => eprintln!("Failed to initialise logging with RUST_LOG, falling back\n{e}"),
+			Err(e) => {
+				eprintln!("Failed to initialise logging with WATCHEXEC_LOG, falling back\n{e}");
+			}
 		}
 	}
 

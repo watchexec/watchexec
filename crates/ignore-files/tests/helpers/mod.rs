@@ -70,12 +70,12 @@ pub trait PathHarness {
 				Match::Ignore(glob) => format!(
 					"Ignore({})",
 					glob.from()
-						.map_or(String::from(""), |f| f.display().to_string())
+						.map_or(String::new(), |f| f.display().to_string())
 				),
 				Match::Whitelist(glob) => format!(
 					"Whitelist({})",
 					glob.from()
-						.map_or(String::from(""), |f| f.display().to_string())
+						.map_or(String::new(), |f| f.display().to_string())
 				),
 			},
 		);
@@ -110,7 +110,7 @@ pub trait PathHarness {
 
 impl PathHarness for IgnoreFilter {
 	fn check_path(&self, path: &Path, is_dir: bool) -> Match<&Glob> {
-		self.match_path(&path, is_dir)
+		self.match_path(path, is_dir)
 	}
 }
 

@@ -1,6 +1,6 @@
 [package]
 name = "watchexec-filterer-ignore"
-version = "5.0.0"
+version = "7.0.0"
 
 authors = ["Félix Saparelli <felix@passcod.name>"]
 license = "Apache-2.0"
@@ -22,26 +22,19 @@ normalize-path = "0.2.1"
 tracing = "0.1.40"
 
 [dependencies.ignore-files]
-version = "3.0.2"
+version = "3.0.4"
 path = "../../ignore-files"
 
 [dependencies.watchexec]
-version = "5.0.0"
+version = "8.0.1"
 path = "../../lib"
 
 [dependencies.watchexec-events]
-version = "4.0.0"
+version = "6.0.0"
 path = "../../events"
 
-[dependencies.watchexec-signals]
-version = "4.0.0"
-path = "../../signals"
-
-[dev-dependencies]
-tracing-subscriber = "0.3.6"
-
 [dev-dependencies.project-origins]
-version = "1.4.0"
+version = "1.4.2"
 path = "../../project-origins"
 
 [dev-dependencies.tokio]
@@ -53,3 +46,7 @@ features = [
 	"rt-multi-thread",
 	"macros",
 ]
+
+[dev-dependencies.tracing-subscriber]
+version = "0.3.6"
+features = ["env-filter"]

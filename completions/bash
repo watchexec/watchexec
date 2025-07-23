@@ -1,12 +1,16 @@
 _watchexec() {
     local i cur prev opts cmd
     COMPREPLY=()
-    cur="${COMP_WORDS[COMP_CWORD]}"
-    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
+        cur="$2"
+    else
+        cur="${COMP_WORDS[COMP_CWORD]}"
+    fi
+    prev="$3"
     cmd=""
     opts=""
 
-    for i in ${COMP_WORDS[@]}
+    for i in "${COMP_WORDS[@]:0:COMP_CWORD}"
     do
         case "${cmd},${i}" in
             ",$1")
@@ -19,12 +23,91 @@ _watchexec() {
 
     case "${cmd}" in
         watchexec)
-            opts="-w -W -F -c -o -r -s -d -p -n -E -1 -N -q -e -f -j -i -v -h -V --watch --watch-non-recursive --watch-file --clear --on-busy-update --restart --signal --stop-signal --stop-timeout --map-signal --debounce --stdin-quit --no-vcs-ignore --no-project-ignore --no-global-ignore --no-default-ignore --no-discover-ignore --ignore-nothing --postpone --delay-run --poll --shell --no-environment --emit-events-to --only-emit-events --env --no-process-group --wrap-process --notify --color --timings --quiet --bell --project-origin --workdir --exts --filter --filter-file --filter-prog --ignore --ignore-file --fs-events --no-meta --print-events --manual --completions --verbose --log-file --help --version [COMMAND]..."
+            opts="-1 -n -E -o -r -s -d -p -w -W -F -e -f -j -i -v -c -N -q -h -V --manual --completions --only-emit-events --shell --no-environment --env --no-process-group --wrap-process --stop-signal --stop-timeout --delay-run --workdir --socket --on-busy-update --restart --signal --map-signal --debounce --stdin-quit --postpone --poll --emit-events-to --watch --watch-non-recursive --watch-file --no-vcs-ignore --no-project-ignore --no-global-ignore --no-default-ignore --no-discover-ignore --ignore-nothing --exts --filter --filter-file --project-origin --filter-prog --ignore --ignore-file --fs-events --no-meta --verbose --log-file --print-events --clear --notify --color --timings --quiet --bell --help --version [COMMAND]..."
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
+                --completions)
+                    COMPREPLY=($(compgen -W "bash elvish fish nu powershell zsh" -- "${cur}"))
+                    return 0
+                    ;;
+                --shell)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --env)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                -E)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --wrap-process)
+                    COMPREPLY=($(compgen -W "group session none" -- "${cur}"))
+                    return 0
+                    ;;
+                --stop-signal)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --stop-timeout)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --delay-run)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --workdir)
+                    COMPREPLY=()
+                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
+                        compopt -o plusdirs
+                    fi
+                    return 0
+                    ;;
+                --socket)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --on-busy-update)
+                    COMPREPLY=($(compgen -W "queue do-nothing restart signal" -- "${cur}"))
+                    return 0
+                    ;;
+                -o)
+                    COMPREPLY=($(compgen -W "queue do-nothing restart signal" -- "${cur}"))
+                    return 0
+                    ;;
+                --signal)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                -s)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --map-signal)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --debounce)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                -d)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --poll)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --emit-events-to)
+                    COMPREPLY=($(compgen -W "environment stdio file json-stdio json-file none" -- "${cur}"))
+                    return 0
+                    ;;
                 --watch)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
@@ -47,96 +130,6 @@ _watchexec() {
                     ;;
                 -F)
                     COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --clear)
-                    COMPREPLY=($(compgen -W "clear reset" -- "${cur}"))
-                    return 0
-                    ;;
-                -c)
-                    COMPREPLY=($(compgen -W "clear reset" -- "${cur}"))
-                    return 0
-                    ;;
-                --on-busy-update)
-                    COMPREPLY=($(compgen -W "queue do-nothing restart signal" -- "${cur}"))
-                    return 0
-                    ;;
-                -o)
-                    COMPREPLY=($(compgen -W "queue do-nothing restart signal" -- "${cur}"))
-                    return 0
-                    ;;
-                --signal)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                -s)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --stop-signal)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --stop-timeout)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --map-signal)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --debounce)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                -d)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --delay-run)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --poll)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --shell)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --emit-events-to)
-                    COMPREPLY=($(compgen -W "environment stdio file json-stdio json-file none" -- "${cur}"))
-                    return 0
-                    ;;
-                --env)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                -E)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --wrap-process)
-                    COMPREPLY=($(compgen -W "group session none" -- "${cur}"))
-                    return 0
-                    ;;
-                --color)
-                    COMPREPLY=($(compgen -W "auto always never" -- "${cur}"))
-                    return 0
-                    ;;
-                --project-origin)
-                    COMPREPLY=()
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o plusdirs
-                    fi
-                    return 0
-                    ;;
-                --workdir)
-                    COMPREPLY=()
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o plusdirs
-                    fi
                     return 0
                     ;;
                 --exts)
@@ -167,6 +160,13 @@ _watchexec() {
                     fi
                     if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
                         compopt -o filenames
+                    fi
+                    return 0
+                    ;;
+                --project-origin)
+                    COMPREPLY=()
+                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
+                        compopt -o plusdirs
                     fi
                     return 0
                     ;;
@@ -205,12 +205,20 @@ _watchexec() {
                     COMPREPLY=($(compgen -W "access create remove rename modify metadata" -- "${cur}"))
                     return 0
                     ;;
-                --completions)
-                    COMPREPLY=($(compgen -W "bash elvish fish nu powershell zsh" -- "${cur}"))
-                    return 0
-                    ;;
                 --log-file)
                     COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --clear)
+                    COMPREPLY=($(compgen -W "clear reset" -- "${cur}"))
+                    return 0
+                    ;;
+                -c)
+                    COMPREPLY=($(compgen -W "clear reset" -- "${cur}"))
+                    return 0
+                    ;;
+                --color)
+                    COMPREPLY=($(compgen -W "auto always never" -- "${cur}"))
                     return 0
                     ;;
                 *)

@@ -1,6 +1,5 @@
-use std::{iter::empty, marker::PhantomData};
+use std::marker::PhantomData;
 
-use jaq_interpret::{Ctx, FilterT, RcIter, Val};
 use miette::miette;
 use tokio::{
 	sync::{mpsc, oneshot},
@@ -62,73 +61,47 @@ impl FilterProgs {
 	}
 
 	pub fn new(args: &Args) -> miette::Result<Self> {
-		let progs = args.filter_programs_parsed.clone();
-		eprintln!(
-			"EXPERIMENTAL: filter programs are unstable and may change/vanish without notice"
-		);
-
+		let progs = args.filtering.filter_programs_parsed.clone();
 		let (requester, mut receiver) = Requester::<Event, bool>::new(BUFFER);
-		let task =
-			spawn_blocking(move || {
-				'chan: while let Some((event, sender)) = receiver.blocking_recv() {
-					let val = serde_json::to_value(&event)
-						.map_err(|err| miette!("failed to serialize event: {}", err))
-						.map(Val::from)?;
-
-					for (n, prog) in progs.iter().enumerate() {
-						trace!(?n, "trying filter program");
-						let mut jaq = super::proglib::jaq_lib()?;
-						let filter = jaq.compile(prog.clone());
-						if !jaq.errs.is_empty() {
-							for (error, span) in jaq.errs {
-								error!(%error, "failed to compile filter program #{n}@{}:{}", span.start, span.end);
-							}
+		let task = spawn_blocking(move || {
+			'chan: while let Some((event, sender)) = receiver.blocking_recv() {
+				for (n, prog) in progs.iter().enumerate() {
+					trace!(?n, "trying filter program");
+					match prog.run(&event) {
+						Ok(false) => {
+							trace!(
+								?n,
+								verdict = false,
+								"filter program finished; fail so stopping there"
+							);
+							sender
+								.send(false)
+								.unwrap_or_else(|_| warn!("failed to send filter result"));
+							continue 'chan;
+						}
+						Ok(true) => {
+							trace!(
+								?n,
+								verdict = true,
+								"filter program finished; pass so trying next"
+							);
 							continue;
 						}
-
-						let inputs = RcIter::new(empty());
-						let mut results = filter.run((Ctx::new([], &inputs), val.clone()));
-						if let Some(res) = results.next() {
-							match res {
-								Ok(Val::Bool(false)) => {
-									trace!(
-										?n,
-										verdict = false,
-										"filter program finished; fail so stopping there"
-									);
-									sender
-										.send(false)
-										.unwrap_or_else(|_| warn!("failed to send filter result"));
-									continue 'chan;
-								}
-								Ok(Val::Bool(true)) => {
-									trace!(
-										?n,
-										verdict = true,
-										"filter program finished; pass so trying next"
-									);
-									continue;
-								}
-								Ok(val) => {
-									error!(?n, ?val, "filter program returned non-boolean, ignoring and trying next");
-									continue;
-								}
-								Err(err) => {
-									error!(?n, error=%err, "filter program failed, so trying next");
-									continue;
-								}
-							}
+						Err(err) => {
+							error!(?n, error=%err, "filter program failed, so trying next");
+							continue;
 						}
 					}
-
-					trace!("all filters failed, sending pass as default");
-					sender
-						.send(true)
-						.unwrap_or_else(|_| warn!("failed to send filter result"));
 				}
 
-				Ok(()) as miette::Result<()>
-			});
+				trace!("all filters failed, sending pass as default");
+				sender
+					.send(true)
+					.unwrap_or_else(|_| warn!("failed to send filter result"));
+			}
+
+			Ok(()) as miette::Result<()>
+		});
 
 		tokio::spawn(async {
 			match task.await {

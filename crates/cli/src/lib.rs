@@ -1,39 +1,43 @@
 #![deny(rust_2018_idioms)]
 #![allow(clippy::missing_const_for_fn, clippy::future_not_send)]
 
-use std::{io::Write, process::Stdio};
+use std::{
+	io::{IsTerminal, Write},
+	process::{ExitCode, Stdio},
+};
 
-use args::{Args, ShellCompletion};
 use clap::CommandFactory;
 use clap_complete::{Generator, Shell};
 use clap_mangen::Man;
-use is_terminal::IsTerminal;
 use miette::{IntoDiagnostic, Result};
 use tokio::{io::AsyncWriteExt, process::Command};
 use tracing::{debug, info};
 use watchexec::Watchexec;
 use watchexec_events::{Event, Priority};
 
-use crate::filterer::WatchexecFilterer;
+use crate::{
+	args::{Args, ShellCompletion},
+	filterer::WatchexecFilterer,
+};
 
 pub mod args;
 mod config;
 mod dirs;
 mod emits;
 mod filterer;
+mod socket;
 mod state;
 
-async fn run_watchexec(args: Args) -> Result<()> {
+async fn run_watchexec(args: Args, state: state::State) -> Result<()> {
 	info!(version=%env!("CARGO_PKG_VERSION"), "constructing Watchexec from CLI");
 
-	let state = state::State::default();
 	let config = config::make_config(&args, &state)?;
 	config.filterer(WatchexecFilterer::new(&args).await?);
 
 	info!("initialising Watchexec runtime");
 	let wx = Watchexec::with_config(config)?;
 
-	if !args.postpone {
+	if !args.events.postpone {
 		debug!("kicking off with empty event");
 		wx.send_event(Event::default(), Priority::Urgent).await?;
 	}
@@ -41,7 +45,10 @@ async fn run_watchexec(args: Args) -> Result<()> {
 	info!("running main loop");
 	wx.main().await.into_diagnostic()??;
 
-	if matches!(args.screen_clear, Some(args::ClearMode::Reset)) {
+	if matches!(
+		args.output.screen_clear,
+		Some(args::output::ClearMode::Reset)
+	) {
 		config::reset_screen();
 	}
 
@@ -50,7 +57,7 @@ async fn run_watchexec(args: Args) -> Result<()> {
 	Ok(())
 }
 
-async fn run_manpage(_args: Args) -> Result<()> {
+async fn run_manpage() -> Result<()> {
 	info!(version=%env!("CARGO_PKG_VERSION"), "constructing manpage");
 
 	let man = Man::new(Args::command().long_version(None));
@@ -115,14 +122,19 @@ async fn run_completions(shell: ShellCompletion) -> Result<()> {
 	Ok(())
 }
 
-pub async fn run() -> Result<()> {
-	let (args, _log_guard) = args::get_args().await?;
+pub async fn run() -> Result<ExitCode> {
+	let (args, _guards) = args::get_args().await?;
 
-	if args.manual {
-		run_manpage(args).await
+	Ok(if args.manual {
+		run_manpage().await?;
+		ExitCode::SUCCESS
 	} else if let Some(shell) = args.completions {
-		run_completions(shell).await
+		run_completions(shell).await?;
+		ExitCode::SUCCESS
 	} else {
-		run_watchexec(args).await
-	}
+		let state = state::new(&args).await?;
+		run_watchexec(args, state.clone()).await?;
+		let exit = *(state.exit_code.lock().unwrap());
+		exit
+	})
 }

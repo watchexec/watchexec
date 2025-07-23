@@ -22,7 +22,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
+  libs:
     strategy:
       fail-fast: false
       matrix:
@@ -31,7 +31,7 @@ jobs:
           - ubuntu
           - windows
 
-    name: Test ${{ matrix.platform }}
+    name: Test libraries ${{ matrix.platform }}
     runs-on: "${{ matrix.platform }}-latest"
 
     steps:
@@ -49,46 +49,70 @@ jobs:
         echo "Adding GNU tar to PATH"
         echo C:\Program Files\Git\usr\bin>>"%GITHUB_PATH%"
 
-    - name: Cargo caching
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cargo/registry/index/
-          ~/.cargo/registry/cache/
-          ~/.cargo/git/db/
-        key: ${{ runner.os }}-cargo-stable-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-stable-
-          ${{ runner.os }}-cargo-
+    - uses: Swatinem/rust-cache@v2
 
-    - name: Compilation caching
-      uses: actions/cache@v4
-      with:
-        path: target/
-        key: ${{ runner.os }}-target-stable-${{ hashFiles('**/Cargo.lock') }}
+    - name: Run library test suite
+      run: cargo test --workspace --exclude watchexec-cli --exclude watchexec-events
 
-    - name: Run test suite
-      run: cargo test
     - name: Run watchexec-events integration tests
       run: cargo test -p watchexec-events -F serde
-    - name: Check that CLI runs
-      run: cargo run -p watchexec-cli -- -1 echo
+
+  cli-e2e:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - macos
+          - ubuntu
+          - windows
+
+    name: Test CLI (e2e) ${{ matrix.platform }}
+    runs-on: "${{ matrix.platform }}-latest"
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Configure toolchain
+      run: |
+        rustup toolchain install --profile minimal --no-self-update stable
+        rustup default stable
+
+    # https://github.com/actions/cache/issues/752
+    - if: ${{ runner.os == 'Windows' }}
+      name: Use GNU tar
+      shell: cmd
+      run: |
+        echo "Adding GNU tar to PATH"
+        echo C:\Program Files\Git\usr\bin>>"%GITHUB_PATH%"
 
     - name: Install coreutils on mac
       if: ${{ matrix.platform == 'macos' }}
       run: brew install coreutils
 
-    - name: Run watchexec integration tests (unix)
-      if: ${{ matrix.platform != 'windows' }}
-      run: crates/cli/run-tests.sh
+    - uses: Swatinem/rust-cache@v2
+
+    - name: Build CLI programs
+      run: cargo build
+
+    - name: Run CLI integration tests
+      run: crates/cli/run-tests.sh ${{ matrix.platform }}
       shell: bash
       env:
         WATCHEXEC_BIN: target/debug/watchexec
+        TEST_SOCKETFD_BIN: target/debug/test-socketfd
 
-    - name: Run bosion integration tests
-      run: ./run-tests.sh
-      working-directory: crates/bosion
-      shell: bash
+  cli-docs:
+
+    name: Test CLI docs
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Configure toolchain
+      run: |
+        rustup toolchain install --profile minimal --no-self-update stable
+        rustup default stable
+
+    - uses: Swatinem/rust-cache@v2
 
     - name: Generate manpage
       run: cargo run -p watchexec-cli -- --manual > doc/watchexec.1
@@ -100,9 +124,17 @@ jobs:
     - name: Check that completions are up to date
       run: git diff --exit-code -- completions/
 
-  cross-checks:
-    name: Checks only against select targets
-    runs-on: ubuntu-latest
+  cli-unit:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - macos
+          - ubuntu
+          - windows
+
+    name: Test CLI (unit) ${{ matrix.platform }}
+    runs-on: "${{ matrix.platform }}-latest"
 
     steps:
     - uses: actions/checkout@v4
@@ -111,36 +143,87 @@ jobs:
         rustup toolchain install --profile minimal --no-self-update stable
         rustup default stable
 
-        sudo apt-get install -y musl-tools
-        rustup target add x86_64-unknown-linux-musl
+    # https://github.com/actions/cache/issues/752
+    - if: ${{ runner.os == 'Windows' }}
+      name: Use GNU tar
+      shell: cmd
+      run: |
+        echo "Adding GNU tar to PATH"
+        echo C:\Program Files\Git\usr\bin>>"%GITHUB_PATH%"
 
-    - name: Install cross
-      uses: taiki-e/install-action@v2
-      with:
-        tool: cross
+    - uses: Swatinem/rust-cache@v2
 
-    - name: Cargo caching
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cargo/registry/index/
-          ~/.cargo/registry/cache/
-          ~/.cargo/git/db/
-        key: ${{ runner.os }}-cargo-stable-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-stable-
-          ${{ runner.os }}-cargo-
+    - name: Run CLI unit tests
+      run: cargo test -p watchexec-cli
 
-    - run: cargo check --target x86_64-unknown-linux-musl
-    - run: cross check --target x86_64-unknown-freebsd
-    - run: cross check --target x86_64-unknown-netbsd
+  bosion:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - macos
+          - ubuntu
+          - windows
+
+    name: Bosion integration tests on ${{ matrix.platform }}
+    runs-on: "${{ matrix.platform }}-latest"
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Configure toolchain
+      run: |
+        rustup toolchain install --profile minimal --no-self-update stable
+        rustup default stable
+
+    # https://github.com/actions/cache/issues/752
+    - if: ${{ runner.os == 'Windows' }}
+      name: Use GNU tar
+      shell: cmd
+      run: |
+        echo "Adding GNU tar to PATH"
+        echo C:\Program Files\Git\usr\bin>>"%GITHUB_PATH%"
+
+    - uses: Swatinem/rust-cache@v2
+
+    - name: Run bosion integration tests
+      run: ./run-tests.sh
+      working-directory: crates/bosion
+      shell: bash
+
+  cross-checks:
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - x86_64-unknown-linux-musl
+          - x86_64-unknown-freebsd
+
+    name: Typecheck only on ${{ matrix.target }}
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Configure toolchain
+      run: |
+        rustup toolchain install --profile minimal --no-self-update stable
+        rustup default stable
+        rustup target add ${{ matrix.target }}
+
+    - if: matrix.target == 'x86_64-unknown-linux-musl'
+      run: sudo apt-get install -y musl-tools
+
+    - uses: Swatinem/rust-cache@v2
+    - run: cargo check --target ${{ matrix.target }}
 
   tests-pass:
     if: always()
     name: Tests pass
     needs:
-    - test
+    - bosion
+    - cli-e2e
+    - cli-unit
     - cross-checks
+    - libs
     runs-on: ubuntu-latest
     steps:
     - uses: re-actors/alls-green@release/v1

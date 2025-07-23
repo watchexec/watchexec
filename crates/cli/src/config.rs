@@ -2,11 +2,11 @@ use std::{
 	borrow::Cow,
 	collections::HashMap,
 	env::var,
-	ffi::{OsStr, OsString},
+	ffi::OsStr,
 	fs::File,
 	io::{IsTerminal, Write},
-	path::PathBuf,
-	process::Stdio,
+	iter::once,
+	process::{ExitCode, Stdio},
 	sync::{
 		atomic::{AtomicBool, AtomicU8, Ordering},
 		Arc,
@@ -15,7 +15,7 @@ use std::{
 };
 
 use clearscreen::ClearScreen;
-use miette::{miette, IntoDiagnostic, Report, Result};
+use miette::{IntoDiagnostic, Report, Result};
 use notify_rust::Notification;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use tokio::{process::Command as TokioCommand, time::sleep};
@@ -32,10 +32,16 @@ use watchexec_events::{Event, Keyboard, ProcessEnd, Tag};
 use watchexec_signals::Signal;
 
 use crate::{
-	args::{Args, ClearMode, ColourMode, EmitEvents, OnBusyUpdate, SignalMapping, WrapMode},
-	state::RotatingTempFile,
+	args::{
+		command::{EnvVar, WrapMode},
+		events::{EmitEvents, OnBusyUpdate, SignalMapping},
+		output::{ClearMode, ColourMode},
+		Args,
+	},
+	emits::events_to_simple_format,
+	socket::Sockets,
+	state::State,
 };
-use crate::{emits::events_to_simple_format, state::State};
 
 #[derive(Clone, Copy, Debug)]
 struct OutputFlags {
@@ -68,25 +74,20 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 		eprintln!("[[Error (not fatal)]]\n{}", Report::new(err.error));
 	});
 
-	config.pathset(args.paths.iter().map(|wp| wp.into()).map(|mut p: PathBuf| {
-		if p.is_file() {
-			p.pop();
-		}
-		p
-	}));
+	config.pathset(args.filtering.paths.clone());
 
-	config.throttle(args.debounce.0);
-	config.keyboard_events(args.stdin_quit);
+	config.throttle(args.events.debounce.0);
+	config.keyboard_events(args.events.stdin_quit);
 
-	if let Some(interval) = args.poll {
+	if let Some(interval) = args.events.poll {
 		config.file_watcher(Watcher::Poll(interval.0));
 	}
 
 	let once = args.once;
-	let clear = args.screen_clear;
+	let clear = args.output.screen_clear;
 
-	let emit_events_to = args.emit_events_to;
-	let emit_file = state.emit_file.clone();
+	let emit_events_to = args.events.emit_events_to;
+	let state = state.clone();
 
 	if args.only_emit_events {
 		config.on_action(move |mut action| {
@@ -136,40 +137,33 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 		return Ok(config);
 	}
 
-	let delay_run = args.delay_run.map(|ts| ts.0);
-	let on_busy = args.on_busy_update;
-	let stdin_quit = args.stdin_quit;
+	let delay_run = args.command.delay_run.map(|ts| ts.0);
+	let on_busy = args.events.on_busy_update;
+	let stdin_quit = args.events.stdin_quit;
 
-	let signal = args.signal;
-	let stop_signal = args.stop_signal;
-	let stop_timeout = args.stop_timeout.0;
+	let signal = args.events.signal;
+	let stop_signal = args.command.stop_signal;
+	let stop_timeout = args.command.stop_timeout.0;
 
-	let print_events = args.print_events;
+	let print_events = args.logging.print_events;
 	let outflags = OutputFlags {
-		quiet: args.quiet,
-		colour: match args.color {
+		quiet: args.output.quiet,
+		colour: match args.output.color {
 			ColourMode::Auto if !std::io::stdin().is_terminal() => ColorChoice::Never,
 			ColourMode::Auto => ColorChoice::Auto,
 			ColourMode::Always => ColorChoice::Always,
 			ColourMode::Never => ColorChoice::Never,
 		},
-		timings: args.timings,
-		bell: args.bell,
-		toast: args.notify,
+		timings: args.output.timings,
+		bell: args.output.bell,
+		toast: args.output.notify,
 	};
 
-	let workdir = Arc::new(args.workdir.clone());
+	let workdir = Arc::new(args.command.workdir.clone());
 
-	let mut add_envs = HashMap::new();
-	for pair in &args.env {
-		if let Some((k, v)) = pair.split_once('=') {
-			add_envs.insert(k.to_owned(), OsString::from(v));
-		} else {
-			return Err(miette!("{pair} is not in key=value format"));
-		}
-	}
+	let add_envs: Arc<[EnvVar]> = args.command.env.clone().into();
 	debug!(
-		?add_envs,
+		envs=?args.command.env,
 		"additional environment variables to add to command"
 	);
 
@@ -177,7 +171,8 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 	let command = interpret_command_args(args)?;
 
 	let signal_map: Arc<HashMap<Signal, Option<Signal>>> = Arc::new(
-		args.signal_map
+		args.events
+			.signal_map
 			.iter()
 			.copied()
 			.map(|SignalMapping { from, to }| (from, to))
@@ -190,7 +185,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 	config.on_action_async(move |mut action| {
 		let add_envs = add_envs.clone();
 		let command = command.clone();
-		let emit_file = emit_file.clone();
+		let state = state.clone();
 		let queued = queued.clone();
 		let quit_again = quit_again.clone();
 		let signal_map = signal_map.clone();
@@ -201,7 +196,6 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 
 				let add_envs = add_envs.clone();
 				let command = command.clone();
-				let emit_file = emit_file.clone();
 				let queued = queued.clone();
 				let quit_again = quit_again.clone();
 				let signal_map = signal_map.clone();
@@ -210,23 +204,32 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 				trace!("set spawn hook for workdir and environment variables");
 				let job = action.get_or_create_job(id, move || command.clone());
 				let events = action.events.clone();
-				job.set_spawn_hook(move |command, _| {
-					let add_envs = add_envs.clone();
-					let emit_file = emit_file.clone();
-					let events = events.clone();
+				job.set_spawn_hook({
+					let state = state.clone();
+					move |command, _| {
+						let add_envs = add_envs.clone();
+						let state = state.clone();
+						let events = events.clone();
 
-					if let Some(ref workdir) = workdir.as_ref() {
-						debug!(?workdir, "set command workdir");
-						command.command_mut().current_dir(workdir);
+						if let Some(ref workdir) = workdir.as_ref() {
+							debug!(?workdir, "set command workdir");
+							command.command_mut().current_dir(workdir);
+						}
+
+						if let Some(ref socket_set) = state.socket_set {
+							for env in socket_set.envs() {
+								command.command_mut().env(env.key, env.value);
+							}
+						}
+
+						emit_events_to_command(
+							command.command_mut(),
+							events,
+							state,
+							emit_events_to,
+							add_envs,
+						);
 					}
-
-					emit_events_to_command(
-						command.command_mut(),
-						events,
-						emit_file,
-						emit_events_to,
-						add_envs,
-					);
 				});
 
 				let show_events = {
@@ -270,7 +273,9 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 				let quit = |mut action: ActionHandler| {
 					match quit_again.fetch_add(1, Ordering::Relaxed) {
 						0 => {
-							eprintln!("[Waiting {stop_timeout:?} for processes to exit before stopping...]");
+							if stop_timeout > Duration::ZERO {
+								eprintln!("[Waiting {stop_timeout:?} for processes to exit before stopping...]");
+							}
 							// eprintln!("[Waiting {stop_timeout:?} for processes to exit before stopping... Ctrl-C again to exit faster]");
 							// see TODO in action/worker.rs
 							action.quit_gracefully(
@@ -304,6 +309,21 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 					// this blocks the event loop, but also this is a debug feature so i don't care
 					job.start().await;
 					job.to_wait().await;
+					job.run({
+						let state = state.clone();
+						move |context| {
+							if let Some(end) = end_of_process(context.current, outflags) {
+								*state.exit_code.lock().unwrap() = ExitCode::from(
+									end.into_exitstatus()
+										.code()
+										.unwrap_or(0)
+										.try_into()
+										.unwrap_or(1),
+								);
+							}
+						}
+					})
+					.await;
 					return quit(action);
 				}
 
@@ -349,7 +369,9 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 				}
 
 				// only filesystem events below here (or empty synthetic events)
-				if action.paths().next().is_none() && !action.events.iter().any(|e| e.is_empty()) {
+				if action.paths().next().is_none()
+					&& !action.events.iter().any(watchexec_events::Event::is_empty)
+				{
 					debug!("no filesystem or synthetic events, skip without doing more");
 					show_events();
 					return action;
@@ -393,7 +415,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 												innerjob.clone(),
 												context.command.clone(),
 												outflags,
-											)
+											);
 										});
 									}
 									OnBusyUpdate::Restart => {
@@ -407,7 +429,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 												innerjob.clone(),
 												context.command.clone(),
 												outflags,
-											)
+											);
 										});
 									}
 									OnBusyUpdate::Queue => {
@@ -431,7 +453,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 															innerjob.clone(),
 															context.command.clone(),
 															outflags,
-														)
+														);
 													})
 													.await;
 													trace!("resetting queued state");
@@ -450,7 +472,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 										innerjob.clone(),
 										context.command.clone(),
 										outflags,
-									)
+									);
 								});
 							}
 						})
@@ -468,15 +490,13 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 
 #[instrument(level = "debug")]
 fn interpret_command_args(args: &Args) -> Result<Arc<Command>> {
-	let mut cmd = args.command.clone();
-	if cmd.is_empty() {
-		panic!("(clap) Bug: command is not present");
-	}
+	let mut cmd = args.program.clone();
+	assert!(!cmd.is_empty(), "(clap) Bug: command is not present");
 
-	let shell = if args.no_shell {
+	let shell = if args.command.no_shell {
 		None
 	} else {
-		let shell = args.shell.clone().or_else(|| var("SHELL").ok());
+		let shell = args.command.shell.clone().or_else(|| var("SHELL").ok());
 		match shell
 			.as_deref()
 			.or_else(|| {
@@ -538,8 +558,8 @@ fn interpret_command_args(args: &Args) -> Result<Arc<Command>> {
 	Ok(Arc::new(Command {
 		program,
 		options: SpawnOptions {
-			grouped: matches!(args.wrap_process, WrapMode::Group),
-			session: matches!(args.wrap_process, WrapMode::Session),
+			grouped: matches!(args.command.wrap_process, WrapMode::Group),
+			session: matches!(args.command.wrap_process, WrapMode::Session),
 			..Default::default()
 		},
 	}))
@@ -572,19 +592,21 @@ fn setup_process(job: Job, command: Arc<Command>, outflags: OutputFlags) {
 
 	tokio::spawn(async move {
 		job.to_wait().await;
-		job.run(move |context| end_of_process(context.current, outflags));
+		job.run(move |context| {
+			end_of_process(context.current, outflags);
+		});
 	});
 }
 
 #[instrument(level = "trace")]
-fn end_of_process(state: &CommandState, outflags: OutputFlags) {
+fn end_of_process(state: &CommandState, outflags: OutputFlags) -> Option<ProcessEnd> {
 	let CommandState::Finished {
 		status,
 		started,
 		finished,
 	} = state
 	else {
-		return;
+		return None;
 	};
 
 	let duration = *finished - *started;
@@ -633,25 +655,30 @@ fn end_of_process(state: &CommandState, outflags: OutputFlags) {
 		stdout.write_all(b"\x07").ok();
 		stdout.flush().ok();
 	}
+
+	Some(*status)
 }
 
 #[instrument(level = "trace")]
 fn emit_events_to_command(
 	command: &mut TokioCommand,
 	events: Arc<[Event]>,
-	emit_file: RotatingTempFile,
+	state: State,
 	emit_events_to: EmitEvents,
-	mut add_envs: HashMap<String, OsString>,
+	add_envs: Arc<[EnvVar]>,
 ) {
-	use crate::emits::*;
+	use crate::emits::{emits_to_environment, emits_to_file, emits_to_json_file};
 
 	let mut stdin = None;
 
+	let add_envs = add_envs.clone();
+	let mut envs = Box::new(add_envs.into_iter().cloned()) as Box<dyn Iterator<Item = EnvVar>>;
+
 	match emit_events_to {
 		EmitEvents::Environment => {
-			add_envs.extend(emits_to_environment(&events));
+			envs = Box::new(envs.chain(emits_to_environment(&events)));
 		}
-		EmitEvents::Stdio => match emits_to_file(&emit_file, &events)
+		EmitEvents::Stdio => match emits_to_file(&state.emit_file, &events)
 			.and_then(|path| File::open(path).into_diagnostic())
 		{
 			Ok(file) => {
@@ -661,15 +688,18 @@ fn emit_events_to_command(
 				error!("Failed to write events to stdin, continuing without it: {err}");
 			}
 		},
-		EmitEvents::File => match emits_to_file(&emit_file, &events) {
+		EmitEvents::File => match emits_to_file(&state.emit_file, &events) {
 			Ok(path) => {
-				add_envs.insert("WATCHEXEC_EVENTS_FILE".into(), path.into());
+				envs = Box::new(envs.chain(once(EnvVar {
+					key: "WATCHEXEC_EVENTS_FILE".into(),
+					value: path.into(),
+				})));
 			}
 			Err(err) => {
 				error!("Failed to write WATCHEXEC_EVENTS_FILE, continuing without it: {err}");
 			}
 		},
-		EmitEvents::JsonStdio => match emits_to_json_file(&emit_file, &events)
+		EmitEvents::JsonStdio => match emits_to_json_file(&state.emit_file, &events)
 			.and_then(|path| File::open(path).into_diagnostic())
 		{
 			Ok(file) => {
@@ -679,9 +709,12 @@ fn emit_events_to_command(
 				error!("Failed to write events to stdin, continuing without it: {err}");
 			}
 		},
-		EmitEvents::JsonFile => match emits_to_json_file(&emit_file, &events) {
+		EmitEvents::JsonFile => match emits_to_json_file(&state.emit_file, &events) {
 			Ok(path) => {
-				add_envs.insert("WATCHEXEC_EVENTS_FILE".into(), path.into());
+				envs = Box::new(envs.chain(once(EnvVar {
+					key: "WATCHEXEC_EVENTS_FILE".into(),
+					value: path.into(),
+				})));
 			}
 			Err(err) => {
 				error!("Failed to write WATCHEXEC_EVENTS_FILE, continuing without it: {err}");
@@ -690,9 +723,9 @@ fn emit_events_to_command(
 		EmitEvents::None => {}
 	}
 
-	for (k, v) in add_envs {
-		debug!(?k, ?v, "inserting environment variable");
-		command.env(k, v);
+	for var in envs {
+		debug!(?var, "inserting environment variable");
+		command.env(var.key, var.value);
 	}
 
 	if let Some(stdin) = stdin {
@@ -701,7 +734,7 @@ fn emit_events_to_command(
 	}
 }
 
-pub(crate) fn reset_screen() {
+pub fn reset_screen() {
 	for cs in [
 		ClearScreen::WindowsCooked,
 		ClearScreen::WindowsVt,

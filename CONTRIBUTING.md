@@ -23,7 +23,7 @@ There are a few anti goals:
 To enable verbose logging in tests, run with:
 
 ```console
-$ env RUST_LOG=watchexec=trace,info RUST_TEST_THREADS=1 RUST_NOCAPTURE=1 cargo test --test testfile -- testname
+$ env WATCHEXEC_LOG=watchexec=trace,info RUST_TEST_THREADS=1 RUST_NOCAPTURE=1 cargo test --test testfile -- testname
 ```
 
 To use [Tokio Console](https://github.com/tokio-rs/console):

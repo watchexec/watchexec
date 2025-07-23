@@ -1,6 +1,6 @@
 [package]
 name = "watchexec"
-version = "5.0.0"
+version = "8.0.1"
 
 authors = ["Félix Saparelli <felix@passcod.name>", "Matt Green <mattgreenrocks@gmail.com>"]
 license = "Apache-2.0"
@@ -17,38 +17,24 @@ edition = "2021"
 
 [dependencies]
 async-priority-channel = "0.2.0"
-async-recursion = "1.0.5"
 atomic-take = "1.0.0"
 futures = "0.3.29"
 miette = "7.2.0"
-notify = "6.0.0"
-once_cell = "1.8.0"
-thiserror = "1.0.44"
+notify = "8.0.0"
+thiserror = "2.0.11"
 normalize-path = "0.2.0"
 
-[dependencies.process-wrap]
-version = "8.0.0"
-features = ["tokio1"]
-
 [dependencies.watchexec-events]
-version = "4.0.0"
+version = "6.0.0"
 path = "../events"
 
 [dependencies.watchexec-signals]
-version = "4.0.0"
+version = "5.0.0"
 path = "../signals"
 
 [dependencies.watchexec-supervisor]
-version = "3.0.0"
+version = "5.0.1"
 path = "../supervisor"
-
-[dependencies.ignore-files]
-version = "3.0.2"
-path = "../ignore-files"
-
-[dependencies.project-origins]
-version = "1.4.0"
-path = "../project-origins"
 
 [dependencies.tokio]
 version = "1.33.0"
@@ -66,10 +52,24 @@ features = [
 version = "0.1.40"
 features = ["log"]
 
-[target.'cfg(unix)'.dependencies.nix]
-version = "0.29.0"
-features = ["signal"]
-
 [dev-dependencies.tracing-subscriber]
 version = "0.3.6"
 features = ["env-filter"]
+
+[target.'cfg(unix)'.dev-dependencies.nix]
+version = "0.30.1"
+features = ["signal"]
+
+[lints.clippy]
+nursery = "warn"
+pedantic = "warn"
+module_name_repetitions = "allow"
+similar_names = "allow"
+cognitive_complexity = "allow"
+too_many_lines = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+default_trait_access = "allow"
+enum_glob_use = "allow"
+option_if_let_else = "allow"
+blocks_in_conditions = "allow"

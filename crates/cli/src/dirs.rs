@@ -10,10 +10,17 @@ use tokio::fs::canonicalize;
 use tracing::{debug, info, warn};
 use watchexec::paths::common_prefix;
 
-use crate::args::Args;
+use crate::args::{command::CommandArgs, filtering::FilteringArgs, Args};
 
-pub async fn project_origin(args: &Args) -> Result<PathBuf> {
-	let project_origin = if let Some(origin) = &args.project_origin {
+pub async fn project_origin(
+	FilteringArgs {
+		project_origin,
+		paths,
+		..
+	}: &FilteringArgs,
+	CommandArgs { workdir, .. }: &CommandArgs,
+) -> Result<PathBuf> {
+	let project_origin = if let Some(origin) = project_origin {
 		debug!(?origin, "project origin override");
 		canonicalize(origin).await.into_diagnostic()?
 	} else {
@@ -24,7 +31,7 @@ pub async fn project_origin(args: &Args) -> Result<PathBuf> {
 		debug!(?homedir, "home directory");
 
 		let homedir_requested = homedir.as_ref().map_or(false, |home| {
-			args.paths
+			paths
 				.binary_search_by_key(home, |w| PathBuf::from(w.clone()))
 				.is_ok()
 		});
@@ -34,7 +41,7 @@ pub async fn project_origin(args: &Args) -> Result<PathBuf> {
 		);
 
 		let mut origins = HashSet::new();
-		for path in &args.paths {
+		for path in paths {
 			origins.extend(project_origins::origins(path).await);
 		}
 
@@ -48,7 +55,7 @@ pub async fn project_origin(args: &Args) -> Result<PathBuf> {
 
 		if origins.is_empty() {
 			debug!("no origins, using current directory");
-			origins.insert(args.workdir.clone().unwrap());
+			origins.insert(workdir.clone().unwrap());
 		}
 
 		debug!(?origins, "resolved all project origins");
@@ -77,13 +84,13 @@ pub async fn vcs_types(origin: &Path) -> Vec<ProjectType> {
 }
 
 pub async fn ignores(args: &Args, vcs_types: &[ProjectType]) -> Result<Vec<IgnoreFile>> {
-	let origin = args.project_origin.clone().unwrap();
+	let origin = args.filtering.project_origin.clone().unwrap();
 	let mut skip_git_global_excludes = false;
 
-	let mut ignores = if args.no_project_ignore {
+	let mut ignores = if args.filtering.no_project_ignore {
 		Vec::new()
 	} else {
-		let ignore_files = args.ignore_files.iter().map(|path| {
+		let ignore_files = args.filtering.ignore_files.iter().map(|path| {
 			if path.is_absolute() {
 				path.into()
 			} else {
@@ -94,7 +101,7 @@ pub async fn ignores(args: &Args, vcs_types: &[ProjectType]) -> Result<Vec<Ignor
 		let (mut ignores, errors) = ignore_files::from_origin(
 			IgnoreFilesFromOriginArgs::new_unchecked(
 				&origin,
-				args.paths.iter().map(PathBuf::from),
+				args.filtering.paths.iter().map(PathBuf::from),
 				ignore_files,
 			)
 			.canonicalise()
@@ -133,7 +140,7 @@ pub async fn ignores(args: &Args, vcs_types: &[ProjectType]) -> Result<Vec<Ignor
 		ignores
 	};
 
-	let global_ignores = if args.no_global_ignore {
+	let global_ignores = if args.filtering.no_global_ignore {
 		Vec::new()
 	} else {
 		let (mut global_ignores, errors) = ignore_files::from_environment(Some("watchexec")).await;
@@ -175,18 +182,18 @@ pub async fn ignores(args: &Args, vcs_types: &[ProjectType]) -> Result<Vec<Ignor
 		"combined and applied overall vcs filter over ignores"
 	);
 
-	ignores.extend(args.ignore_files.iter().map(|ig| IgnoreFile {
+	ignores.extend(args.filtering.ignore_files.iter().map(|ig| IgnoreFile {
 		applies_to: None,
 		applies_in: None,
 		path: ig.clone(),
 	}));
 	debug!(
 		?ignores,
-		?args.ignore_files,
+		?args.filtering.ignore_files,
 		"combined with ignore files from command line / env"
 	);
 
-	if args.no_project_ignore {
+	if args.filtering.no_project_ignore {
 		ignores = ignores
 			.into_iter()
 			.filter(|ig| {
@@ -201,7 +208,7 @@ pub async fn ignores(args: &Args, vcs_types: &[ProjectType]) -> Result<Vec<Ignor
 		);
 	}
 
-	if args.no_global_ignore {
+	if args.filtering.no_global_ignore {
 		ignores = ignores
 			.into_iter()
 			.filter(|ig| ig.applies_in.is_some())
@@ -209,7 +216,7 @@ pub async fn ignores(args: &Args, vcs_types: &[ProjectType]) -> Result<Vec<Ignor
 		debug!(?ignores, "filtered ignores to exclude global ignores");
 	}
 
-	if args.no_vcs_ignore {
+	if args.filtering.no_vcs_ignore {
 		ignores = ignores
 			.into_iter()
 			.filter(|ig| ig.applies_to.is_none())

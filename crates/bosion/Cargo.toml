@@ -1,6 +1,6 @@
 [package]
 name = "bosion"
-version = "1.1.1"
+version = "1.1.3"
 
 authors = ["Félix Saparelli <felix@passcod.name>"]
 license = "Apache-2.0 OR MIT"
@@ -19,7 +19,7 @@ version = "0.3.30"
 features = ["macros", "formatting"]
 
 [dependencies.gix]
-version = "0.66.0"
+version = "0.72.1"
 optional = true
 default-features = false
 features = ["revision"]
@@ -38,3 +38,18 @@ reproducible = []
 ### Specifically this is std support for the _using_ crate, not for the bosion crate itself. It's
 ### assumed that the bosion crate is always std, as it runs in build.rs.
 std = []
+
+[lints.clippy]
+nursery = "warn"
+pedantic = "warn"
+module_name_repetitions = "allow"
+similar_names = "allow"
+cognitive_complexity = "allow"
+too_many_lines = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+default_trait_access = "allow"
+enum_glob_use = "allow"
+option_if_let_else = "allow"
+blocks_in_conditions = "allow"
+needless_doctest_main = "allow"

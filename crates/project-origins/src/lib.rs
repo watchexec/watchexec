@@ -10,6 +10,8 @@
 //! directory and walking up, [`origins`] returns a set, rather than a single path. Determining
 //! which of these is the "one true origin" (if necessary) is left to the caller.
 
+#![cfg_attr(not(test), warn(unused_crate_dependencies))]
+
 use std::{
 	collections::{HashMap, HashSet},
 	fs::FileType,
@@ -157,9 +159,11 @@ impl ProjectType {
 		matches!(
 			self,
 			Self::Bazaar
-				| Self::Darcs | Self::Fossil
+				| Self::Darcs
+				| Self::Fossil
 				| Self::Git | Self::Mercurial
-				| Self::Pijul | Self::Subversion
+				| Self::Pijul
+				| Self::Subversion
 		)
 	}
 
@@ -170,12 +174,14 @@ impl ProjectType {
 			self,
 			Self::Bundler
 				| Self::C | Self::Cargo
-				| Self::Docker | Self::Elixir
-				| Self::Gradle | Self::JavaScript
+				| Self::Docker
+				| Self::Elixir
+				| Self::Gradle
+				| Self::JavaScript
 				| Self::Leiningen
-				| Self::Maven | Self::Perl
-				| Self::PHP | Self::Pip
-				| Self::V
+				| Self::Maven
+				| Self::Perl | Self::PHP
+				| Self::Pip | Self::V
 		)
 	}
 }
@@ -266,7 +272,6 @@ pub async fn origins(path: impl AsRef<Path> + Send) -> HashSet<PathBuf> {
 		current = parent;
 		if check_list(&DirList::obtain(current).await) {
 			origins.insert(current.to_owned());
-			continue;
 		}
 	}
 

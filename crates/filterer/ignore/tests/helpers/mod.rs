@@ -1,13 +1,9 @@
 use std::path::{Path, PathBuf};
 
 use ignore_files::{IgnoreFile, IgnoreFilter};
-use project_origins::ProjectType;
 use watchexec::{error::RuntimeError, filter::Filterer};
-use watchexec_events::{
-	filekind::FileEventKind, Event, FileType, Priority, ProcessEnd, Source, Tag,
-};
+use watchexec_events::{Event, FileType, Priority, Tag};
 use watchexec_filterer_ignore::IgnoreFilterer;
-use watchexec_signals::Signal;
 
 pub mod ignore {
 	pub use super::ig_file as file;
@@ -85,81 +81,6 @@ pub trait PathHarness: Filterer {
 
 impl PathHarness for IgnoreFilterer {}
 
-pub trait TaggedHarness {
-	fn check_tag(&self, tag: Tag, priority: Priority) -> std::result::Result<bool, RuntimeError>;
-
-	fn priority_pass(&self, priority: Priority, pass: bool) {
-		tracing::info!(?priority, ?pass, "check");
-
-		assert_eq!(
-			self.check_tag(Tag::Source(Source::Filesystem), priority)
-				.unwrap(),
-			pass,
-			"{priority:?} (expected {})",
-			if pass { "pass" } else { "fail" }
-		);
-	}
-
-	fn priority_does_pass(&self, priority: Priority) {
-		self.priority_pass(priority, true);
-	}
-
-	fn priority_doesnt_pass(&self, priority: Priority) {
-		self.priority_pass(priority, false);
-	}
-
-	fn tag_pass(&self, tag: Tag, pass: bool) {
-		tracing::info!(?tag, ?pass, "check");
-
-		assert_eq!(
-			self.check_tag(tag.clone(), Priority::Normal).unwrap(),
-			pass,
-			"{tag:?} (expected {})",
-			if pass { "pass" } else { "fail" }
-		);
-	}
-
-	fn fek_does_pass(&self, fek: FileEventKind) {
-		self.tag_pass(Tag::FileEventKind(fek), true);
-	}
-
-	fn fek_doesnt_pass(&self, fek: FileEventKind) {
-		self.tag_pass(Tag::FileEventKind(fek), false);
-	}
-
-	fn source_does_pass(&self, source: Source) {
-		self.tag_pass(Tag::Source(source), true);
-	}
-
-	fn source_doesnt_pass(&self, source: Source) {
-		self.tag_pass(Tag::Source(source), false);
-	}
-
-	fn pid_does_pass(&self, pid: u32) {
-		self.tag_pass(Tag::Process(pid), true);
-	}
-
-	fn pid_doesnt_pass(&self, pid: u32) {
-		self.tag_pass(Tag::Process(pid), false);
-	}
-
-	fn signal_does_pass(&self, sig: Signal) {
-		self.tag_pass(Tag::Signal(sig), true);
-	}
-
-	fn signal_doesnt_pass(&self, sig: Signal) {
-		self.tag_pass(Tag::Signal(sig), false);
-	}
-
-	fn complete_does_pass(&self, exit: Option<ProcessEnd>) {
-		self.tag_pass(Tag::ProcessCompletion(exit), true);
-	}
-
-	fn complete_doesnt_pass(&self, exit: Option<ProcessEnd>) {
-		self.tag_pass(Tag::ProcessCompletion(exit), false);
-	}
-}
-
 fn tracing_init() {
 	use tracing_subscriber::{
 		fmt::{format::FmtSpan, Subscriber},
@@ -198,7 +119,6 @@ pub fn ig_file(name: &str) -> IgnoreFile {
 pub trait Applies {
 	fn applies_globally(self) -> Self;
 	fn applies_in(self, origin: &str) -> Self;
-	fn applies_to(self, project_type: ProjectType) -> Self;
 }
 
 impl Applies for IgnoreFile {
@@ -210,11 +130,6 @@ impl Applies for IgnoreFile {
 	fn applies_in(mut self, origin: &str) -> Self {
 		let origin = std::fs::canonicalize(".").unwrap().join(origin);
 		self.applies_in = Some(origin);
-		self
-	}
-
-	fn applies_to(mut self, project_type: ProjectType) -> Self {
-		self.applies_to = Some(project_type);
 		self
 	}
 }

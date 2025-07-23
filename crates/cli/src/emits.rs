@@ -1,15 +1,18 @@
-use std::{ffi::OsString, fmt::Write, path::PathBuf};
+use std::{fmt::Write, path::PathBuf};
 
 use miette::{IntoDiagnostic, Result};
 use watchexec::paths::summarise_events_to_env;
 use watchexec_events::{filekind::FileEventKind, Event, Tag};
 
-use crate::state::RotatingTempFile;
+use crate::{args::command::EnvVar, state::RotatingTempFile};
 
-pub fn emits_to_environment(events: &[Event]) -> impl Iterator<Item = (String, OsString)> {
+pub fn emits_to_environment(events: &[Event]) -> impl Iterator<Item = EnvVar> {
 	summarise_events_to_env(events.iter())
 		.into_iter()
-		.map(|(k, v)| (format!("WATCHEXEC_{k}_PATH"), v))
+		.map(|(k, value)| EnvVar {
+			key: format!("WATCHEXEC_{k}_PATH"),
+			value,
+		})
 }
 
 pub fn events_to_simple_format(events: &[Event]) -> Result<String> {

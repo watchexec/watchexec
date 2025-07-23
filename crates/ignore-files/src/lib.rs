@@ -6,6 +6,8 @@
 //! more ignore files in _these_ subfolders, and so on. Discovering and interpreting all of these in
 //! a single context is not a simple task: this is what this crate provides.
 
+#![cfg_attr(not(test), warn(unused_crate_dependencies))]
+
 use std::path::{Path, PathBuf};
 
 use normalize_path::NormalizePath;

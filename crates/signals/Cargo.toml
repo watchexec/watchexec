@@ -1,6 +1,6 @@
 [package]
 name = "watchexec-signals"
-version = "4.0.0"
+version = "5.0.0"
 
 authors = ["Félix Saparelli <felix@passcod.name>"]
 license = "Apache-2.0 OR MIT"
@@ -19,7 +19,7 @@ version = "7.2.0"
 optional = true
 
 [dependencies.thiserror]
-version = "1.0.50"
+version = "2.0.11"
 optional = true
 
 [dependencies.serde]
@@ -28,7 +28,7 @@ optional = true
 features = ["derive"]
 
 [target.'cfg(unix)'.dependencies.nix]
-version = "0.29.0"
+version = "0.30.1"
 features = ["signal"]
 
 [features]
@@ -36,3 +36,18 @@ default = ["fromstr", "miette"]
 fromstr = ["dep:thiserror"]
 miette = ["dep:miette"]
 serde = ["dep:serde"]
+
+[lints.clippy]
+nursery = "warn"
+pedantic = "warn"
+module_name_repetitions = "allow"
+similar_names = "allow"
+cognitive_complexity = "allow"
+too_many_lines = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+default_trait_access = "allow"
+enum_glob_use = "allow"
+option_if_let_else = "allow"
+blocks_in_conditions = "allow"
+needless_doctest_main = "allow"

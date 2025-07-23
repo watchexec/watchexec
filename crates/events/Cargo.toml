@@ -1,6 +1,6 @@
 [package]
 name = "watchexec-events"
-version = "4.0.0"
+version = "6.0.0"
 
 authors = ["Félix Saparelli <felix@passcod.name>"]
 license = "Apache-2.0 OR MIT"
@@ -14,8 +14,8 @@ readme = "README.md"
 rust-version = "1.61.0"
 edition = "2021"
 
-[dependencies.notify]
-version = "6.0.0"
+[dependencies.notify-types]
+version = "2.0.0"
 optional = true
 
 [dependencies.serde]
@@ -24,13 +24,9 @@ optional = true
 features = ["derive"]
 
 [dependencies.watchexec-signals]
-version = "4.0.0"
+version = "5.0.0"
 path = "../signals"
 default-features = false
-
-[target.'cfg(unix)'.dependencies.nix]
-version = "0.29.0"
-features = ["signal"]
 
 [dev-dependencies]
 snapbox = "0.6.18"
@@ -38,5 +34,19 @@ serde_json = "1.0.107"
 
 [features]
 default = ["notify"]
-notify = ["dep:notify"]
-serde = ["dep:serde", "notify?/serde", "watchexec-signals/serde"]
+notify = ["dep:notify-types"]
+serde = ["dep:serde", "notify-types?/serde", "watchexec-signals/serde"]
+
+[lints.clippy]
+nursery = "warn"
+pedantic = "warn"
+module_name_repetitions = "allow"
+similar_names = "allow"
+cognitive_complexity = "allow"
+too_many_lines = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+default_trait_access = "allow"
+enum_glob_use = "allow"
+option_if_let_else = "allow"
+blocks_in_conditions = "allow"

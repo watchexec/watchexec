@@ -5,101 +5,107 @@ use std::{
 	time::{SystemTime, UNIX_EPOCH},
 };
 
-use jaq_interpret::{Error, Native, ParseCtx, Val};
+use jaq_core::{Error, Native};
+use jaq_json::Val;
+use jaq_std::{v, Filter};
 use serde_json::{json, Value};
-use tracing::{debug, error, trace};
+use tracing::{debug, error};
 
-use super::macros::*;
+use super::macros::return_err;
 
-pub fn load(jaq: &mut ParseCtx) {
-	trace!("jaq: add file_read filter");
-	jaq.insert_native(
-		"file_read".into(),
-		1,
-		Native::new({
-			move |args, (ctx, val)| {
-				let path = match &val {
-					Val::Str(v) => v.to_string(),
-					_ => return_err!(Err(Error::str("expected string (path) but got {val:?}"))),
-				};
+pub fn funs() -> [Filter<Native<jaq_json::Val>>; 3] {
+	[
+		(
+			"file_read",
+			v(0),
+			Native::new({
+				move |_, (mut ctx, val)| {
+					let path = match &val {
+						Val::Str(v) => v.to_string(),
+						_ => return_err!(Err(Error::str("expected string (path) but got {val:?}"))),
+					};
 
-				let bytes = match int_arg!(args, 0, ctx, &val) {
-					Ok(v) => v,
-					Err(e) => return_err!(Err(e)),
-				};
+					let Val::Int(bytes) = ctx.pop_var() else {
+						return_err!(Err(Error::str("expected integer")));
+					};
 
-				Box::new(once(Ok(match File::open(&path) {
-					Ok(file) => {
-						let buf_reader = BufReader::new(file);
-						let mut limited = buf_reader.take(bytes);
-						let mut buffer = String::with_capacity(bytes as _);
-						match limited.read_to_string(&mut buffer) {
-							Ok(read) => {
-								debug!("jaq: read {read} bytes from {path:?}");
-								Val::Str(buffer.into())
-							}
-							Err(err) => {
-								error!("jaq: failed to read from {path:?}: {err:?}");
-								Val::Null
+					let bytes = match u64::try_from(bytes) {
+						Ok(b) => b,
+						Err(err) => return_err!(Err(Error::str(format!(
+							"expected positive integer; {err}"
+						)))),
+					};
+
+					Box::new(once(Ok(match File::open(&path) {
+						Ok(file) => {
+							let buf_reader = BufReader::new(file);
+							let mut limited = buf_reader.take(bytes);
+							let mut buffer = String::with_capacity(bytes as _);
+							match limited.read_to_string(&mut buffer) {
+								Ok(read) => {
+									debug!("jaq: read {read} bytes from {path:?}");
+									Val::Str(buffer.into())
+								}
+								Err(err) => {
+									error!("jaq: failed to read from {path:?}: {err:?}");
+									Val::Null
+								}
 							}
 						}
-					}
-					Err(err) => {
-						error!("jaq: failed to open file {path:?}: {err:?}");
-						Val::Null
-					}
-				})))
-			}
-		}),
-	);
+						Err(err) => {
+							error!("jaq: failed to open file {path:?}: {err:?}");
+							Val::Null
+						}
+					})))
+				}
+			}),
+		),
+		(
+			"file_meta",
+			v(0),
+			Native::new({
+				move |_, (_, val)| {
+					let path = match &val {
+						Val::Str(v) => v.to_string(),
+						_ => return_err!(Err(Error::str("expected string (path) but got {val:?}"))),
+					};
 
-	trace!("jaq: add file_meta filter");
-	jaq.insert_native(
-		"file_meta".into(),
-		0,
-		Native::new({
-			move |_, (_, val)| {
-				let path = match &val {
-					Val::Str(v) => v.to_string(),
-					_ => return_err!(Err(Error::str("expected string (path) but got {val:?}"))),
-				};
+					Box::new(once(Ok(match metadata(&path) {
+						Ok(meta) => Val::from(json_meta(meta)),
+						Err(err) => {
+							error!("jaq: failed to open {path:?}: {err:?}");
+							Val::Null
+						}
+					})))
+				}
+			}),
+		),
+		(
+			"file_size",
+			v(0),
+			Native::new({
+				move |_, (_, val)| {
+					let path = match &val {
+						Val::Str(v) => v.to_string(),
+						_ => return_err!(Err(Error::str("expected string (path) but got {val:?}"))),
+					};
 
-				Box::new(once(Ok(match metadata(&path) {
-					Ok(meta) => Val::from(json_meta(meta)),
-					Err(err) => {
-						error!("jaq: failed to open {path:?}: {err:?}");
-						Val::Null
-					}
-				})))
-			}
-		}),
-	);
-
-	trace!("jaq: add file_size filter");
-	jaq.insert_native(
-		"file_size".into(),
-		0,
-		Native::new({
-			move |_, (_, val)| {
-				let path = match &val {
-					Val::Str(v) => v.to_string(),
-					_ => return_err!(Err(Error::str("expected string (path) but got {val:?}"))),
-				};
-
-				Box::new(once(Ok(match metadata(&path) {
-					Ok(meta) => Val::Int(meta.len() as _),
-					Err(err) => {
-						error!("jaq: failed to open {path:?}: {err:?}");
-						Val::Null
-					}
-				})))
-			}
-		}),
-	);
+					Box::new(once(Ok(match metadata(&path) {
+						Ok(meta) => Val::Int(meta.len() as _),
+						Err(err) => {
+							error!("jaq: failed to open {path:?}: {err:?}");
+							Val::Null
+						}
+					})))
+				}
+			}),
+		),
+	]
 }
 
 fn json_meta(meta: Metadata) -> Value {
 	let perms = meta.permissions();
+	#[cfg_attr(not(unix), allow(unused_mut))]
 	let mut val = json!({
 		"type": filetype_str(meta.file_type()),
 		"size": meta.len(),

@@ -20,7 +20,7 @@ use crate::{
 	job::{start_job, CommandState},
 };
 
-use super::{Control, Job, Priority, TestChild};
+use super::{Control, Job, Priority};
 
 const GRACE: u64 = 10; // millis
 
@@ -198,7 +198,7 @@ async fn async_func() {
 	let ticket = job.run_async({
 		let func_called = func_called.clone();
 		move |_| {
-			let func_called = func_called.clone();
+			let func_called = func_called;
 			Box::new(async move {
 				func_called.store(true, Ordering::Relaxed);
 			})
@@ -301,7 +301,8 @@ macro_rules! expect_state {
 	};
 }
 
-async fn get_child(job: &Job) -> TestChild {
+#[cfg(unix)]
+async fn get_child(job: &Job) -> super::TestChild {
 	let state = Arc::new(Mutex::new(None));
 	refresh_state(job, &state, true).await;
 	let state = state.lock().unwrap();

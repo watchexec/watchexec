@@ -11,7 +11,7 @@ fn get_placeholder_data() -> &'static str {
 
 /// The amount of nesting that will be used for generated files
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum GeneratedFileNesting {
+pub enum GeneratedFileNesting {
 	/// Only one level of files
 	Flat,
 	/// Random, up to a certiain maximum
@@ -20,7 +20,7 @@ pub(crate) enum GeneratedFileNesting {
 
 /// Configuration for creating testing subfolders
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct TestSubfolderConfiguration {
+pub struct TestSubfolderConfiguration {
 	/// The amount of nesting that will be used when folders are generated
 	pub(crate) nesting: GeneratedFileNesting,
 
@@ -33,7 +33,7 @@ pub(crate) struct TestSubfolderConfiguration {
 
 /// Options for generating test files
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub(crate) struct GenerateTestFilesArgs {
+pub struct GenerateTestFilesArgs {
 	/// The path where the files should be generated
 	/// if None, the current working directory will be used.
 	pub(crate) path: Option<PathBuf>,
@@ -45,7 +45,7 @@ pub(crate) struct GenerateTestFilesArgs {
 /// Generate test files
 ///
 /// This returns the same number of paths that were requested via subfolder_configs.
-pub(crate) fn generate_test_files(args: GenerateTestFilesArgs) -> Result<Vec<PathBuf>> {
+pub fn generate_test_files(args: GenerateTestFilesArgs) -> Result<Vec<PathBuf>> {
 	// Use or create a temporary directory for the test files
 	let tmpdir = if let Some(p) = args.path {
 		p
@@ -58,7 +58,7 @@ pub(crate) fn generate_test_files(args: GenerateTestFilesArgs) -> Result<Vec<Pat
 	let mut paths = vec![tmpdir.clone()];
 
 	// Generate subfolders matching each config
-	for subfolder_config in args.subfolder_configs.iter() {
+	for subfolder_config in &args.subfolder_configs {
 		// Create the subfolder path
 		let subfolder_path = tmpdir.join(&subfolder_config.name);
 		fs::create_dir(&subfolder_path)
