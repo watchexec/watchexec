@@ -182,11 +182,10 @@ impl<const UNITLESS_NANOS_MULTIPLIER: u64> FromStr for TimeSpan<UNITLESS_NANOS_M
 	}
 }
 
-fn expand_args_up_to_doubledash() -> Result<Vec<OsString>, std::io::Error> {
+fn expand_args_up_to_doubledash(args: impl Iterator<Item = OsString>) -> Result<Vec<OsString>, std::io::Error> {
 	use argfile::Argument;
 	use std::collections::VecDeque;
 
-	let args = std::env::args_os();
 	let mut expanded_args = Vec::with_capacity(args.size_hint().0);
 
 	let mut todo: VecDeque<_> = args.map(|a| Argument::parse(a, argfile::PREFIX)).collect();
@@ -239,7 +238,7 @@ pub struct Guards {
 	_log: Option<WorkerGuard>,
 }
 
-pub async fn get_args() -> Result<(Args, Guards)> {
+pub async fn parse_args(args: impl Iterator<Item = OsString>) -> Result<(Args, Guards)> {
 	let prearg_logs = logging::preargs();
 	if prearg_logs {
 		warn!(
@@ -248,7 +247,7 @@ pub async fn get_args() -> Result<(Args, Guards)> {
 	}
 
 	debug!("expanding @argfile arguments if any");
-	let args = expand_args_up_to_doubledash().expect("while expanding @argfile");
+	let args = expand_args_up_to_doubledash(args).expect("while expanding @argfile");
 
 	debug!("parsing arguments");
 	let mut args = Args::parse_from(args);

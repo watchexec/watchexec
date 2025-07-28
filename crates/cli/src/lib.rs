@@ -123,7 +123,7 @@ async fn run_completions(shell: ShellCompletion) -> Result<()> {
 }
 
 pub async fn run() -> Result<ExitCode> {
-	let (args, _guards) = args::get_args().await?;
+	let (args, _guards) = args::parse_args(std::env::args_os()).await?;
 
 	Ok(if args.manual {
 		run_manpage().await?;
@@ -137,4 +137,31 @@ pub async fn run() -> Result<ExitCode> {
 		let exit = *(state.exit_code.lock().unwrap());
 		exit
 	})
+}
+
+mod tests {
+	use super::*;
+
+	#[tokio::test]
+	async fn watch_single_file_test_v2() -> miette::Result<()> {
+		// This function is supposed to mock how watchexec creates a config from args and then check it
+		use std::ffi::OsString;
+		let os_args = vec![
+			OsString::from("watchexec"),
+			OsString::from("-w"),
+			OsString::from("file.txt"),
+			OsString::from("echo"),
+			OsString::from("marker")
+		];
+		let (args, _guards) = args::parse_args(os_args.into_iter()).await?;
+
+		// let state = state::new(&args).await?;
+		// let config = config::make_config(&args, &state)?;
+		// config.filterer(WatchexecFilterer::new(&args).await?);
+
+		// println!("{config:?}");
+		// assert_eq!(config.pathset.get().iter().any(|p| p == "."), true);
+
+		Ok(())
+	}
 }

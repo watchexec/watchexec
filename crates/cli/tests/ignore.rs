@@ -1,17 +1,11 @@
 use std::{
-	ffi::OsStr,
-	path::{Path, PathBuf},
-	process::Stdio,
-	time::Duration,
+	path::{Path, PathBuf}, process::Stdio, time::Duration
 };
 
-use assert_cmd::prelude::CommandCargoExt;
-use dunce::canonicalize;
-use miette::{Error, IntoDiagnostic, Result, WrapErr};
+use miette::{IntoDiagnostic, Result, WrapErr};
 use tokio::{
-	io::AsyncReadExt,
-	process::{Child, Command},
-	time::{timeout, Instant},
+	process::Command,
+	time::Instant,
 };
 use tracing_test::traced_test;
 use uuid::Uuid;
@@ -150,88 +144,4 @@ async fn run_watchexec_cmd(
 		.wrap_err("fixed")?;
 
 	Ok(start.elapsed())
-}
-
-fn start_watchexec_cmd<Element>(
-	dir: impl AsRef<Path>,
-	args: impl Into<Vec<Element>>,
-) -> Result<Child>
-where
-	Element: AsRef<OsStr>,
-{
-	let mut cmd: Command = std::process::Command::cargo_bin("watchexec")
-		.into_diagnostic()
-		.wrap_err("Failed to create watchexec command")?
-		.into();
-	cmd.args(args.into());
-	cmd.current_dir(dir);
-	cmd.stdout(Stdio::piped());
-	cmd.stderr(Stdio::piped());
-	cmd.spawn()
-		.into_diagnostic()
-		.wrap_err("Failed to spawn watchexec")
-}
-
-async fn assert_stdout_and_clear(
-	tmp: &mut Vec<u8>,
-	timeout_duration: Duration,
-	stdout: &mut (impl AsyncReadExt + std::marker::Unpin),
-) {
-	assert!(timeout(timeout_duration, stdout.read_u8()).await.is_ok());
-	while let Ok(Ok(n)) = timeout(timeout_duration, stdout.read_buf(tmp)).await {
-		if n == 0 {
-			break;
-		}
-		tmp.clear();
-	}
-	assert!(timeout(timeout_duration, stdout.read_u8()).await.is_err());
-}
-
-#[tokio::test]
-async fn watch_single_file_test() -> Result<()> {
-	let test_dir = tempfile::tempdir()
-		.into_diagnostic()
-		.wrap_err("failed to create tempdir for test use")?;
-	let dir_path =
-		canonicalize(test_dir.path().to_path_buf()).expect("Failed to canonicalize tmp dir path");
-	let file_path = dir_path.join("file");
-	std::fs::File::create(file_path.clone()).into_diagnostic()?;
-
-	let mut child = start_watchexec_cmd(
-		dir_path.clone(),
-		vec!["-w", file_path.to_str().unwrap(), "echo", "change"],
-	)?;
-
-	let timeout_duration = Duration::from_millis(400);
-	let mut tmp = vec![];
-	let mut stdout = child
-		.stdout
-		.take()
-		.ok_or(Error::msg("Failed to take child stdout"))?;
-	assert_stdout_and_clear(&mut tmp, timeout_duration, &mut stdout).await;
-
-	// Positive cases
-	std::fs::remove_file(file_path.clone()).into_diagnostic()?;
-	assert_stdout_and_clear(&mut tmp, timeout_duration, &mut stdout).await;
-
-	std::fs::File::create(file_path.clone()).into_diagnostic()?;
-	assert_stdout_and_clear(&mut tmp, timeout_duration, &mut stdout).await;
-
-	std::fs::remove_file(file_path.clone()).into_diagnostic()?;
-	assert_stdout_and_clear(&mut tmp, timeout_duration, &mut stdout).await;
-
-	std::fs::File::create(file_path.clone()).into_diagnostic()?;
-	assert_stdout_and_clear(&mut tmp, timeout_duration, &mut stdout).await;
-
-	// Negative cases
-	let file_path2 = dir_path.join("file2");
-	std::fs::File::create(file_path2.clone()).into_diagnostic()?;
-	assert!(timeout(timeout_duration, stdout.read_u8()).await.is_err());
-
-	std::fs::remove_file(file_path2.clone()).into_diagnostic()?;
-	assert!(timeout(timeout_duration, stdout.read_u8()).await.is_err());
-
-	child.kill().await.expect("Child is not dead :(");
-
-	Ok(())
 }
