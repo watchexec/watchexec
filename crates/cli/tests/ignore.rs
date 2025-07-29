@@ -206,6 +206,7 @@ async fn assert_stdout_and_clear(
 
 #[tokio::test]
 async fn watch_single_file_test() -> Result<()> {
+	std::env::set_var("RUST_BACKTRACE", "1");
 	let test_dir = tempfile::tempdir()
 		.into_diagnostic()
 		.wrap_err("failed to create tempdir for test use")?;
@@ -252,6 +253,27 @@ async fn watch_single_file_test() -> Result<()> {
 		timeout(timeout_duration, stdout.read_u8()).await.is_err(),
 		"Should be no output"
 	);
+
+	// Remove original file before nested tests
+	std::fs::remove_file(file_path.clone()).into_diagnostic()?;
+	assert_stdout_and_clear(&mut tmp, timeout_duration, &mut stdout).await;
+
+	// Nested matches
+	// std::fs::create_dir(dir_path.join("file"))
+	// 	.into_diagnostic()
+	// 	.wrap_err("Creating Directory")?;
+	// let file_nested = dir_path.join("file").join("file2");
+	// std::fs::File::create(file_nested.clone()).into_diagnostic()?;
+	// assert!(
+	// 	timeout(timeout_duration, stdout.read_u8()).await.is_err(),
+	// 	"Should be no output when creating a directory"
+	// );
+
+	// std::fs::remove_file(file_nested.clone()).into_diagnostic()?;
+	// assert!(
+	// 	timeout(timeout_duration, stdout.read_u8()).await.is_err(),
+	// 	"Should be no output when removing a directory"
+	// );
 
 	child.kill().await.expect("Child is not dead :(");
 
