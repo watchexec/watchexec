@@ -6,6 +6,7 @@ use std::{
 	fs::File,
 	io::{IsTerminal, Write},
 	iter::once,
+	path::{Path, PathBuf},
 	process::{ExitCode, Stdio},
 	sync::{
 		atomic::{AtomicBool, AtomicU8, Ordering},
@@ -52,6 +53,7 @@ struct OutputFlags {
 	toast: bool,
 }
 
+#[allow(clippy::too_many_lines)]
 pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 	let _span = debug_span!("args-runtime").entered();
 	let config = Config::default();
@@ -74,7 +76,21 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 		eprintln!("[[Error (not fatal)]]\n{}", Report::new(err.error));
 	});
 
-	config.pathset(args.filtering.paths.clone());
+	// Watch only for directories
+	// This mitigates issue with deleted and then created again files
+	config.pathset(
+		args.filtering
+			.paths
+			.clone()
+			.into_iter()
+			.map(|watched_path| {
+				let mut path: PathBuf = watched_path.into();
+				if path.is_file() {
+					path.pop();
+				}
+				path
+			}),
+	);
 
 	config.throttle(args.events.debounce.0);
 	config.keyboard_events(args.events.stdin_quit);
