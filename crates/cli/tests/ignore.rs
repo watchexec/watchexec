@@ -171,6 +171,7 @@ where
 			.map(std::string::ToString::to_string)
 			.unwrap_or("watchexec".into()),
 	);
+	println!("wexec binary: {wexec_bin}");
 
 	let mut cmd = Command::new(wexec_bin);
 	cmd.args(args.into());
@@ -225,6 +226,9 @@ async fn watch_single_file_test() -> Result<()> {
 		.stdout
 		.take()
 		.ok_or(miette::Error::msg("Failed to take child stdout"))?;
+	if let Ok(code) = timeout(timeout_duration, child.wait()).await {
+		println!("watchexec exited with code {code:?}");
+	}
 	assert_stdout_and_clear(&mut tmp, timeout_duration, &mut stdout).await;
 
 	// Positive cases

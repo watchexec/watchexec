@@ -119,6 +119,8 @@ impl WatchexecFilterer {
 			.map(|f| (f.to_owned(), Some(workdir.clone())))
 			.collect::<Vec<_>>();
 
+		// Instead, we should ignore everything in the directory if
+		// it wasn't being watched
 		filters.extend(
 			args.filtering
 				.paths
