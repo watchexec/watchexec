@@ -133,12 +133,12 @@ impl WatchexecFilterer {
 					p
 				})
 				.filter(|p: &PathBuf| {
-					args.filtering
+					!args
+						.filtering
 						.paths
 						.iter()
 						.map(std::convert::Into::into)
-						.find(|path: &PathBuf| p.starts_with(path))
-						.is_some()
+						.any(|path: PathBuf| p.starts_with(path))
 				})
 				.filter_map(|p: PathBuf| {
 					// How to make a correct glob here???
