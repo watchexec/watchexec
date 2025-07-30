@@ -187,7 +187,6 @@ fn expand_args_up_to_doubledash() -> Result<Vec<OsString>, std::io::Error> {
 	use std::collections::VecDeque;
 
 	let args = std::env::args_os();
-
 	let mut expanded_args = Vec::with_capacity(args.size_hint().0);
 
 	let mut todo: VecDeque<_> = args.map(|a| Argument::parse(a, argfile::PREFIX)).collect();
@@ -240,7 +239,7 @@ pub struct Guards {
 	_log: Option<WorkerGuard>,
 }
 
-pub async fn parse_args() -> Result<(Args, Guards)> {
+pub async fn get_args() -> Result<(Args, Guards)> {
 	let prearg_logs = logging::preargs();
 	if prearg_logs {
 		warn!(

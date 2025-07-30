@@ -122,7 +122,7 @@ async fn run_completions(shell: ShellCompletion) -> Result<()> {
 }
 
 pub async fn run() -> Result<ExitCode> {
-	let (args, _guards) = args::parse_args().await?;
+	let (args, _guards) = args::get_args().await?;
 
 	Ok(if args.manual {
 		run_manpage().await?;

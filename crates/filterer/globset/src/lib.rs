@@ -167,6 +167,9 @@ impl Filterer for GlobsetFilterer {
 				let _span = trace_span!("path", ?path).entered();
 				let is_dir = file_type.map_or(false, |t| matches!(t, FileType::Dir));
 
+				let tmp = self.ignores.matched(path, is_dir);
+				println!("ignores: {0:?}", self.ignores);
+				println!("Ignore match for path {path:?}: {tmp:?}");
 				if self.ignores.matched(path, is_dir).is_ignore() {
 					trace!("ignored by globset ignore");
 					return false;

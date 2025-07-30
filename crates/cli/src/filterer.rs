@@ -119,16 +119,33 @@ impl WatchexecFilterer {
 			.map(|f| (f.to_owned(), Some(workdir.clone())))
 			.collect::<Vec<_>>();
 
-		// Instead, we should ignore everything in the directory if
-		// it wasn't being watched
-		filters.extend(
+		// Maybe create a set of watched directories to mitigate N^2?
+		// Ignore all the directories that we watch only for the single file
+		// File from the dir will pass through whitelist, so ignore is fine
+		ignores.extend(
 			args.filtering
 				.paths
 				.iter()
 				.map(std::convert::Into::into)
 				.filter(|p: &PathBuf| p.is_file())
-				.filter_map(|p: PathBuf| p.to_str().map(|s| (s.into(), Some(workdir.clone())))),
+				.map(|mut p| {
+					p.pop();
+					p
+				})
+				.filter(|p: &PathBuf| {
+					args.filtering
+						.paths
+						.iter()
+						.map(std::convert::Into::into)
+						.find(|path: &PathBuf| p.starts_with(path))
+						.is_some()
+				})
+				.filter_map(|p: PathBuf| {
+					// How to make a correct glob here???
+					p.to_str().map(|s| (format!("{s}/*"), None))
+				}),
 		);
+		println!("Ignores: {ignores:?}");
 
 		for filter_file in &args.filtering.filter_files {
 			filters.extend(read_filter_file(filter_file).await?);

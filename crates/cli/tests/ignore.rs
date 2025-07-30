@@ -1,9 +1,4 @@
-use std::{
-	ffi::OsStr,
-	path::{Path, PathBuf},
-	process::Stdio,
-	time::Duration,
-};
+use std::{ffi::OsStr, path::PathBuf, process::Stdio, time::Duration};
 
 use dunce::canonicalize;
 use miette::{IntoDiagnostic, Result, WrapErr};
@@ -183,11 +178,12 @@ where
 		.wrap_err("Failed to spawn watchexec")
 }
 
-async fn assert_stdout_and_clear(
+async fn is_output_empty(
 	tmp: &mut Vec<u8>,
 	timeout_duration: Duration,
 	stdout: &mut (impl AsyncReadExt + std::marker::Unpin),
-) {
+) -> Option<String> {
+	use std::io::Write;
 	// assert!(timeout(timeout_duration, stdout.read_u8()).await.is_ok());
 	let mut some_text = false;
 	while let Ok(Ok(n)) = timeout(timeout_duration, stdout.read_buf(tmp)).await {
@@ -195,14 +191,39 @@ async fn assert_stdout_and_clear(
 			break;
 		}
 		some_text = true;
-		println!("{tmp:?}");
+		if let Ok(str) = String::from_utf8(tmp.clone()) {
+			println!("{str}");
+			std::io::stdout().lock().flush();
+		}
 		tmp.clear();
 	}
-	assert!(some_text, "No text output from the process");
-	assert!(
-		timeout(timeout_duration, stdout.read_u8()).await.is_err(),
-		"There is still something left"
-	);
+	if !some_text {
+		return Some("No text output from the process".into());
+	}
+
+	if timeout(timeout_duration, stdout.read_u8()).await.is_ok() {
+		return Some("There is still something left".into());
+	}
+
+	None
+}
+
+async fn assert_no_reaction(
+	tmp: &mut Vec<u8>,
+	timeout_duration: Duration,
+	stdout: &mut (impl AsyncReadExt + std::marker::Unpin),
+) {
+	let res = is_output_empty(tmp, timeout_duration, stdout).await;
+	assert!(res.is_some(), "Should be no output");
+}
+
+async fn assert_reaction(
+	tmp: &mut Vec<u8>,
+	timeout_duration: Duration,
+	stdout: &mut (impl AsyncReadExt + std::marker::Unpin),
+) {
+	let res = is_output_empty(tmp, timeout_duration, stdout).await;
+	assert!(res.is_none(), "{}", res.unwrap_or(String::new()));
 }
 
 #[tokio::test]
@@ -221,46 +242,40 @@ async fn watch_single_file_test() -> Result<()> {
 	)?;
 
 	let timeout_duration = Duration::from_millis(400);
+	// Start timeout is longer bc on windows a process starts slow
+	let start_timeout_duration = Duration::from_millis(800);
 	let mut tmp = vec![];
 	let mut stdout = child
 		.stdout
 		.take()
 		.ok_or(miette::Error::msg("Failed to take child stdout"))?;
-	if let Ok(code) = timeout(timeout_duration, child.wait()).await {
-		println!("watchexec exited with code {code:?}");
-	}
-	assert_stdout_and_clear(&mut tmp, timeout_duration, &mut stdout).await;
+
+	assert_reaction(&mut tmp, start_timeout_duration, &mut stdout).await;
 
 	// Positive cases
 	std::fs::remove_file(file_path.clone()).into_diagnostic()?;
-	assert_stdout_and_clear(&mut tmp, timeout_duration, &mut stdout).await;
+	assert_reaction(&mut tmp, timeout_duration, &mut stdout).await;
 
 	std::fs::File::create(file_path.clone()).into_diagnostic()?;
-	assert_stdout_and_clear(&mut tmp, timeout_duration, &mut stdout).await;
+	assert_reaction(&mut tmp, timeout_duration, &mut stdout).await;
 
 	std::fs::remove_file(file_path.clone()).into_diagnostic()?;
-	assert_stdout_and_clear(&mut tmp, timeout_duration, &mut stdout).await;
+	assert_reaction(&mut tmp, timeout_duration, &mut stdout).await;
 
 	std::fs::File::create(file_path.clone()).into_diagnostic()?;
-	assert_stdout_and_clear(&mut tmp, timeout_duration, &mut stdout).await;
+	assert_reaction(&mut tmp, timeout_duration, &mut stdout).await;
 
 	// Negative cases
 	let file_path2 = dir_path.join("file2");
 	std::fs::File::create(file_path2.clone()).into_diagnostic()?;
-	assert!(
-		timeout(timeout_duration, stdout.read_u8()).await.is_err(),
-		"Should be no output"
-	);
+	assert_no_reaction(&mut tmp, timeout_duration, &mut stdout).await;
 
 	std::fs::remove_file(file_path2.clone()).into_diagnostic()?;
-	assert!(
-		timeout(timeout_duration, stdout.read_u8()).await.is_err(),
-		"Should be no output"
-	);
+	assert_no_reaction(&mut tmp, timeout_duration, &mut stdout).await;
 
 	// Remove original file before nested tests
 	std::fs::remove_file(file_path.clone()).into_diagnostic()?;
-	assert_stdout_and_clear(&mut tmp, timeout_duration, &mut stdout).await;
+	assert_reaction(&mut tmp, timeout_duration, &mut stdout).await;
 
 	// Nested matches
 	// std::fs::create_dir(dir_path.join("file"))
