@@ -1,4 +1,9 @@
-use std::{ffi::OsStr, path::PathBuf, process::Stdio, time::Duration};
+use std::{
+	ffi::OsStr,
+	path::{Path, PathBuf},
+	process::Stdio,
+	time::Duration,
+};
 
 use dunce::canonicalize;
 use miette::{IntoDiagnostic, Result, WrapErr};

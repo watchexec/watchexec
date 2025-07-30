@@ -6,7 +6,7 @@ use std::{
 	fs::File,
 	io::{IsTerminal, Write},
 	iter::once,
-	path::{Path, PathBuf},
+	path::PathBuf,
 	process::{ExitCode, Stdio},
 	sync::{
 		atomic::{AtomicBool, AtomicU8, Ordering},
