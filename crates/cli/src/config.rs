@@ -27,7 +27,7 @@ use watchexec::{
 	error::RuntimeError,
 	job::{CommandState, Job},
 	sources::fs::Watcher,
-	Config, ErrorHook, Id,
+	Config, ErrorHook, Id, WatchedPath,
 };
 use watchexec_events::{Event, Keyboard, ProcessEnd, Tag};
 use watchexec_signals::Signal;
@@ -76,20 +76,33 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 		eprintln!("[[Error (not fatal)]]\n{}", Report::new(err.error));
 	});
 
-	// Watch only for directories
-	// This mitigates issue with deleted and then created again files
+	// For recursive paths watch parent directory
+	// For non-recursive, watch the directory and the parent directory
 	config.pathset(
 		args.filtering
 			.paths
 			.clone()
 			.into_iter()
-			.map(|watched_path| {
-				let mut path: PathBuf = watched_path.into();
-				if path.is_file() {
+			.map(|watched| {
+				if watched.is_recursive() {
+					let mut path: PathBuf = watched.into();
 					path.pop();
+					WatchedPath::recursive(path)
+				} else {
+					watched
 				}
-				path
-			}),
+			})
+			.chain(
+				args.filtering
+					.paths
+					.iter()
+					.filter(|watched| !watched.is_recursive())
+					.map(|watched| {
+						let mut path: PathBuf = watched.clone().into();
+						path.pop();
+						WatchedPath::non_recursive(path)
+					}),
+			),
 	);
 
 	config.throttle(args.events.debounce.0);

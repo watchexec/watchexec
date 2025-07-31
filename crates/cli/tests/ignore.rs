@@ -232,7 +232,7 @@ async fn assert_reaction(
 }
 
 #[tokio::test]
-async fn watch_single_file_test() -> Result<()> {
+async fn recursive_watch_test() -> Result<()> {
 	std::env::set_var("RUST_BACKTRACE", "1");
 	let test_dir = tempfile::tempdir()
 		.into_diagnostic()
@@ -282,22 +282,116 @@ async fn watch_single_file_test() -> Result<()> {
 	std::fs::remove_file(file_path.clone()).into_diagnostic()?;
 	assert_reaction(&mut tmp, timeout_duration, &mut stdout).await;
 
-	// Nested matches
-	// std::fs::create_dir(dir_path.join("file"))
-	// 	.into_diagnostic()
-	// 	.wrap_err("Creating Directory")?;
-	// let file_nested = dir_path.join("file").join("file2");
-	// std::fs::File::create(file_nested.clone()).into_diagnostic()?;
-	// assert!(
-	// 	timeout(timeout_duration, stdout.read_u8()).await.is_err(),
-	// 	"Should be no output when creating a directory"
-	// );
+	// Directory matches
+	let nested_path = dir_path.join("file");
+	std::fs::create_dir(nested_path.clone())
+		.into_diagnostic()
+		.wrap_err("Creating Directory")?;
 
-	// std::fs::remove_file(file_nested.clone()).into_diagnostic()?;
-	// assert!(
-	// 	timeout(timeout_duration, stdout.read_u8()).await.is_err(),
-	// 	"Should be no output when removing a directory"
-	// );
+	assert_reaction(&mut tmp, timeout_duration, &mut stdout).await;
+
+	let file_nested = nested_path.join("file2");
+	std::fs::File::create(file_nested.clone()).into_diagnostic()?;
+	assert_reaction(&mut tmp, timeout_duration, &mut stdout).await;
+
+	std::fs::remove_file(file_nested.clone()).into_diagnostic()?;
+	assert_reaction(&mut tmp, timeout_duration, &mut stdout).await;
+
+	// Nested matches
+	let nested2_path = nested_path.join("other");
+	std::fs::create_dir(nested2_path.clone())
+		.into_diagnostic()
+		.wrap_err("Creating Directory")?;
+
+	let file_nested = nested2_path.join("other_name");
+	std::fs::File::create(file_nested.clone()).into_diagnostic()?;
+	assert_reaction(&mut tmp, timeout_duration, &mut stdout).await;
+
+	std::fs::remove_file(file_nested.clone()).into_diagnostic()?;
+	assert_reaction(&mut tmp, timeout_duration, &mut stdout).await;
+
+	child.kill().await.expect("Child is not dead :(");
+
+	Ok(())
+}
+
+#[tokio::test]
+async fn non_recursive_watch_test() -> Result<()> {
+	let test_dir = tempfile::tempdir()
+		.into_diagnostic()
+		.wrap_err("failed to create tempdir for test use")?;
+	let dir_path = canonicalize(test_dir.path()).expect("Failed to canonicalize tmp dir path");
+	let file_path = dir_path.join("file");
+	std::fs::File::create(file_path.clone()).into_diagnostic()?;
+
+	let mut child = start_watchexec_cmd(
+		dir_path.clone(),
+		vec!["-W", file_path.to_str().unwrap(), "echo", "change"],
+	)?;
+
+	let timeout_duration = Duration::from_millis(400);
+	// Start timeout is longer bc on windows a process starts slow
+	let start_timeout_duration = Duration::from_millis(800);
+	let mut tmp = vec![];
+	let mut stdout = child
+		.stdout
+		.take()
+		.ok_or(miette::Error::msg("Failed to take child stdout"))?;
+
+	assert_reaction(&mut tmp, start_timeout_duration, &mut stdout).await;
+
+	// Positive cases
+	std::fs::remove_file(file_path.clone()).into_diagnostic()?;
+	assert_reaction(&mut tmp, timeout_duration, &mut stdout).await;
+
+	std::fs::File::create(file_path.clone()).into_diagnostic()?;
+	assert_reaction(&mut tmp, timeout_duration, &mut stdout).await;
+
+	std::fs::remove_file(file_path.clone()).into_diagnostic()?;
+	assert_reaction(&mut tmp, timeout_duration, &mut stdout).await;
+
+	std::fs::File::create(file_path.clone()).into_diagnostic()?;
+	assert_reaction(&mut tmp, timeout_duration, &mut stdout).await;
+
+	// Negative cases
+	let file_path2 = dir_path.join("file2");
+	std::fs::File::create(file_path2.clone()).into_diagnostic()?;
+	assert_no_reaction(&mut tmp, timeout_duration, &mut stdout).await;
+
+	std::fs::remove_file(file_path2.clone()).into_diagnostic()?;
+	assert_no_reaction(&mut tmp, timeout_duration, &mut stdout).await;
+
+	// Remove original file before nested tests
+	std::fs::remove_file(file_path.clone()).into_diagnostic()?;
+	assert_reaction(&mut tmp, timeout_duration, &mut stdout).await;
+
+	// Directory matches
+	let nested_path = dir_path.join("file");
+	std::fs::create_dir(nested_path.clone())
+		.into_diagnostic()
+		.wrap_err("Creating Directory")?;
+
+	assert_reaction(&mut tmp, timeout_duration, &mut stdout).await;
+
+	let file_nested = nested_path.join("file2");
+	std::fs::File::create(file_nested.clone()).into_diagnostic()?;
+	assert_reaction(&mut tmp, timeout_duration, &mut stdout).await;
+
+	std::fs::remove_file(file_nested.clone()).into_diagnostic()?;
+	assert_reaction(&mut tmp, timeout_duration, &mut stdout).await;
+
+	// Nested does not matches
+	let nested2_path = nested_path.join("other");
+	std::fs::create_dir(nested2_path.clone())
+		.into_diagnostic()
+		.wrap_err("Creating Directory")?;
+
+	let file_nested = nested2_path.join("other_name");
+	std::fs::File::create(file_nested.clone()).into_diagnostic()?;
+	assert_no_reaction(&mut tmp, timeout_duration, &mut stdout).await;
+
+	std::fs::remove_file(file_nested.clone()).into_diagnostic()?;
+	assert_no_reaction(&mut tmp, timeout_duration, &mut stdout).await;
 
 	child.kill().await.expect("Child is not dead :(");
 
