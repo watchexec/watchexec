@@ -15,7 +15,7 @@ relevant packager.
 | Linux | _n/a_ (tarball) | [`watchexec-{version}-{platform}.tar.xz`](https://github.com/watchexec/watchexec/releases) | first-party | `tar xf watchexec-*.tar.xz` |
 | Linux | Alpine | [`watchexec`](https://pkgs.alpinelinux.org/packages?name=watchexec) | official | `apk add watchexec` |
 | Linux | ALT Sisyphus | [`watchexec`](https://packages.altlinux.org/en/sisyphus/srpms/watchexec/) | official | `apt-get install watchexec` |
-| Linux | [APT repo](https://apt.cli.rs) (Debian & Ubuntu) | [`watchexec-cli`](https://apt.cli.rs) | unofficial | `apt install watchexec-cli` |
+| Linux | [APT repo](https://apt.cli.rs) (Debian & Ubuntu) | [`watchexec-cli`](https://apt.cli.rs) | community | `apt install watchexec-cli` |
 | Linux | Arch | [`watchexec`](https://archlinux.org/packages/extra/x86_64/watchexec/) | official | `pacman -S watchexec` |
 | Linux | Gentoo GURU | [`watchexec`](https://gpo.zugaina.org/Overlays/guru/app-misc/watchexec) | community | `emerge -av watchexec` |
 | Linux | GNU Guix | [`watchexec`](https://packages.guix.gnu.org/packages/watchexec/) | outdated | `guix install watchexec` |
@@ -35,3 +35,10 @@ relevant packager.
 | _Any_ | Crates.io | [`watchexec-cli`](https://crates.io/crates/watchexec-cli) | first-party | `cargo install --locked watchexec-cli` |
 | _Any_ | Binstall | [`watchexec-cli`](https://crates.io/crates/watchexec-cli) | first-party | `cargo binstall watchexec-cli` |
 | _Any_ | Webi | [`watchexec`](https://webinstall.dev/watchexec/) | third-party | varies (see webpage) |
+
+Legend:
+- first-party: packaged and distributed by the Watchexec developers (in this repo)
+- official: packaged and distributed by the official package team for the listed distribution
+- community: packaged by a community member or organisation, outside of the official distribution
+- third-party: a redistribution of another package (e.g. using the first-party tarballs via a non-first-party installer)
+- outdated: an official or community packaging that is severely outdated (not just a couple releases out)
