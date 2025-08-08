@@ -11,5 +11,15 @@ _Find, parse, and interpret ignore files._
 - Licensed under [Apache 2.0][license].
 - Status: done.
 
+## Supported ignore file formats
+
+This crate supports parsing ignore files from various version control systems and tools:
+
+- **Git** and compatibles (Pijul, Jujutsu) (`.gitignore`)
+- **Mercurial** (`.hgignore`)
+- **Bazaar** (`.bzrignore`)
+- **Darcs** (`_darcs/prefs/boring`)
+- **Fossil** (`.fossil-settings/ignore-glob`)
+
 [docs]: https://docs.rs/ignore-files
 [license]: ../../LICENSE
