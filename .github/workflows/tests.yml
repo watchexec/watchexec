@@ -35,7 +35,7 @@ jobs:
     runs-on: "${{ matrix.platform }}-latest"
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Configure toolchain
       run: |
         rustup toolchain install --profile minimal --no-self-update stable
@@ -70,7 +70,7 @@ jobs:
     runs-on: "${{ matrix.platform }}-latest"
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Configure toolchain
       run: |
         rustup toolchain install --profile minimal --no-self-update stable
@@ -106,7 +106,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Configure toolchain
       run: |
         rustup toolchain install --profile minimal --no-self-update stable
@@ -137,7 +137,7 @@ jobs:
     runs-on: "${{ matrix.platform }}-latest"
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Configure toolchain
       run: |
         rustup toolchain install --profile minimal --no-self-update stable
@@ -169,7 +169,7 @@ jobs:
     runs-on: "${{ matrix.platform }}-latest"
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Configure toolchain
       run: |
         rustup toolchain install --profile minimal --no-self-update stable
@@ -202,7 +202,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Configure toolchain
       run: |
         rustup toolchain install --profile minimal --no-self-update stable
