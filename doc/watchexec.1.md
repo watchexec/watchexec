@@ -39,6 +39,14 @@ to watch for changes.
 At startup, the specified command is run once, and watchexec begins
 monitoring for changes.
 
+Events are debounced and checked using a variety of mechanisms, which
+you can control using the flags in the \*\*Filtering\*\* section. The
+order of execution is: internal prioritisation (signals come before
+everything else, and SIGINT/SIGTERM are processed even more urgently),
+then file event kind (\`\--fs-events\`), then files explicitly watched
+with \`-w\`, then ignores (\`\--ignore\` and co), then filters (which
+includes \`\--exts\`), then filter programs.
+
 Examples:
 
 Rebuild a project when source files change:
