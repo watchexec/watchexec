@@ -39,7 +39,7 @@ version = "1.4.2"
 path = "../project-origins"
 
 [dev-dependencies]
-tracing-subscriber = "0.3.6"
+tracing-subscriber = "0.3.20"
 
 [features]
 default = []
