@@ -48,5 +48,5 @@ features = [
 ]
 
 [dev-dependencies.tracing-subscriber]
-version = "0.3.6"
+version = "0.3.20"
 features = ["env-filter"]
