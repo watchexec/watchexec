@@ -79,4 +79,9 @@ impl WatchedPath {
 			recursive: false,
 		}
 	}
+
+	/// Return whether wathching this file will recurse into subdirectories
+	pub fn is_recursive(&self) -> bool {
+		self.recursive
+	}
 }
