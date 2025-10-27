@@ -241,7 +241,7 @@ jobs:
         with:
           tool: b3sum
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v6
         with:
           merge-multiple: true
 
