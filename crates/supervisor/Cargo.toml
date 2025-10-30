@@ -19,7 +19,7 @@ futures = "0.3.29"
 tracing = "0.1.40"
 
 [dependencies.process-wrap]
-version = "8.2.1"
+version = "9.0.0"
 features = ["reset-sigmask", "tokio1"]
 
 [dependencies.tokio]
