@@ -368,19 +368,15 @@ pub async fn from_environment(appname: Option<&str>) -> (Vec<IgnoreFile>, Vec<Er
 	}
 
 	if !found_git_global {
-		let mut tries = Vec::with_capacity(5);
+		let mut tries = Vec::with_capacity(3);
 		if let Ok(home) = env::var("XDG_CONFIG_HOME") {
 			tries.push(Path::new(&home).join("git/ignore"));
 		}
-		if let Ok(home) = env::var("APPDATA") {
-			tries.push(Path::new(&home).join(".gitignore"));
-		}
-		if let Ok(home) = env::var("USERPROFILE") {
-			tries.push(Path::new(&home).join(".gitignore"));
-		}
 		if let Ok(home) = env::var("HOME") {
 			tries.push(Path::new(&home).join(".config/git/ignore"));
-			tries.push(Path::new(&home).join(".gitignore"));
+		}
+		if let Ok(home) = env::var("USERPROFILE") {
+			tries.push(Path::new(&home).join(".config/git/ignore"));
 		}
 
 		for path in tries {
