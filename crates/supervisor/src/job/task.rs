@@ -65,7 +65,9 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 								}
 								Ok(true) => {
 									trace!(existing=?stop_timer, "erasing stop timer");
-									stop_timer = None;
+									if let Some(timer) = stop_timer.take() {
+										timer.done.raise();
+									}
 									trace!(count=%on_end.len(), "raising all pending end flags");
 									for done in take(&mut on_end) {
 										done.raise();
@@ -351,6 +353,10 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 							break 'main;
 						}
 					}
+				}
+				else => {
+					trace!("all select branches disabled, exiting");
+					break 'main;
 				}
 				}
 			}
