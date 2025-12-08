@@ -491,6 +491,43 @@ async fn graceful_stop() {
 	task.abort();
 }
 
+/// Regression test for https://github.com/watchexec/watchexec/issues/981
+///
+/// When a process responds to SIGTERM gracefully and the Job handle is dropped,
+/// the task should exit cleanly without panicking.
+#[tokio::test]
+async fn graceful_stop_with_job_dropped() {
+	let (job, task) = start_job(working_command());
+
+	expect_state!(job, CommandState::Pending);
+
+	job.start().await;
+
+	expect_state!(job, CommandState::Running { .. });
+
+	set_running_child_status(&job, ProcessEnd::Success.into_exitstatus()).await;
+
+	// Start graceful stop but don't await the ticket
+	let _stop = job.stop_with_signal(
+		watchexec_signals::Signal::Terminate,
+		Duration::from_millis(GRACE),
+	);
+
+	// Give the task time to process the graceful stop
+	sleep(Duration::from_millis(GRACE / 2)).await;
+
+	// Drop the job handle (simulating the caller losing interest)
+	// This closes all channels to the task
+	drop(job);
+
+	// The task should exit cleanly without panicking
+	// Previously this would panic with "all branches are disabled and there is no else branch"
+	tokio::time::timeout(Duration::from_millis(GRACE * 10), task)
+		.await
+		.expect("task should complete within timeout")
+		.expect("task should not panic");
+}
+
 #[tokio::test]
 async fn graceful_restart() {
 	let (job, task) = start_job(working_command());
