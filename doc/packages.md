@@ -15,7 +15,7 @@ relevant packager.
 | Linux | _n/a_ (tarball) | [`watchexec-{version}-{platform}.tar.xz`](https://github.com/watchexec/watchexec/releases) | first-party | `tar xf watchexec-*.tar.xz` |
 | Linux | Alpine | [`watchexec`](https://pkgs.alpinelinux.org/packages?name=watchexec) | official | `apk add watchexec` |
 | Linux | ALT Sisyphus | [`watchexec`](https://packages.altlinux.org/en/sisyphus/srpms/watchexec/) | official | `apt-get install watchexec` |
-| Linux | [APT repo](https://apt.cli.rs) (Debian & Ubuntu) | [`watchexec-cli`](https://apt.cli.rs) | community | `apt install watchexec-cli` |
+| Linux | ~~[APT repo](https://apt.cli.rs) (Debian & Ubuntu)~~ | [`watchexec-cli`](https://apt.cli.rs) | defunct | |
 | Linux | Arch | [`watchexec`](https://archlinux.org/packages/extra/x86_64/watchexec/) | official | `pacman -S watchexec` |
 | Linux | Gentoo GURU | [`watchexec`](https://gpo.zugaina.org/Overlays/guru/app-misc/watchexec) | community | `emerge -av watchexec` |
 | Linux | GNU Guix | [`watchexec`](https://packages.guix.gnu.org/packages/watchexec/) | outdated | `guix install watchexec` |
