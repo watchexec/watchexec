@@ -119,6 +119,21 @@ impl WatchexecFilterer {
 			.map(|f| (f.to_owned(), Some(workdir.clone())))
 			.collect::<Vec<_>>();
 
+		filters.extend(args.filtering.paths.iter().filter_map(|watched_path| {
+			let path: PathBuf = watched_path.into();
+			let stripped = path
+				.strip_prefix(&workdir)
+				.map(std::convert::Into::into)
+				.unwrap_or(path);
+			stripped.to_str().map(|s| {
+				if watched_path.is_recursive() {
+					(format!("{s}/**"), Some(workdir.clone()))
+				} else {
+					(format!("{s}/*"), Some(workdir.clone()))
+				}
+			})
+		}));
+
 		for filter_file in &args.filtering.filter_files {
 			filters.extend(read_filter_file(filter_file).await?);
 		}

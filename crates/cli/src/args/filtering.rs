@@ -460,7 +460,7 @@ impl FilteringArgs {
 			&& self
 				.paths
 				.first()
-				.map_or(false, |p| p.as_ref() == Path::new("/dev/null"))
+				.is_some_and(|p| p.as_ref() == Path::new("/dev/null"))
 		{
 			info!("only path is /dev/null, not watching anything");
 			self.paths = Vec::new();

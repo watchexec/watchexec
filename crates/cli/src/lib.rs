@@ -34,7 +34,6 @@ async fn run_watchexec(args: Args, state: state::State) -> Result<()> {
 	let config = config::make_config(&args, &state)?;
 	config.filterer(WatchexecFilterer::new(&args).await?);
 
-	info!("initialising Watchexec runtime");
 	let wx = Watchexec::with_config(config)?;
 
 	if !args.events.postpone {

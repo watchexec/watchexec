@@ -6,6 +6,7 @@ use std::{
 	fs::File,
 	io::{IsTerminal, Write},
 	iter::once,
+	path::PathBuf,
 	process::{ExitCode, Stdio},
 	sync::{
 		atomic::{AtomicBool, AtomicU8, Ordering},
@@ -26,7 +27,7 @@ use watchexec::{
 	error::RuntimeError,
 	job::{CommandState, Job},
 	sources::fs::Watcher,
-	Config, ErrorHook, Id,
+	Config, ErrorHook, Id, WatchedPath,
 };
 use watchexec_events::{Event, Keyboard, ProcessEnd, Tag};
 use watchexec_signals::Signal;
@@ -52,6 +53,7 @@ struct OutputFlags {
 	toast: bool,
 }
 
+#[allow(clippy::too_many_lines)]
 pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 	let _span = debug_span!("args-runtime").entered();
 	let config = Config::default();
@@ -74,7 +76,34 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 		eprintln!("[[Error (not fatal)]]\n{}", Report::new(err.error));
 	});
 
-	config.pathset(args.filtering.paths.clone());
+	// For recursive paths watch parent directory
+	// For non-recursive, watch the directory and the parent directory
+	config.pathset(
+		args.filtering
+			.paths
+			.clone()
+			.into_iter()
+			.map(|watched| {
+				if watched.is_recursive() {
+					let mut path: PathBuf = watched.into();
+					path.pop();
+					WatchedPath::recursive(path)
+				} else {
+					watched
+				}
+			})
+			.chain(
+				args.filtering
+					.paths
+					.iter()
+					.filter(|watched| !watched.is_recursive())
+					.map(|watched| {
+						let mut path: PathBuf = watched.clone().into();
+						path.pop();
+						WatchedPath::non_recursive(path)
+					}),
+			),
+	);
 
 	config.throttle(args.events.debounce.0);
 	config.keyboard_events(args.events.stdin_quit);
