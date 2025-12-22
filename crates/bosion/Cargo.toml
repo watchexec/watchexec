@@ -19,7 +19,7 @@ version = "0.3.30"
 features = ["macros", "formatting"]
 
 [dependencies.gix]
-version = "0.72.1"
+version = "0.76.0"
 optional = true
 default-features = false
 features = ["revision"]
