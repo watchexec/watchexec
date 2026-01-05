@@ -16,7 +16,7 @@ edition = "2021"
 
 [dependencies]
 futures = "0.3.29"
-gix-config = "0.45.1"
+gix-config = "0.50.0"
 ignore = "0.4.18"
 miette = "7.2.0"
 normalize-path = "0.2.1"
