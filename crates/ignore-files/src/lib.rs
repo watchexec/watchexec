@@ -25,6 +25,8 @@ mod error;
 pub use filter::*;
 mod filter;
 
+pub mod parse;
+
 /// An ignore file.
 ///
 /// This records both the path to the ignore file and some basic metadata about it: which project

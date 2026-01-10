@@ -15,31 +15,26 @@ rust-version = "1.70.0"
 edition = "2021"
 
 [dependencies]
+chumsky = { version = "0.10.1", features = ["extension"] }
+dunce = "1.0.4"
 futures = "0.3.29"
 gix-config = "0.45.1"
 ignore = "0.4.18"
 miette = "7.2.0"
 normalize-path = "0.2.1"
-thiserror = "2.0.11"
-tracing = "0.1.40"
+project-origins = { version = "1.4.2", path = "../project-origins" }
 radix_trie = "0.2.1"
-dunce = "1.0.4"
-
-[dependencies.tokio]
-version = "1.33.0"
-default-features = false
-features = [
+thiserror = "2.0.11"
+tokio = { version = "1.33.0", default-features = false, features = [
 	"fs",
 	"macros",
 	"rt",
-]
-
-[dependencies.project-origins]
-version = "1.4.2"
-path = "../project-origins"
+] }
+tracing = "0.1.40"
 
 [dev-dependencies]
-tracing-subscriber = "0.3.6"
+gitignores = "4.5.0"
+tracing-subscriber = { version = "0.3.6", features = ["env-filter"] }
 
 [features]
 default = []
