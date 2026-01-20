@@ -90,7 +90,7 @@ path = "../events"
 features = ["serde"]
 
 [dependencies.watchexec-signals]
-version = "5.0.0"
+version = "5.0.1"
 path = "../signals"
 
 [dependencies.watchexec-filterer-globset]
