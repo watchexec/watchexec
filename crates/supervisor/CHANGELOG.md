@@ -2,6 +2,9 @@
 
 ## Next (YYYY-MM-DD)
 
+- Deps: process-wrap 9
+- Fix: handle graceful stop when job handle dropped (#981, #982)
+
 ## v5.0.1 (2025-05-15)
 
 ## v5.0.0 (2025-05-15)
