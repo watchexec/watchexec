@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v3.0.5 (2026-01-20)
+
 - Deps: gix-config 0.50
 - Deps: radix-trie 0.3
 - Fix: match git's behaviour for finding ignores

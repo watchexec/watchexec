@@ -1639,7 +1639,7 @@ dependencies = [
 
 [[package]]
 name = "ignore-files"
-version = "3.0.4"
+version = "3.0.5"
 dependencies = [
  "dunce",
  "futures",
