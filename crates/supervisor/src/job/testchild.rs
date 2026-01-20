@@ -2,6 +2,7 @@ use std::{
 	future::Future,
 	io::Result,
 	path::Path,
+	pin::Pin,
 	process::{ExitStatus, Output},
 	sync::Arc,
 	time::{Duration, Instant},
@@ -95,9 +96,9 @@ impl TestChild {
 			.and_then(|o| o.as_ref().map(|o| o.status)))
 	}
 
-	pub fn wait(&mut self) -> Box<dyn Future<Output = Result<ExitStatus>> + Send + '_> {
+	pub fn wait(&mut self) -> Pin<Box<dyn Future<Output = Result<ExitStatus>> + Send + '_>> {
 		self.calls.push(TestChildCall::Wait);
-		Box::new(async {
+		Box::pin(async {
 			if let Program::Exec { prog, args } = &self.command.program {
 				if prog == Path::new("sleep") {
 					if let Some(time) = args
