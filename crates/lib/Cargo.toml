@@ -33,7 +33,7 @@ version = "5.0.1"
 path = "../signals"
 
 [dependencies.watchexec-supervisor]
-version = "5.0.1"
+version = "5.0.2"
 path = "../supervisor"
 
 [dependencies.tokio]

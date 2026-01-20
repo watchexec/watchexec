@@ -1,6 +1,6 @@
 [package]
 name = "watchexec-supervisor"
-version = "5.0.1"
+version = "5.0.2"
 
 authors = ["Félix Saparelli <felix@passcod.name>"]
 license = "Apache-2.0 OR MIT"
