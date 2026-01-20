@@ -1,4 +1,7 @@
-use std::{env::var, path::{Path, PathBuf}};
+use std::{
+	env::var,
+	path::{Path, PathBuf},
+};
 
 use time::{format_description::FormatItem, macros::format_description, OffsetDateTime};
 
@@ -153,8 +156,8 @@ impl GitInfo {
 		let git_root = Self::find_git_dir(Path::new("."))
 			.ok_or_else(|| "no git repository found".to_string())?;
 
-		let hash = Self::resolve_head(&git_root)
-			.ok_or_else(|| "could not resolve HEAD".to_string())?;
+		let hash =
+			Self::resolve_head(&git_root).ok_or_else(|| "could not resolve HEAD".to_string())?;
 
 		let timestamp = Self::read_commit_timestamp(&git_root, &hash)
 			.ok_or_else(|| "could not read commit timestamp".to_string())?;
@@ -294,7 +297,10 @@ impl GitInfo {
 	}
 
 	fn find_object_in_index(idx_path: &Path, hash: &[u8; 20]) -> Option<u64> {
-		use std::{fs::File, io::{Read, Seek, SeekFrom}};
+		use std::{
+			fs::File,
+			io::{Read, Seek, SeekFrom},
+		};
 
 		let mut file = File::open(idx_path).ok()?;
 		let mut header = [0u8; 8];
@@ -322,7 +328,11 @@ impl GitInfo {
 		let first_byte = hash[0] as usize;
 
 		// Find range of objects with this first byte
-		let start = if first_byte == 0 { 0 } else { fanout[first_byte - 1] as usize };
+		let start = if first_byte == 0 {
+			0
+		} else {
+			fanout[first_byte - 1] as usize
+		};
 		let end = fanout[first_byte] as usize;
 
 		if start >= end {
@@ -349,7 +359,8 @@ impl GitInfo {
 					// Found! Now get the offset
 					// CRC section starts after all hashes
 					// Offset section starts after CRC section
-					let offset_section = hash_section_offset + total_objects * 20 + total_objects * 4;
+					let offset_section =
+						hash_section_offset + total_objects * 20 + total_objects * 4;
 					let offset_entry = offset_section + mid * 4;
 
 					file.seek(SeekFrom::Start(offset_entry as u64)).ok()?;
@@ -382,7 +393,10 @@ impl GitInfo {
 
 	fn read_pack_object(pack_path: &Path, offset: u64) -> Option<Vec<u8>> {
 		use flate2::read::ZlibDecoder;
-		use std::{fs::File, io::{Read, Seek, SeekFrom}};
+		use std::{
+			fs::File,
+			io::{Read, Seek, SeekFrom},
+		};
 
 		let mut file = File::open(pack_path).ok()?;
 		file.seek(SeekFrom::Start(offset)).ok()?;

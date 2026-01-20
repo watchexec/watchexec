@@ -417,8 +417,7 @@ pub type AsyncFunc = Box<
 		+ 'static,
 >;
 
-pub type SyncSpawnHook =
-	Arc<dyn Fn(&mut CommandWrap, &JobTaskContext<'_>) + Send + Sync + 'static>;
+pub type SyncSpawnHook = Arc<dyn Fn(&mut CommandWrap, &JobTaskContext<'_>) + Send + Sync + 'static>;
 pub type AsyncSpawnHook = Arc<
 	dyn (Fn(&mut CommandWrap, &JobTaskContext<'_>) -> Box<dyn Future<Output = ()> + Send + Sync>)
 		+ Send
