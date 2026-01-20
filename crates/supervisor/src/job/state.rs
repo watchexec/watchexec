@@ -1,8 +1,8 @@
 use std::{sync::Arc, time::Instant};
 
 #[cfg(not(test))]
-use process_wrap::tokio::TokioChildWrapper;
-use process_wrap::tokio::TokioCommandWrap;
+use process_wrap::tokio::ChildWrapper;
+use process_wrap::tokio::CommandWrap;
 use tracing::trace;
 use watchexec_events::ProcessEnd;
 
@@ -14,7 +14,7 @@ use crate::command::Command;
 /// of the command, and can be queried via the [`JobTaskContext`](super::JobTaskContext) by hooks.
 ///
 /// Technically, some operations can be done through a `&self` shared borrow on the running
-/// command's [`TokioChildWrapper`], but this library recommends against taking advantage of this,
+/// command's [`ChildWrapper`], but this library recommends against taking advantage of this,
 /// and prefer using the methods on [`Job`](super::Job) instead, so that the job can keep track of
 /// what's going on.
 #[derive(Debug)]
@@ -33,7 +33,7 @@ pub enum CommandState {
 
 		/// The child process.
 		#[cfg(not(test))]
-		child: Box<dyn TokioChildWrapper>,
+		child: Box<dyn ChildWrapper>,
 
 		/// The time at which the process was spawned.
 		started: Instant,
@@ -75,7 +75,7 @@ impl CommandState {
 	pub(crate) fn spawn(
 		&mut self,
 		command: Arc<Command>,
-		mut spawnable: TokioCommandWrap,
+		mut spawnable: CommandWrap,
 	) -> std::io::Result<bool> {
 		if let Self::Running { .. } = self {
 			trace!("command running, not spawning again");
@@ -132,7 +132,7 @@ impl CommandState {
 
 	pub(crate) async fn wait(&mut self) -> std::io::Result<bool> {
 		if let Self::Running { child, started } = self {
-			let end = Box::into_pin(child.wait()).await?;
+			let end = child.wait().await?;
 			*self = Self::Finished {
 				status: end.into(),
 				started: *started,

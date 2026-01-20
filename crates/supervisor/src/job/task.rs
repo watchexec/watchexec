@@ -1,6 +1,6 @@
 use std::{future::Future, mem::take, sync::Arc, time::Instant};
 
-use process_wrap::tokio::TokioCommandWrap;
+use process_wrap::tokio::CommandWrap;
 use tokio::{select, task::JoinHandle};
 use tracing::{instrument, trace, trace_span, Instrument};
 use watchexec_signals::Signal;
@@ -161,7 +161,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 										trace!("stopping child");
 										try_with_handler!(Box::into_pin(child.kill()).await);
 										trace!("waiting on child");
-										let status = try_with_handler!(Box::into_pin(child.wait()).await);
+										let status = try_with_handler!(child.wait().await);
 
 										trace!(?status, "got child end status");
 										command_state = CommandState::Finished {
@@ -193,7 +193,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 										trace!("stopping child");
 										try_with_handler!(Box::into_pin(child.kill()).await);
 										trace!("waiting on child");
-										let status = try_with_handler!(Box::into_pin(child.wait()).await);
+										let status = try_with_handler!(child.wait().await);
 
 										trace!(?status, "got child end status");
 										command_state = CommandState::Finished {
@@ -243,7 +243,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 										trace!("stopping child forcefully");
 										try_with_handler!(Box::into_pin(child.kill()).await);
 										trace!("waiting on child");
-										let status = try_with_handler!(Box::into_pin(child.wait()).await);
+										let status = try_with_handler!(child.wait().await);
 
 										trace!(?status, "got child end status");
 										command_state = CommandState::Finished {
@@ -417,16 +417,15 @@ pub type AsyncFunc = Box<
 		+ 'static,
 >;
 
-pub type SyncSpawnHook =
-	Arc<dyn Fn(&mut TokioCommandWrap, &JobTaskContext<'_>) + Send + Sync + 'static>;
+pub type SyncSpawnHook = Arc<dyn Fn(&mut CommandWrap, &JobTaskContext<'_>) + Send + Sync + 'static>;
 pub type AsyncSpawnHook = Arc<
-	dyn (Fn(&mut TokioCommandWrap, &JobTaskContext<'_>) -> Box<dyn Future<Output = ()> + Send + Sync>)
+	dyn (Fn(&mut CommandWrap, &JobTaskContext<'_>) -> Box<dyn Future<Output = ()> + Send + Sync>)
 		+ Send
 		+ Sync
 		+ 'static,
 >;
 
-sync_async_callbox!(SpawnHook, SyncSpawnHook, AsyncSpawnHook, (command: &mut TokioCommandWrap, context: &JobTaskContext<'_>));
+sync_async_callbox!(SpawnHook, SyncSpawnHook, AsyncSpawnHook, (command: &mut CommandWrap, context: &JobTaskContext<'_>));
 
 pub type SyncErrorHandler = Arc<dyn Fn(SyncIoError) + Send + Sync + 'static>;
 pub type AsyncErrorHandler = Arc<
@@ -439,7 +438,7 @@ sync_async_callbox!(ErrorHandler, SyncErrorHandler, AsyncErrorHandler, (error: S
 #[instrument(level = "trace")]
 async fn signal_child(
 	signal: Signal,
-	#[cfg(not(test))] child: &mut Box<dyn process_wrap::tokio::TokioChildWrapper>,
+	#[cfg(not(test))] child: &mut Box<dyn process_wrap::tokio::ChildWrapper>,
 	#[cfg(test)] child: &mut super::TestChild,
 ) -> std::io::Result<()> {
 	#[cfg(unix)]

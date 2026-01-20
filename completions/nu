@@ -30,7 +30,6 @@ module completions {
 
   # Execute commands when watched files change
   export extern watchexec [
-    ...program: string        # Command (program and arguments) to run on changes
     --manual                  # Show the manual page
     --completions: string@"nu-complete watchexec completions" # Generate a shell completions script
     --only-emit-events        # Only emit events to stdout, run no commands
@@ -84,6 +83,7 @@ module completions {
     --bell                    # Ring the terminal bell on command completion
     --help(-h)                # Print help (see more with '--help')
     --version(-V)             # Print version
+    ...program: string        # Command (program and arguments) to run on changes
   ]
 
 }

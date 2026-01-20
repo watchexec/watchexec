@@ -75,7 +75,6 @@ pub fn gather_to(filename: &str, structname: &str, public: bool) {
 		git_shorthash,
 		git_date,
 		git_datetime,
-		git_description,
 		..
 	}) = git
 	{
@@ -90,9 +89,7 @@ pub fn gather_to(filename: &str, structname: &str, public: bool) {
 			/// The git commit hash, shortened
 			///
 			/// This is the shortened hash of the commit that was built. Same caveats as with
-			/// `GIT_COMMIT_HASH` apply. The length of the hash is as short as possible while still
-			/// being unambiguous, at build time. For large repositories, this may be longer than 7
-			/// characters.
+			/// `GIT_COMMIT_HASH` apply. The length of the hash is fixed at 8 characters.
 			pub const GIT_COMMIT_SHORTHASH: &'static str = {git_shorthash:?};
 
 			/// The git commit date
@@ -106,11 +103,6 @@ pub fn gather_to(filename: &str, structname: &str, public: bool) {
 			/// This is the date and time (`YYYY-MM-DD HH:MM:SS`) of the commit that was built. Same
 			/// caveats as with `GIT_COMMIT_HASH` apply.
 			pub const GIT_COMMIT_DATETIME: &'static str = {git_datetime:?};
-
-			/// The git description
-			///
-			/// This is the string equivalent to what `git describe` would output
-			pub const GIT_COMMIT_DESCRIPTION: &'static str = {git_description:?};
 		"
 	), format!("{crate_version} ({git_shorthash} {git_date}) {crate_feature_string}\ncommit-hash: {git_hash}\ncommit-date: {git_date}\nbuild-date: {build_date}\nrelease: {crate_version}\nfeatures: {crate_feature_list}"))
 	} else {
@@ -251,7 +243,6 @@ pub fn gather_to_env_with_prefix(prefix: &str) {
 		git_shorthash,
 		git_date,
 		git_datetime,
-		git_description,
 		..
 	}) = git
 	{
@@ -259,6 +250,5 @@ pub fn gather_to_env_with_prefix(prefix: &str) {
 		println!("cargo:rustc-env={prefix}GIT_COMMIT_SHORTHASH={git_shorthash}");
 		println!("cargo:rustc-env={prefix}GIT_COMMIT_DATE={git_date}");
 		println!("cargo:rustc-env={prefix}GIT_COMMIT_DATETIME={git_datetime}");
-		println!("cargo:rustc-env={prefix}GIT_COMMIT_DESCRIPTION={git_description}");
 	}
 }

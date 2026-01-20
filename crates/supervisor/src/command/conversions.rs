@@ -1,14 +1,14 @@
 use std::fmt;
 
-use process_wrap::tokio::{KillOnDrop, TokioCommandWrap};
+use process_wrap::tokio::{CommandWrap, KillOnDrop};
 use tokio::process::Command as TokioCommand;
 use tracing::trace;
 
 use super::{Command, Program, SpawnOptions};
 
 impl Command {
-	/// Obtain a [`process_wrap::tokio::TokioCommandWrap`].
-	pub fn to_spawnable(&self) -> TokioCommandWrap {
+	/// Obtain a [`process_wrap::tokio::CommandWrap`].
+	pub fn to_spawnable(&self) -> CommandWrap {
 		trace!(program=?self.program, "constructing command");
 
 		let cmd = match &self.program {
@@ -56,7 +56,7 @@ impl Command {
 			}
 		};
 
-		let mut cmd = TokioCommandWrap::from(cmd);
+		let mut cmd = CommandWrap::from(cmd);
 		cmd.wrap(KillOnDrop);
 
 		match self.options {

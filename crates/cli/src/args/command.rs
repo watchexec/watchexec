@@ -278,7 +278,11 @@ pub enum WrapMode {
 	None,
 }
 
-pub const WRAP_DEFAULT: &str = if cfg!(target_os = "macos") { "session" } else { "group" };
+pub const WRAP_DEFAULT: &str = if cfg!(target_os = "macos") {
+	"session"
+} else {
+	"group"
+};
 
 #[derive(Clone, Debug)]
 pub struct EnvVar {

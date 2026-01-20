@@ -14,21 +14,18 @@ readme = "README.md"
 rust-version = "1.64.0"
 edition = "2021"
 
+[dependencies]
+flate2 = { version = "1.0.35", optional = true }
+
 [dependencies.time]
 version = "0.3.30"
 features = ["macros", "formatting"]
-
-[dependencies.gix]
-version = "0.72.1"
-optional = true
-default-features = false
-features = ["revision"]
 
 [features]
 default = ["git", "reproducible", "std"]
 
 ### Read from git repo, provide GIT_* vars
-git = ["dep:gix"]
+git = ["dep:flate2"]
 
 ### Read from SOURCE_DATE_EPOCH when available
 reproducible = []

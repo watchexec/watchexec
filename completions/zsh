@@ -32,7 +32,7 @@ _watchexec() {
 '*--map-signal=[Translate signals from the OS to signals to send to the command]:SIGNAL:SIGNAL:_default' \
 '-d+[Time to wait for new events before taking action]:TIMEOUT:_default' \
 '--debounce=[Time to wait for new events before taking action]:TIMEOUT:_default' \
-'--poll=[Poll for filesystem changes]' \
+'--poll=[Poll for filesystem changes]::INTERVAL:_default' \
 '--emit-events-to=[Configure event emission]:MODE:(environment stdio file json-stdio json-file none)' \
 '*-w+[Watch a specific file or directory]:PATH:_files' \
 '*--watch=[Watch a specific file or directory]:PATH:_files' \
@@ -52,9 +52,9 @@ _watchexec() {
 '*--ignore=[Filename patterns to filter out]:PATTERN:_default' \
 '*--ignore-file=[Files to load ignores from]:PATH:_files' \
 '*--fs-events=[Filesystem events to filter to]:EVENTS:(access create remove rename modify metadata)' \
-'--log-file=[Write diagnostic logs to a file]' \
-'-c+[Clear screen before running command]' \
-'--clear=[Clear screen before running command]' \
+'--log-file=[Write diagnostic logs to a file]::PATH:_files' \
+'-c+[Clear screen before running command]::MODE:(clear reset)' \
+'--clear=[Clear screen before running command]::MODE:(clear reset)' \
 '--color=[When to use terminal colours]:MODE:(auto always never)' \
 '(--completions --only-emit-events)--manual[Show the manual page]' \
 '(--completions --manual)--only-emit-events[Only emit events to stdout, run no commands]' \
