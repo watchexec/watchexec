@@ -32,10 +32,10 @@ clearscreen = "4.0.1"
 dashmap = "6.1.0"
 dirs = "6.0.0"
 dunce = "1.0.4"
-foldhash = "0.1.4" # needs to be in sync with jaq's requirement
+foldhash = "0.1.5" # needs to be in sync with jaq's requirement
 futures = "0.3.29"
 humantime = "2.1.0"
-indexmap = "2.7.1" # needs to be in sync with jaq's requirement
+indexmap = "2.10.0" # needs to be in sync with jaq's requirement
 jaq-core = "2.1.0"
 jaq-json = { version = "1.1.0", features = ["serde_json"] }
 jaq-std = "2.1.0"
