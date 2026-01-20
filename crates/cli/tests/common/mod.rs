@@ -53,7 +53,7 @@ pub fn generate_test_files(args: GenerateTestFilesArgs) -> Result<Vec<PathBuf>> 
 		tempfile::tempdir()
 			.into_diagnostic()
 			.wrap_err("failed to build tempdir")?
-			.into_path()
+			.keep()
 	};
 	let mut paths = vec![tmpdir.clone()];
 
@@ -86,11 +86,11 @@ pub fn generate_test_files(args: GenerateTestFilesArgs) -> Result<Vec<PathBuf>> 
 				}
 			}
 			GeneratedFileNesting::RandomToMax(max_depth) => {
-				let mut generator = rand::thread_rng();
+				let mut generator = rand::rng();
 				for idx in 0..subfolder_config.file_count {
 					// Build a randomized path up to max depth
 					let mut generated_path = subfolder_path.clone();
-					let depth = generator.gen_range(0..max_depth);
+					let depth = generator.random_range(0..max_depth);
 					for _ in 0..depth {
 						generated_path.push("stub-dir");
 					}
