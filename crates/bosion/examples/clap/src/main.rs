@@ -15,7 +15,7 @@ struct Args {
 	dates: bool,
 
 	#[clap(long)]
-	describe: bool,
+	hashes: bool,
 }
 
 fn main() {
@@ -33,8 +33,9 @@ fn main() {
 		println!("commit datetime: {}", Bosion::GIT_COMMIT_DATETIME);
 		println!("build date: {}", Bosion::BUILD_DATE);
 		println!("build datetime: {}", Bosion::BUILD_DATETIME);
-	} else if args.describe {
-		println!("commit description: {}", Bosion::GIT_COMMIT_DESCRIPTION);
+	} else if args.hashes {
+		println!("commit hash: {}", Bosion::GIT_COMMIT_HASH);
+		println!("commit shorthash: {}", Bosion::GIT_COMMIT_SHORTHASH);
 	} else {
 		println!("{}", Bosion::LONG_VERSION);
 	}
