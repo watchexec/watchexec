@@ -1,5 +1,7 @@
 #![doc = include_str!("../README.md")]
 #![cfg_attr(not(test), warn(unused_crate_dependencies))]
+// thiserror's macro generates code that triggers this lint spuriously
+#![allow(unused_assignments)]
 
 use std::fmt;
 
