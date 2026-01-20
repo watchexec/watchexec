@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v2.0.0 (2026-01-20)
+
 - Remove `GIT_COMMIT_DESCRIPTION`. In practice this had zero usage, and dropping it means we can stop depending on gix.
 - Deps: remove gix. This drops dependencies from 327 crates to just 6.
 
