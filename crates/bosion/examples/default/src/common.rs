@@ -43,7 +43,7 @@ macro_rules! test_snapshot {
 					("git hash".to_string(), crate::common::git_commit_info("%H")),
 					(
 						"git shorthash".to_string(),
-						crate::common::git_commit_info("%h"),
+						crate::common::git_commit_info("%H").chars().take(8).collect(),
 					),
 					(
 						"git date".to_string(),
