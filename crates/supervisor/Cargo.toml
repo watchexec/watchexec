@@ -41,7 +41,7 @@ path = "../signals"
 boxcar = "0.2.9"
 
 [target.'cfg(unix)'.dev-dependencies.nix]
-version = "0.30.1"
+version = "0.31.1"
 features = ["signal"]
 
 [lints.clippy]
