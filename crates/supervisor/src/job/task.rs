@@ -44,6 +44,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 		tokio::spawn(async move {
 			let mut error_handler = ErrorHandler::None;
 			let mut spawn_hook = SpawnHook::None;
+			let mut spawn_fn: Option<SpawnFn> = None;
 			let mut command_state = CommandState::Pending;
 			let mut previous_run = None;
 			let mut stop_timer = None;
@@ -88,7 +89,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 												},
 											)
 											.await;
-										if let Err(err) = command_state.spawn(command.clone(), spawnable) {
+										if let Err(err) = command_state.spawn(command.clone(), spawnable, spawn_fn.as_ref()) {
 											let fut = error_handler.call(sync_io_error(err));
 											fut.await;
 											return Loop::Skip;
@@ -153,7 +154,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 												},
 											)
 											.await;
-										try_with_handler!(command_state.spawn(command.clone(), spawnable));
+										try_with_handler!(command_state.spawn(command.clone(), spawnable, spawn_fn.as_ref()));
 									}
 								}
 								Control::Stop => {
@@ -219,7 +220,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 												},
 											)
 											.await;
-										try_with_handler!(command_state.spawn(command.clone(), spawnable));
+										try_with_handler!(command_state.spawn(command.clone(), spawnable, spawn_fn.as_ref()));
 									} else {
 										trace!("child isn't running, skip");
 									}
@@ -270,7 +271,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 											},
 										)
 										.await;
-									try_with_handler!(command_state.spawn(command.clone(), spawnable));
+									try_with_handler!(command_state.spawn(command.clone(), spawnable, spawn_fn.as_ref()));
 								}
 								Control::Signal(signal) => {
 									if let CommandState::Running { child, .. } = &mut command_state {
@@ -335,6 +336,14 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 								Control::UnsetSpawnHook => {
 									trace!("unsetting spawn hook");
 									spawn_hook = SpawnHook::None;
+								}
+								Control::SetSpawnFn(f) => {
+									trace!("setting spawn fn");
+									spawn_fn = Some(f);
+								}
+								Control::ClearSpawnFn => {
+									trace!("clearing spawn fn");
+									spawn_fn = None;
 								}
 							}
 
@@ -420,6 +429,23 @@ pub type AsyncFunc = Box<
 pub type SyncSpawnHook = Arc<dyn Fn(&mut CommandWrap, &JobTaskContext<'_>) + Send + Sync + 'static>;
 pub type AsyncSpawnHook = Arc<
 	dyn (Fn(&mut CommandWrap, &JobTaskContext<'_>) -> Box<dyn Future<Output = ()> + Send + Sync>)
+		+ Send
+		+ Sync
+		+ 'static,
+>;
+
+/// A function that customises how the underlying process is spawned.
+///
+/// When set on a [`Job`](super::Job), this function is passed to
+/// [`CommandWrap::spawn_with()`](process_wrap::tokio::CommandWrap::spawn_with) instead of using
+/// the default [`CommandWrap::spawn()`](process_wrap::tokio::CommandWrap::spawn). It receives a
+/// `&mut tokio::process::Command` and must return the spawned `tokio::process::Child`.
+///
+/// All process-wrap layers are still applied around the child, so this only customises the
+/// low-level spawn step. This is useful for delegating process spawning to a privileged helper
+/// (e.g. for Linux capability granting) while keeping the supervisor's lifecycle management.
+pub type SpawnFn = Arc<
+	dyn Fn(&mut tokio::process::Command) -> std::io::Result<tokio::process::Child>
 		+ Send
 		+ Sync
 		+ 'static,
