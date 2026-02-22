@@ -1,6 +1,13 @@
 #![allow(clippy::must_use_candidate)] // Ticket-returning methods are supposed to be used without awaiting
 
-use std::{future::Future, sync::Arc, time::Duration};
+use std::{
+	future::Future,
+	sync::{
+		atomic::{AtomicBool, Ordering},
+		Arc,
+	},
+	time::Duration,
+};
 
 use process_wrap::tokio::CommandWrap;
 use watchexec_signals::Signal;
@@ -41,6 +48,9 @@ pub struct Job {
 
 	/// Set to true when the command task has stopped gracefully.
 	pub(crate) gone: Flag,
+
+	/// Mirrors the command state: true when a child process is running.
+	pub(crate) running: Arc<AtomicBool>,
 }
 
 impl Job {
@@ -50,8 +60,19 @@ impl Job {
 	}
 
 	/// If this job is dead.
+	///
+	/// A dead job is one where the job task has stopped entirely, not just
+	/// a job whose command has finished. See [`is_running`](Self::is_running).
 	pub fn is_dead(&self) -> bool {
 		self.gone.raised()
+	}
+
+	/// If a child process is currently running.
+	///
+	/// This returns `false` if the command has finished, hasn't been started
+	/// yet, or the job is dead.
+	pub fn is_running(&self) -> bool {
+		self.running.load(Ordering::Relaxed)
 	}
 
 	fn prepare_control(&self, control: Control) -> (Ticket, ControlMessage) {

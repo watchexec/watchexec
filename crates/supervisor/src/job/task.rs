@@ -1,4 +1,12 @@
-use std::{future::Future, mem::take, sync::Arc, time::Instant};
+use std::{
+	future::Future,
+	mem::take,
+	sync::{
+		atomic::{AtomicBool, Ordering},
+		Arc,
+	},
+	time::Instant,
+};
 
 use process_wrap::tokio::CommandWrap;
 use tokio::{select, task::JoinHandle};
@@ -34,12 +42,15 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 	let (sender, mut receiver) = priority::new();
 	let gone = Flag::default();
 	let done = gone.clone();
+	let running = Arc::new(AtomicBool::new(false));
+	let running_flag = running.clone();
 
 	(
 		Job {
 			command: command.clone(),
 			control_queue: sender,
 			gone,
+			running,
 		},
 		tokio::spawn(async move {
 			let mut error_handler = ErrorHandler::None;
@@ -51,6 +62,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 			let mut on_end_restart: Option<Flag> = None;
 
 			'main: loop {
+				running_flag.store(command_state.is_running(), Ordering::Relaxed);
 				select! {
 					result = command_state.wait(), if command_state.is_running() => {
 						trace!(?result, ?command_state, "got wait result");
@@ -362,6 +374,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 			}
 
 			trace!("raising job done flag");
+			running_flag.store(false, Ordering::Relaxed);
 			done.raise();
 		}),
 	)

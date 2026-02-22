@@ -277,7 +277,9 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 				let quit = |mut action: ActionHandler| {
 					match quit_again.fetch_add(1, Ordering::Relaxed) {
 						0 => {
-							if stop_timeout > Duration::ZERO {
+							if stop_timeout > Duration::ZERO
+								&& action.list_jobs().any(|(_, job)| job.is_running())
+							{
 								eprintln!("[Waiting {stop_timeout:?} for processes to exit before stopping...]");
 							}
 							// eprintln!("[Waiting {stop_timeout:?} for processes to exit before stopping... Ctrl-C again to exit faster]");
