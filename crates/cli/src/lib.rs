@@ -42,6 +42,10 @@ async fn run_watchexec(args: Args, state: state::State) -> Result<()> {
 		wx.send_event(Event::default(), Priority::Urgent).await?;
 	}
 
+	if args.events.interactive {
+		eprintln!("[Interactive] q: quit, p: pause/unpause, r: restart");
+	}
+
 	info!("running main loop");
 	wx.main().await.into_diagnostic()??;
 

@@ -68,6 +68,8 @@ set edit:completion:arg-completer[watchexec] = {|@words|
             cand -r 'Restart the process if it''s still running'
             cand --restart 'Restart the process if it''s still running'
             cand --stdin-quit 'Exit when stdin closes'
+            cand -H 'Respond to keypresses to quit, restart, or pause'
+            cand --interactive 'Respond to keypresses to quit, restart, or pause'
             cand -p 'Wait until first change before running command'
             cand --postpone 'Wait until first change before running command'
             cand --no-vcs-ignore 'Don''t load gitignores'
