@@ -121,7 +121,7 @@ mod raw_mode {
 			// for the lifetime of the process. The original mode is saved and restored in Drop.
 			unsafe {
 				let handle = GetStdHandle(STD_INPUT_HANDLE);
-				if handle == INVALID_HANDLE_VALUE {
+				if handle == INVALID_HANDLE_VALUE || handle == 0 {
 					return None;
 				}
 				let mut original_mode: u32 = 0;
