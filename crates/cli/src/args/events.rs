@@ -140,7 +140,7 @@ pub struct EventsArgs {
 		long,
 		short = 'H',
 		help_heading = OPTSET_EVENTS,
-		display_order = 192,
+		display_order = 90,
 	)]
 	pub interactive: bool,
 
