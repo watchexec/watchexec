@@ -130,7 +130,7 @@ pub struct EventsArgs {
 	)]
 	pub stdin_quit: bool,
 
-	/// Enable interactive mode
+	/// Respond to keypresses to quit, restart, or pause
 	///
 	/// In interactive mode, Watchexec listens for keypresses and responds to them. Currently
 	/// supported keys are: 'r' to restart the command, 'p' to toggle pausing the watch, and 'q'
