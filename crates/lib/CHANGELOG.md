@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v8.1.1 (2026-02-22)
+
 ## v8.1.0 (2026-02-22)
 
 - Augments `keyboard_events` config to emit events for all single keyboard key inputs, in addition to the existing EOF
