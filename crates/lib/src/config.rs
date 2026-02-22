@@ -117,11 +117,12 @@ pub struct Config {
 
 	/// Watch stdin and emit events when input comes in over the keyboard.
 	///
-	/// If this is true, the keyboard event source is started and configured to report when input
-	/// is received on stdin. If it becomes false, the keyboard event source is shut down and stdin
+	/// If this is true, the keyboard event source is started and stdin is switched to raw mode
+	/// (disabling line buffering). Individual key events are emitted, as well as EOF. If it
+	/// becomes false, the keyboard event source is shut down, cooked mode is restored, and stdin
 	/// may flow to commands again.
 	///
-	/// Currently only EOF is watched for and emitted.
+	/// This requires a TTY and is opt-in.
 	pub keyboard_events: Changeable<bool>,
 
 	/// How long to wait for events to build up before executing an action.

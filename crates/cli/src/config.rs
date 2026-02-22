@@ -28,7 +28,7 @@ use watchexec::{
 	sources::fs::Watcher,
 	Config, ErrorHook, Id,
 };
-use watchexec_events::{Event, Keyboard, ProcessEnd, Tag};
+use watchexec_events::{Event, KeyCode, Keyboard, ProcessEnd, Tag};
 use watchexec_signals::Signal;
 
 use crate::{
@@ -77,7 +77,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 	config.pathset(args.filtering.paths.clone());
 
 	config.throttle(args.events.debounce.0);
-	config.keyboard_events(args.events.stdin_quit);
+	config.keyboard_events(args.events.stdin_quit || args.events.interactive);
 
 	if let Some(interval) = args.events.poll {
 		config.file_watcher(Watcher::Poll(interval.0));
@@ -140,6 +140,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 	let delay_run = args.command.delay_run.map(|ts| ts.0);
 	let on_busy = args.events.on_busy_update;
 	let stdin_quit = args.events.stdin_quit;
+	let interactive = args.events.interactive;
 
 	let signal = args.events.signal;
 	let stop_signal = args.command.stop_signal;
@@ -181,6 +182,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 
 	let queued = Arc::new(AtomicBool::new(false));
 	let quit_again = Arc::new(AtomicU8::new(0));
+	let paused = Arc::new(AtomicBool::new(false));
 
 	config.on_action_async(move |mut action| {
 		let add_envs = add_envs.clone();
@@ -188,6 +190,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 		let state = state.clone();
 		let queued = queued.clone();
 		let quit_again = quit_again.clone();
+		let paused = paused.clone();
 		let signal_map = signal_map.clone();
 		let workdir = workdir.clone();
 		Box::new(
@@ -198,6 +201,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 				let command = command.clone();
 				let queued = queued.clone();
 				let quit_again = quit_again.clone();
+				let paused = paused.clone();
 				let signal_map = signal_map.clone();
 				let workdir = workdir.clone();
 
@@ -337,6 +341,61 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 					return quit(action);
 				}
 
+				if interactive {
+					for event in action.events.iter() {
+						for tag in &event.tags {
+							match tag {
+								Tag::Keyboard(Keyboard::Eof) => {
+									debug!("interactive: Ctrl-C/D, quit");
+									return quit(action);
+								}
+								Tag::Keyboard(Keyboard::Key { key, .. }) => match key {
+									KeyCode::Char('q') => {
+										debug!("interactive: quit");
+										return quit(action);
+									}
+									KeyCode::Char('p') => {
+										let was_paused = paused.fetch_xor(true, Ordering::SeqCst);
+										if was_paused {
+											debug!("interactive: unpause");
+											eprintln!("[Unpaused]");
+										} else {
+											debug!("interactive: pause");
+											eprintln!("[Paused]");
+										}
+										return action;
+									}
+									KeyCode::Char('r') => {
+										debug!("interactive: restart");
+										clear_screen();
+										if cfg!(windows) {
+											job.restart();
+										} else {
+											job.restart_with_signal(
+												stop_signal.unwrap_or(Signal::Terminate),
+												stop_timeout,
+											);
+										}
+										job.run({
+											let job = job.clone();
+											move |context| {
+												setup_process(
+													job.clone(),
+													context.command.clone(),
+													outflags,
+												);
+											}
+										});
+										return action;
+									}
+									_ => {}
+								},
+								_ => {}
+							}
+						}
+					}
+				}
+
 				let signals: Vec<Signal> = action.signals().collect();
 				trace!(?signals, "received some signals");
 
@@ -374,6 +433,11 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 				{
 					debug!("no filesystem or synthetic events, skip without doing more");
 					show_events();
+					return action;
+				}
+
+				if interactive && paused.load(Ordering::SeqCst) {
+					debug!("interactive: paused, ignoring filesystem event");
 					return action;
 				}
 

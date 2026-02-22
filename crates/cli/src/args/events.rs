@@ -130,6 +130,20 @@ pub struct EventsArgs {
 	)]
 	pub stdin_quit: bool,
 
+	/// Respond to keypresses to quit, restart, or pause
+	///
+	/// In interactive mode, Watchexec listens for keypresses and responds to them. Currently
+	/// supported keys are: 'r' to restart the command, 'p' to toggle pausing the watch, and 'q'
+	/// to quit. This requires a terminal (TTY) and puts stdin into raw mode, so the child process
+	/// will not receive stdin input.
+	#[arg(
+		long,
+		short = 'I',
+		help_heading = OPTSET_EVENTS,
+		display_order = 90,
+	)]
+	pub interactive: bool,
+
 	/// Wait until first change before running command
 	///
 	/// By default, Watchexec will run the command once immediately. With this option, it will
@@ -308,6 +322,15 @@ impl EventsArgs {
 				.error(
 					ErrorKind::InvalidValue,
 					"stdin-quit cannot be used when --watch-file=-",
+				)
+				.exit();
+		}
+
+		if self.interactive && filtering.watch_file == Some(PathBuf::from("-")) {
+			super::Args::command()
+				.error(
+					ErrorKind::InvalidValue,
+					"interactive mode cannot be used when --watch-file=-",
 				)
 				.exit();
 		}

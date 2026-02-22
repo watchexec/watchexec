@@ -52,6 +52,13 @@ features = [
 version = "0.1.40"
 features = ["log"]
 
+[target.'cfg(unix)'.dependencies]
+libc = "0.2.74"
+
+[target.'cfg(windows)'.dependencies.windows-sys]
+version = ">= 0.59.0, < 0.62.0"
+features = ["Win32_System_Console", "Win32_Foundation"]
+
 [dev-dependencies.tracing-subscriber]
 version = "0.3.6"
 features = ["env-filter"]
