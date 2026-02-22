@@ -4,6 +4,8 @@
 
 ## v6.1.0 (2026-02-22)
 
+- Add `Keyboard::Key` to describe arbitrary single-key keyboard events
+
 ## v6.0.0 (2025-05-15)
 
 ## v5.0.1 (2025-05-15)

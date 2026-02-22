@@ -4,6 +4,9 @@
 
 ## v8.1.0 (2026-02-22)
 
+- Augments `keyboard_events` config to emit events for all single keyboard key inputs, in addition to the existing EOF
+- `keyboard_events` now switches to raw mode (and disabling it switches back to cooked)
+
 ## v8.0.1 (2025-05-15)
 
 ## v8.0.0 (2025-05-15)

@@ -4,6 +4,8 @@
 
 ## v5.1.0 (2026-02-22)
 
+- Add `is_running()` and clarify what `is_dead()` is measuring
+
 ## v5.0.2 (2026-01-20)
 
 - Deps: process-wrap 9
