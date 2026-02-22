@@ -1,10 +1,11 @@
 //! Event source for keyboard input and related events
+use std::io::Read;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use async_priority_channel as priority;
 use tokio::{
-	io::AsyncReadExt,
-	select, spawn,
+	spawn,
 	sync::{mpsc, oneshot},
 };
 use tracing::trace;
@@ -194,53 +195,79 @@ fn byte_to_keyboard(byte: u8) -> Option<Keyboard> {
 async fn watch_stdin(
 	errors: mpsc::Sender<RuntimeError>,
 	events: priority::Sender<Event, Priority>,
-	mut close_r: oneshot::Receiver<()>,
+	close_r: oneshot::Receiver<()>,
 ) -> Result<(), CriticalError> {
-	#[cfg(any(unix, windows))]
-	let _raw_guard = raw_mode::RawModeGuard::enter();
-	#[cfg(any(unix, windows))]
-	let is_raw = _raw_guard.is_some();
-	#[cfg(not(any(unix, windows)))]
-	let is_raw = false;
+	// Use an AtomicBool to signal the blocking reader to stop.
+	// This avoids tokio::io::stdin() which uses blocking threads that can't be
+	// interrupted, causing the process to hang on shutdown (issue #1017).
+	let cancel = Arc::new(AtomicBool::new(false));
+	let cancel_clone = cancel.clone();
 
-	let mut stdin = tokio::io::stdin();
-	let mut buffer = [0; 10];
-	loop {
-		select! {
-			result = stdin.read(&mut buffer[..]) => {
-				match result {
-					Ok(0) if is_raw => {
-						// In raw mode with VMIN=0/VTIME>0, Ok(0) means the read
-						// timed out with no input. Loop so the select can check
-						// close_r for shutdown.
+	let (tx, mut rx) = mpsc::channel::<Result<Vec<u8>, ()>>(16);
+
+	// Spawn a blocking task that reads stdin directly
+	tokio::task::spawn_blocking(move || {
+		#[cfg(any(unix, windows))]
+		let _raw_guard = raw_mode::RawModeGuard::enter();
+
+		let mut stdin = std::io::stdin().lock();
+		let mut buffer = [0u8; 10];
+
+		while !cancel_clone.load(Ordering::Relaxed) {
+			match stdin.read(&mut buffer) {
+				Ok(0) => {
+					// EOF or VTIME timeout with no data
+					// With VMIN=0/VTIME=1, this is a timeout - just loop and check cancel
+					#[cfg(any(unix, windows))]
+					if _raw_guard.is_some() {
 						continue;
 					}
-					Ok(0) => {
-						// If we've read 0 bytes then we assume stdin has received an 'eof' so
-						// we send that event into the system and break out of the loop as 'eof'
-						// means that there will be no more information on stdin.
-						send_event(errors, events, Keyboard::Eof).await?;
+					// Real EOF in non-raw mode
+					let _ = tx.blocking_send(Ok(vec![]));
+					break;
+				}
+				Ok(n) => {
+					if tx.blocking_send(Ok(buffer[..n].to_vec())).is_err() {
 						break;
 					}
-					Ok(n) => {
-						for &byte in &buffer[..n] {
+				}
+				Err(_) => {
+					let _ = tx.blocking_send(Err(()));
+					break;
+				}
+			}
+		}
+	});
+
+	// Wait for either data from stdin or the close signal
+	tokio::select! {
+		_ = async {
+			while let Some(result) = rx.recv().await {
+				match result {
+					Ok(bytes) if bytes.is_empty() => {
+						// EOF
+						send_event(errors.clone(), events.clone(), Keyboard::Eof).await?;
+						break;
+					}
+					Ok(bytes) => {
+						for &byte in &bytes {
 							if let Some(key) = byte_to_keyboard(byte) {
 								let is_eof = matches!(key, Keyboard::Eof);
 								send_event(errors.clone(), events.clone(), key).await?;
 								if is_eof {
-									return Ok(());
+									return Ok::<(), CriticalError>(());
 								}
 							}
 						}
 					}
-					Err(_) => break,
+					Err(()) => break,
 				}
 			}
-			_ = &mut close_r => {
-				// If we receive a close signal then break out of the loop and end which drops
-				// our handle on stdin
-				break;
-			}
+			Ok(())
+		} => {}
+		_ = close_r => {
+			// Signal the blocking thread to stop
+			cancel.store(true, Ordering::Relaxed);
 		}
 	}
 
