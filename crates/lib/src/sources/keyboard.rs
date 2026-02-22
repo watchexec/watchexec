@@ -113,6 +113,9 @@ mod raw_mode {
 		original_mode: u32,
 	}
 
+	// SAFETY: HANDLE is a process-global value (stdin) that is safe to use from any thread.
+	unsafe impl Send for RawModeGuard {}
+
 	impl RawModeGuard {
 		/// Switch stdin to raw-like mode. Returns None if stdin is not a console.
 		pub fn enter() -> Option<Self> {
@@ -121,7 +124,7 @@ mod raw_mode {
 			// for the lifetime of the process. The original mode is saved and restored in Drop.
 			unsafe {
 				let handle = GetStdHandle(STD_INPUT_HANDLE);
-				if handle == INVALID_HANDLE_VALUE || handle == 0 {
+				if handle == INVALID_HANDLE_VALUE || handle.is_null() {
 					return None;
 				}
 				let mut original_mode: u32 = 0;
