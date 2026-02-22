@@ -3686,6 +3686,7 @@ dependencies = [
  "async-priority-channel",
  "atomic-take",
  "futures",
+ "libc",
  "miette",
  "nix 0.30.1",
  "normalize-path",
@@ -3697,6 +3698,7 @@ dependencies = [
  "watchexec-events",
  "watchexec-signals",
  "watchexec-supervisor",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
