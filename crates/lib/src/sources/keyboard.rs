@@ -68,6 +68,9 @@ mod raw_mode {
 		/// Switch stdin to raw mode. Returns None if stdin is not a TTY.
 		pub fn enter() -> Option<Self> {
 			let fd = std::io::stdin().as_raw_fd();
+			// SAFETY: isatty, tcgetattr, cfmakeraw, and tcsetattr are POSIX standard
+			// functions operating on a valid fd (stdin). We check return values before
+			// proceeding. The original termios is saved and restored in Drop.
 			unsafe {
 				if libc::isatty(fd) == 0 {
 					return None;
@@ -88,6 +91,7 @@ mod raw_mode {
 
 	impl Drop for RawModeGuard {
 		fn drop(&mut self) {
+			// SAFETY: restoring the original termios saved in enter() on the same fd.
 			unsafe {
 				libc::tcsetattr(self.fd, libc::TCSANOW, &self.original);
 			}
@@ -112,6 +116,9 @@ mod raw_mode {
 	impl RawModeGuard {
 		/// Switch stdin to raw-like mode. Returns None if stdin is not a console.
 		pub fn enter() -> Option<Self> {
+			// SAFETY: GetStdHandle, GetConsoleMode, and SetConsoleMode are Windows Console
+			// API functions. We check return values before proceeding. The handle is valid
+			// for the lifetime of the process. The original mode is saved and restored in Drop.
 			unsafe {
 				let handle = GetStdHandle(STD_INPUT_HANDLE);
 				if handle == INVALID_HANDLE_VALUE {
@@ -137,6 +144,7 @@ mod raw_mode {
 
 	impl Drop for RawModeGuard {
 		fn drop(&mut self) {
+			// SAFETY: restoring the original console mode saved in enter() on the same handle.
 			unsafe {
 				SetConsoleMode(self.handle, self.original_mode);
 			}
