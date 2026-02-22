@@ -9,8 +9,8 @@ watchexec - Execute commands when watched files change
 \[**\--delay-run**\] \[**-e**\|**\--exts**\] \[**-E**\|**\--env**\]
 \[**\--emit-events-to**\] \[**-f**\|**\--filter**\] \[**\--socket**\]
 \[**\--filter-file**\] \[**-j**\|**\--filter-prog**\]
-\[**\--fs-events**\] \[**-H**\|**\--interactive**\]
-\[**-i**\|**\--ignore**\] \[**\--ignore-file**\]
+\[**\--fs-events**\] \[**-i**\|**\--ignore**\]
+\[**-I**\|**\--interactive**\] \[**\--ignore-file**\]
 \[**\--ignore-nothing**\] \[**\--log-file**\] \[**\--manual**\]
 \[**\--map-signal**\] \[**-n** \] \[**-N**\|**\--notify**\]
 \[**\--no-default-ignore**\] \[**\--no-discover-ignore**\]
@@ -455,7 +455,7 @@ Watch lib and src directories for changes, rebuilding each time:
     unintuitive, as demonstrated by the multiple confused queries that
     have landed in my inbox over the years.
 
-**-H**, **\--interactive**
+**-I**, **\--interactive**
 
 :   Respond to keypresses to quit, restart, or pause
 

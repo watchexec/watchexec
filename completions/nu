@@ -51,7 +51,7 @@ module completions {
     --map-signal: string      # Translate signals from the OS to signals to send to the command
     --debounce(-d): string    # Time to wait for new events before taking action
     --stdin-quit              # Exit when stdin closes
-    --interactive(-H)         # Respond to keypresses to quit, restart, or pause
+    --interactive(-I)         # Respond to keypresses to quit, restart, or pause
     --postpone(-p)            # Wait until first change before running command
     --poll: string            # Poll for filesystem changes
     --emit-events-to: string@"nu-complete watchexec emit_events_to" # Configure event emission
