@@ -597,9 +597,9 @@ dependencies = [
 
 [[package]]
 name = "clearscreen"
-version = "4.0.3"
+version = "4.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1430e4fe087fa90b9fc465ddbe00b994df4dd2c8a05f8fd5e43815bbf541b2dc"
+checksum = "c2d96c063e37d73671de0622e68ff0023af66507d58321724f7704605b6b5b18"
 dependencies = [
  "nix 0.30.1",
  "terminfo",
@@ -3698,7 +3698,7 @@ dependencies = [
  "watchexec-events",
  "watchexec-signals",
  "watchexec-supervisor",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -3751,7 +3751,7 @@ dependencies = [
  "watchexec-filterer-globset",
  "watchexec-signals",
  "which",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
