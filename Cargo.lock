@@ -2084,19 +2084,6 @@ dependencies = [
 
 [[package]]
 name = "nix"
-version = "0.30.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74523f3a35e05aba87a1d978330aef40f67b0304ac79c1c00b294c9830543db6"
-dependencies = [
- "bitflags 2.11.0",
- "cfg-if",
- "cfg_aliases",
- "libc",
- "memoffset",
-]
-
-[[package]]
-name = "nix"
 version = "0.31.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "225e7cfe711e0ba79a68baeddb2982723e4235247aefce1482f2f16c27865b66"
@@ -2105,6 +2092,7 @@ dependencies = [
  "cfg-if",
  "cfg_aliases",
  "libc",
+ "memoffset",
 ]
 
 [[package]]
@@ -3797,7 +3785,7 @@ dependencies = [
  "futures",
  "libc",
  "miette",
- "nix 0.30.1",
+ "nix 0.31.1",
  "normalize-path",
  "notify",
  "thiserror 2.0.18",
@@ -3840,7 +3828,7 @@ dependencies = [
  "libc",
  "miette",
  "mimalloc",
- "nix 0.30.1",
+ "nix 0.31.1",
  "notify-rust",
  "pid1",
  "project-origins",
@@ -3910,7 +3898,7 @@ name = "watchexec-signals"
 version = "5.0.1"
 dependencies = [
  "miette",
- "nix 0.30.1",
+ "nix 0.31.1",
  "serde",
  "thiserror 2.0.18",
 ]
@@ -3921,7 +3909,7 @@ version = "5.0.2"
 dependencies = [
  "boxcar",
  "futures",
- "nix 0.30.1",
+ "nix 0.31.1",
  "process-wrap",
  "tokio",
  "tracing",
