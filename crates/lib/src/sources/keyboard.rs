@@ -81,6 +81,13 @@ mod raw_mode {
 				}
 				let mut raw = original;
 				libc::cfmakeraw(&mut raw);
+				// Re-enable output post-processing so \n still maps to \r\n
+				raw.c_oflag |= libc::OPOST;
+				// Non-blocking reads: return after 100ms if no input available.
+				// This ensures the tokio blocking thread doesn't park forever,
+				// allowing graceful shutdown when the close signal is received.
+				raw.c_cc[libc::VMIN] = 0;
+				raw.c_cc[libc::VTIME] = 1;
 				if libc::tcsetattr(fd, libc::TCSANOW, &raw) != 0 {
 					return None;
 				}
@@ -191,6 +198,10 @@ async fn watch_stdin(
 ) -> Result<(), CriticalError> {
 	#[cfg(any(unix, windows))]
 	let _raw_guard = raw_mode::RawModeGuard::enter();
+	#[cfg(any(unix, windows))]
+	let is_raw = _raw_guard.is_some();
+	#[cfg(not(any(unix, windows)))]
+	let is_raw = false;
 
 	let mut stdin = tokio::io::stdin();
 	let mut buffer = [0; 10];
@@ -198,6 +209,12 @@ async fn watch_stdin(
 		select! {
 			result = stdin.read(&mut buffer[..]) => {
 				match result {
+					Ok(0) if is_raw => {
+						// In raw mode with VMIN=0/VTIME>0, Ok(0) means the read
+						// timed out with no input. Loop so the select can check
+						// close_r for shutdown.
+						continue;
+					}
 					Ok(0) => {
 						// If we've read 0 bytes then we assume stdin has received an 'eof' so
 						// we send that event into the system and break out of the loop as 'eof'
