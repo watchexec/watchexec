@@ -64,7 +64,7 @@ version = "0.3.6"
 features = ["env-filter"]
 
 [target.'cfg(unix)'.dev-dependencies.nix]
-version = "0.30.1"
+version = "0.31.1"
 features = ["signal"]
 
 [lints.clippy]
