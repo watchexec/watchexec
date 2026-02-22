@@ -29,20 +29,14 @@ pub async fn worker(
 	let mut config_watch = config.watch();
 	loop {
 		config_watch.next().await;
-		let want_keyboard = config.keyboard_events.get() || config.interactive_mode.get();
-		let interactive = config.interactive_mode.get();
+		let want_keyboard = config.keyboard_events.get();
 		match (want_keyboard, &send_close) {
 			// if we want to watch stdin and we're not already watching it then spawn a task to watch it
 			(true, None) => {
 				let (close_s, close_r) = oneshot::channel::<()>();
 
 				send_close = Some(close_s);
-				spawn(watch_stdin(
-					errors.clone(),
-					events.clone(),
-					close_r,
-					interactive,
-				));
+				spawn(watch_stdin(errors.clone(), events.clone(), close_r));
 			}
 			// if we don't want to watch stdin but we are already watching it then send a close signal to end
 			// the watching
@@ -183,14 +177,9 @@ async fn watch_stdin(
 	errors: mpsc::Sender<RuntimeError>,
 	events: priority::Sender<Event, Priority>,
 	mut close_r: oneshot::Receiver<()>,
-	interactive: bool,
 ) -> Result<(), CriticalError> {
 	#[cfg(any(unix, windows))]
-	let _raw_guard = if interactive {
-		raw_mode::RawModeGuard::enter()
-	} else {
-		None
-	};
+	let _raw_guard = raw_mode::RawModeGuard::enter();
 
 	let mut stdin = tokio::io::stdin();
 	let mut buffer = [0; 10];
@@ -205,7 +194,7 @@ async fn watch_stdin(
 						send_event(errors, events, Keyboard::Eof).await?;
 						break;
 					}
-					Ok(n) if interactive => {
+					Ok(n) => {
 						for &byte in &buffer[..n] {
 							if let Some(key) = byte_to_keyboard(byte) {
 								let is_eof = matches!(key, Keyboard::Eof);
@@ -217,8 +206,6 @@ async fn watch_stdin(
 						}
 					}
 					Err(_) => break,
-					_ => {
-					}
 				}
 			}
 			_ = &mut close_r => {

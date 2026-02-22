@@ -78,7 +78,6 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 
 	config.throttle(args.events.debounce.0);
 	config.keyboard_events(args.events.stdin_quit || args.events.interactive);
-	config.interactive_mode(args.events.interactive);
 
 	if let Some(interval) = args.events.poll {
 		config.file_watcher(Watcher::Poll(interval.0));

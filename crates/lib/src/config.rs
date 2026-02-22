@@ -117,20 +117,13 @@ pub struct Config {
 
 	/// Watch stdin and emit events when input comes in over the keyboard.
 	///
-	/// If this is true, the keyboard event source is started and configured to report when input
-	/// is received on stdin. If it becomes false, the keyboard event source is shut down and stdin
+	/// If this is true, the keyboard event source is started and stdin is switched to raw mode
+	/// (disabling line buffering). Individual key events are emitted, as well as EOF. If it
+	/// becomes false, the keyboard event source is shut down, cooked mode is restored, and stdin
 	/// may flow to commands again.
 	///
-	/// Currently only EOF is watched for and emitted.
-	pub keyboard_events: Changeable<bool>,
-
-	/// Enable interactive mode with raw terminal input.
-	///
-	/// If this is true, the keyboard event source switches stdin to raw mode (disabling line
-	/// buffering) and emits individual key events. The child process will not receive stdin.
-	///
 	/// This requires a TTY and is opt-in.
-	pub interactive_mode: Changeable<bool>,
+	pub keyboard_events: Changeable<bool>,
 
 	/// How long to wait for events to build up before executing an action.
 	///
@@ -172,7 +165,6 @@ impl Default for Config {
 			pathset: Default::default(),
 			file_watcher: Default::default(),
 			keyboard_events: Default::default(),
-			interactive_mode: Default::default(),
 			throttle: Changeable::new(Duration::from_millis(50)),
 			filterer: Default::default(),
 			error_channel_size: 64,
@@ -227,13 +219,6 @@ impl Config {
 	pub fn keyboard_events(&self, enable: bool) -> &Self {
 		debug!(?enable, "Config: keyboard");
 		self.keyboard_events.replace(enable);
-		self.signal_change()
-	}
-
-	/// Enable interactive mode with raw terminal input.
-	pub fn interactive_mode(&self, enable: bool) -> &Self {
-		debug!(?enable, "Config: interactive mode");
-		self.interactive_mode.replace(enable);
 		self.signal_change()
 	}
 
