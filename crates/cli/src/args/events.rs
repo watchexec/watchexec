@@ -138,7 +138,7 @@ pub struct EventsArgs {
 	/// will not receive stdin input.
 	#[arg(
 		long,
-		short = 'H',
+		short = 'I',
 		help_heading = OPTSET_EVENTS,
 		display_order = 90,
 	)]
