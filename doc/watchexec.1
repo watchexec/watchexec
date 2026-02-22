@@ -4,7 +4,7 @@
 .SH NAME
 watchexec \- Execute commands when watched files change
 .SH SYNOPSIS
-\fBwatchexec\fR [\fB\-\-bell\fR] [\fB\-c\fR|\fB\-\-clear\fR] [\fB\-\-completions\fR] [\fB\-\-color\fR] [\fB\-d\fR|\fB\-\-debounce\fR] [\fB\-\-delay\-run\fR] [\fB\-e\fR|\fB\-\-exts\fR] [\fB\-E\fR|\fB\-\-env\fR] [\fB\-\-emit\-events\-to\fR] [\fB\-f\fR|\fB\-\-filter\fR] [\fB\-\-socket\fR] [\fB\-\-filter\-file\fR] [\fB\-j\fR|\fB\-\-filter\-prog\fR] [\fB\-\-fs\-events\fR] [\fB\-i\fR|\fB\-\-ignore\fR] [\fB\-\-ignore\-file\fR] [\fB\-\-ignore\-nothing\fR] [\fB\-\-log\-file\fR] [\fB\-\-manual\fR] [\fB\-\-map\-signal\fR] [\fB\-n \fR] [\fB\-N\fR|\fB\-\-notify\fR] [\fB\-\-no\-default\-ignore\fR] [\fB\-\-no\-discover\-ignore\fR] [\fB\-\-no\-process\-group\fR] [\fB\-\-no\-global\-ignore\fR] [\fB\-\-no\-meta\fR] [\fB\-\-no\-project\-ignore\fR] [\fB\-\-no\-vcs\-ignore\fR] [\fB\-o\fR|\fB\-\-on\-busy\-update\fR] [\fB\-\-only\-emit\-events\fR] [\fB\-\-poll\fR] [\fB\-\-print\-events\fR] [\fB\-\-project\-origin\fR] [\fB\-p\fR|\fB\-\-postpone\fR] [\fB\-q\fR|\fB\-\-quiet\fR] [\fB\-r\fR|\fB\-\-restart\fR] [\fB\-s\fR|\fB\-\-signal\fR] [\fB\-\-shell\fR] [\fB\-\-stdin\-quit\fR] [\fB\-\-stop\-signal\fR] [\fB\-\-stop\-timeout\fR] [\fB\-\-timings\fR] [\fB\-v\fR|\fB\-\-verbose\fR]... [\fB\-w\fR|\fB\-\-watch\fR] [\fB\-\-workdir\fR] [\fB\-W\fR|\fB\-\-watch\-non\-recursive\fR] [\fB\-\-wrap\-process\fR] [\fB\-F\fR|\fB\-\-watch\-file\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fICOMMAND\fR] 
+\fBwatchexec\fR [\fB\-\-bell\fR] [\fB\-c\fR|\fB\-\-clear\fR] [\fB\-\-completions\fR] [\fB\-\-color\fR] [\fB\-d\fR|\fB\-\-debounce\fR] [\fB\-\-delay\-run\fR] [\fB\-e\fR|\fB\-\-exts\fR] [\fB\-E\fR|\fB\-\-env\fR] [\fB\-\-emit\-events\-to\fR] [\fB\-f\fR|\fB\-\-filter\fR] [\fB\-\-socket\fR] [\fB\-\-filter\-file\fR] [\fB\-j\fR|\fB\-\-filter\-prog\fR] [\fB\-\-fs\-events\fR] [\fB\-H\fR|\fB\-\-interactive\fR] [\fB\-i\fR|\fB\-\-ignore\fR] [\fB\-\-ignore\-file\fR] [\fB\-\-ignore\-nothing\fR] [\fB\-\-log\-file\fR] [\fB\-\-manual\fR] [\fB\-\-map\-signal\fR] [\fB\-n \fR] [\fB\-N\fR|\fB\-\-notify\fR] [\fB\-\-no\-default\-ignore\fR] [\fB\-\-no\-discover\-ignore\fR] [\fB\-\-no\-process\-group\fR] [\fB\-\-no\-global\-ignore\fR] [\fB\-\-no\-meta\fR] [\fB\-\-no\-project\-ignore\fR] [\fB\-\-no\-vcs\-ignore\fR] [\fB\-o\fR|\fB\-\-on\-busy\-update\fR] [\fB\-\-only\-emit\-events\fR] [\fB\-\-poll\fR] [\fB\-\-print\-events\fR] [\fB\-\-project\-origin\fR] [\fB\-p\fR|\fB\-\-postpone\fR] [\fB\-q\fR|\fB\-\-quiet\fR] [\fB\-r\fR|\fB\-\-restart\fR] [\fB\-s\fR|\fB\-\-signal\fR] [\fB\-\-shell\fR] [\fB\-\-stdin\-quit\fR] [\fB\-\-stop\-signal\fR] [\fB\-\-stop\-timeout\fR] [\fB\-\-timings\fR] [\fB\-v\fR|\fB\-\-verbose\fR]... [\fB\-w\fR|\fB\-\-watch\fR] [\fB\-\-workdir\fR] [\fB\-W\fR|\fB\-\-watch\-non\-recursive\fR] [\fB\-\-wrap\-process\fR] [\fB\-F\fR|\fB\-\-watch\-file\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fICOMMAND\fR] 
 .SH DESCRIPTION
 Execute commands when watched files change.
 .PP
@@ -309,6 +309,11 @@ is a very restricted space, while also limited in what it can usefully represent
 numbers of files will either cause the environment to be truncated, or may error or crash
 the process entirely. The $WATCHEXEC_COMMON_PATH is also unintuitive, as demonstrated by the
 multiple confused queries that have landed in my inbox over the years.
+.TP
+\fB\-H\fR, \fB\-\-interactive\fR
+Respond to keypresses to quit, restart, or pause
+
+In interactive mode, Watchexec listens for keypresses and responds to them. Currently supported keys are: \*(Aqr\*(Aq to restart the command, \*(Aqp\*(Aq to toggle pausing the watch, and \*(Aqq\*(Aq to quit. This requires a terminal (TTY) and puts stdin into raw mode, so the child process will not receive stdin input.
 .TP
 \fB\-\-map\-signal\fR \fI<SIGNAL:SIGNAL>\fR
 Translate signals from the OS to signals to send to the command

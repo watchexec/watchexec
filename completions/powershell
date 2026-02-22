@@ -71,6 +71,8 @@ Register-ArgumentCompleter -Native -CommandName 'watchexec' -ScriptBlock {
             [CompletionResult]::new('-r', '-r', [CompletionResultType]::ParameterName, 'Restart the process if it''s still running')
             [CompletionResult]::new('--restart', '--restart', [CompletionResultType]::ParameterName, 'Restart the process if it''s still running')
             [CompletionResult]::new('--stdin-quit', '--stdin-quit', [CompletionResultType]::ParameterName, 'Exit when stdin closes')
+            [CompletionResult]::new('-H', '-H ', [CompletionResultType]::ParameterName, 'Respond to keypresses to quit, restart, or pause')
+            [CompletionResult]::new('--interactive', '--interactive', [CompletionResultType]::ParameterName, 'Respond to keypresses to quit, restart, or pause')
             [CompletionResult]::new('-p', '-p', [CompletionResultType]::ParameterName, 'Wait until first change before running command')
             [CompletionResult]::new('--postpone', '--postpone', [CompletionResultType]::ParameterName, 'Wait until first change before running command')
             [CompletionResult]::new('--no-vcs-ignore', '--no-vcs-ignore', [CompletionResultType]::ParameterName, 'Don''t load gitignores')

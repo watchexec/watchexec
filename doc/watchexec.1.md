@@ -9,7 +9,8 @@ watchexec - Execute commands when watched files change
 \[**\--delay-run**\] \[**-e**\|**\--exts**\] \[**-E**\|**\--env**\]
 \[**\--emit-events-to**\] \[**-f**\|**\--filter**\] \[**\--socket**\]
 \[**\--filter-file**\] \[**-j**\|**\--filter-prog**\]
-\[**\--fs-events**\] \[**-i**\|**\--ignore**\] \[**\--ignore-file**\]
+\[**\--fs-events**\] \[**-H**\|**\--interactive**\]
+\[**-i**\|**\--ignore**\] \[**\--ignore-file**\]
 \[**\--ignore-nothing**\] \[**\--log-file**\] \[**\--manual**\]
 \[**\--map-signal**\] \[**-n** \] \[**-N**\|**\--notify**\]
 \[**\--no-default-ignore**\] \[**\--no-discover-ignore**\]
@@ -453,6 +454,16 @@ Watch lib and src directories for changes, rebuilding each time:
     crash the process entirely. The \$WATCHEXEC_COMMON_PATH is also
     unintuitive, as demonstrated by the multiple confused queries that
     have landed in my inbox over the years.
+
+**-H**, **\--interactive**
+
+:   Respond to keypresses to quit, restart, or pause
+
+    In interactive mode, Watchexec listens for keypresses and responds
+    to them. Currently supported keys are: r to restart the command, p
+    to toggle pausing the watch, and q to quit. This requires a terminal
+    (TTY) and puts stdin into raw mode, so the child process will not
+    receive stdin input.
 
 **\--map-signal** *\<SIGNAL:SIGNAL\>*
 

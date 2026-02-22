@@ -23,7 +23,7 @@ _watchexec() {
 
     case "${cmd}" in
         watchexec)
-            opts="-1 -n -E -o -r -s -d -p -w -W -F -e -f -j -i -v -c -N -q -h -V --manual --completions --only-emit-events --shell --no-environment --env --no-process-group --wrap-process --stop-signal --stop-timeout --delay-run --workdir --socket --on-busy-update --restart --signal --map-signal --debounce --stdin-quit --postpone --poll --emit-events-to --watch --watch-non-recursive --watch-file --no-vcs-ignore --no-project-ignore --no-global-ignore --no-default-ignore --no-discover-ignore --ignore-nothing --exts --filter --filter-file --project-origin --filter-prog --ignore --ignore-file --fs-events --no-meta --verbose --log-file --print-events --clear --notify --color --timings --quiet --bell --help --version [COMMAND]..."
+            opts="-1 -n -E -o -r -s -d -H -p -w -W -F -e -f -j -i -v -c -N -q -h -V --manual --completions --only-emit-events --shell --no-environment --env --no-process-group --wrap-process --stop-signal --stop-timeout --delay-run --workdir --socket --on-busy-update --restart --signal --map-signal --debounce --stdin-quit --interactive --postpone --poll --emit-events-to --watch --watch-non-recursive --watch-file --no-vcs-ignore --no-project-ignore --no-global-ignore --no-default-ignore --no-discover-ignore --ignore-nothing --exts --filter --filter-file --project-origin --filter-prog --ignore --ignore-file --fs-events --no-meta --verbose --log-file --print-events --clear --notify --color --timings --quiet --bell --help --version [COMMAND]..."
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
