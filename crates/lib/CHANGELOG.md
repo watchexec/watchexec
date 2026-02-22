@@ -4,6 +4,8 @@
 
 ## v8.1.1 (2026-02-22)
 
+- Fix: bug on macOS where a task in the keyboard events worker would hang after graceful quit ([#1018](https://github.com/watchexec/watchexec/pull/1018))
+
 ## v8.1.0 (2026-02-22)
 
 - Augments `keyboard_events` config to emit events for all single keyboard key inputs, in addition to the existing EOF
