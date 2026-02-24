@@ -141,6 +141,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 	let on_busy = args.events.on_busy_update;
 	let stdin_quit = args.events.stdin_quit;
 	let interactive = args.events.interactive;
+	let exit_on_error = args.events.exit_on_error;
 
 	let signal = args.events.signal;
 	let stop_signal = args.command.stop_signal;
@@ -183,6 +184,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 	let queued = Arc::new(AtomicBool::new(false));
 	let quit_again = Arc::new(AtomicU8::new(0));
 	let paused = Arc::new(AtomicBool::new(false));
+	let should_quit = Arc::new(AtomicBool::new(false));
 
 	config.on_action_async(move |mut action| {
 		let add_envs = add_envs.clone();
@@ -191,6 +193,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 		let queued = queued.clone();
 		let quit_again = quit_again.clone();
 		let paused = paused.clone();
+		let should_quit = should_quit.clone();
 		let signal_map = signal_map.clone();
 		let workdir = workdir.clone();
 		Box::new(
@@ -202,6 +205,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 				let queued = queued.clone();
 				let quit_again = quit_again.clone();
 				let paused = paused.clone();
+				let should_quit = should_quit.clone();
 				let signal_map = signal_map.clone();
 				let workdir = workdir.clone();
 
@@ -300,6 +304,12 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 					action
 				};
 
+				// Check if we should quit due to command failure (--exit-on-error)
+				if should_quit.load(Ordering::SeqCst) {
+					debug!("command failed with --exit-on-error, quitting");
+					return quit(action);
+				}
+
 				if once {
 					debug!("debug mode: run once and quit");
 					show_events();
@@ -380,11 +390,16 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 										}
 										job.run({
 											let job = job.clone();
+											let should_quit = should_quit.clone();
+											let state = state.clone();
 											move |context| {
 												setup_process(
 													job.clone(),
 													context.command.clone(),
 													outflags,
+													exit_on_error,
+													should_quit.clone(),
+													state.clone(),
 												);
 											}
 										});
@@ -457,11 +472,17 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 				trace!("querying job state via run_async");
 				job.run_async({
 					let job = job.clone();
+					let should_quit = should_quit.clone();
+					let state = state.clone();
 					move |context| {
 						let job = job.clone();
+						let should_quit = should_quit.clone();
+						let state = state.clone();
 						let is_running = matches!(context.current, CommandState::Running { .. });
 						Box::new(async move {
 							let innerjob = job.clone();
+							let should_quit = should_quit.clone();
+							let state = state.clone();
 							if is_running {
 								trace!(?on_busy, "job is running, decide what to do");
 								match on_busy {
@@ -475,13 +496,20 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 									}
 									OnBusyUpdate::Restart if cfg!(windows) => {
 										job.restart();
-										job.run(move |context| {
-											clear_screen();
-											setup_process(
-												innerjob.clone(),
-												context.command.clone(),
-												outflags,
-											);
+										job.run({
+											let should_quit = should_quit.clone();
+											let state = state.clone();
+											move |context| {
+												clear_screen();
+												setup_process(
+													innerjob.clone(),
+													context.command.clone(),
+													outflags,
+													exit_on_error,
+													should_quit.clone(),
+													state.clone(),
+												);
+											}
 										});
 									}
 									OnBusyUpdate::Restart => {
@@ -489,13 +517,20 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 											stop_signal.unwrap_or(Signal::Terminate),
 											stop_timeout,
 										);
-										job.run(move |context| {
-											clear_screen();
-											setup_process(
-												innerjob.clone(),
-												context.command.clone(),
-												outflags,
-											);
+										job.run({
+											let should_quit = should_quit.clone();
+											let state = state.clone();
+											move |context| {
+												clear_screen();
+												setup_process(
+													innerjob.clone(),
+													context.command.clone(),
+													outflags,
+													exit_on_error,
+													should_quit.clone(),
+													state.clone(),
+												);
+											}
 										});
 									}
 									OnBusyUpdate::Queue => {
@@ -508,18 +543,27 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 											debug!("queueing next start of job");
 											tokio::spawn({
 												let queued = queued.clone();
+												let should_quit = should_quit.clone();
+												let state = state.clone();
 												async move {
 													trace!("waiting for job to finish");
 													job.to_wait().await;
 													trace!("job finished, starting queued");
 													job.start();
-													job.run(move |context| {
-														clear_screen();
-														setup_process(
-															innerjob.clone(),
-															context.command.clone(),
-															outflags,
-														);
+													job.run({
+														let should_quit = should_quit.clone();
+														let state = state.clone();
+														move |context| {
+															clear_screen();
+															setup_process(
+																innerjob.clone(),
+																context.command.clone(),
+																outflags,
+																exit_on_error,
+																should_quit.clone(),
+																state.clone(),
+															);
+														}
 													})
 													.await;
 													trace!("resetting queued state");
@@ -532,13 +576,20 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 							} else {
 								trace!("job is not running, start it");
 								job.start();
-								job.run(move |context| {
-									clear_screen();
-									setup_process(
-										innerjob.clone(),
-										context.command.clone(),
-										outflags,
-									);
+								job.run({
+									let should_quit = should_quit.clone();
+									let state = state.clone();
+									move |context| {
+										clear_screen();
+										setup_process(
+											innerjob.clone(),
+											context.command.clone(),
+											outflags,
+											exit_on_error,
+											should_quit.clone(),
+											state.clone(),
+										);
+									}
 								});
 							}
 						})
@@ -632,7 +683,14 @@ fn interpret_command_args(args: &Args) -> Result<Arc<Command>> {
 }
 
 #[instrument(level = "trace")]
-fn setup_process(job: Job, command: Arc<Command>, outflags: OutputFlags) {
+fn setup_process(
+	job: Job,
+	command: Arc<Command>,
+	outflags: OutputFlags,
+	exit_on_error: bool,
+	should_quit: Arc<AtomicBool>,
+	state: State,
+) {
 	if outflags.toast {
 		Notification::new()
 			.summary("Watchexec: change detected")
@@ -659,8 +717,25 @@ fn setup_process(job: Job, command: Arc<Command>, outflags: OutputFlags) {
 	tokio::spawn(async move {
 		job.to_wait().await;
 		job.run(move |context| {
-			end_of_process(context.current, outflags);
-		});
+			if let Some(status) = end_of_process(context.current, outflags) {
+				// Store exit code in state
+				*state.exit_code.lock().unwrap() = ExitCode::from(
+					status
+						.into_exitstatus()
+						.code()
+						.unwrap_or(0)
+						.try_into()
+						.unwrap_or(1),
+				);
+
+				// If exit_on_error is enabled and command failed, signal quit
+				if exit_on_error && !matches!(status, ProcessEnd::Success) {
+					debug!("command failed, setting should_quit flag for --exit-on-error");
+					should_quit.store(true, Ordering::SeqCst);
+				}
+			}
+		})
+		.await;
 	});
 }
 
