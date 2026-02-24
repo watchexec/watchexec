@@ -3812,7 +3812,7 @@ dependencies = [
 
 [[package]]
 name = "watchexec-cli"
-version = "2.4.2"
+version = "2.4.3"
 dependencies = [
  "argfile",
  "blake3",
@@ -3860,7 +3860,7 @@ dependencies = [
  "watchexec-filterer-globset",
  "watchexec-signals",
  "which",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
