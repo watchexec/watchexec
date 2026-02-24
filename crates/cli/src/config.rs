@@ -28,7 +28,7 @@ use watchexec::{
 	sources::fs::Watcher,
 	Config, ErrorHook, Id,
 };
-use watchexec_events::{Event, KeyCode, Keyboard, ProcessEnd, Tag};
+use watchexec_events::{Event, KeyCode, Keyboard, Priority, ProcessEnd, Tag};
 use watchexec_signals::Signal;
 
 use crate::{
@@ -714,28 +714,49 @@ fn setup_process(
 		stderr.reset().ok();
 	}
 
-	tokio::spawn(async move {
-		job.to_wait().await;
-		job.run(move |context| {
-			if let Some(status) = end_of_process(context.current, outflags) {
-				// Store exit code in state
-				*state.exit_code.lock().unwrap() = ExitCode::from(
-					status
-						.into_exitstatus()
-						.code()
-						.unwrap_or(0)
-						.try_into()
-						.unwrap_or(1),
-				);
+	let send_quit_event = Arc::new(AtomicBool::new(false));
+	tokio::spawn({
+		let send_quit_event = send_quit_event.clone();
+		let state_for_event = state.clone();
+		async move {
+			job.to_wait().await;
 
-				// If exit_on_error is enabled and command failed, signal quit
-				if exit_on_error && !matches!(status, ProcessEnd::Success) {
-					debug!("command failed, setting should_quit flag for --exit-on-error");
-					should_quit.store(true, Ordering::SeqCst);
+			job.run({
+				let send_quit_event = send_quit_event.clone();
+				move |context| {
+					if let Some(status) = end_of_process(context.current, outflags) {
+						// Store exit code in state
+						*state.exit_code.lock().unwrap() = ExitCode::from(
+							status
+								.into_exitstatus()
+								.code()
+								.unwrap_or(0)
+								.try_into()
+								.unwrap_or(1),
+						);
+
+						// If exit_on_error is enabled and command failed, signal quit
+						if exit_on_error && !matches!(status, ProcessEnd::Success) {
+							debug!("command failed, setting should_quit flag for --exit-on-error");
+							should_quit.store(true, Ordering::SeqCst);
+							send_quit_event.store(true, Ordering::SeqCst);
+						}
+					}
+				}
+			})
+			.await;
+
+			// Send a synthetic event to trigger the action handler to check should_quit
+			// This ensures we quit immediately instead of waiting for the next file event
+			if send_quit_event.load(Ordering::SeqCst) {
+				if let Some(wx) = state_for_event.watchexec.get() {
+					debug!("sending synthetic event to trigger quit");
+					if let Err(e) = wx.send_event(Event::default(), Priority::Urgent).await {
+						error!("failed to send synthetic quit event: {e}");
+					}
 				}
 			}
-		})
-		.await;
+		}
 	});
 }
 
