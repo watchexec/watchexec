@@ -47,6 +47,9 @@ metadata\t''"
 complete -c watchexec -l log-file -d 'Write diagnostic logs to a file' -r -F
 complete -c watchexec -s c -l clear -d 'Clear screen before running command' -r -f -a "clear\t''
 reset\t''"
+complete -c watchexec -s N -l notify -d 'Alert when commands start and end' -r -f -a "both\t'Notify on both start and end'
+start\t'Notify only when the command starts'
+end\t'Notify only when the command ends'"
 complete -c watchexec -l color -d 'When to use terminal colours' -r -f -a "auto\t''
 always\t''
 never\t''"
@@ -69,7 +72,6 @@ complete -c watchexec -l ignore-nothing -d 'Don\'t ignore anything at all'
 complete -c watchexec -l no-meta -d 'Don\'t emit fs events for metadata changes'
 complete -c watchexec -s v -l verbose -d 'Set diagnostic log level'
 complete -c watchexec -l print-events -d 'Print events that trigger actions'
-complete -c watchexec -s N -l notify -d 'Alert when commands start and end'
 complete -c watchexec -l timings -d 'Print how long the command took to run'
 complete -c watchexec -s q -l quiet -d 'Don\'t print starting and stopping messages'
 complete -c watchexec -l bell -d 'Ring the terminal bell on command completion'

@@ -55,6 +55,12 @@ _watchexec() {
 '--log-file=[Write diagnostic logs to a file]::PATH:_files' \
 '-c+[Clear screen before running command]::MODE:(clear reset)' \
 '--clear=[Clear screen before running command]::MODE:(clear reset)' \
+'-N+[Alert when commands start and end]::WHEN:((both\:"Notify on both start and end"
+start\:"Notify only when the command starts"
+end\:"Notify only when the command ends"))' \
+'--notify=[Alert when commands start and end]::WHEN:((both\:"Notify on both start and end"
+start\:"Notify only when the command starts"
+end\:"Notify only when the command ends"))' \
 '--color=[When to use terminal colours]:MODE:(auto always never)' \
 '(--completions --only-emit-events)--manual[Show the manual page]' \
 '(--completions --manual)--only-emit-events[Only emit events to stdout, run no commands]' \
@@ -79,8 +85,6 @@ _watchexec() {
 '*-v[Set diagnostic log level]' \
 '*--verbose[Set diagnostic log level]' \
 '--print-events[Print events that trigger actions]' \
-'-N[Alert when commands start and end]' \
-'--notify[Alert when commands start and end]' \
 '--timings[Print how long the command took to run]' \
 '-q[Don'\''t print starting and stopping messages]' \
 '--quiet[Don'\''t print starting and stopping messages]' \
