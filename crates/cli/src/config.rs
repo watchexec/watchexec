@@ -3,6 +3,7 @@ use std::{
 	collections::HashMap,
 	env::var,
 	ffi::OsStr,
+	fmt,
 	fs::File,
 	io::{IsTerminal, Write},
 	iter::once,
@@ -50,6 +51,16 @@ struct OutputFlags {
 	timings: bool,
 	bell: bool,
 	toast: bool,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct TimeoutConfig {
+	/// The maximum duration the command is allowed to run
+	timeout: Option<Duration>,
+	/// Signal to send for graceful stop (used when timeout fires)
+	stop_signal: Signal,
+	/// Grace period after stop signal before force kill
+	stop_timeout: Duration,
 }
 
 pub fn make_config(args: &Args, state: &State) -> Result<Config> {
@@ -158,6 +169,12 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 		timings: args.output.timings,
 		bell: args.output.bell,
 		toast: args.output.notify,
+	};
+
+	let timeout_config = TimeoutConfig {
+		timeout: args.command.timeout.map(|ts| ts.0),
+		stop_signal: stop_signal.unwrap_or(Signal::Terminate),
+		stop_timeout,
 	};
 
 	let workdir = Arc::new(args.command.workdir.clone());
@@ -314,11 +331,27 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 
 					// this blocks the event loop, but also this is a debug feature so i don't care
 					job.start().await;
-					job.to_wait().await;
+					let timed_out = if let Some(timeout) = timeout_config.timeout {
+						tokio::select! {
+							_ = job.to_wait() => false,
+							_ = tokio::time::sleep(timeout) => {
+								if cfg!(windows) {
+									job.stop().await;
+								} else {
+									job.stop_with_signal(timeout_config.stop_signal, timeout_config.stop_timeout).await;
+								}
+								true
+							}
+						}
+					} else {
+						job.to_wait().await;
+						false
+					};
 					job.run({
 						let state = state.clone();
 						move |context| {
-							if let Some(end) = end_of_process(context.current, outflags) {
+							if let Some(end) = end_of_process(context.current, outflags, timed_out)
+							{
 								*state.exit_code.lock().unwrap() = ExitCode::from(
 									end.into_exitstatus()
 										.code()
@@ -385,6 +418,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 													job.clone(),
 													context.command.clone(),
 													outflags,
+													timeout_config,
 												);
 											}
 										});
@@ -481,6 +515,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 												innerjob.clone(),
 												context.command.clone(),
 												outflags,
+												timeout_config,
 											);
 										});
 									}
@@ -495,6 +530,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 												innerjob.clone(),
 												context.command.clone(),
 												outflags,
+												timeout_config,
 											);
 										});
 									}
@@ -519,6 +555,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 															innerjob.clone(),
 															context.command.clone(),
 															outflags,
+															timeout_config,
 														);
 													})
 													.await;
@@ -538,6 +575,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 										innerjob.clone(),
 										context.command.clone(),
 										outflags,
+										timeout_config,
 									);
 								});
 							}
@@ -632,7 +670,12 @@ fn interpret_command_args(args: &Args) -> Result<Arc<Command>> {
 }
 
 #[instrument(level = "trace")]
-fn setup_process(job: Job, command: Arc<Command>, outflags: OutputFlags) {
+fn setup_process(
+	job: Job,
+	command: Arc<Command>,
+	outflags: OutputFlags,
+	timeout_config: TimeoutConfig,
+) {
 	if outflags.toast {
 		Notification::new()
 			.summary("Watchexec: change detected")
@@ -657,15 +700,45 @@ fn setup_process(job: Job, command: Arc<Command>, outflags: OutputFlags) {
 	}
 
 	tokio::spawn(async move {
-		job.to_wait().await;
+		let timed_out = if let Some(timeout) = timeout_config.timeout {
+			tokio::select! {
+				_ = job.to_wait() => false,
+				_ = tokio::time::sleep(timeout) => {
+					if cfg!(windows) {
+						job.stop().await;
+					} else {
+						job.stop_with_signal(timeout_config.stop_signal, timeout_config.stop_timeout).await;
+					}
+					true
+				}
+			}
+		} else {
+			job.to_wait().await;
+			false
+		};
 		job.run(move |context| {
-			end_of_process(context.current, outflags);
+			end_of_process(context.current, outflags, timed_out);
 		});
 	});
 }
 
+fn format_duration(duration: Duration) -> impl fmt::Display {
+	fmt::from_fn(move |f| {
+		let secs = duration.as_secs();
+		if secs > 0 {
+			write!(f, "{secs}s")
+		} else {
+			write!(f, "{}ms", duration.subsec_millis())
+		}
+	})
+}
+
 #[instrument(level = "trace")]
-fn end_of_process(state: &CommandState, outflags: OutputFlags) -> Option<ProcessEnd> {
+fn end_of_process(
+	state: &CommandState,
+	outflags: OutputFlags,
+	timed_out: bool,
+) -> Option<ProcessEnd> {
 	let CommandState::Finished {
 		status,
 		started,
@@ -676,11 +749,47 @@ fn end_of_process(state: &CommandState, outflags: OutputFlags) -> Option<Process
 	};
 
 	let duration = *finished - *started;
+	let duration_display = format_duration(duration);
 	let timing = if outflags.timings {
-		format!(", lasted {duration:?}")
+		format!(", lasted {duration_display}")
 	} else {
 		String::new()
 	};
+
+	// Show timeout message and return early - no need for redundant status message
+	if timed_out {
+		if outflags.toast {
+			Notification::new()
+				.summary("Watchexec: command timed out")
+				.body(&format!("Command timed out after {duration_display}"))
+				.show()
+				.map_or_else(
+					|err| {
+						eprintln!("[[Failed to send desktop notification: {err}]]");
+					},
+					drop,
+				);
+		}
+
+		if !outflags.quiet {
+			let mut stderr = StandardStream::stderr(outflags.colour);
+			stderr.reset().ok();
+			stderr
+				.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)))
+				.ok();
+			writeln!(&mut stderr, "[Command timed out after {duration_display}]").ok();
+			stderr.reset().ok();
+		}
+
+		if outflags.bell {
+			let mut stdout = std::io::stdout();
+			stdout.write_all(b"\x07").ok();
+			stdout.flush().ok();
+		}
+
+		return Some(*status);
+	}
+
 	let (msg, fg) = match status {
 		ProcessEnd::ExitError(code) => (format!("Command exited with {code}{timing}"), Color::Red),
 		ProcessEnd::ExitSignal(sig) => {
