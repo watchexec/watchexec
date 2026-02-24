@@ -35,7 +35,7 @@ use crate::{
 	args::{
 		command::{EnvVar, WrapMode},
 		events::{EmitEvents, OnBusyUpdate, SignalMapping},
-		output::{ClearMode, ColourMode},
+		output::{ClearMode, ColourMode, NotifyMode},
 		Args,
 	},
 	emits::events_to_simple_format,
@@ -49,7 +49,7 @@ struct OutputFlags {
 	colour: ColorChoice,
 	timings: bool,
 	bell: bool,
-	toast: bool,
+	notify: Option<NotifyMode>,
 }
 
 pub fn make_config(args: &Args, state: &State) -> Result<Config> {
@@ -157,7 +157,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 		},
 		timings: args.output.timings,
 		bell: args.output.bell,
-		toast: args.output.notify,
+		notify: args.output.notify,
 	};
 
 	let workdir = Arc::new(args.command.workdir.clone());
@@ -633,7 +633,7 @@ fn interpret_command_args(args: &Args) -> Result<Arc<Command>> {
 
 #[instrument(level = "trace")]
 fn setup_process(job: Job, command: Arc<Command>, outflags: OutputFlags) {
-	if outflags.toast {
+	if outflags.notify.is_some_and(|m| m.on_start()) {
 		Notification::new()
 			.summary("Watchexec: change detected")
 			.body(&format!("Running {command}"))
@@ -695,7 +695,7 @@ fn end_of_process(state: &CommandState, outflags: OutputFlags) -> Option<Process
 		ProcessEnd::Success => (format!("Command was successful{timing}"), Color::Green),
 	};
 
-	if outflags.toast {
+	if outflags.notify.is_some_and(|m| m.on_end()) {
 		Notification::new()
 			.summary("Watchexec: command ended")
 			.body(&msg)

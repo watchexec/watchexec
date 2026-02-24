@@ -23,13 +23,22 @@ pub struct OutputArgs {
 	///
 	/// With this, Watchexec will emit a desktop notification when a command starts and ends, on
 	/// supported platforms. On unsupported platforms, it may silently do nothing, or log a warning.
+	///
+	/// The mode can be specified to only notify on certain events:
+	///
+	/// - 'both' (default): notify on both start and end
+	/// - 'start': notify only when the command starts
+	/// - 'end': notify only when the command ends
 	#[arg(
 		short = 'N',
 		long,
 		help_heading = OPTSET_OUTPUT,
+		num_args = 0..=1,
+		default_missing_value = "both",
+		value_name = "WHEN",
 		display_order = 140,
 	)]
-	pub notify: bool,
+	pub notify: Option<NotifyMode>,
 
 	/// When to use terminal colours
 	///
@@ -99,4 +108,27 @@ pub enum ColourMode {
 	Auto,
 	Always,
 	Never,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, ValueEnum)]
+pub enum NotifyMode {
+	/// Notify on both start and end
+	#[default]
+	Both,
+	/// Notify only when the command starts
+	Start,
+	/// Notify only when the command ends
+	End,
+}
+
+impl NotifyMode {
+	/// Whether to notify on command start
+	pub fn on_start(self) -> bool {
+		matches!(self, Self::Both | Self::Start)
+	}
+
+	/// Whether to notify on command end
+	pub fn on_end(self) -> bool {
+		matches!(self, Self::Both | Self::End)
+	}
 }
