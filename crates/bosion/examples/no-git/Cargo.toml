@@ -19,4 +19,4 @@ features = ["std"]
 [dependencies]
 leon = { version = "3.0.2", default-features = false }
 snapbox = "0.5.9"
-time = { version = "0.3.30", features = ["formatting", "macros"] }
+time = { version = "0.3.47", features = ["formatting", "macros"] }
