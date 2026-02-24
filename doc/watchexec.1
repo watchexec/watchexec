@@ -4,7 +4,7 @@
 .SH NAME
 watchexec \- Execute commands when watched files change
 .SH SYNOPSIS
-\fBwatchexec\fR [\fB\-\-bell\fR] [\fB\-c\fR|\fB\-\-clear\fR] [\fB\-\-completions\fR] [\fB\-\-color\fR] [\fB\-d\fR|\fB\-\-debounce\fR] [\fB\-\-delay\-run\fR] [\fB\-e\fR|\fB\-\-exts\fR] [\fB\-E\fR|\fB\-\-env\fR] [\fB\-\-emit\-events\-to\fR] [\fB\-f\fR|\fB\-\-filter\fR] [\fB\-\-socket\fR] [\fB\-\-filter\-file\fR] [\fB\-j\fR|\fB\-\-filter\-prog\fR] [\fB\-\-fs\-events\fR] [\fB\-i\fR|\fB\-\-ignore\fR] [\fB\-I\fR|\fB\-\-interactive\fR] [\fB\-\-ignore\-file\fR] [\fB\-\-ignore\-nothing\fR] [\fB\-\-log\-file\fR] [\fB\-\-manual\fR] [\fB\-\-map\-signal\fR] [\fB\-n \fR] [\fB\-N\fR|\fB\-\-notify\fR] [\fB\-\-no\-default\-ignore\fR] [\fB\-\-no\-discover\-ignore\fR] [\fB\-\-no\-process\-group\fR] [\fB\-\-no\-global\-ignore\fR] [\fB\-\-no\-meta\fR] [\fB\-\-no\-project\-ignore\fR] [\fB\-\-no\-vcs\-ignore\fR] [\fB\-o\fR|\fB\-\-on\-busy\-update\fR] [\fB\-\-only\-emit\-events\fR] [\fB\-\-poll\fR] [\fB\-\-print\-events\fR] [\fB\-\-project\-origin\fR] [\fB\-p\fR|\fB\-\-postpone\fR] [\fB\-q\fR|\fB\-\-quiet\fR] [\fB\-r\fR|\fB\-\-restart\fR] [\fB\-s\fR|\fB\-\-signal\fR] [\fB\-\-shell\fR] [\fB\-\-stdin\-quit\fR] [\fB\-\-stop\-signal\fR] [\fB\-\-stop\-timeout\fR] [\fB\-\-timings\fR] [\fB\-v\fR|\fB\-\-verbose\fR]... [\fB\-w\fR|\fB\-\-watch\fR] [\fB\-\-workdir\fR] [\fB\-W\fR|\fB\-\-watch\-non\-recursive\fR] [\fB\-\-wrap\-process\fR] [\fB\-F\fR|\fB\-\-watch\-file\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fICOMMAND\fR] 
+\fBwatchexec\fR [\fB\-\-bell\fR] [\fB\-c\fR|\fB\-\-clear\fR] [\fB\-\-completions\fR] [\fB\-\-color\fR] [\fB\-d\fR|\fB\-\-debounce\fR] [\fB\-\-delay\-run\fR] [\fB\-e\fR|\fB\-\-exts\fR] [\fB\-E\fR|\fB\-\-env\fR] [\fB\-\-emit\-events\-to\fR] [\fB\-f\fR|\fB\-\-filter\fR] [\fB\-\-socket\fR] [\fB\-\-filter\-file\fR] [\fB\-j\fR|\fB\-\-filter\-prog\fR] [\fB\-\-fs\-events\fR] [\fB\-i\fR|\fB\-\-ignore\fR] [\fB\-I\fR|\fB\-\-interactive\fR] [\fB\-\-ignore\-file\fR] [\fB\-\-ignore\-nothing\fR] [\fB\-\-log\-file\fR] [\fB\-\-manual\fR] [\fB\-\-map\-signal\fR] [\fB\-n \fR] [\fB\-N\fR|\fB\-\-notify\fR] [\fB\-\-no\-default\-ignore\fR] [\fB\-\-no\-discover\-ignore\fR] [\fB\-\-no\-process\-group\fR] [\fB\-\-no\-global\-ignore\fR] [\fB\-\-no\-meta\fR] [\fB\-\-no\-project\-ignore\fR] [\fB\-\-no\-vcs\-ignore\fR] [\fB\-o\fR|\fB\-\-on\-busy\-update\fR] [\fB\-\-only\-emit\-events\fR] [\fB\-\-poll\fR] [\fB\-\-print\-events\fR] [\fB\-\-project\-origin\fR] [\fB\-p\fR|\fB\-\-postpone\fR] [\fB\-q\fR|\fB\-\-quiet\fR] [\fB\-r\fR|\fB\-\-restart\fR] [\fB\-s\fR|\fB\-\-signal\fR] [\fB\-\-shell\fR] [\fB\-\-stdin\-quit\fR] [\fB\-\-stop\-signal\fR] [\fB\-\-stop\-timeout\fR] [\fB\-\-timeout\fR] [\fB\-\-timings\fR] [\fB\-v\fR|\fB\-\-verbose\fR]... [\fB\-w\fR|\fB\-\-watch\fR] [\fB\-\-workdir\fR] [\fB\-W\fR|\fB\-\-watch\-non\-recursive\fR] [\fB\-\-wrap\-process\fR] [\fB\-F\fR|\fB\-\-watch\-file\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fICOMMAND\fR] 
 .SH DESCRIPTION
 Execute commands when watched files change.
 .PP
@@ -179,6 +179,15 @@ Takes a unit\-less value in seconds, or a time span value such as "5min 20s". Pr
 The default is 10 seconds. Set to 0 to immediately force\-kill the command.
 
 This has no practical effect on Windows as the command is always forcefully terminated; see \*(Aq\-\-stop\-signal\*(Aq for why.
+.TP
+\fB\-\-timeout\fR \fI<TIMEOUT>\fR
+Kill the command if it runs longer than this duration
+
+Takes a time span value such as "30s", "5min", or "1h 30m".
+
+When the timeout is reached, the command is gracefully stopped using \-\-stop\-signal, then forcefully terminated after \-\-stop\-timeout if still running.
+
+Each run of the command has its own independent timeout.
 .TP
 \fB\-\-workdir\fR \fI<DIRECTORY>\fR
 Set the working directory
