@@ -3790,7 +3790,7 @@ dependencies = [
 
 [[package]]
 name = "watchexec"
-version = "8.1.1"
+version = "8.1.2"
 dependencies = [
  "async-priority-channel",
  "atomic-take",
