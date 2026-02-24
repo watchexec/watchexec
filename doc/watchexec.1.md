@@ -10,12 +10,13 @@ watchexec - Execute commands when watched files change
 \[**\--emit-events-to**\] \[**-f**\|**\--filter**\] \[**\--socket**\]
 \[**\--filter-file**\] \[**-j**\|**\--filter-prog**\]
 \[**\--fs-events**\] \[**-i**\|**\--ignore**\]
-\[**-I**\|**\--interactive**\] \[**\--ignore-file**\]
-\[**\--ignore-nothing**\] \[**\--log-file**\] \[**\--manual**\]
-\[**\--map-signal**\] \[**-n** \] \[**-N**\|**\--notify**\]
-\[**\--no-default-ignore**\] \[**\--no-discover-ignore**\]
-\[**\--no-process-group**\] \[**\--no-global-ignore**\]
-\[**\--no-meta**\] \[**\--no-project-ignore**\] \[**\--no-vcs-ignore**\]
+\[**-I**\|**\--interactive**\] \[**\--exit-on-error**\]
+\[**\--ignore-file**\] \[**\--ignore-nothing**\] \[**\--log-file**\]
+\[**\--manual**\] \[**\--map-signal**\] \[**-n** \]
+\[**-N**\|**\--notify**\] \[**\--no-default-ignore**\]
+\[**\--no-discover-ignore**\] \[**\--no-process-group**\]
+\[**\--no-global-ignore**\] \[**\--no-meta**\]
+\[**\--no-project-ignore**\] \[**\--no-vcs-ignore**\]
 \[**-o**\|**\--on-busy-update**\] \[**\--only-emit-events**\]
 \[**\--poll**\] \[**\--print-events**\] \[**\--project-origin**\]
 \[**-p**\|**\--postpone**\] \[**-q**\|**\--quiet**\]
@@ -464,6 +465,19 @@ Watch lib and src directories for changes, rebuilding each time:
     to toggle pausing the watch, and q to quit. This requires a terminal
     (TTY) and puts stdin into raw mode, so the child process will not
     receive stdin input.
+
+**\--exit-on-error**
+
+:   Exit when the command has an error
+
+    By default, Watchexec will continue to watch and re-run the command
+    after the command exits, regardless of its exit status. With this
+    option, it will instead exit when the command completes with any
+    non-success exit status.
+
+    This is useful when running Watchexec in a process manager or
+    container, where you want the container to restart when the command
+    fails rather than hang waiting for file changes.
 
 **\--map-signal** *\<SIGNAL:SIGNAL\>*
 
