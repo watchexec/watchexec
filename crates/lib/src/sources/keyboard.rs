@@ -242,20 +242,20 @@ async fn watch_stdin(
 	// Wait for either data from stdin or the close signal
 	tokio::select! {
 		_ = async {
-			while let Some(result) = rx.recv().await {
+			'read: while let Some(result) = rx.recv().await {
 				match result {
 					Ok(bytes) if bytes.is_empty() => {
 						// EOF
-						send_event(errors.clone(), events.clone(), Keyboard::Eof).await?;
+						let _ = send_event(errors.clone(), events.clone(), Keyboard::Eof).await;
 						break;
 					}
 					Ok(bytes) => {
 						for &byte in &bytes {
 							if let Some(key) = byte_to_keyboard(byte) {
 								let is_eof = matches!(key, Keyboard::Eof);
-								send_event(errors.clone(), events.clone(), key).await?;
+								let _ = send_event(errors.clone(), events.clone(), key).await;
 								if is_eof {
-									return Ok::<(), CriticalError>(());
+									break 'read;
 								}
 							}
 						}
@@ -263,13 +263,12 @@ async fn watch_stdin(
 					Err(()) => break,
 				}
 			}
-			Ok(())
 		} => {}
-		_ = close_r => {
-			// Signal the blocking thread to stop
-			cancel.store(true, Ordering::Relaxed);
-		}
+		_ = close_r => {}
 	}
+
+	// Always signal the blocking thread to stop when we exit
+	cancel.store(true, Ordering::Relaxed);
 
 	Ok(())
 }
