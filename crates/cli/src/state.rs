@@ -3,8 +3,10 @@ use std::{
 	io::Write,
 	path::PathBuf,
 	process::ExitCode,
-	sync::{Arc, Mutex},
+	sync::{Arc, Mutex, OnceLock},
 };
+
+use watchexec::Watchexec;
 
 use miette::{IntoDiagnostic, Result};
 use tempfile::NamedTempFile;
@@ -29,14 +31,18 @@ pub async fn new(args: &Args) -> Result<State> {
 		emit_file: RotatingTempFile::default(),
 		socket_set,
 		exit_code: Mutex::new(ExitCode::SUCCESS),
+		watchexec: OnceLock::new(),
 	}))
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct InnerState {
 	pub emit_file: RotatingTempFile,
 	pub socket_set: Option<SocketSet>,
 	pub exit_code: Mutex<ExitCode>,
+	/// Reference to the Watchexec instance, set after creation.
+	/// Used to send synthetic events (e.g., to trigger immediate quit on error).
+	pub watchexec: OnceLock<Arc<Watchexec>>,
 }
 
 #[derive(Debug, Default)]
