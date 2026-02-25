@@ -3812,7 +3812,7 @@ dependencies = [
 
 [[package]]
 name = "watchexec-cli"
-version = "2.4.3"
+version = "2.5.0"
 dependencies = [
  "argfile",
  "blake3",
