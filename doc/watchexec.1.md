@@ -945,10 +945,8 @@ Watch lib and src directories for changes, rebuilding each time:
     starts and ends, on supported platforms. On unsupported platforms,
     it may silently do nothing, or log a warning.
 
-    The mode can be specified to only notify on certain events:
-
-    \- both (default): notify on both start and end - start: notify only
-    when the command starts - end: notify only when the command ends
+    The mode can be specified to only notify when the command
+    \`start\`s, \`end\`s, or for \`both\` (which is the default).
 
 **-q**, **\--quiet**
 

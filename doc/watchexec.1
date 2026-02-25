@@ -609,9 +609,7 @@ Alert when commands start and end
 
 With this, Watchexec will emit a desktop notification when a command starts and ends, on supported platforms. On unsupported platforms, it may silently do nothing, or log a warning.
 
-The mode can be specified to only notify on certain events:
-
-\- \*(Aqboth\*(Aq (default): notify on both start and end \- \*(Aqstart\*(Aq: notify only when the command starts \- \*(Aqend\*(Aq: notify only when the command ends
+The mode can be specified to only notify when the command `start`s, `end`s, or for `both` (which is the default).
 .TP
 \fB\-q\fR, \fB\-\-quiet\fR
 Don\*(Aqt print starting and stopping messages
