@@ -22,6 +22,7 @@ _watchexec() {
 '--wrap-process=[Configure how the process is wrapped]:MODE:(group session none)' \
 '--stop-signal=[Signal to send to stop the command]:SIGNAL:_default' \
 '--stop-timeout=[Time to wait for the command to exit gracefully]:TIMEOUT:_default' \
+'--timeout=[Kill the command if it runs longer than this duration]:TIMEOUT:_default' \
 '--delay-run=[Sleep before running the command]:DURATION:_default' \
 '--workdir=[Set the working directory]:DIRECTORY:_files -/' \
 '*--socket=[Provide a socket to the command]:PORT:_default' \

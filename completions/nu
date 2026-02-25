@@ -46,6 +46,7 @@ module completions {
     --wrap-process: string@"nu-complete watchexec wrap_process" # Configure how the process is wrapped
     --stop-signal: string     # Signal to send to stop the command
     --stop-timeout: string    # Time to wait for the command to exit gracefully
+    --timeout: string         # Kill the command if it runs longer than this duration
     --delay-run: string       # Sleep before running the command
     --workdir: path           # Set the working directory
     --socket: string          # Provide a socket to the command

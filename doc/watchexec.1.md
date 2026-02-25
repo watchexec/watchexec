@@ -22,7 +22,7 @@ watchexec - Execute commands when watched files change
 \[**-p**\|**\--postpone**\] \[**-q**\|**\--quiet**\]
 \[**-r**\|**\--restart**\] \[**-s**\|**\--signal**\] \[**\--shell**\]
 \[**\--stdin-quit**\] \[**\--stop-signal**\] \[**\--stop-timeout**\]
-\[**\--timings**\] \[**-v**\|**\--verbose**\]\...
+\[**\--timeout**\] \[**\--timings**\] \[**-v**\|**\--verbose**\]\...
 \[**-w**\|**\--watch**\] \[**\--workdir**\]
 \[**-W**\|**\--watch-non-recursive**\] \[**\--wrap-process**\]
 \[**-F**\|**\--watch-file**\] \[**-h**\|**\--help**\]
@@ -307,6 +307,18 @@ Watch lib and src directories for changes, rebuilding each time:
 
     This has no practical effect on Windows as the command is always
     forcefully terminated; see \--stop-signal for why.
+
+**\--timeout** *\<TIMEOUT\>*
+
+:   Kill the command if it runs longer than this duration
+
+    Takes a time span value such as \"30s\", \"5min\", or \"1h 30m\".
+
+    When the timeout is reached, the command is gracefully stopped using
+    \--stop-signal, then forcefully terminated after \--stop-timeout if
+    still running.
+
+    Each run of the command has its own independent timeout.
 
 **\--workdir** *\<DIRECTORY\>*
 

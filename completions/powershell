@@ -28,6 +28,7 @@ Register-ArgumentCompleter -Native -CommandName 'watchexec' -ScriptBlock {
             [CompletionResult]::new('--wrap-process', '--wrap-process', [CompletionResultType]::ParameterName, 'Configure how the process is wrapped')
             [CompletionResult]::new('--stop-signal', '--stop-signal', [CompletionResultType]::ParameterName, 'Signal to send to stop the command')
             [CompletionResult]::new('--stop-timeout', '--stop-timeout', [CompletionResultType]::ParameterName, 'Time to wait for the command to exit gracefully')
+            [CompletionResult]::new('--timeout', '--timeout', [CompletionResultType]::ParameterName, 'Kill the command if it runs longer than this duration')
             [CompletionResult]::new('--delay-run', '--delay-run', [CompletionResultType]::ParameterName, 'Sleep before running the command')
             [CompletionResult]::new('--workdir', '--workdir', [CompletionResultType]::ParameterName, 'Set the working directory')
             [CompletionResult]::new('--socket', '--socket', [CompletionResultType]::ParameterName, 'Provide a socket to the command')

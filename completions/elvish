@@ -25,6 +25,7 @@ set edit:completion:arg-completer[watchexec] = {|@words|
             cand --wrap-process 'Configure how the process is wrapped'
             cand --stop-signal 'Signal to send to stop the command'
             cand --stop-timeout 'Time to wait for the command to exit gracefully'
+            cand --timeout 'Kill the command if it runs longer than this duration'
             cand --delay-run 'Sleep before running the command'
             cand --workdir 'Set the working directory'
             cand --socket 'Provide a socket to the command'

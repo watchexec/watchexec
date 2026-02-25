@@ -11,6 +11,7 @@ session\t''
 none\t''"
 complete -c watchexec -l stop-signal -d 'Signal to send to stop the command' -r
 complete -c watchexec -l stop-timeout -d 'Time to wait for the command to exit gracefully' -r
+complete -c watchexec -l timeout -d 'Kill the command if it runs longer than this duration' -r
 complete -c watchexec -l delay-run -d 'Sleep before running the command' -r
 complete -c watchexec -l workdir -d 'Set the working directory' -r -f -a "(__fish_complete_directories)"
 complete -c watchexec -l socket -d 'Provide a socket to the command' -r

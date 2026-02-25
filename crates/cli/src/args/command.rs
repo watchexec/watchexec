@@ -190,6 +190,22 @@ pub struct CommandArgs {
 	)]
 	pub stop_timeout: TimeSpan,
 
+	/// Kill the command if it runs longer than this duration
+	///
+	/// Takes a time span value such as "30s", "5min", or "1h 30m".
+	///
+	/// When the timeout is reached, the command is gracefully stopped using --stop-signal, then
+	/// forcefully terminated after --stop-timeout if still running.
+	///
+	/// Each run of the command has its own independent timeout.
+	#[arg(
+		long,
+		help_heading = OPTSET_COMMAND,
+		value_name = "TIMEOUT",
+		display_order = 193,
+	)]
+	pub timeout: Option<TimeSpan>,
+
 	/// Sleep before running the command
 	///
 	/// This option will cause Watchexec to sleep for the specified amount of time before running
