@@ -67,6 +67,7 @@ _watchexec() {
 '--stdin-quit[Exit when stdin closes]' \
 '-I[Respond to keypresses to quit, restart, or pause]' \
 '--interactive[Respond to keypresses to quit, restart, or pause]' \
+'--exit-on-error[Exit when the command has an error]' \
 '-p[Wait until first change before running command]' \
 '--postpone[Wait until first change before running command]' \
 '--no-vcs-ignore[Don'\''t load gitignores]' \

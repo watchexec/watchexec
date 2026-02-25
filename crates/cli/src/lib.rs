@@ -10,6 +10,7 @@ use clap::CommandFactory;
 use clap_complete::{Generator, Shell};
 use clap_mangen::Man;
 use miette::{IntoDiagnostic, Result};
+use std::sync::Arc;
 use tokio::{io::AsyncWriteExt, process::Command};
 use tracing::{debug, info};
 use watchexec::Watchexec;
@@ -35,7 +36,13 @@ async fn run_watchexec(args: Args, state: state::State) -> Result<()> {
 	config.filterer(WatchexecFilterer::new(&args).await?);
 
 	info!("initialising Watchexec runtime");
-	let wx = Watchexec::with_config(config)?;
+	let wx = Arc::new(Watchexec::with_config(config)?);
+
+	// Set the watchexec reference in state so it can be used for sending synthetic events
+	state
+		.watchexec
+		.set(wx.clone())
+		.expect("watchexec reference already set");
 
 	if !args.events.postpone {
 		debug!("kicking off with empty event");
