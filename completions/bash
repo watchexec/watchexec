@@ -221,6 +221,14 @@ _watchexec() {
                     COMPREPLY=($(compgen -W "clear reset" -- "${cur}"))
                     return 0
                     ;;
+                --notify)
+                    COMPREPLY=($(compgen -W "both start end" -- "${cur}"))
+                    return 0
+                    ;;
+                -N)
+                    COMPREPLY=($(compgen -W "both start end" -- "${cur}"))
+                    return 0
+                    ;;
                 --color)
                     COMPREPLY=($(compgen -W "auto always never" -- "${cur}"))
                     return 0
