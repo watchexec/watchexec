@@ -75,6 +75,7 @@ Register-ArgumentCompleter -Native -CommandName 'watchexec' -ScriptBlock {
             [CompletionResult]::new('--stdin-quit', '--stdin-quit', [CompletionResultType]::ParameterName, 'Exit when stdin closes')
             [CompletionResult]::new('-I', '-I ', [CompletionResultType]::ParameterName, 'Respond to keypresses to quit, restart, or pause')
             [CompletionResult]::new('--interactive', '--interactive', [CompletionResultType]::ParameterName, 'Respond to keypresses to quit, restart, or pause')
+            [CompletionResult]::new('--exit-on-error', '--exit-on-error', [CompletionResultType]::ParameterName, 'Exit when the command has an error')
             [CompletionResult]::new('-p', '-p', [CompletionResultType]::ParameterName, 'Wait until first change before running command')
             [CompletionResult]::new('--postpone', '--postpone', [CompletionResultType]::ParameterName, 'Wait until first change before running command')
             [CompletionResult]::new('--no-vcs-ignore', '--no-vcs-ignore', [CompletionResultType]::ParameterName, 'Don''t load gitignores')

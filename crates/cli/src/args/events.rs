@@ -144,6 +144,21 @@ pub struct EventsArgs {
 	)]
 	pub interactive: bool,
 
+	/// Exit when the command has an error
+	///
+	/// By default, Watchexec will continue to watch and re-run the command after the command
+	/// exits, regardless of its exit status. With this option, it will instead exit when the
+	/// command completes with any non-success exit status.
+	///
+	/// This is useful when running Watchexec in a process manager or container, where you want
+	/// the container to restart when the command fails rather than hang waiting for file changes.
+	#[arg(
+		long,
+		help_heading = OPTSET_EVENTS,
+		display_order = 91,
+	)]
+	pub exit_on_error: bool,
+
 	/// Wait until first change before running command
 	///
 	/// By default, Watchexec will run the command once immediately. With this option, it will

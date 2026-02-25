@@ -72,6 +72,7 @@ set edit:completion:arg-completer[watchexec] = {|@words|
             cand --stdin-quit 'Exit when stdin closes'
             cand -I 'Respond to keypresses to quit, restart, or pause'
             cand --interactive 'Respond to keypresses to quit, restart, or pause'
+            cand --exit-on-error 'Exit when the command has an error'
             cand -p 'Wait until first change before running command'
             cand --postpone 'Wait until first change before running command'
             cand --no-vcs-ignore 'Don''t load gitignores'
