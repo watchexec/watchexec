@@ -88,6 +88,27 @@ pub enum Signal {
 	/// This signal is generally used to reload configuration.
 	User2,
 
+	/// Sent to a process to unsuspend it.
+	///
+	/// On Unix, this is `SIGCONT`. On Windows, it is ignored.
+	///
+	/// See also [`Suspend`](Signal::Suspend) and [`TerminalSuspend`][Signal::TerminalSuspend].
+	Continue,
+
+	/// Indicate that the process should suspend itself.
+	///
+	/// On Unix, this is `SIGSTOP`. On Windows, it is ignored.
+	///
+	/// See also [`TerminalSuspend`][Signal::TerminalSuspend].
+	Suspend,
+
+	/// Indicate that the process should suspend itself (issued from the terminal).
+	///
+	/// On Unix, this is `SIGTSTP`. On Windows, it is ignored.
+	///
+	/// See also [`Suspend`][Signal::Suspend].
+	TerminalSuspend,
+
 	/// Indicate using a custom signal.
 	///
 	/// Internally, this is converted to a [`nix::Signal`](https://docs.rs/nix/*/nix/sys/signal/enum.Signal.html)
@@ -140,6 +161,9 @@ impl Signal {
 			Self::Terminate => Some(NixSignal::SIGTERM),
 			Self::User1 => Some(NixSignal::SIGUSR1),
 			Self::User2 => Some(NixSignal::SIGUSR2),
+			Self::Suspend => Some(NixSignal::SIGSTOP),
+			Self::TerminalSuspend => Some(NixSignal::SIGTSTP),
+			Self::Continue => Some(NixSignal::SIGCONT),
 			Self::Custom(sig) => NixSignal::try_from(sig).ok(),
 		}
 	}
@@ -157,6 +181,9 @@ impl Signal {
 			NixSignal::SIGTERM => Self::Terminate,
 			NixSignal::SIGUSR1 => Self::User1,
 			NixSignal::SIGUSR2 => Self::User2,
+			NixSignal::SIGSTOP => Self::Suspend,
+			NixSignal::SIGTSTP => Self::TerminalSuspend,
+			NixSignal::SIGCONT => Self::Continue,
 			sig => Self::Custom(sig as _),
 		}
 	}
@@ -175,6 +202,9 @@ impl From<i32> for Signal {
 			10 => Self::User1,
 			12 => Self::User2,
 			15 => Self::Terminate,
+			18 => Self::Continue,
+			19 => Self::Suspend,
+			20 => Self::TerminalSuspend,
 			_ => Self::Custom(raw),
 		}
 	}
@@ -231,6 +261,9 @@ impl Signal {
 			"TERM" | "SIGTERM" | "15" => Ok(Self::Terminate),
 			"USR1" | "SIGUSR1" | "10" => Ok(Self::User1),
 			"USR2" | "SIGUSR2" | "12" => Ok(Self::User2),
+			"CONT" | "SIGCONT" | "18" => Ok(Self::Continue),
+			"STOP" | "SIGSTOP" | "19" => Ok(Self::Suspend),
+			"TSTP" | "SIGTSTP" | "20" => Ok(Self::TerminalSuspend),
 			number => match i32::from_str(number) {
 				Ok(int) => Ok(Self::Custom(int)),
 				Err(_) => Err(SignalParseError::new(s, "unsupported signal")),
@@ -326,6 +359,9 @@ impl fmt::Display for Signal {
 				(Self::Terminate, true) => "CTRL-BREAK",
 				(Self::User1, _) => "SIGUSR1",
 				(Self::User2, _) => "SIGUSR2",
+				(Self::Continue, _) => "SIGCONT",
+				(Self::Suspend, _) => "SIGSTOP",
+				(Self::TerminalSuspend, _) => "SIGTSTP",
 				(Self::Custom(n), _) => {
 					return write!(f, "{n}");
 				}
@@ -362,6 +398,12 @@ mod serde_support {
 		User1,
 		#[serde(rename = "SIGUSR2")]
 		User2,
+		#[serde(rename = "SIGCONT")]
+		Continue,
+		#[serde(rename = "SIGSTOP")]
+		Suspend,
+		#[serde(rename = "SIGTSTP")]
+		TerminalSuspend,
 	}
 
 	impl From<Signal> for SerdeSignal {
@@ -374,6 +416,9 @@ mod serde_support {
 				Signal::User1 => Self::Named(NamedSignal::User1),
 				Signal::User2 => Self::Named(NamedSignal::User2),
 				Signal::ForceStop => Self::Named(NamedSignal::ForceStop),
+				Signal::Continue => Self::Named(NamedSignal::Continue),
+				Signal::Suspend => Self::Named(NamedSignal::Suspend),
+				Signal::TerminalSuspend => Self::Named(NamedSignal::TerminalSuspend),
 				Signal::Custom(number) => Self::Number(number),
 			}
 		}
@@ -389,6 +434,9 @@ mod serde_support {
 				SerdeSignal::Named(NamedSignal::Terminate) => Self::Terminate,
 				SerdeSignal::Named(NamedSignal::User1) => Self::User1,
 				SerdeSignal::Named(NamedSignal::User2) => Self::User2,
+				SerdeSignal::Named(NamedSignal::Continue) => Self::Continue,
+				SerdeSignal::Named(NamedSignal::Suspend) => Self::Suspend,
+				SerdeSignal::Named(NamedSignal::TerminalSuspend) => Self::TerminalSuspend,
 				SerdeSignal::Number(number) => Self::Custom(number),
 			}
 		}
