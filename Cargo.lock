@@ -3789,7 +3789,7 @@ dependencies = [
 
 [[package]]
 name = "watchexec"
-version = "8.1.2"
+version = "8.2.0"
 dependencies = [
  "async-priority-channel",
  "atomic-take",
@@ -3806,7 +3806,7 @@ dependencies = [
  "watchexec-events",
  "watchexec-signals",
  "watchexec-supervisor",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
