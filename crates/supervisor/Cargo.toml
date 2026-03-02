@@ -19,7 +19,8 @@ futures = "0.3.29"
 tracing = "0.1.40"
 
 [dependencies.process-wrap]
-version = "9.0.1"
+git = "https://github.com/domenkozar/process-wrap.git"
+rev = "a56391e"
 features = ["reset-sigmask", "tokio1"]
 
 [dependencies.tokio]
