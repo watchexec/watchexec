@@ -2,7 +2,7 @@
 
 use std::{future::Future, pin::pin, sync::Arc, time::Duration};
 
-use tokio::sync::Notify;
+use tokio::sync::{watch, Notify};
 use tracing::{debug, trace};
 
 use crate::{
@@ -154,6 +154,11 @@ pub struct Config {
 	///
 	/// This is unchangeable at runtime and must be set before Watchexec instantiation.
 	pub event_channel_size: usize,
+
+	/// Signalled by the filesystem worker after it finishes applying a pathset change
+	/// (registering/unregistering OS watches). Subscribe via [`Config::fs_ready()`] **before**
+	/// calling [`Config::pathset()`] to avoid missing the notification.
+	pub(crate) fs_ready: watch::Sender<()>,
 }
 
 impl Default for Config {
@@ -169,6 +174,7 @@ impl Default for Config {
 			filterer: Default::default(),
 			error_channel_size: 64,
 			event_channel_size: 4096,
+			fs_ready: watch::channel(()).0,
 		}
 	}
 }
@@ -194,6 +200,17 @@ impl Config {
 	#[must_use]
 	pub(crate) fn watch(&self) -> ConfigWatched {
 		ConfigWatched::new(self.change_signal.clone())
+	}
+
+	/// Subscribe to filesystem worker readiness notifications.
+	///
+	/// Returns a [`watch::Receiver`] that is notified each time the filesystem worker finishes
+	/// applying a pathset change (i.e. OS watches are registered/unregistered). Signals readiness
+	/// even if some paths failed to register; check the error handler for failures. To avoid
+	/// missing a notification, subscribe **before** calling [`Config::pathset()`], then
+	/// `.changed().await`.
+	pub fn fs_ready(&self) -> watch::Receiver<()> {
+		self.fs_ready.subscribe()
 	}
 
 	/// Set the pathset to be watched.
