@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+- Feat: add `fs_ready` signal for watcher readiness ([#1024](https://github.com/watchexec/watchexec/pull/1024))
+
 ## v8.1.2 (2026-02-24)
 
 ## v8.1.1 (2026-02-22)
