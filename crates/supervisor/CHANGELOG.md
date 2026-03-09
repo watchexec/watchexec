@@ -2,6 +2,8 @@
 
 ## Next (YYYY-MM-DD)
 
+## v5.2.0 (2026-03-09)
+
 - Add the ability to use `spawn_with` from process-wrap (#1013)
 
 ## v5.1.0 (2026-02-22)
