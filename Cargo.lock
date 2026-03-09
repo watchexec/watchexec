@@ -2528,9 +2528,9 @@ dependencies = [
 
 [[package]]
 name = "process-wrap"
-version = "9.0.3"
+version = "9.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ccd9713fe2c91c3c85ac388b31b89de339365d2c995146e630b5e0da9d06526a"
+checksum = "2e842efad9119158434d193c6682e2ebee4b44d6ad801d7b349623b3f57cdf55"
 dependencies = [
  "futures",
  "indexmap",
@@ -3806,7 +3806,7 @@ dependencies = [
  "watchexec-events",
  "watchexec-signals",
  "watchexec-supervisor",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
