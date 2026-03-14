@@ -39,3 +39,6 @@ debug = false
 debug-assertions = false
 overflow-checks = false
 incremental = false
+
+[patch.crates-io]
+process-wrap = { git = "https://github.com/domenkozar/process-wrap", branch = "feat/spawn-with" }
