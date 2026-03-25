@@ -79,6 +79,12 @@ jobs:
             cross: true
             experimental: false
 
+          - name: linux-riscv64gc-gnu
+            os: ubuntu-24.04
+            target: riscv64gc-unknown-linux-gnu
+            cross: true
+            experimental: false
+
           - name: linux-ppc64le-gnu
             os: ubuntu-24.04
             target: powerpc64le-unknown-linux-gnu
@@ -143,6 +149,9 @@ jobs:
       - name: Add s390x-gnu tools
         run: sudo apt install -y gcc-s390x-linux-gnu
         if: startsWith(matrix.target, 's390x-unknown-linux-gnu')
+      - name: Add riscv64-gnu tools
+        run: sudo apt install -y gcc-riscv64-linux-gnu
+        if: startsWith(matrix.target, 'riscv64gc-unknown-linux-gnu')
       - name: Add ppc64le-gnu tools
         run: sudo apt install -y gcc-powerpc64le-linux-gnu
         if: startsWith(matrix.target, 'powerpc64le-unknown-linux-gnu')
