@@ -351,18 +351,18 @@ impl Job {
 
 	/// Set the spawn function.
 	///
-	/// When set, this function is passed to
-	/// [`CommandWrap::spawn_with()`](process_wrap::tokio::CommandWrap::spawn_with) instead of
-	/// using the default [`CommandWrap::spawn()`]. It receives a `&mut tokio::process::Command`
-	/// and must return the spawned [`tokio::process::Child`].
+	/// When set, the supervisor uses
+	/// [`CommandWrap::spawn_with()`](process_wrap::tokio::CommandWrap::spawn_with)
+	/// with this function. It receives a `&mut tokio::process::Command` and must return a
+	/// boxed [`ChildWrapper`](process_wrap::tokio::ChildWrapper).
 	///
-	/// All process-wrap layers are still applied around the child, so this only customises the
-	/// low-level spawn step. This is useful for delegating process spawning to a privileged
-	/// helper (e.g. for Linux capability granting) while keeping the supervisor's lifecycle
-	/// management.
+	/// All `pre_spawn` and `wrap_child` hooks from process-wrap layers still run. This is
+	/// useful for delegating process spawning to a privileged helper (e.g. for Linux
+	/// capability granting via a separate server process) where the child is not a standard
+	/// `tokio::process::Child`.
 	pub fn set_spawn_fn(
 		&self,
-		fun: impl Fn(&mut tokio::process::Command) -> std::io::Result<tokio::process::Child>
+		fun: impl Fn(&mut tokio::process::Command) -> std::io::Result<Box<dyn process_wrap::tokio::ChildWrapper>>
 			+ Send
 			+ Sync
 			+ 'static,
