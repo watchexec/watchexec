@@ -43,18 +43,24 @@ pub enum Watcher {
 impl Watcher {
 	fn create(
 		self,
+		follow_symlinks: bool,
 		f: impl notify::EventHandler,
 	) -> Result<Box<dyn notify::Watcher + Send>, CriticalError> {
 		use notify::{Config, Watcher as _};
 
 		match self {
-			Self::Native => {
-				notify::RecommendedWatcher::new(f, Config::default()).map(|w| Box::new(w) as _)
-			}
-			Self::Poll(delay) => {
-				notify::PollWatcher::new(f, Config::default().with_poll_interval(delay))
-					.map(|w| Box::new(w) as _)
-			}
+			Self::Native => notify::RecommendedWatcher::new(
+				f,
+				Config::default().with_follow_symlinks(follow_symlinks),
+			)
+			.map(|w| Box::new(w) as _),
+			Self::Poll(delay) => notify::PollWatcher::new(
+				f,
+				Config::default()
+					.with_poll_interval(delay)
+					.with_follow_symlinks(follow_symlinks),
+			)
+			.map(|w| Box::new(w) as _),
 		}
 		.map_err(|err| CriticalError::FsWatcherInit {
 			kind: self,
@@ -115,6 +121,7 @@ pub async fn worker(
 	let mut watcher_type = Watcher::default();
 	let mut watcher = None;
 	let mut pathset = HashSet::new();
+	let mut follow_symlinks = true;
 
 	let mut config_watch = config.watch();
 	loop {
@@ -139,13 +146,15 @@ pub async fn worker(
 		// now we know the watcher should be alive, so let's start it if it's not already:
 
 		let config_watcher = config.file_watcher.get();
-		if watcher.is_none() || watcher_type != config_watcher {
-			debug!(kind=?config_watcher, "creating new watcher");
+		let config_follow_symlinks = config.follow_symlinks.get();
+		if watcher.is_none() || watcher_type != config_watcher || follow_symlinks != config_follow_symlinks {
+			debug!(kind=?config_watcher, follow_symlinks=?config_follow_symlinks, "creating new watcher");
 			let n_errors = errors.clone();
 			let n_events = events.clone();
 			watcher_type = config_watcher;
+			follow_symlinks = config_follow_symlinks;
 			watcher = config_watcher
-				.create(move |nev: Result<notify::Event, notify::Error>| {
+				.create(follow_symlinks, move |nev: Result<notify::Event, notify::Error>| {
 					trace!(event = ?nev, "receiving possible event from watcher");
 					if let Err(e) = process_event(nev, config_watcher, &n_events) {
 						n_errors.try_send(e).ok();

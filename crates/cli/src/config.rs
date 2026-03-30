@@ -94,6 +94,10 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 		config.file_watcher(Watcher::Poll(interval.0));
 	}
 
+	if args.filtering.no_follow_symlinks {
+		config.follow_symlinks(false);
+	}
+
 	let once = args.once;
 	let clear = args.output.screen_clear;
 
