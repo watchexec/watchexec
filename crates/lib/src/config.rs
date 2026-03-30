@@ -115,6 +115,15 @@ pub struct Config {
 	/// The kind of filesystem watcher to be used.
 	pub file_watcher: Changeable<Watcher>,
 
+	/// Whether to follow symlinks when watching paths.
+	///
+	/// When `true` (the default), the filesystem watcher will follow symbolic links and watch the
+	/// targets. When `false`, symlinks are not followed: events for the symlink itself may still
+	/// occur, but the symlink target will not be watched.
+	///
+	/// This maps directly to [`notify::Config::with_follow_symlinks`].
+	pub follow_symlinks: Changeable<bool>,
+
 	/// Watch stdin and emit events when input comes in over the keyboard.
 	///
 	/// If this is true, the keyboard event source is started and stdin is switched to raw mode
@@ -169,6 +178,7 @@ impl Default for Config {
 			error_handler: Default::default(),
 			pathset: Default::default(),
 			file_watcher: Default::default(),
+			follow_symlinks: Changeable::new(true),
 			keyboard_events: Default::default(),
 			throttle: Changeable::new(Duration::from_millis(50)),
 			filterer: Default::default(),
@@ -229,6 +239,13 @@ impl Config {
 	pub fn file_watcher(&self, watcher: Watcher) -> &Self {
 		debug!(?watcher, "Config: file watcher");
 		self.file_watcher.replace(watcher);
+		self.signal_change()
+	}
+
+	/// Set whether symlinks are followed when watching paths.
+	pub fn follow_symlinks(&self, follow: bool) -> &Self {
+		debug!(?follow, "Config: follow symlinks");
+		self.follow_symlinks.replace(follow);
 		self.signal_change()
 	}
 

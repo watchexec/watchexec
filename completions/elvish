@@ -85,6 +85,7 @@ set edit:completion:arg-completer[watchexec] = {|@words|
             cand --no-discover-ignore 'Don''t discover ignore files at all'
             cand --ignore-nothing 'Don''t ignore anything at all'
             cand --no-meta 'Don''t emit fs events for metadata changes'
+            cand --no-follow-symlinks 'Don''t follow symlinks when watching'
             cand -v 'Set diagnostic log level'
             cand --verbose 'Set diagnostic log level'
             cand --print-events 'Print events that trigger actions'

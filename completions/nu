@@ -80,6 +80,7 @@ module completions {
     --ignore-file: path       # Files to load ignores from
     --fs-events: string@"nu-complete watchexec filter_fs_events" # Filesystem events to filter to
     --no-meta                 # Don't emit fs events for metadata changes
+    --no-follow-symlinks      # Don't follow symlinks when watching
     --verbose(-v)             # Set diagnostic log level
     --log-file: path          # Write diagnostic logs to a file
     --print-events            # Print events that trigger actions

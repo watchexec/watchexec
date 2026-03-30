@@ -88,6 +88,7 @@ Register-ArgumentCompleter -Native -CommandName 'watchexec' -ScriptBlock {
             [CompletionResult]::new('--no-discover-ignore', '--no-discover-ignore', [CompletionResultType]::ParameterName, 'Don''t discover ignore files at all')
             [CompletionResult]::new('--ignore-nothing', '--ignore-nothing', [CompletionResultType]::ParameterName, 'Don''t ignore anything at all')
             [CompletionResult]::new('--no-meta', '--no-meta', [CompletionResultType]::ParameterName, 'Don''t emit fs events for metadata changes')
+            [CompletionResult]::new('--no-follow-symlinks', '--no-follow-symlinks', [CompletionResultType]::ParameterName, 'Don''t follow symlinks when watching')
             [CompletionResult]::new('-v', '-v', [CompletionResultType]::ParameterName, 'Set diagnostic log level')
             [CompletionResult]::new('--verbose', '--verbose', [CompletionResultType]::ParameterName, 'Set diagnostic log level')
             [CompletionResult]::new('--print-events', '--print-events', [CompletionResultType]::ParameterName, 'Print events that trigger actions')
