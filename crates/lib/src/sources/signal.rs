@@ -55,13 +55,14 @@ async fn imp_worker(
 	debug!("launching unix signal worker");
 
 	macro_rules! listen {
-    ($sig:ident) => {{
-        trace!(kind=%stringify!($sig), "listening for unix signal");
-        signal(SignalKind::$sig()).map_err(|err| CriticalError::IoError {
-        about: concat!("setting ", stringify!($sig), " signal listener"), err
-    })?
-    }}
-}
+		($sig:ident, $signum:expr) => {{
+			trace!(kind=%stringify!($sig), "listening for unix signal");
+			signal($signum).map_err(|err| CriticalError::IoError {
+				about: concat!("setting ", stringify!($sig), " signal listener"), err
+			})?
+		}};
+		($sig:ident) => (listen!($sig, SignalKind::$sig()));
+	}
 
 	let mut s_hangup = listen!(hangup);
 	let mut s_interrupt = listen!(interrupt);
@@ -69,6 +70,30 @@ async fn imp_worker(
 	let mut s_terminate = listen!(terminate);
 	let mut s_user1 = listen!(user_defined1);
 	let mut s_user2 = listen!(user_defined2);
+
+	// TODO: option to customise set of signals being listened to, so we can safely listen to sigstop only when requested
+
+	let mut s_tstp = if let Some(signum) = Signal::TerminalSuspend.to_nix().map(|s| s as i32) {
+		listen!(terminal_suspend, SignalKind::from_raw(signum))
+	} else {
+		signal(SignalKind::from_raw(9)).map_err(|err| CriticalError::IoError {
+			about: concat!("setting unreceivable signal listener"), err
+		})?
+	};
+	let mut s_stop = if let Some(signum) = Signal::Suspend.to_nix().map(|s| s as i32) {
+		listen!(suspend, SignalKind::from_raw(signum))
+	} else {
+		signal(SignalKind::from_raw(9)).map_err(|err| CriticalError::IoError {
+			about: concat!("setting unreceivable signal listener"), err
+		})?
+	};
+	let mut s_cont = if let Some(signum) = Signal::Continue.to_nix().map(|s| s as i32) {
+		listen!(r#continue, SignalKind::from_raw(signum))
+	} else {
+		signal(SignalKind::from_raw(9)).map_err(|err| CriticalError::IoError {
+			about: concat!("setting unreceivable signal listener"), err
+		})?
+	};
 
 	loop {
 		let sig = select!(
@@ -78,6 +103,9 @@ async fn imp_worker(
 			_ = s_terminate.recv() => Signal::Terminate,
 			_ = s_user1.recv() => Signal::User1,
 			_ = s_user2.recv() => Signal::User2,
+			_ = s_tstp.recv() => Signal::TerminalSuspend,
+			_ = s_stop.recv() => Signal::Suspend,
+			_ = s_cont.recv() => Signal::Continue,
 		);
 
 		debug!(?sig, "received unix signal");
