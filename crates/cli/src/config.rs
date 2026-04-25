@@ -410,6 +410,18 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 										}
 										return action;
 									}
+									KeyCode::Char('s') => {
+										debug!("interactive: stop");
+										if cfg!(windows) {
+											job.stop();
+										} else {
+											job.stop_with_signal(
+												stop_signal.unwrap_or(Signal::Terminate),
+												stop_timeout,
+											);
+										}
+										return action;
+									}
 									KeyCode::Char('r') => {
 										debug!("interactive: restart");
 										clear_screen();
