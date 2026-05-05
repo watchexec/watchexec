@@ -79,6 +79,7 @@ Selected downstreams of watchexec and associated crates:
 - [cargo watch](https://github.com/watchexec/cargo-watch): a specialised watcher for Rust/Cargo projects.
 - [cargo lambda](https://github.com/cargo-lambda/cargo-lambda): a dev tool for Rust-powered AWS Lambda functions.
 - [create-rust-app](https://create-rust-app.dev): a template for Rust+React web apps.
+- [devenv.sh](https://github.com/cachix/devenv): a developer environment with nix-based declarative configs.
 - [dotter](https://github.com/supercuber/dotter): a dotfile manager.
 - [ghciwatch](https://github.com/mercurytechnologies/ghciwatch): a specialised watcher for Haskell projects.
 - [tectonic](https://tectonic-typesetting.github.io/book/latest/): a TeX/LaTeX typesetting system.

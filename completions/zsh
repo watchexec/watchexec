@@ -22,6 +22,7 @@ _watchexec() {
 '--wrap-process=[Configure how the process is wrapped]:MODE:(group session none)' \
 '--stop-signal=[Signal to send to stop the command]:SIGNAL:_default' \
 '--stop-timeout=[Time to wait for the command to exit gracefully]:TIMEOUT:_default' \
+'--timeout=[Kill the command if it runs longer than this duration]:TIMEOUT:_default' \
 '--delay-run=[Sleep before running the command]:DURATION:_default' \
 '--workdir=[Set the working directory]:DIRECTORY:_files -/' \
 '*--socket=[Provide a socket to the command]:PORT:_default' \
@@ -55,6 +56,12 @@ _watchexec() {
 '--log-file=[Write diagnostic logs to a file]::PATH:_files' \
 '-c+[Clear screen before running command]::MODE:(clear reset)' \
 '--clear=[Clear screen before running command]::MODE:(clear reset)' \
+'-N+[Alert when commands start and end]::WHEN:((both\:"Notify on both start and end"
+start\:"Notify only when the command starts"
+end\:"Notify only when the command ends"))' \
+'--notify=[Alert when commands start and end]::WHEN:((both\:"Notify on both start and end"
+start\:"Notify only when the command starts"
+end\:"Notify only when the command ends"))' \
 '--color=[When to use terminal colours]:MODE:(auto always never)' \
 '(--completions --only-emit-events)--manual[Show the manual page]' \
 '(--completions --manual)--only-emit-events[Only emit events to stdout, run no commands]' \
@@ -67,6 +74,7 @@ _watchexec() {
 '--stdin-quit[Exit when stdin closes]' \
 '-I[Respond to keypresses to quit, restart, or pause]' \
 '--interactive[Respond to keypresses to quit, restart, or pause]' \
+'--exit-on-error[Exit when the command has an error]' \
 '-p[Wait until first change before running command]' \
 '--postpone[Wait until first change before running command]' \
 '--no-vcs-ignore[Don'\''t load gitignores]' \
@@ -79,8 +87,6 @@ _watchexec() {
 '*-v[Set diagnostic log level]' \
 '*--verbose[Set diagnostic log level]' \
 '--print-events[Print events that trigger actions]' \
-'-N[Alert when commands start and end]' \
-'--notify[Alert when commands start and end]' \
 '--timings[Print how long the command took to run]' \
 '-q[Don'\''t print starting and stopping messages]' \
 '--quiet[Don'\''t print starting and stopping messages]' \

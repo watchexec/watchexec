@@ -1,6 +1,13 @@
 #![allow(clippy::must_use_candidate)] // Ticket-returning methods are supposed to be used without awaiting
 
-use std::{future::Future, sync::Arc, time::Duration};
+use std::{
+	future::Future,
+	sync::{
+		atomic::{AtomicBool, Ordering},
+		Arc,
+	},
+	time::Duration,
+};
 
 use process_wrap::tokio::CommandWrap;
 use watchexec_signals::Signal;
@@ -41,6 +48,9 @@ pub struct Job {
 
 	/// Set to true when the command task has stopped gracefully.
 	pub(crate) gone: Flag,
+
+	/// Mirrors the command state: true when a child process is running.
+	pub(crate) running: Arc<AtomicBool>,
 }
 
 impl Job {
@@ -50,8 +60,19 @@ impl Job {
 	}
 
 	/// If this job is dead.
+	///
+	/// A dead job is one where the job task has stopped entirely, not just
+	/// a job whose command has finished. See [`is_running`](Self::is_running).
 	pub fn is_dead(&self) -> bool {
 		self.gone.raised()
+	}
+
+	/// If a child process is currently running.
+	///
+	/// This returns `false` if the command has finished, hasn't been started
+	/// yet, or the job is dead.
+	pub fn is_running(&self) -> bool {
+		self.running.load(Ordering::Relaxed)
 	}
 
 	fn prepare_control(&self, control: Control) -> (Ticket, ControlMessage) {
@@ -326,6 +347,32 @@ impl Job {
 	/// Unset any spawn hook.
 	pub fn unset_spawn_hook(&self) -> Ticket {
 		self.control(Control::UnsetSpawnHook)
+	}
+
+	/// Set the spawn function.
+	///
+	/// When set, this function is passed to
+	/// [`CommandWrap::spawn_with()`](process_wrap::tokio::CommandWrap::spawn_with) instead of
+	/// using the default [`CommandWrap::spawn()`]. It receives a `&mut tokio::process::Command`
+	/// and must return the spawned [`tokio::process::Child`].
+	///
+	/// All process-wrap layers are still applied around the child, so this only customises the
+	/// low-level spawn step. This is useful for delegating process spawning to a privileged
+	/// helper (e.g. for Linux capability granting) while keeping the supervisor's lifecycle
+	/// management.
+	pub fn set_spawn_fn(
+		&self,
+		fun: impl Fn(&mut tokio::process::Command) -> std::io::Result<tokio::process::Child>
+			+ Send
+			+ Sync
+			+ 'static,
+	) -> Ticket {
+		self.control(Control::SetSpawnFn(Arc::new(fun)))
+	}
+
+	/// Unset any spawn function, reverting to the default `CommandWrap::spawn()`.
+	pub fn unset_spawn_fn(&self) -> Ticket {
+		self.control(Control::ClearSpawnFn)
 	}
 
 	/// Set the error handler.

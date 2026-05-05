@@ -2,6 +2,14 @@
 
 ## Next (YYYY-MM-DD)
 
+## v5.2.0 (2026-03-09)
+
+- Add the ability to use `spawn_with` from process-wrap (#1013)
+
+## v5.1.0 (2026-02-22)
+
+- Add `is_running()` and clarify what `is_dead()` is measuring
+
 ## v5.0.2 (2026-01-20)
 
 - Deps: process-wrap 9

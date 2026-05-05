@@ -10,18 +10,19 @@ watchexec - Execute commands when watched files change
 \[**\--emit-events-to**\] \[**-f**\|**\--filter**\] \[**\--socket**\]
 \[**\--filter-file**\] \[**-j**\|**\--filter-prog**\]
 \[**\--fs-events**\] \[**-i**\|**\--ignore**\]
-\[**-I**\|**\--interactive**\] \[**\--ignore-file**\]
-\[**\--ignore-nothing**\] \[**\--log-file**\] \[**\--manual**\]
-\[**\--map-signal**\] \[**-n** \] \[**-N**\|**\--notify**\]
-\[**\--no-default-ignore**\] \[**\--no-discover-ignore**\]
-\[**\--no-process-group**\] \[**\--no-global-ignore**\]
-\[**\--no-meta**\] \[**\--no-project-ignore**\] \[**\--no-vcs-ignore**\]
+\[**-I**\|**\--interactive**\] \[**\--exit-on-error**\]
+\[**\--ignore-file**\] \[**\--ignore-nothing**\] \[**\--log-file**\]
+\[**\--manual**\] \[**\--map-signal**\] \[**-n** \]
+\[**-N**\|**\--notify**\] \[**\--no-default-ignore**\]
+\[**\--no-discover-ignore**\] \[**\--no-process-group**\]
+\[**\--no-global-ignore**\] \[**\--no-meta**\]
+\[**\--no-project-ignore**\] \[**\--no-vcs-ignore**\]
 \[**-o**\|**\--on-busy-update**\] \[**\--only-emit-events**\]
 \[**\--poll**\] \[**\--print-events**\] \[**\--project-origin**\]
 \[**-p**\|**\--postpone**\] \[**-q**\|**\--quiet**\]
 \[**-r**\|**\--restart**\] \[**-s**\|**\--signal**\] \[**\--shell**\]
 \[**\--stdin-quit**\] \[**\--stop-signal**\] \[**\--stop-timeout**\]
-\[**\--timings**\] \[**-v**\|**\--verbose**\]\...
+\[**\--timeout**\] \[**\--timings**\] \[**-v**\|**\--verbose**\]\...
 \[**-w**\|**\--watch**\] \[**\--workdir**\]
 \[**-W**\|**\--watch-non-recursive**\] \[**\--wrap-process**\]
 \[**-F**\|**\--watch-file**\] \[**-h**\|**\--help**\]
@@ -307,6 +308,18 @@ Watch lib and src directories for changes, rebuilding each time:
     This has no practical effect on Windows as the command is always
     forcefully terminated; see \--stop-signal for why.
 
+**\--timeout** *\<TIMEOUT\>*
+
+:   Kill the command if it runs longer than this duration
+
+    Takes a time span value such as \"30s\", \"5min\", or \"1h 30m\".
+
+    When the timeout is reached, the command is gracefully stopped using
+    \--stop-signal, then forcefully terminated after \--stop-timeout if
+    still running.
+
+    Each run of the command has its own independent timeout.
+
 **\--workdir** *\<DIRECTORY\>*
 
 :   Set the working directory
@@ -464,6 +477,19 @@ Watch lib and src directories for changes, rebuilding each time:
     to toggle pausing the watch, and q to quit. This requires a terminal
     (TTY) and puts stdin into raw mode, so the child process will not
     receive stdin input.
+
+**\--exit-on-error**
+
+:   Exit when the command has an error
+
+    By default, Watchexec will continue to watch and re-run the command
+    after the command exits, regardless of its exit status. With this
+    option, it will instead exit when the command completes with any
+    non-success exit status.
+
+    This is useful when running Watchexec in a process manager or
+    container, where you want the container to restart when the command
+    fails rather than hang waiting for file changes.
 
 **\--map-signal** *\<SIGNAL:SIGNAL\>*
 
@@ -923,13 +949,16 @@ Watch lib and src directories for changes, rebuilding each time:
     Setting the environment variable \`NO_COLOR\` to any value is
     equivalent to \`\--color=never\`.
 
-**-N**, **\--notify**
+**-N**, **\--notify** \[*\<WHEN\>*\]
 
 :   Alert when commands start and end
 
     With this, Watchexec will emit a desktop notification when a command
     starts and ends, on supported platforms. On unsupported platforms,
     it may silently do nothing, or log a warning.
+
+    The mode can be specified to only notify when the command
+    \`start\`s, \`end\`s, or for \`both\` (which is the default).
 
 **-q**, **\--quiet**
 
@@ -958,7 +987,7 @@ Didnt expect this much output? Use the short -h flag to get short help.
 
 # VERSION
 
-v2.3.3
+v2.5.1
 
 # AUTHORS
 

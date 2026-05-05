@@ -132,6 +132,7 @@ pub async fn worker(
 			);
 			watcher.take();
 			pathset.clear();
+			let _ = config.fs_ready.send(());
 			continue;
 		}
 
@@ -217,6 +218,8 @@ pub async fn worker(
 				pathset.insert(path);
 			}
 		}
+
+		let _ = config.fs_ready.send(());
 	}
 }
 

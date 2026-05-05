@@ -7,6 +7,7 @@ use tracing::trace;
 use watchexec_events::ProcessEnd;
 
 use crate::command::Command;
+use super::task::SpawnFn;
 
 /// The state of the job's command / process.
 ///
@@ -76,6 +77,7 @@ impl CommandState {
 		&mut self,
 		command: Arc<Command>,
 		mut spawnable: CommandWrap,
+		spawn_fn: Option<&SpawnFn>,
 	) -> std::io::Result<bool> {
 		if let Self::Running { .. } = self {
 			trace!("command running, not spawning again");
@@ -88,7 +90,11 @@ impl CommandState {
 		let child = super::TestChild::new(command)?;
 
 		#[cfg(not(test))]
-		let child = spawnable.spawn()?;
+		let child = if let Some(f) = spawn_fn {
+			spawnable.spawn_with(|cmd| f(cmd))?
+		} else {
+			spawnable.spawn()?
+		};
 
 		*self = Self::Running {
 			child,

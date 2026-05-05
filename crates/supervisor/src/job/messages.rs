@@ -12,6 +12,7 @@ use crate::flag::Flag;
 
 use super::task::{
 	AsyncErrorHandler, AsyncFunc, AsyncSpawnHook, SyncErrorHandler, SyncFunc, SyncSpawnHook,
+	SpawnFn,
 };
 
 /// The underlying control message types for [`Job`](super::Job).
@@ -66,6 +67,11 @@ pub enum Control {
 	SetAsyncErrorHandler(AsyncErrorHandler),
 	/// For [`Job::unset_error_handler()`](super::Job::unset_error_handler()).
 	UnsetErrorHandler,
+
+	/// For [`Job::set_spawn_fn()`](super::Job::set_spawn_fn()).
+	SetSpawnFn(SpawnFn),
+	/// For [`Job::unset_spawn_fn()`](super::Job::unset_spawn_fn()).
+	ClearSpawnFn,
 }
 
 impl std::fmt::Debug for Control {
@@ -107,6 +113,8 @@ impl std::fmt::Debug for Control {
 				.debug_struct("SetAsyncErrorHandler")
 				.finish_non_exhaustive(),
 			Self::UnsetErrorHandler => f.debug_struct("UnsetErrorHandler").finish(),
+			Self::SetSpawnFn(_) => f.debug_struct("SetSpawnFn").finish_non_exhaustive(),
+			Self::ClearSpawnFn => f.debug_struct("ClearSpawnFn").finish(),
 		}
 	}
 }

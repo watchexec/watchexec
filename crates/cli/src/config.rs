@@ -3,6 +3,7 @@ use std::{
 	collections::HashMap,
 	env::var,
 	ffi::OsStr,
+	fmt,
 	fs::File,
 	io::{IsTerminal, Write},
 	iter::once,
@@ -28,14 +29,14 @@ use watchexec::{
 	sources::fs::Watcher,
 	Config, ErrorHook, Id,
 };
-use watchexec_events::{Event, KeyCode, Keyboard, ProcessEnd, Tag};
+use watchexec_events::{Event, KeyCode, Keyboard, Priority, ProcessEnd, Tag};
 use watchexec_signals::Signal;
 
 use crate::{
 	args::{
 		command::{EnvVar, WrapMode},
 		events::{EmitEvents, OnBusyUpdate, SignalMapping},
-		output::{ClearMode, ColourMode},
+		output::{ClearMode, ColourMode, NotifyMode},
 		Args,
 	},
 	emits::events_to_simple_format,
@@ -49,7 +50,17 @@ struct OutputFlags {
 	colour: ColorChoice,
 	timings: bool,
 	bell: bool,
-	toast: bool,
+	notify: Option<NotifyMode>,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct TimeoutConfig {
+	/// The maximum duration the command is allowed to run
+	timeout: Option<Duration>,
+	/// Signal to send for graceful stop (used when timeout fires)
+	stop_signal: Signal,
+	/// Grace period after stop signal before force kill
+	stop_timeout: Duration,
 }
 
 pub fn make_config(args: &Args, state: &State) -> Result<Config> {
@@ -141,6 +152,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 	let on_busy = args.events.on_busy_update;
 	let stdin_quit = args.events.stdin_quit;
 	let interactive = args.events.interactive;
+	let exit_on_error = args.events.exit_on_error;
 
 	let signal = args.events.signal;
 	let stop_signal = args.command.stop_signal;
@@ -157,7 +169,13 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 		},
 		timings: args.output.timings,
 		bell: args.output.bell,
-		toast: args.output.notify,
+		notify: args.output.notify,
+	};
+
+	let timeout_config = TimeoutConfig {
+		timeout: args.command.timeout.map(|ts| ts.0),
+		stop_signal: stop_signal.unwrap_or(Signal::Terminate),
+		stop_timeout,
 	};
 
 	let workdir = Arc::new(args.command.workdir.clone());
@@ -183,6 +201,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 	let queued = Arc::new(AtomicBool::new(false));
 	let quit_again = Arc::new(AtomicU8::new(0));
 	let paused = Arc::new(AtomicBool::new(false));
+	let should_quit = Arc::new(AtomicBool::new(false));
 
 	config.on_action_async(move |mut action| {
 		let add_envs = add_envs.clone();
@@ -191,6 +210,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 		let queued = queued.clone();
 		let quit_again = quit_again.clone();
 		let paused = paused.clone();
+		let should_quit = should_quit.clone();
 		let signal_map = signal_map.clone();
 		let workdir = workdir.clone();
 		Box::new(
@@ -202,6 +222,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 				let queued = queued.clone();
 				let quit_again = quit_again.clone();
 				let paused = paused.clone();
+				let should_quit = should_quit.clone();
 				let signal_map = signal_map.clone();
 				let workdir = workdir.clone();
 
@@ -277,7 +298,9 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 				let quit = |mut action: ActionHandler| {
 					match quit_again.fetch_add(1, Ordering::Relaxed) {
 						0 => {
-							if stop_timeout > Duration::ZERO {
+							if stop_timeout > Duration::ZERO
+								&& action.list_jobs().any(|(_, job)| job.is_running())
+							{
 								eprintln!("[Waiting {stop_timeout:?} for processes to exit before stopping...]");
 							}
 							// eprintln!("[Waiting {stop_timeout:?} for processes to exit before stopping... Ctrl-C again to exit faster]");
@@ -298,6 +321,12 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 					action
 				};
 
+				// Check if we should quit due to command failure (--exit-on-error)
+				if should_quit.load(Ordering::SeqCst) {
+					debug!("command failed with --exit-on-error, quitting");
+					return quit(action);
+				}
+
 				if once {
 					debug!("debug mode: run once and quit");
 					show_events();
@@ -312,11 +341,27 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 
 					// this blocks the event loop, but also this is a debug feature so i don't care
 					job.start().await;
-					job.to_wait().await;
+					let timed_out = if let Some(timeout) = timeout_config.timeout {
+						tokio::select! {
+							_ = job.to_wait() => false,
+							_ = tokio::time::sleep(timeout) => {
+								if cfg!(windows) {
+									job.stop().await;
+								} else {
+									job.stop_with_signal(timeout_config.stop_signal, timeout_config.stop_timeout).await;
+								}
+								true
+							}
+						}
+					} else {
+						job.to_wait().await;
+						false
+					};
 					job.run({
 						let state = state.clone();
 						move |context| {
-							if let Some(end) = end_of_process(context.current, outflags) {
+							if let Some(end) = end_of_process(context.current, outflags, timed_out)
+							{
 								*state.exit_code.lock().unwrap() = ExitCode::from(
 									end.into_exitstatus()
 										.code()
@@ -378,11 +423,17 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 										}
 										job.run({
 											let job = job.clone();
+											let should_quit = should_quit.clone();
+											let state = state.clone();
 											move |context| {
 												setup_process(
 													job.clone(),
 													context.command.clone(),
 													outflags,
+													timeout_config,
+													exit_on_error,
+													should_quit.clone(),
+													state.clone(),
 												);
 											}
 										});
@@ -455,11 +506,17 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 				trace!("querying job state via run_async");
 				job.run_async({
 					let job = job.clone();
+					let should_quit = should_quit.clone();
+					let state = state.clone();
 					move |context| {
 						let job = job.clone();
+						let should_quit = should_quit.clone();
+						let state = state.clone();
 						let is_running = matches!(context.current, CommandState::Running { .. });
 						Box::new(async move {
 							let innerjob = job.clone();
+							let should_quit = should_quit.clone();
+							let state = state.clone();
 							if is_running {
 								trace!(?on_busy, "job is running, decide what to do");
 								match on_busy {
@@ -473,13 +530,21 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 									}
 									OnBusyUpdate::Restart if cfg!(windows) => {
 										job.restart();
-										job.run(move |context| {
-											clear_screen();
-											setup_process(
-												innerjob.clone(),
-												context.command.clone(),
-												outflags,
-											);
+										job.run({
+											let should_quit = should_quit.clone();
+											let state = state.clone();
+											move |context| {
+												clear_screen();
+												setup_process(
+													innerjob.clone(),
+													context.command.clone(),
+													outflags,
+													timeout_config,
+													exit_on_error,
+													should_quit.clone(),
+													state.clone(),
+												);
+											}
 										});
 									}
 									OnBusyUpdate::Restart => {
@@ -487,13 +552,21 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 											stop_signal.unwrap_or(Signal::Terminate),
 											stop_timeout,
 										);
-										job.run(move |context| {
-											clear_screen();
-											setup_process(
-												innerjob.clone(),
-												context.command.clone(),
-												outflags,
-											);
+										job.run({
+											let should_quit = should_quit.clone();
+											let state = state.clone();
+											move |context| {
+												clear_screen();
+												setup_process(
+													innerjob.clone(),
+													context.command.clone(),
+													outflags,
+													timeout_config,
+													exit_on_error,
+													should_quit.clone(),
+													state.clone(),
+												);
+											}
 										});
 									}
 									OnBusyUpdate::Queue => {
@@ -506,18 +579,28 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 											debug!("queueing next start of job");
 											tokio::spawn({
 												let queued = queued.clone();
+												let should_quit = should_quit.clone();
+												let state = state.clone();
 												async move {
 													trace!("waiting for job to finish");
 													job.to_wait().await;
 													trace!("job finished, starting queued");
 													job.start();
-													job.run(move |context| {
-														clear_screen();
-														setup_process(
-															innerjob.clone(),
-															context.command.clone(),
-															outflags,
-														);
+													job.run({
+														let should_quit = should_quit.clone();
+														let state = state.clone();
+														move |context| {
+															clear_screen();
+															setup_process(
+																innerjob.clone(),
+																context.command.clone(),
+																outflags,
+																timeout_config,
+																exit_on_error,
+																should_quit.clone(),
+																state.clone(),
+															);
+														}
 													})
 													.await;
 													trace!("resetting queued state");
@@ -530,13 +613,21 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 							} else {
 								trace!("job is not running, start it");
 								job.start();
-								job.run(move |context| {
-									clear_screen();
-									setup_process(
-										innerjob.clone(),
-										context.command.clone(),
-										outflags,
-									);
+								job.run({
+									let should_quit = should_quit.clone();
+									let state = state.clone();
+									move |context| {
+										clear_screen();
+										setup_process(
+											innerjob.clone(),
+											context.command.clone(),
+											outflags,
+										timeout_config,
+											exit_on_error,
+											should_quit.clone(),
+											state.clone(),
+										);
+									}
 								});
 							}
 						})
@@ -630,8 +721,16 @@ fn interpret_command_args(args: &Args) -> Result<Arc<Command>> {
 }
 
 #[instrument(level = "trace")]
-fn setup_process(job: Job, command: Arc<Command>, outflags: OutputFlags) {
-	if outflags.toast {
+fn setup_process(
+	job: Job,
+	command: Arc<Command>,
+	outflags: OutputFlags,
+	timeout_config: TimeoutConfig,
+	exit_on_error: bool,
+	should_quit: Arc<AtomicBool>,
+	state: State,
+) {
+	if outflags.notify.is_some_and(|m| m.on_start()) {
 		Notification::new()
 			.summary("Watchexec: change detected")
 			.body(&format!("Running {command}"))
@@ -654,16 +753,84 @@ fn setup_process(job: Job, command: Arc<Command>, outflags: OutputFlags) {
 		stderr.reset().ok();
 	}
 
-	tokio::spawn(async move {
-		job.to_wait().await;
-		job.run(move |context| {
-			end_of_process(context.current, outflags);
-		});
+	let send_quit_event = Arc::new(AtomicBool::new(false));
+	tokio::spawn({
+		let send_quit_event = send_quit_event.clone();
+		let state_for_event = state.clone();
+		async move {
+			let timed_out = if let Some(timeout) = timeout_config.timeout {
+				tokio::select! {
+					_ = job.to_wait() => false,
+					_ = tokio::time::sleep(timeout) => {
+						if cfg!(windows) {
+							job.stop().await;
+						} else {
+							job.stop_with_signal(timeout_config.stop_signal, timeout_config.stop_timeout).await;
+						}
+						true
+					}
+				}
+			} else {
+				job.to_wait().await;
+				false
+			};
+
+			job.run({
+				let send_quit_event = send_quit_event.clone();
+				move |context| {
+					if let Some(status) = end_of_process(context.current, outflags, timed_out) {
+						// Store exit code in state
+						*state.exit_code.lock().unwrap() = ExitCode::from(
+							status
+								.into_exitstatus()
+								.code()
+								.unwrap_or(0)
+								.try_into()
+								.unwrap_or(1),
+						);
+
+						// If exit_on_error is enabled and command failed, signal quit
+						if exit_on_error && !matches!(status, ProcessEnd::Success) {
+							debug!("command failed, setting should_quit flag for --exit-on-error");
+							should_quit.store(true, Ordering::SeqCst);
+							send_quit_event.store(true, Ordering::SeqCst);
+						}
+					}
+				}
+			})
+			.await;
+
+			// Send a synthetic event to trigger the action handler to check should_quit
+			// This ensures we quit immediately instead of waiting for the next file event
+			if send_quit_event.load(Ordering::SeqCst) {
+				if let Some(wx) = state_for_event.watchexec.get() {
+					debug!("sending synthetic event to trigger quit");
+					if let Err(e) = wx.send_event(Event::default(), Priority::Urgent).await {
+						error!("failed to send synthetic quit event: {e}");
+					}
+				}
+			}
+		}
 	});
 }
 
+fn format_duration(duration: Duration) -> impl fmt::Display {
+	fmt::from_fn(move |f| {
+		let secs = duration.as_secs();
+		if secs > 0 {
+			write!(f, "{secs}s")
+		} else {
+			write!(f, "{}ms", duration.subsec_millis())
+		}
+	})
+}
+
 #[instrument(level = "trace")]
-fn end_of_process(state: &CommandState, outflags: OutputFlags) -> Option<ProcessEnd> {
+fn end_of_process(
+	state: &CommandState,
+	outflags: OutputFlags,
+	timed_out: bool,
+) -> Option<ProcessEnd> {
 	let CommandState::Finished {
 		status,
 		started,
@@ -674,11 +841,47 @@ fn end_of_process(state: &CommandState, outflags: OutputFlags) -> Option<Process
 	};
 
 	let duration = *finished - *started;
+	let duration_display = format_duration(duration);
 	let timing = if outflags.timings {
-		format!(", lasted {duration:?}")
+		format!(", lasted {duration_display}")
 	} else {
 		String::new()
 	};
+
+	// Show timeout message and return early - no need for redundant status message
+	if timed_out {
+		if outflags.notify.is_some_and(|m| m.on_end()) {
+			Notification::new()
+				.summary("Watchexec: command timed out")
+				.body(&format!("Command timed out after {duration_display}"))
+				.show()
+				.map_or_else(
+					|err| {
+						eprintln!("[[Failed to send desktop notification: {err}]]");
+					},
+					drop,
+				);
+		}
+
+		if !outflags.quiet {
+			let mut stderr = StandardStream::stderr(outflags.colour);
+			stderr.reset().ok();
+			stderr
+				.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)))
+				.ok();
+			writeln!(&mut stderr, "[Command timed out after {duration_display}]").ok();
+			stderr.reset().ok();
+		}
+
+		if outflags.bell {
+			let mut stdout = std::io::stdout();
+			stdout.write_all(b"\x07").ok();
+			stdout.flush().ok();
+		}
+
+		return Some(*status);
+	}
+
 	let (msg, fg) = match status {
 		ProcessEnd::ExitError(code) => (format!("Command exited with {code}{timing}"), Color::Red),
 		ProcessEnd::ExitSignal(sig) => {
@@ -693,7 +896,7 @@ fn end_of_process(state: &CommandState, outflags: OutputFlags) -> Option<Process
 		ProcessEnd::Success => (format!("Command was successful{timing}"), Color::Green),
 	};
 
-	if outflags.toast {
+	if outflags.notify.is_some_and(|m| m.on_end()) {
 		Notification::new()
 			.summary("Watchexec: command ended")
 			.body(&msg)

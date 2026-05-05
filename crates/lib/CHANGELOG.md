@@ -2,6 +2,21 @@
 
 ## Next (YYYY-MM-DD)
 
+## v8.2.0 (2026-03-02)
+
+- Feat: add `fs_ready` signal for watcher readiness ([#1024](https://github.com/watchexec/watchexec/pull/1024))
+
+## v8.1.2 (2026-02-24)
+
+## v8.1.1 (2026-02-22)
+
+- Fix: bug on macOS where a task in the keyboard events worker would hang after graceful quit ([#1018](https://github.com/watchexec/watchexec/pull/1018))
+
+## v8.1.0 (2026-02-22)
+
+- Augments `keyboard_events` config to emit events for all single keyboard key inputs, in addition to the existing EOF
+- `keyboard_events` now switches to raw mode (and disabling it switches back to cooked)
+
 ## v8.0.1 (2025-05-15)
 
 ## v8.0.0 (2025-05-15)
