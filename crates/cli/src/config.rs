@@ -7,6 +7,7 @@ use std::{
 	fs::File,
 	io::{IsTerminal, Write},
 	iter::once,
+	path::Path,
 	process::{ExitCode, Stdio},
 	sync::{
 		atomic::{AtomicBool, AtomicU8, Ordering},
@@ -622,7 +623,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 											innerjob.clone(),
 											context.command.clone(),
 											outflags,
-										timeout_config,
+											timeout_config,
 											exit_on_error,
 											should_quit.clone(),
 											state.clone(),
@@ -682,15 +683,11 @@ fn interpret_command_args(args: &Args) -> Result<Arc<Command>> {
 			Some("cmd") | Some("cmd.exe") | Some("CMD") | Some("CMD.EXE") => Some(Shell::cmd()),
 
 			Some(other) => {
-				let sh = other.split_ascii_whitespace().collect::<Vec<_>>();
-
-				// UNWRAP: checked by Some("")
-				#[allow(clippy::unwrap_used)]
-				let (shprog, shopts) = sh.split_first().unwrap();
+				let (shell_path, shell_options) = parse_path(other);
 
 				Some(Shell {
-					prog: shprog.into(),
-					options: shopts.iter().map(|s| (*s).to_string()).collect(),
+					prog: shell_path.into(),
+					options: shell_options,
 					program_option: Some(Cow::Borrowed(OsStr::new("-c"))),
 				})
 			}
@@ -718,6 +715,121 @@ fn interpret_command_args(args: &Args) -> Result<Arc<Command>> {
 			..Default::default()
 		},
 	}))
+}
+
+/// Returns a [`(String, Vec<String>)`] containing the parsed shell path and optional shell arguments, respectively.
+/// This logic handles potential spaces in the shell path as well as potential arguments by splitting shell_path by whitespace,
+/// then iterating over the vector backwards by splitting the last item off of the vector.
+/// For each item we concatenate the remaining items into a single string, and check if it resolves to a valid path.
+/// If it doesn't, then the next item should also be considered an argument.
+///
+/// This scenario is possible on Windows when users use git-bash which is located in "C:/Program Files/Git/usr/bin/bash.exe".
+/// This scenario is also theoretically possible in Linux if a user, though unlikely.
+/// Due to it theoretically being possible on Linux, and an unknown number of other use cases on Windows, this logic was written to be capable of handling many such inputs such as :
+/// - "/bin/bash"
+/// - "/bin/bash --arg1 --arg2"
+/// - "C:/Program Files/Git/usr/bin/bash.exe"
+/// - "C:/Program Files/Git/usr/bin/bash.exe --arg1 --arg2"
+fn parse_path(original_path: &str) -> (String, Vec<String>) {
+	debug!(?original_path, "before parsing for potential shell options");
+
+	let mut shell_path = original_path.to_string();
+	let mut shell_options: Vec<String> = vec![];
+
+	if shell_path.contains(' ') && !Path::new(&shell_path).exists() {
+		let split_shell_parts = shell_path
+			.split_ascii_whitespace()
+			.map(String::from)
+			.collect::<Vec<_>>();
+
+		debug!(
+			?split_shell_parts,
+			"after splitting original shell path by whitespace"
+		);
+
+		let (mut last_shell_part, mut remaining_shell_parts) =
+			split_shell_parts.split_last().unwrap();
+
+		shell_path = remaining_shell_parts.join(" ");
+		shell_options.push(last_shell_part.clone());
+
+		while !Path::new(&shell_path).exists() {
+			(last_shell_part, remaining_shell_parts) = remaining_shell_parts.split_last().unwrap();
+
+			if remaining_shell_parts.is_empty() {
+				// If we get here and the path still isn't valid, it doesn't really matter what we do.
+				break;
+			}
+
+			shell_options.push(last_shell_part.clone());
+			shell_path = remaining_shell_parts.join(" ");
+		}
+	}
+
+	// Reversing the shell options because we add them in reverse order.
+	shell_options.reverse();
+
+	debug!(?shell_path, "after splitting options");
+	debug!(?shell_options, "after splitting options");
+
+	let mut is_valid = Path::new(&shell_path).exists();
+
+	if !is_valid {
+		// It's possible that at this point "shell_path" is something like "pwsh" which while not a valid path,
+		// is runnable when passed into a program as is if "which" is able to resolve it from the path.
+		is_valid = which::which(&shell_path).is_ok();
+	}
+
+	assert!(
+		is_valid,
+		"The parsed shell path \"{shell_path}\" does not exist on this system, and could not be resolved from your PATH."
+	);
+
+	(shell_path, shell_options)
+}
+
+#[cfg(test)]
+fn test_parse_path_for_shell(expected_path: &str) {
+	if Path::new(expected_path).exists() {
+		let expected_empty_args: Vec<String> = vec![];
+		let expected_args = ["--arg1", "--arg2"];
+		let (mut actual_path, mut actual_args): (String, Vec<String>);
+
+		(actual_path, actual_args) = parse_path(expected_path);
+
+		assert_eq!(actual_path, *expected_path);
+		assert_eq!(actual_args, expected_empty_args);
+
+		(actual_path, actual_args) =
+			parse_path(&format!("{} {}", expected_path, expected_args.join(" ")));
+
+		assert_eq!(actual_path, *expected_path);
+		assert_eq!(actual_args, expected_args);
+	}
+}
+
+#[test]
+#[cfg(test)]
+fn test_parse_path() {
+	#[cfg(windows)]
+	{
+		test_parse_path_for_shell("C:\\Program Files\\Git\\usr\\bin\\bash.exe");
+		test_parse_path_for_shell("C:\\Program Files\\nu\\bin\\nu.exe");
+		// This is the newer PowerShell 7 which does not ship with Windows.
+		test_parse_path_for_shell("C:\\Program Files\\PowerShell\\7\\pwsh.exe");
+		test_parse_path_for_shell("C:\\Windows\\System32\\cmd.exe");
+		// This is the older PowerShell 5.1 which ships with Windows.
+		test_parse_path_for_shell("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe");
+		// This is PowerShell 5.1 (x86).
+		test_parse_path_for_shell("C:\\Windows\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe");
+	}
+
+	#[cfg(unix)]
+	{
+		test_parse_path_for_shell("/bin/bash");
+		test_parse_path_for_shell("/bin/sh");
+		test_parse_path_for_shell("/usr/bin/nu");
+	}
 }
 
 #[instrument(level = "trace")]
