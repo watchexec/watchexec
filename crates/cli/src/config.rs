@@ -681,10 +681,15 @@ fn resolve_shell_prog_in(
 		return prog.to_string();
 	};
 
+	// The WSL launcher stub only shadows `bash`; skipping System32 for any
+	// other program name would wrongly discard a legitimate candidate that
+	// happens to live there.
+	let is_bash = name.eq_ignore_ascii_case("bash") || name.eq_ignore_ascii_case("bash.exe");
+
 	which::which_in_all(name, search_path, cwd)
 		.ok()
 		.and_then(|mut candidates| {
-			candidates.find(|c| system32.is_none_or(|s32| c.parent() != Some(s32)))
+			candidates.find(|c| !is_bash || system32.is_none_or(|s32| c.parent() != Some(s32)))
 		})
 		.map_or_else(|| prog.to_string(), |p| p.to_string_lossy().into_owned())
 }
@@ -773,6 +778,25 @@ mod resolve_shell_prog_tests {
 		);
 
 		assert_eq!(resolved, real_bash.to_string_lossy());
+	}
+
+	#[test]
+	fn does_not_skip_system32_for_non_bash_programs() {
+		let root = tempfile::tempdir().unwrap();
+		let system32 = root.path().join("System32");
+		std::fs::create_dir(&system32).unwrap();
+		let real_tool = make_fake_exe(&system32, "sometool.exe");
+
+		let resolved = resolve_shell_prog_in(
+			"/usr/bin/sometool",
+			Some(system32.as_os_str()),
+			Some(&system32),
+			root.path(),
+		);
+
+		// Unlike bash, sometool.exe has no WSL-stub problem, so a legitimate
+		// candidate living in System32 must still be found.
+		assert_eq!(resolved, real_tool.to_string_lossy());
 	}
 }
 
