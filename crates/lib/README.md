@@ -125,8 +125,11 @@ async fn main() -> Result<()> {
     // now we change what the action does:
     let auto_restart_abort = auto_restart.abort_handle();
     wx.config.on_action(move |mut action| {
-        // if we get Ctrl-C on the Watchexec instance, we quit
-        if action.signals().any(|sig| sig == Signal::Interrupt) {
+        // if we get Ctrl-C or SIGTERM on the Watchexec instance, we quit
+        if action
+            .signals()
+            .any(|sig| matches!(sig, Signal::Interrupt | Signal::Terminate))
+        {
             eprintln!("[Quitting...]");
             auto_restart_abort.abort();
             action.quit_gracefully(Signal::ForceStop, Duration::ZERO);
