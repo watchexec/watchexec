@@ -4,7 +4,7 @@ use process_wrap::tokio::{CommandWrap, KillOnDrop};
 use tokio::process::Command as TokioCommand;
 use tracing::trace;
 
-use super::{Command, Program, SpawnOptions};
+use super::{Command, Program, Shell, SpawnOptions};
 
 impl Command {
 	/// Obtain a [`process_wrap::tokio::CommandWrap`].
@@ -25,31 +25,23 @@ impl Command {
 			} => {
 				let mut c = TokioCommand::new(shell.prog.clone());
 
-				// Avoid quoting issues on Windows by using raw_arg everywhere
+				// Previously on Windows when you use git-bash and you're attempting to perform a multi-word command such as "npm run build-dev"
+				// only "npm" would be passed, and the remainder would be thrown away if we treat the args the way we do for normal Windows shells
+				// such as CMD or PowerShell.
+				// To get around this, we added the ability to opt in to quoting, while still passing raw values by default on Windows so
+				// cmd and PowerShell still work correctly without anyone having to change their workflows.
 				#[cfg(windows)]
 				{
-					for opt in &shell.options {
-						c.raw_arg(opt);
-					}
-					if let Some(progopt) = &shell.program_option {
-						c.raw_arg(progopt);
-					}
-					c.raw_arg(command);
-					for arg in args {
-						c.raw_arg(arg);
+					if shell.quote {
+						pass_program_args_quoted(&mut c, shell, args, command);
+					} else {
+						pass_program_args_raw(&mut c, shell, args, command);
 					}
 				}
 
 				#[cfg(not(windows))]
 				{
-					c.args(shell.options.clone());
-					if let Some(progopt) = &shell.program_option {
-						c.arg(progopt);
-					}
-					c.arg(command);
-					for arg in args {
-						c.arg(arg);
-					}
+					pass_program_args_quoted(&mut c, shell, args, command);
 				}
 
 				c
@@ -81,6 +73,49 @@ impl Command {
 		}
 
 		cmd
+	}
+}
+
+#[cfg(windows)]
+fn pass_program_args_raw(
+	command: &mut TokioCommand,
+	shell: &Shell,
+	args: &Vec<String>,
+	command_str: &String,
+) {
+	// cmd and PowerShell don't work correctly if the args are quoted, so when not opting into quoting, we pass them as raw values.
+
+	for opt in &shell.options {
+		command.raw_arg(opt);
+	}
+
+	if let Some(progopt) = &shell.program_option {
+		command.raw_arg(progopt);
+	}
+
+	command.raw_arg(command_str);
+
+	for arg in args {
+		command.raw_arg(arg);
+	}
+}
+
+fn pass_program_args_quoted(
+	command: &mut TokioCommand,
+	shell: &Shell,
+	args: &Vec<String>,
+	command_str: &String,
+) {
+	command.args(shell.options.clone());
+
+	if let Some(progopt) = &shell.program_option {
+		command.arg(progopt);
+	}
+
+	command.arg(command_str);
+
+	for arg in args {
+		command.arg(arg);
 	}
 }
 

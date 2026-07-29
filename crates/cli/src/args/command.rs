@@ -5,6 +5,7 @@ use std::{
 };
 
 use clap::{
+	builder::BoolishValueParser,
 	builder::TypedValueParser,
 	error::{Error, ErrorKind},
 	Parser, ValueEnum, ValueHint,
@@ -16,6 +17,23 @@ use watchexec_signals::Signal;
 use crate::socket::{SocketSpec, SocketSpecValueParser};
 
 use super::{TimeSpan, OPTSET_COMMAND};
+
+/// Returns the default quoting value for the current platform.
+///
+/// On Windows this is false, and on Unix this is true.
+/// This is to allow Unix and Windows to separately work as expected by default,
+/// with logic elsewhere to allow opting in to/out of quoting.
+const fn get_platform_default_quoting() -> bool {
+	#[cfg(windows)]
+	{
+		false
+	}
+
+	#[cfg(unix)]
+	{
+		true
+	}
+}
 
 #[derive(Debug, Clone, Parser)]
 pub struct CommandArgs {
@@ -263,6 +281,33 @@ pub struct CommandArgs {
 		display_order = 60,
 	)]
 	pub socket: Vec<SocketSpec>,
+
+	/// Set whether or not to quote the command symbols when passing them to the shell.
+	///
+	/// On Windows by default this is treated as false, as CMD and PowerShell do not work correctly
+	/// when the symbols are quoted.
+	/// For git-bash and nushell on Windows, as well as other shells that won't work correctly
+	/// without quoting, opt in to quoting using this option.
+	///
+	/// On Linux and MacOS this is ignored and always treated as true, because they do not allow
+	/// raw values to be passed.
+	///
+	/// The difference between the two operating systems is to allow both to work as expected by
+	/// default for their built in shells, and to allow changing the default behavior for
+	/// non-default shells if necessary.
+	///
+	/// If you wish to write shell scripts that work on Linux/MacOS as well as Windows via git-bash,
+	/// you should set this option to true so that the behavior is the same on all platforms.
+	/// The same goes for Nushell, and possibly other newer shells.
+	#[arg(
+		long,
+		short = 'Q',
+		help_heading = OPTSET_COMMAND,
+		default_value_t = get_platform_default_quoting(),
+		value_parser = BoolishValueParser::new(),
+		display_order = 170,
+	)]
+	pub quote: bool,
 }
 
 impl CommandArgs {
