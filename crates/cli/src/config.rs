@@ -680,7 +680,9 @@ fn interpret_command_args(args: &Args) -> Result<Arc<Command>> {
 			Some("none") | None => None,
 
 			#[cfg(windows)]
-			Some("cmd") | Some("cmd.exe") | Some("CMD") | Some("CMD.EXE") => Some(Shell::cmd()),
+			Some("cmd") | Some("cmd.exe") | Some("CMD") | Some("CMD.EXE") => {
+				Some(Shell::cmd_with_quoting(args.command.quote))
+			}
 
 			Some(other) => {
 				let (shell_path, shell_options) = parse_path(other);
@@ -689,6 +691,7 @@ fn interpret_command_args(args: &Args) -> Result<Arc<Command>> {
 					prog: shell_path.into(),
 					options: shell_options,
 					program_option: Some(Cow::Borrowed(OsStr::new("-c"))),
+					quote: args.command.quote,
 				})
 			}
 		}

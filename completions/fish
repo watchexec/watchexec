@@ -60,6 +60,7 @@ complete -c watchexec -s 1 -d 'Testing only: exit Watchexec after the first run 
 complete -c watchexec -s n -d 'Shorthand for \'--shell=none\''
 complete -c watchexec -l no-environment -d 'Deprecated shorthand for \'--emit-events=none\''
 complete -c watchexec -l no-process-group -d 'Don\'t use a process group'
+complete -c watchexec -s Q -l quote -d 'Set whether or not to quote the command symbols when passing them to the shell'
 complete -c watchexec -s r -l restart -d 'Restart the process if it\'s still running'
 complete -c watchexec -l stdin-quit -d 'Exit when stdin closes'
 complete -c watchexec -s I -l interactive -d 'Respond to keypresses to quit, restart, or pause'

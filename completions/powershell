@@ -71,6 +71,8 @@ Register-ArgumentCompleter -Native -CommandName 'watchexec' -ScriptBlock {
             [CompletionResult]::new('-n', '-n', [CompletionResultType]::ParameterName, 'Shorthand for ''--shell=none''')
             [CompletionResult]::new('--no-environment', '--no-environment', [CompletionResultType]::ParameterName, 'Deprecated shorthand for ''--emit-events=none''')
             [CompletionResult]::new('--no-process-group', '--no-process-group', [CompletionResultType]::ParameterName, 'Don''t use a process group')
+            [CompletionResult]::new('-Q', '-Q ', [CompletionResultType]::ParameterName, 'Set whether or not to quote the command symbols when passing them to the shell')
+            [CompletionResult]::new('--quote', '--quote', [CompletionResultType]::ParameterName, 'Set whether or not to quote the command symbols when passing them to the shell')
             [CompletionResult]::new('-r', '-r', [CompletionResultType]::ParameterName, 'Restart the process if it''s still running')
             [CompletionResult]::new('--restart', '--restart', [CompletionResultType]::ParameterName, 'Restart the process if it''s still running')
             [CompletionResult]::new('--stdin-quit', '--stdin-quit', [CompletionResultType]::ParameterName, 'Exit when stdin closes')
