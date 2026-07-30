@@ -25,8 +25,11 @@
 //!             eprintln!("EVENT: {event:?}");
 //!         }
 //!
-//!         // if Ctrl-C is received, quit
-//!         if action.signals().any(|sig| sig == Signal::Interrupt) {
+//!         // if Ctrl-C or SIGTERM is received, quit
+//!         if action
+//!             .signals()
+//!             .any(|sig| matches!(sig, Signal::Interrupt | Signal::Terminate))
+//!         {
 //!             action.quit();
 //!         }
 //!
