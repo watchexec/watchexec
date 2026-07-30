@@ -15,7 +15,7 @@ members = [
 ]
 
 [workspace.dependencies]
-rand = "0.9.1"
+rand = "0.9.3"
 uuid = "1.5.0"
 
 [profile.release]
