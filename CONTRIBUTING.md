@@ -6,7 +6,7 @@ This is a fairly free-form project, with low contribution traffic.
 Maintainers:
 
 - Félix Saparelli (@passcod) (active)
-- Matt Green (@mattgreen) (original author, mostly checked out)
+- Matt Green (@mattgreen) (original author, absent for a while now)
 
 There are a few anti goals:
 
@@ -35,6 +35,7 @@ To use [Tokio Console](https://github.com/tokio-rs/console):
 ## PR etiquette
 
 - Maintainers are busy or may not have the bandwidth, be patient.
+- AI assistance is not prohibited, but must be disclosed. This can be a Co-authored-by line or similar on the commits.
 - Do _not_ change the version number in the PR.
 - Do _not_ change Cargo.toml or other project metadata, unless specifically asked for, or if that's
   the point of the PR (like adding a crates.io category).
