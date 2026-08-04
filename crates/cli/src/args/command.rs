@@ -18,19 +18,6 @@ use crate::socket::{SocketSpec, SocketSpecValueParser};
 
 use super::{TimeSpan, OPTSET_COMMAND};
 
-fn normalise_default_workdir(curdir: PathBuf) -> Result<PathBuf> {
-	#[cfg(windows)]
-	{
-		// Canonicalising can resolve mapped drives to UNC paths, which some tools reject.
-		Ok(curdir)
-	}
-
-	#[cfg(not(windows))]
-	{
-		dunce::canonicalize(curdir).into_diagnostic()
-	}
-}
-
 /// Returns the default quoting value for the current platform.
 ///
 /// On Windows this is false, and on Unix this is true.
@@ -333,29 +320,13 @@ impl CommandArgs {
 		let workdir = if let Some(w) = take(&mut self.workdir) {
 			w
 		} else {
-			let curdir = std::env::current_dir().into_diagnostic()?;
-			normalise_default_workdir(curdir)?
+			std::env::current_dir().into_diagnostic()?
 		};
 		info!(path=?workdir, "effective working directory");
 		self.workdir = Some(workdir);
 
 		debug_assert!(self.workdir.is_some());
 		Ok(())
-	}
-}
-
-#[cfg(all(test, windows))]
-mod tests {
-	use super::normalise_default_workdir;
-	use std::path::PathBuf;
-
-	#[test]
-	fn default_workdir_preserves_windows_drive_path() {
-		let current_dir = PathBuf::from(r"Z:\my-directory");
-		assert_eq!(
-			normalise_default_workdir(current_dir.clone()).unwrap(),
-			current_dir
-		);
 	}
 }
 
