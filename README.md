@@ -47,6 +47,8 @@ More usage examples: [in the CLI README](./crates/cli/#usage-examples)!
 - As [pre-built binary package from Github](https://github.com/watchexec/watchexec/releases/latest)
 - From source with Cargo: `cargo install --locked watchexec-cli`
 
+On Windows, after Scoop/Chocolatey (or extracting a release binary), open a **new** terminal so `PATH` updates apply.
+
 All options in detail: [in the CLI README](./crates/cli/#installation),
 in the online help (`watchexec -h`, `watchexec --help`, or `watchexec --manual`),
 and [in the manual page](./doc/watchexec.1.md).

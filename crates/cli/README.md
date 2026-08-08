@@ -138,6 +138,8 @@ Common package managers:
 - Homebrew on Mac:  `$ brew install watchexec`
 - Chocolatey on Windows: `#> choco install watchexec`
 
+On Windows, after Chocolatey/Scoop (or extracting a release archive into a folder on `PATH`), open a **new** terminal so the updated `PATH` is picked up.
+
 ### [Binstall](https://github.com/cargo-bins/cargo-binstall)
 
     $ cargo binstall watchexec-cli
