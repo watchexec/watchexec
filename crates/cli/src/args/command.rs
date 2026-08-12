@@ -1,7 +1,7 @@
 use std::{
 	ffi::{OsStr, OsString},
 	mem::take,
-	path::PathBuf,
+	path::{Path, PathBuf},
 };
 
 use clap::{
@@ -321,7 +321,8 @@ impl CommandArgs {
 			w
 		} else {
 			let curdir = std::env::current_dir().into_diagnostic()?;
-			dunce::canonicalize(curdir).into_diagnostic()?
+			let canonical = dunce::canonicalize(&curdir).into_diagnostic()?;
+			prefer_non_verbatim(canonical, curdir)
 		};
 		info!(path=?workdir, "effective working directory");
 		self.workdir = Some(workdir);
@@ -329,6 +330,22 @@ impl CommandArgs {
 		debug_assert!(self.workdir.is_some());
 		Ok(())
 	}
+}
+
+/// `dunce::canonicalize` only strips the `\\?\` prefix off verbatim *disk* paths, so canonicalising
+/// inside a network share yields `\\?\UNC\server\share\...`, which many programs (notably the Go
+/// toolchain) refuse as a working directory. In that case keep the uncanonicalised path, as long as
+/// it isn't verbatim itself.
+fn prefer_non_verbatim(canonical: PathBuf, original: PathBuf) -> PathBuf {
+	if is_verbatim(&canonical) && !is_verbatim(&original) {
+		original
+	} else {
+		canonical
+	}
+}
+
+fn is_verbatim(path: &Path) -> bool {
+	path.as_os_str().as_encoded_bytes().starts_with(br"\\?\")
 }
 
 #[derive(Clone, Copy, Debug, Default, ValueEnum)]
@@ -375,5 +392,40 @@ impl TypedValueParser for EnvVarValueParser {
 			key: key.into(),
 			value: value.into(),
 		})
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn keeps_uncanonicalised_path_when_canonical_is_verbatim_unc() {
+		assert_eq!(
+			prefer_non_verbatim(
+				PathBuf::from(r"\\?\UNC\Mac\my-directory"),
+				PathBuf::from(r"Z:\my-directory"),
+			),
+			PathBuf::from(r"Z:\my-directory"),
+		);
+	}
+
+	#[test]
+	fn keeps_canonical_path_when_it_is_not_verbatim() {
+		assert_eq!(
+			prefer_non_verbatim(PathBuf::from(r"Z:\real"), PathBuf::from(r"Z:\link")),
+			PathBuf::from(r"Z:\real"),
+		);
+	}
+
+	#[test]
+	fn keeps_canonical_path_when_original_is_verbatim_too() {
+		assert_eq!(
+			prefer_non_verbatim(
+				PathBuf::from(r"\\?\UNC\Mac\my-directory"),
+				PathBuf::from(r"\\?\UNC\Mac\other"),
+			),
+			PathBuf::from(r"\\?\UNC\Mac\my-directory"),
+		);
 	}
 }
