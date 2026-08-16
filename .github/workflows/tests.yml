@@ -26,13 +26,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform:
-          - macos
-          - ubuntu
-          - windows
+        include:
+          - { platform: macos, runner: macos-latest }
+          - { platform: ubuntu, runner: ubuntu-latest }
+          - { platform: windows, runner: windows-latest }
+          - { platform: windows-arm64, runner: windows-11-arm }
 
     name: Test libraries ${{ matrix.platform }}
-    runs-on: "${{ matrix.platform }}-latest"
+    runs-on: ${{ matrix.runner }}
 
     steps:
     - uses: actions/checkout@v6
@@ -61,13 +62,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform:
-          - macos
-          - ubuntu
-          - windows
+        include:
+          - { platform: macos, runner: macos-latest, test-platform: macos }
+          - { platform: ubuntu, runner: ubuntu-latest, test-platform: ubuntu }
+          - { platform: windows, runner: windows-latest, test-platform: windows }
+          - { platform: windows-arm64, runner: windows-11-arm, test-platform: windows }
 
     name: Test CLI (e2e) ${{ matrix.platform }}
-    runs-on: "${{ matrix.platform }}-latest"
+    runs-on: ${{ matrix.runner }}
 
     steps:
     - uses: actions/checkout@v6
@@ -94,7 +96,7 @@ jobs:
       run: cargo build --locked
 
     - name: Run CLI integration tests
-      run: crates/cli/run-tests.sh ${{ matrix.platform }}
+      run: crates/cli/run-tests.sh ${{ matrix.test-platform }}
       shell: bash
       env:
         WATCHEXEC_BIN: target/debug/watchexec
@@ -128,13 +130,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform:
-          - macos
-          - ubuntu
-          - windows
+        include:
+          - { platform: macos, runner: macos-latest }
+          - { platform: ubuntu, runner: ubuntu-latest }
+          - { platform: windows, runner: windows-latest }
+          - { platform: windows-arm64, runner: windows-11-arm }
 
     name: Test CLI (unit) ${{ matrix.platform }}
-    runs-on: "${{ matrix.platform }}-latest"
+    runs-on: ${{ matrix.runner }}
 
     steps:
     - uses: actions/checkout@v6
@@ -160,13 +163,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform:
-          - macos
-          - ubuntu
-          - windows
+        include:
+          - { platform: macos, runner: macos-latest }
+          - { platform: ubuntu, runner: ubuntu-latest }
+          - { platform: windows, runner: windows-latest }
+          - { platform: windows-arm64, runner: windows-11-arm }
 
     name: Bosion integration tests on ${{ matrix.platform }}
-    runs-on: "${{ matrix.platform }}-latest"
+    runs-on: ${{ matrix.runner }}
 
     steps:
     - uses: actions/checkout@v6
