@@ -1,6 +1,15 @@
 # Changelog
 
 ## Next (YYYY-MM-DD)
+## v6.0.0 (2026-08-17)
+
+- adopt release-plz
+- exec-replace safe shell commands to fix restart racing the old process
+- add "quoted" option to allow opting in to or out of quoting of command and arguments to allow Windows shells such as cmd and PowerShell to work correctly while also allowing git-bash and Nushell to work on Windows
+- upgrade to nix 0.31 ([#1016](https://github.com/watchexec/watchexec/pull/1016))
+- opt some crates into 3 targets for docsrs
+
+## Next (YYYY-MM-DD)
 
 ## v5.2.0 (2026-03-09)
 

@@ -1,6 +1,12 @@
 # Changelog
 
 ## Next (YYYY-MM-DD)
+## v2.0.1 (2026-08-17)
+
+- adopt release-plz
+- use fmt::Write over push_str ([#1054](https://github.com/watchexec/watchexec/pull/1054))
+
+## Next (YYYY-MM-DD)
 
 ## v2.0.0 (2026-01-20)
 

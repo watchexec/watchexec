@@ -1,6 +1,14 @@
 # Changelog
 
 ## Next (YYYY-MM-DD)
+## v8.2.1 (2026-08-17)
+
+- adopt release-plz
+- quit on Terminate in home page example
+- upgrade to nix 0.31 ([#1016](https://github.com/watchexec/watchexec/pull/1016))
+- Release
+
+## Next (YYYY-MM-DD)
 
 ## v8.2.0 (2026-03-02)
 

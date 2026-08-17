@@ -1,6 +1,13 @@
 # Changelog
 
 ## Next (YYYY-MM-DD)
+## v5.0.2 (2026-08-17)
+
+- adopt release-plz
+- upgrade to nix 0.31 ([#1016](https://github.com/watchexec/watchexec/pull/1016))
+- opt some crates into 3 targets for docsrs
+
+## Next (YYYY-MM-DD)
 
 ## v5.0.1 (2026-01-20)
 
