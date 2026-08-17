@@ -127,11 +127,11 @@ jobs:
             cross: false
             experimental: false
 
-          #- name: windows-arm64
-          #  os: windows-latest
-          #  target: aarch64-pc-windows-msvc
-          #  cross: true
-          #  experimental: true
+          - name: windows-arm64
+            os: windows-11-arm
+            target: aarch64-pc-windows-msvc
+            cross: false
+            experimental: true
 
     name: Binaries for ${{ matrix.name }}
     needs: info

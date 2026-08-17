@@ -167,6 +167,9 @@ pkg-fmt = "txz"
 [package.metadata.binstall.overrides.x86_64-pc-windows-msvc]
 pkg-fmt = "zip"
 
+[package.metadata.binstall.overrides.aarch64-pc-windows-msvc]
+pkg-fmt = "zip"
+
 [package.metadata.deb]
 maintainer = "Félix Saparelli <felix@passcod.name>"
 license-file = ["../../LICENSE", "0"]
