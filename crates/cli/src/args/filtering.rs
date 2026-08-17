@@ -383,6 +383,22 @@ pub struct FilteringArgs {
 		display_order = 142,
 	)]
 	pub filter_fs_meta: bool,
+
+	/// Don't follow symlinks when watching
+	///
+	/// By default, Watchexec will follow symbolic links when setting up filesystem watches, which
+	/// means events from the symlink target are reported using the symlink path. With this option,
+	/// symlinks are not followed: the symlink itself may still produce events, but its target will
+	/// not be watched through the link.
+	///
+	/// This can be useful when ignored paths are reachable via symlinks, or when watching a
+	/// directory that contains symlinks pointing outside the project (e.g. Bazel output symlinks).
+	#[arg(
+		long = "no-follow-symlinks",
+		help_heading = OPTSET_FILTERING,
+		display_order = 233,
+	)]
+	pub no_follow_symlinks: bool,
 }
 
 impl FilteringArgs {
