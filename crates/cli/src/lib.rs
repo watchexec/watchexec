@@ -50,7 +50,7 @@ async fn run_watchexec(args: Args, state: state::State) -> Result<()> {
 	}
 
 	if args.events.interactive {
-		eprintln!("[Interactive] q: quit, p: pause/unpause, r: restart");
+		eprintln!("[Interactive] q: quit, p: pause/unpause, r: restart, s: stop");
 	}
 
 	info!("running main loop");
