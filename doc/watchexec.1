@@ -4,7 +4,7 @@
 .SH NAME
 watchexec \- Execute commands when watched files change
 .SH SYNOPSIS
-\fBwatchexec\fR [\fB\-\-bell\fR] [\fB\-c\fR|\fB\-\-clear\fR] [\fB\-\-completions\fR] [\fB\-\-color\fR] [\fB\-d\fR|\fB\-\-debounce\fR] [\fB\-\-delay\-run\fR] [\fB\-e\fR|\fB\-\-exts\fR] [\fB\-E\fR|\fB\-\-env\fR] [\fB\-\-emit\-events\-to\fR] [\fB\-f\fR|\fB\-\-filter\fR] [\fB\-\-socket\fR] [\fB\-\-filter\-file\fR] [\fB\-j\fR|\fB\-\-filter\-prog\fR] [\fB\-\-fs\-events\fR] [\fB\-i\fR|\fB\-\-ignore\fR] [\fB\-I\fR|\fB\-\-interactive\fR] [\fB\-\-exit\-on\-error\fR] [\fB\-\-ignore\-file\fR] [\fB\-\-ignore\-nothing\fR] [\fB\-\-log\-file\fR] [\fB\-\-manual\fR] [\fB\-\-map\-signal\fR] [\fB\-n \fR] [\fB\-N\fR|\fB\-\-notify\fR] [\fB\-\-no\-default\-ignore\fR] [\fB\-\-no\-discover\-ignore\fR] [\fB\-\-no\-process\-group\fR] [\fB\-\-no\-global\-ignore\fR] [\fB\-\-no\-meta\fR] [\fB\-\-no\-project\-ignore\fR] [\fB\-\-no\-vcs\-ignore\fR] [\fB\-o\fR|\fB\-\-on\-busy\-update\fR] [\fB\-\-only\-emit\-events\fR] [\fB\-\-poll\fR] [\fB\-\-print\-events\fR] [\fB\-\-project\-origin\fR] [\fB\-p\fR|\fB\-\-postpone\fR] [\fB\-q\fR|\fB\-\-quiet\fR] [\fB\-r\fR|\fB\-\-restart\fR] [\fB\-s\fR|\fB\-\-signal\fR] [\fB\-\-shell\fR] [\fB\-\-stdin\-quit\fR] [\fB\-\-stop\-signal\fR] [\fB\-\-stop\-timeout\fR] [\fB\-\-timeout\fR] [\fB\-\-timings\fR] [\fB\-v\fR|\fB\-\-verbose\fR]... [\fB\-w\fR|\fB\-\-watch\fR] [\fB\-\-workdir\fR] [\fB\-W\fR|\fB\-\-watch\-non\-recursive\fR] [\fB\-\-wrap\-process\fR] [\fB\-F\fR|\fB\-\-watch\-file\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fICOMMAND\fR] 
+\fBwatchexec\fR [\fB\-\-bell\fR] [\fB\-c\fR|\fB\-\-clear\fR] [\fB\-\-completions\fR] [\fB\-\-color\fR] [\fB\-d\fR|\fB\-\-debounce\fR] [\fB\-\-delay\-run\fR] [\fB\-e\fR|\fB\-\-exts\fR] [\fB\-E\fR|\fB\-\-env\fR] [\fB\-\-emit\-events\-to\fR] [\fB\-f\fR|\fB\-\-filter\fR] [\fB\-\-socket\fR] [\fB\-\-filter\-file\fR] [\fB\-j\fR|\fB\-\-filter\-prog\fR] [\fB\-\-fs\-events\fR] [\fB\-i\fR|\fB\-\-ignore\fR] [\fB\-I\fR|\fB\-\-interactive\fR] [\fB\-\-exit\-on\-error\fR] [\fB\-\-ignore\-file\fR] [\fB\-\-ignore\-nothing\fR] [\fB\-\-log\-file\fR] [\fB\-\-manual\fR] [\fB\-\-map\-signal\fR] [\fB\-n \fR] [\fB\-N\fR|\fB\-\-notify\fR] [\fB\-\-no\-default\-ignore\fR] [\fB\-\-no\-discover\-ignore\fR] [\fB\-\-no\-process\-group\fR] [\fB\-\-no\-global\-ignore\fR] [\fB\-\-no\-meta\fR] [\fB\-\-no\-project\-ignore\fR] [\fB\-\-no\-vcs\-ignore\fR] [\fB\-o\fR|\fB\-\-on\-busy\-update\fR] [\fB\-\-only\-emit\-events\fR] [\fB\-\-poll\fR] [\fB\-\-print\-events\fR] [\fB\-\-project\-origin\fR] [\fB\-p\fR|\fB\-\-postpone\fR] [\fB\-q\fR|\fB\-\-quiet\fR] [\fB\-Q\fR|\fB\-\-quote\fR] [\fB\-r\fR|\fB\-\-restart\fR] [\fB\-s\fR|\fB\-\-signal\fR] [\fB\-\-shell\fR] [\fB\-\-stdin\-quit\fR] [\fB\-\-stop\-signal\fR] [\fB\-\-stop\-timeout\fR] [\fB\-\-timeout\fR] [\fB\-\-timings\fR] [\fB\-v\fR|\fB\-\-verbose\fR]... [\fB\-w\fR|\fB\-\-watch\fR] [\fB\-\-workdir\fR] [\fB\-W\fR|\fB\-\-watch\-non\-recursive\fR] [\fB\-\-wrap\-process\fR] [\fB\-F\fR|\fB\-\-watch\-file\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fICOMMAND\fR] 
 .SH DESCRIPTION
 Execute commands when watched files change.
 .PP
@@ -120,6 +120,17 @@ Don\*(Aqt use a process group
 By default, Watchexec will run the command in a process group, so that signals and terminations are sent to all processes in the group. Sometimes that\*(Aqs not what you want, and you can disable the behaviour with this option.
 
 Deprecated, use \*(Aq\-\-wrap\-process=none\*(Aq instead.
+.TP
+\fB\-Q\fR, \fB\-\-quote\fR
+Set whether or not to quote the command symbols when passing them to the shell.
+
+On Windows by default this is treated as false, as CMD and PowerShell do not work correctly when the symbols are quoted. For git\-bash and nushell on Windows, as well as other shells that won\*(Aqt work correctly without quoting, opt in to quoting using this option.
+
+On Linux and MacOS this is ignored and always treated as true, because they do not allow raw values to be passed.
+
+The difference between the two operating systems is to allow both to work as expected by default for their built in shells, and to allow changing the default behavior for non\-default shells if necessary.
+
+If you wish to write shell scripts that work on Linux/MacOS as well as Windows via git\-bash, you should set this option to true so that the behavior is the same on all platforms. The same goes for Nushell, and possibly other newer shells.
 .TP
 \fB\-\-shell\fR \fI<SHELL>\fR
 Use a different shell

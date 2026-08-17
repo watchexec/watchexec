@@ -6,7 +6,7 @@ This is a fairly free-form project, with low contribution traffic.
 Maintainers:
 
 - Félix Saparelli (@passcod) (active)
-- Matt Green (@mattgreen) (original author, mostly checked out)
+- Matt Green (@mattgreen) (original author, absent for a while now)
 
 There are a few anti goals:
 
@@ -35,6 +35,8 @@ To use [Tokio Console](https://github.com/tokio-rs/console):
 ## PR etiquette
 
 - Maintainers are busy or may not have the bandwidth, be patient.
+- AI assistance is not prohibited, but must be disclosed. This can be a
+  `Co-authored-by: Name <email>` commit trailer or similar.
 - Do _not_ change the version number in the PR.
 - Do _not_ change Cargo.toml or other project metadata, unless specifically asked for, or if that's
   the point of the PR (like adding a crates.io category).
@@ -44,19 +46,12 @@ Apart from that, welcome and thank you for your time!
 
 ## Releasing
 
-```
-cargo release -p crate-name --execute patch # or minor, major
-```
+Releases are prepared by release-plz. It maintains a release PR on GitHub with version bumps,
+dependency updates, changelogs, and cargo-semver-checks results. Review and merge that PR to publish
+the crates and create their tags. Merging any other PR does not publish a release.
 
-When a CLI release is done, the [release notes](https://github.com/watchexec/watchexec/releases) should be edited with the changelog.
-
-### Release order
-
-Use this command to see the tree of workspace dependencies:
-
-```console
-$ cargo tree -p watchexec-cli | rg -F '(/' --color=never | sed 's/ v[0-9].*//'
-```
+Each workspace crate must configure crates.io trusted publishing for this repository, using
+`.github/workflows/release-plz.yml` as the workflow. No crates.io token is stored in GitHub.
 
 ## Overview
 

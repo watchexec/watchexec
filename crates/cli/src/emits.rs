@@ -2,7 +2,10 @@ use std::{fmt::Write, path::PathBuf};
 
 use miette::{IntoDiagnostic, Result};
 use watchexec::paths::summarise_events_to_env;
-use watchexec_events::{filekind::FileEventKind, Event, Tag};
+use watchexec_events::{
+	filekind::{FileEventKind, ModifyKind},
+	Event, Tag,
+};
 
 use crate::{args::command::EnvVar, state::RotatingTempFile};
 
@@ -41,6 +44,7 @@ pub fn events_to_simple_format(events: &[Event]) -> Result<String> {
 						FileEventKind::Any | FileEventKind::Other => "other",
 						FileEventKind::Access(_) => "access",
 						FileEventKind::Create(_) => "create",
+						FileEventKind::Modify(ModifyKind::Name(_)) => "rename",
 						FileEventKind::Modify(_) => "modify",
 						FileEventKind::Remove(_) => "remove",
 					},
@@ -71,4 +75,56 @@ pub fn emits_to_json_file(target: &RotatingTempFile, events: &[Event]) -> Result
 		target.write(b"\n")?;
 	}
 	Ok(target.path())
+}
+
+#[cfg(test)]
+mod tests {
+	use watchexec_events::{
+		filekind::{DataChange, MetadataKind, ModifyKind, RenameMode},
+		FileType,
+	};
+
+	use super::*;
+
+	fn event(kind: FileEventKind) -> Event {
+		Event {
+			tags: vec![
+				Tag::Path {
+					path: PathBuf::from("/tmp/file"),
+					file_type: Some(FileType::File),
+				},
+				Tag::FileEventKind(kind),
+			],
+			metadata: Default::default(),
+		}
+	}
+
+	#[test]
+	fn renames_are_prefixed_rename_not_modify() {
+		assert_eq!(
+			events_to_simple_format(&[event(FileEventKind::Modify(ModifyKind::Name(
+				RenameMode::Both
+			)))])
+			.unwrap(),
+			"rename:/tmp/file\n"
+		);
+	}
+
+	#[test]
+	fn other_modifies_are_still_prefixed_modify() {
+		assert_eq!(
+			events_to_simple_format(&[event(FileEventKind::Modify(ModifyKind::Data(
+				DataChange::Content
+			)))])
+			.unwrap(),
+			"modify:/tmp/file\n"
+		);
+		assert_eq!(
+			events_to_simple_format(&[event(FileEventKind::Modify(ModifyKind::Metadata(
+				MetadataKind::Permissions
+			)))])
+			.unwrap(),
+			"modify:/tmp/file\n"
+		);
+	}
 }

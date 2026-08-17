@@ -1,12 +1,13 @@
 use std::{
 	borrow::Cow,
 	collections::HashMap,
-	env::var,
+	env::{var, var_os},
 	ffi::OsStr,
 	fmt,
 	fs::File,
 	io::{IsTerminal, Write},
 	iter::once,
+	path::{Path, PathBuf},
 	process::{ExitCode, Stdio},
 	sync::{
 		atomic::{AtomicBool, AtomicU8, Ordering},
@@ -634,7 +635,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 											innerjob.clone(),
 											context.command.clone(),
 											outflags,
-										timeout_config,
+											timeout_config,
 											exit_on_error,
 											should_quit.clone(),
 											state.clone(),
@@ -653,6 +654,162 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 	});
 
 	Ok(config)
+}
+
+/// `$SHELL` as set inside Git Bash / MSYS2 (and a plain `--shell=/usr/bin/bash`)
+/// is a POSIX-style path. Windows process creation doesn't understand those,
+/// so spawning would fail with "the system cannot find the path specified"
+/// even though the shell is right there. Resolve it by file name via `PATH`
+/// instead, the same way `pwsh`/`powershell` are already detected above.
+///
+/// One thing to dodge: Windows ships its own `%SystemRoot%\System32\bash.exe`,
+/// a launcher stub for WSL. If that happens to come before the real Git Bash
+/// on `PATH`, naively resolving "bash" would silently run the command inside
+/// WSL instead of the Git Bash the user actually has, so it's skipped.
+#[cfg(windows)]
+fn resolve_shell_prog(prog: &str) -> String {
+	let system32 = var("SystemRoot")
+		.map(|root| PathBuf::from(root).join("System32"))
+		.ok();
+	let cwd = std::env::current_dir().unwrap_or_default();
+	resolve_shell_prog_in(prog, var_os("PATH").as_deref(), system32.as_deref(), &cwd)
+}
+
+/// Does the actual work of [`resolve_shell_prog`], with the `PATH` list and
+/// the WSL stub's directory passed in rather than read from the process
+/// environment, so tests can exercise this without touching global state.
+#[cfg(windows)]
+fn resolve_shell_prog_in(
+	prog: &str,
+	search_path: Option<&OsStr>,
+	system32: Option<&Path>,
+	cwd: &Path,
+) -> String {
+	if !prog.starts_with('/') || Path::new(prog).exists() {
+		return prog.to_string();
+	}
+
+	let Some(name) = Path::new(prog).file_name() else {
+		return prog.to_string();
+	};
+
+	// The WSL launcher stub only shadows `bash`; skipping System32 for any
+	// other program name would wrongly discard a legitimate candidate that
+	// happens to live there.
+	let is_bash = name.eq_ignore_ascii_case("bash") || name.eq_ignore_ascii_case("bash.exe");
+
+	which::which_in_all(name, search_path, cwd)
+		.ok()
+		.and_then(|mut candidates| {
+			candidates.find(|c| !is_bash || system32.is_none_or(|s32| c.parent() != Some(s32)))
+		})
+		.map_or_else(|| prog.to_string(), |p| p.to_string_lossy().into_owned())
+}
+
+#[cfg(not(windows))]
+fn resolve_shell_prog(prog: &str) -> String {
+	prog.to_string()
+}
+
+#[cfg(all(test, windows))]
+mod resolve_shell_prog_tests {
+	use super::resolve_shell_prog_in;
+	use std::{env::current_dir, fs::File, path::PathBuf};
+
+	fn make_fake_exe(dir: &std::path::Path, name: &str) -> PathBuf {
+		let path = dir.join(name);
+		File::create(&path).unwrap();
+		path
+	}
+
+	#[test]
+	fn leaves_non_posix_prog_untouched() {
+		assert_eq!(
+			resolve_shell_prog_in("pwsh", None, None, &current_dir().unwrap()),
+			"pwsh"
+		);
+		assert_eq!(
+			resolve_shell_prog_in(
+				r"C:\Program Files\Git\bin\bash.exe",
+				None,
+				None,
+				&current_dir().unwrap()
+			),
+			r"C:\Program Files\Git\bin\bash.exe"
+		);
+	}
+
+	#[test]
+	fn resolves_posix_style_path_via_path_lookup() {
+		let dir = tempfile::tempdir().unwrap();
+		make_fake_exe(dir.path(), "myshell.exe");
+
+		let resolved = resolve_shell_prog_in(
+			"/usr/bin/myshell.exe",
+			Some(dir.path().as_os_str()),
+			None,
+			dir.path(),
+		);
+
+		assert_eq!(resolved, dir.path().join("myshell.exe").to_string_lossy());
+	}
+
+	#[test]
+	fn falls_back_to_original_when_nothing_found() {
+		let dir = tempfile::tempdir().unwrap();
+		// dir is empty: no "myshell.exe" anywhere on the given search path.
+		let resolved = resolve_shell_prog_in(
+			"/usr/bin/myshell.exe",
+			Some(dir.path().as_os_str()),
+			None,
+			dir.path(),
+		);
+		assert_eq!(resolved, "/usr/bin/myshell.exe");
+	}
+
+	#[test]
+	fn skips_the_wsl_launcher_stub_in_system32() {
+		let root = tempfile::tempdir().unwrap();
+		let system32 = root.path().join("System32");
+		std::fs::create_dir(&system32).unwrap();
+		make_fake_exe(&system32, "bash.exe");
+
+		let real_git_bin = root.path().join("Git").join("bin");
+		std::fs::create_dir_all(&real_git_bin).unwrap();
+		let real_bash = make_fake_exe(&real_git_bin, "bash.exe");
+
+		// System32 comes first on PATH, same as it typically does on a real
+		// Windows install, so a naive lookup would find the WSL stub first.
+		let search_path = format!("{};{}", system32.display(), real_git_bin.display());
+
+		let resolved = resolve_shell_prog_in(
+			"/usr/bin/bash",
+			Some(std::ffi::OsStr::new(&search_path)),
+			Some(&system32),
+			root.path(),
+		);
+
+		assert_eq!(resolved, real_bash.to_string_lossy());
+	}
+
+	#[test]
+	fn does_not_skip_system32_for_non_bash_programs() {
+		let root = tempfile::tempdir().unwrap();
+		let system32 = root.path().join("System32");
+		std::fs::create_dir(&system32).unwrap();
+		let real_tool = make_fake_exe(&system32, "sometool.exe");
+
+		let resolved = resolve_shell_prog_in(
+			"/usr/bin/sometool",
+			Some(system32.as_os_str()),
+			Some(&system32),
+			root.path(),
+		);
+
+		// Unlike bash, sometool.exe has no WSL-stub problem, so a legitimate
+		// candidate living in System32 must still be found.
+		assert_eq!(resolved, real_tool.to_string_lossy());
+	}
 }
 
 #[instrument(level = "debug")]
@@ -691,19 +848,18 @@ fn interpret_command_args(args: &Args) -> Result<Arc<Command>> {
 			Some("none") | None => None,
 
 			#[cfg(windows)]
-			Some("cmd") | Some("cmd.exe") | Some("CMD") | Some("CMD.EXE") => Some(Shell::cmd()),
+			Some("cmd") | Some("cmd.exe") | Some("CMD") | Some("CMD.EXE") => {
+				Some(Shell::cmd_with_quoting(args.command.quote))
+			}
 
 			Some(other) => {
-				let sh = other.split_ascii_whitespace().collect::<Vec<_>>();
-
-				// UNWRAP: checked by Some("")
-				#[allow(clippy::unwrap_used)]
-				let (shprog, shopts) = sh.split_first().unwrap();
+				let (shell_path, shell_options) = parse_path(other);
 
 				Some(Shell {
-					prog: shprog.into(),
-					options: shopts.iter().map(|s| (*s).to_string()).collect(),
+					prog: shell_path.into(),
+					options: shell_options,
 					program_option: Some(Cow::Borrowed(OsStr::new("-c"))),
+					quote: args.command.quote,
 				})
 			}
 		}
@@ -730,6 +886,158 @@ fn interpret_command_args(args: &Args) -> Result<Arc<Command>> {
 			..Default::default()
 		},
 	}))
+}
+
+/// Returns a [`(String, Vec<String>)`] containing the parsed shell path and optional shell arguments, respectively.
+/// This logic handles potential spaces in the shell path as well as potential arguments by splitting shell_path by whitespace,
+/// then iterating over the vector backwards by splitting the last item off of the vector.
+/// For each item we concatenate the remaining items into a single string, and check if it resolves to a valid path.
+/// If it doesn't, then the next item should also be considered an argument.
+///
+/// This scenario is possible on Windows when users use git-bash which is located in "C:/Program Files/Git/usr/bin/bash.exe".
+/// This scenario is also theoretically possible in Linux if a user, though unlikely.
+/// Due to it theoretically being possible on Linux, and an unknown number of other use cases on Windows, this logic was written to be capable of handling many such inputs such as :
+/// - "/bin/bash"
+/// - "/bin/bash --arg1 --arg2"
+/// - "C:/Program Files/Git/usr/bin/bash.exe"
+/// - "C:/Program Files/Git/usr/bin/bash.exe --arg1 --arg2"
+fn parse_path(original_path: &str) -> (String, Vec<String>) {
+	parse_path_with(original_path, resolve_shell_prog)
+}
+
+/// Does the actual work of [`parse_path`], with the POSIX-path resolution passed
+/// in rather than called directly, so tests can exercise the order of the two
+/// without depending on which shells happen to be installed.
+fn parse_path_with(original_path: &str, resolve: impl Fn(&str) -> String) -> (String, Vec<String>) {
+	debug!(?original_path, "before parsing for potential shell options");
+
+	let mut shell_path = original_path.to_string();
+	let mut shell_options: Vec<String> = vec![];
+
+	if shell_path.contains(' ') && !Path::new(&shell_path).exists() {
+		let split_shell_parts = shell_path
+			.split_ascii_whitespace()
+			.map(String::from)
+			.collect::<Vec<_>>();
+
+		debug!(
+			?split_shell_parts,
+			"after splitting original shell path by whitespace"
+		);
+
+		let (mut last_shell_part, mut remaining_shell_parts) =
+			split_shell_parts.split_last().unwrap();
+
+		shell_path = remaining_shell_parts.join(" ");
+		shell_options.push(last_shell_part.clone());
+
+		while !Path::new(&shell_path).exists() {
+			(last_shell_part, remaining_shell_parts) = remaining_shell_parts.split_last().unwrap();
+
+			if remaining_shell_parts.is_empty() {
+				// If we get here and the path still isn't valid, it doesn't really matter what we do.
+				break;
+			}
+
+			shell_options.push(last_shell_part.clone());
+			shell_path = remaining_shell_parts.join(" ");
+		}
+	}
+
+	// Reversing the shell options because we add them in reverse order.
+	shell_options.reverse();
+
+	debug!(?shell_path, "after splitting options");
+	debug!(?shell_options, "after splitting options");
+
+	// Git Bash / MSYS2 set $SHELL to a POSIX path, which Windows can't spawn
+	// and which neither the exists() check nor `which` below can resolve. Map
+	// it back to the native path first, so the validity check sees the shell
+	// the user actually has. No-op everywhere else.
+	shell_path = resolve(&shell_path);
+
+	let mut is_valid = Path::new(&shell_path).exists();
+
+	if !is_valid {
+		// It's possible that at this point "shell_path" is something like "pwsh" which while not a valid path,
+		// is runnable when passed into a program as is if "which" is able to resolve it from the path.
+		is_valid = which::which(&shell_path).is_ok();
+	}
+
+	assert!(
+		is_valid,
+		"The parsed shell path \"{shell_path}\" does not exist on this system, and could not be resolved from your PATH."
+	);
+
+	(shell_path, shell_options)
+}
+
+#[cfg(test)]
+fn test_parse_path_for_shell(expected_path: &str) {
+	if Path::new(expected_path).exists() {
+		let expected_empty_args: Vec<String> = vec![];
+		let expected_args = ["--arg1", "--arg2"];
+		let (mut actual_path, mut actual_args): (String, Vec<String>);
+
+		(actual_path, actual_args) = parse_path(expected_path);
+
+		assert_eq!(actual_path, *expected_path);
+		assert_eq!(actual_args, expected_empty_args);
+
+		(actual_path, actual_args) =
+			parse_path(&format!("{} {}", expected_path, expected_args.join(" ")));
+
+		assert_eq!(actual_path, *expected_path);
+		assert_eq!(actual_args, expected_args);
+	}
+}
+
+/// A POSIX shell path can't pass the validity check at the end of [`parse_path`]
+/// on Windows, so the resolution has to happen before it rather than at the call
+/// site: with the two the other way round the check is reached with the original
+/// path and kills the process.
+#[test]
+#[cfg(test)]
+fn test_parse_path_resolves_before_validating() {
+	let native = std::env::current_exe()
+		.unwrap()
+		.to_string_lossy()
+		.into_owned();
+
+	let (path, options) = parse_path_with("/usr/bin/bash", |_| native.clone());
+	assert_eq!(path, native);
+	assert!(options.is_empty());
+
+	let (path, options) = parse_path_with("/usr/bin/bash --norc", |p| {
+		assert_eq!(p, "/usr/bin/bash");
+		native.clone()
+	});
+	assert_eq!(path, native);
+	assert_eq!(options, ["--norc"]);
+}
+
+#[test]
+#[cfg(test)]
+fn test_parse_path() {
+	#[cfg(windows)]
+	{
+		test_parse_path_for_shell("C:\\Program Files\\Git\\usr\\bin\\bash.exe");
+		test_parse_path_for_shell("C:\\Program Files\\nu\\bin\\nu.exe");
+		// This is the newer PowerShell 7 which does not ship with Windows.
+		test_parse_path_for_shell("C:\\Program Files\\PowerShell\\7\\pwsh.exe");
+		test_parse_path_for_shell("C:\\Windows\\System32\\cmd.exe");
+		// This is the older PowerShell 5.1 which ships with Windows.
+		test_parse_path_for_shell("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe");
+		// This is PowerShell 5.1 (x86).
+		test_parse_path_for_shell("C:\\Windows\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe");
+	}
+
+	#[cfg(unix)]
+	{
+		test_parse_path_for_shell("/bin/bash");
+		test_parse_path_for_shell("/bin/sh");
+		test_parse_path_for_shell("/usr/bin/nu");
+	}
 }
 
 #[instrument(level = "trace")]

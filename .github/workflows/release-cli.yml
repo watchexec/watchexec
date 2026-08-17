@@ -17,7 +17,7 @@ jobs:
     outputs:
       cli_version: ${{ steps.version.outputs.cli_version }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Extract version
         id: version
         shell: bash
@@ -127,11 +127,11 @@ jobs:
             cross: false
             experimental: false
 
-          #- name: windows-arm64
-          #  os: windows-latest
-          #  target: aarch64-pc-windows-msvc
-          #  cross: true
-          #  experimental: true
+          - name: windows-arm64
+            os: windows-11-arm
+            target: aarch64-pc-windows-msvc
+            cross: false
+            experimental: true
 
     name: Binaries for ${{ matrix.name }}
     needs: info
@@ -143,7 +143,7 @@ jobs:
       dst: watchexec-${{ needs.info.outputs.cli_version }}-${{ matrix.target }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # https://github.com/actions/cache/issues/752
       - if: ${{ runner.os == 'Windows' }}
@@ -176,13 +176,13 @@ jobs:
 
       - name: Install cargo-deb
         if: startsWith(matrix.name, 'linux-')
-        uses: taiki-e/install-action@v2
+        uses: taiki-e/install-action@v2.85.5
         with:
           tool: cargo-deb
 
       - name: Install cargo-generate-rpm
         if: startsWith(matrix.name, 'linux-')
-        uses: taiki-e/install-action@v2
+        uses: taiki-e/install-action@v2.85.5
         with:
           tool: cargo-generate-rpm
 
@@ -195,7 +195,7 @@ jobs:
 
       - name: Install cross
         if: matrix.cross
-        uses: taiki-e/install-action@v2
+        uses: taiki-e/install-action@v2.85.5
         with:
           tool: cross
 
@@ -243,7 +243,7 @@ jobs:
         shell: bash
         run: 7z a "$dst.zip" "$dst"
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.name }}
           retention-days: 1
@@ -261,14 +261,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install b3sum
-        uses: taiki-e/install-action@v2
+        uses: taiki-e/install-action@v2.85.5
         with:
           tool: b3sum
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           merge-multiple: true
 
@@ -293,7 +293,7 @@ jobs:
             sha512sum $file | cut -d ' ' -f1 > "$file.sha512"
           done
 
-      - uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b
+      - uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228
         with:
           tag_name: v${{ needs.info.outputs.cli_version }}
           name: CLI v${{ needs.info.outputs.cli_version }}

@@ -50,6 +50,7 @@ module completions {
     --delay-run: string       # Sleep before running the command
     --workdir: path           # Set the working directory
     --socket: string          # Provide a socket to the command
+    --quote(-Q)               # Set whether or not to quote the command symbols when passing them to the shell
     --on-busy-update(-o): string@"nu-complete watchexec on_busy_update" # What to do when receiving events while the command is running
     --restart(-r)             # Restart the process if it's still running
     --signal(-s): string      # Send a signal to the process when it's still running

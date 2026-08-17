@@ -68,6 +68,8 @@ set edit:completion:arg-completer[watchexec] = {|@words|
             cand -n 'Shorthand for ''--shell=none'''
             cand --no-environment 'Deprecated shorthand for ''--emit-events=none'''
             cand --no-process-group 'Don''t use a process group'
+            cand -Q 'Set whether or not to quote the command symbols when passing them to the shell'
+            cand --quote 'Set whether or not to quote the command symbols when passing them to the shell'
             cand -r 'Restart the process if it''s still running'
             cand --restart 'Restart the process if it''s still running'
             cand --stdin-quit 'Exit when stdin closes'

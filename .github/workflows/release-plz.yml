@@ -1,0 +1,92 @@
+name: Release-plz
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_UNSTABLE_SPARSE_REGISTRY: "true"
+
+jobs:
+  release:
+    name: Publish approved releases
+    if: github.repository_owner == 'watchexec'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          token: ${{ secrets.RELEASE_PLZ_TOKEN }}
+      - name: Configure toolchain
+        run: |
+          rustup toolchain install --profile minimal --no-self-update stable
+          rustup default stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Publish crates and create tags
+        id: release-plz
+        uses: release-plz/action@2eb1d8bcb770b4c48ccfaad919734b38b51958c9 # v0.5.131
+        with:
+          command: release
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN }}
+
+  release-pr:
+    name: Prepare release PR
+    if: github.repository_owner == 'watchexec'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    concurrency:
+      group: release-plz-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.RELEASE_PLZ_TOKEN }}
+      - name: Configure toolchain
+        run: |
+          rustup toolchain install --profile minimal --no-self-update stable
+          rustup default stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Create or update release PR
+        id: release-plz
+        uses: release-plz/action@2eb1d8bcb770b4c48ccfaad919734b38b51958c9 # v0.5.131
+        with:
+          command: release-pr
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN }}
+      - name: Update CLI release metadata
+        if: steps.release-plz.outputs.pr != '' && contains(steps.release-plz.outputs.pr, 'watchexec-cli')
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN }}
+          RELEASE_PR: ${{ steps.release-plz.outputs.pr }}
+        run: |
+          pr_number=$(jq -r '.number' <<< "$RELEASE_PR")
+          version=$(jq -r '.releases[] | select(.package_name == "watchexec-cli") | .version' <<< "$RELEASE_PR")
+          gh pr checkout "$pr_number"
+
+          sed -i -E "s/^version: .*/version: \"$version\"/" CITATION.cff
+          sed -i -E "s/^date-released: .*/date-released: $(date -u +%F)/" CITATION.cff
+          sed -i -E "s/^([[:space:]]+)version=\"[^\"]+\"/\1version=\"$version.0\"/" crates/cli/watchexec.exe.manifest
+          bin/completions --locked
+          sudo apt-get update
+          sudo apt-get install --yes pandoc
+          bin/manpage
+
+          git add CITATION.cff crates/cli/watchexec.exe.manifest completions doc/watchexec.1 doc/watchexec.1.md
+          if ! git diff --cached --quiet; then
+            git config user.name github-actions[bot]
+            git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+            git commit -m "release: update CLI metadata"
+            git push
+          fi

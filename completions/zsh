@@ -69,6 +69,8 @@ end\:"Notify only when the command ends"))' \
 '-n[Shorthand for '\''--shell=none'\'']' \
 '--no-environment[Deprecated shorthand for '\''--emit-events=none'\'']' \
 '--no-process-group[Don'\''t use a process group]' \
+'-Q[Set whether or not to quote the command symbols when passing them to the shell]' \
+'--quote[Set whether or not to quote the command symbols when passing them to the shell]' \
 '(-o --on-busy-update)-r[Restart the process if it'\''s still running]' \
 '(-o --on-busy-update)--restart[Restart the process if it'\''s still running]' \
 '--stdin-quit[Exit when stdin closes]' \

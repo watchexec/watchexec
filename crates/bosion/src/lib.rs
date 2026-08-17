@@ -116,10 +116,11 @@ pub fn gather_to(filename: &str, structname: &str, public: bool) {
 		/// This is the same as `LONG_VERSION` but takes a slice of key-value pairs to append to the
 		/// end in the same format.
 		pub fn long_version_with(extra: &[(&str, &str)]) -> String {
+			use std::fmt::Write;
 			let mut output = Self::LONG_VERSION.to_string();
 
 			for (k, v) in extra {
-				output.push_str(&format!("\n{k}: {v}"));
+				write!(&mut output, "\n{k}: {v}").unwrap();
 			}
 
 			output

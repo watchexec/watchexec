@@ -26,16 +26,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform:
-          - macos
-          - ubuntu
-          - windows
+        include:
+          - { platform: macos, runner: macos-latest }
+          - { platform: ubuntu, runner: ubuntu-latest }
+          - { platform: windows, runner: windows-latest }
+          - { platform: windows-arm64, runner: windows-11-arm }
 
     name: Test libraries ${{ matrix.platform }}
-    runs-on: "${{ matrix.platform }}-latest"
+    runs-on: ${{ matrix.runner }}
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Configure toolchain
       run: |
         rustup toolchain install --profile minimal --no-self-update stable
@@ -52,25 +53,26 @@ jobs:
     - uses: Swatinem/rust-cache@v2
 
     - name: Run library test suite
-      run: cargo test --workspace --exclude watchexec-cli --exclude watchexec-events
+      run: cargo test --locked --workspace --exclude watchexec-cli --exclude watchexec-events
 
     - name: Run watchexec-events integration tests
-      run: cargo test -p watchexec-events -F serde
+      run: cargo test --locked -p watchexec-events -F serde
 
   cli-e2e:
     strategy:
       fail-fast: false
       matrix:
-        platform:
-          - macos
-          - ubuntu
-          - windows
+        include:
+          - { platform: macos, runner: macos-latest, test-platform: macos }
+          - { platform: ubuntu, runner: ubuntu-latest, test-platform: ubuntu }
+          - { platform: windows, runner: windows-latest, test-platform: windows }
+          - { platform: windows-arm64, runner: windows-11-arm, test-platform: windows }
 
     name: Test CLI (e2e) ${{ matrix.platform }}
-    runs-on: "${{ matrix.platform }}-latest"
+    runs-on: ${{ matrix.runner }}
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Configure toolchain
       run: |
         rustup toolchain install --profile minimal --no-self-update stable
@@ -91,10 +93,10 @@ jobs:
     - uses: Swatinem/rust-cache@v2
 
     - name: Build CLI programs
-      run: cargo build
+      run: cargo build --locked
 
     - name: Run CLI integration tests
-      run: crates/cli/run-tests.sh ${{ matrix.platform }}
+      run: crates/cli/run-tests.sh ${{ matrix.test-platform }}
       shell: bash
       env:
         WATCHEXEC_BIN: target/debug/watchexec
@@ -106,7 +108,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Configure toolchain
       run: |
         rustup toolchain install --profile minimal --no-self-update stable
@@ -115,7 +117,7 @@ jobs:
     - uses: Swatinem/rust-cache@v2
 
     - name: Generate manpage
-      run: cargo run -p watchexec-cli -- --manual > doc/watchexec.1
+      run: cargo run --locked -p watchexec-cli -- --manual > doc/watchexec.1
     - name: Check that manpage is up to date
       run: git diff --exit-code -- doc/
 
@@ -128,16 +130,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform:
-          - macos
-          - ubuntu
-          - windows
+        include:
+          - { platform: macos, runner: macos-latest }
+          - { platform: ubuntu, runner: ubuntu-latest }
+          - { platform: windows, runner: windows-latest }
+          - { platform: windows-arm64, runner: windows-11-arm }
 
     name: Test CLI (unit) ${{ matrix.platform }}
-    runs-on: "${{ matrix.platform }}-latest"
+    runs-on: ${{ matrix.runner }}
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Configure toolchain
       run: |
         rustup toolchain install --profile minimal --no-self-update stable
@@ -154,22 +157,23 @@ jobs:
     - uses: Swatinem/rust-cache@v2
 
     - name: Run CLI unit tests
-      run: cargo test -p watchexec-cli
+      run: cargo test --locked -p watchexec-cli
 
   bosion:
     strategy:
       fail-fast: false
       matrix:
-        platform:
-          - macos
-          - ubuntu
-          - windows
+        include:
+          - { platform: macos, runner: macos-latest }
+          - { platform: ubuntu, runner: ubuntu-latest }
+          - { platform: windows, runner: windows-latest }
+          - { platform: windows-arm64, runner: windows-11-arm }
 
     name: Bosion integration tests on ${{ matrix.platform }}
-    runs-on: "${{ matrix.platform }}-latest"
+    runs-on: ${{ matrix.runner }}
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Configure toolchain
       run: |
         rustup toolchain install --profile minimal --no-self-update stable
@@ -202,7 +206,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Configure toolchain
       run: |
         rustup toolchain install --profile minimal --no-self-update stable
@@ -213,7 +217,7 @@ jobs:
       run: sudo apt-get install -y musl-tools
 
     - uses: Swatinem/rust-cache@v2
-    - run: cargo check --target ${{ matrix.target }}
+    - run: cargo check --locked --target ${{ matrix.target }}
 
   tests-pass:
     if: always()

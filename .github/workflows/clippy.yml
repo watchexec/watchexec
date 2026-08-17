@@ -31,7 +31,7 @@ jobs:
     runs-on: "${{ matrix.platform }}-latest"
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Configure toolchain
       run: |
         rustup toolchain install stable --profile minimal --no-self-update --component clippy
@@ -46,7 +46,7 @@ jobs:
         echo C:\Program Files\Git\usr\bin>>"%GITHUB_PATH%"
 
     - name: Configure caching
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       with:
         path: |
           ~/.cargo/registry/index/
@@ -57,4 +57,4 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-cargo-
 
-    - run: cargo clippy
+    - run: cargo clippy --locked
