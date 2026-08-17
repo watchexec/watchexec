@@ -293,7 +293,7 @@ jobs:
             sha512sum $file | cut -d ' ' -f1 > "$file.sha512"
           done
 
-      - uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda
+      - uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228
         with:
           tag_name: v${{ needs.info.outputs.cli_version }}
           name: CLI v${{ needs.info.outputs.cli_version }}
