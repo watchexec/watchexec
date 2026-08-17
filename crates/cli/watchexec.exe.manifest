@@ -1,9 +1,9 @@
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<?xml version="2.6.0.0" encoding="UTF-8" standalone="yes"?>
 <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
 	<assemblyIdentity
 		type="win32"
 		name="Watchexec.Cli.watchexec"
-		version="2.5.1.0"
+		version="2.6.0.0"
 	/>
 
 	<trustInfo>
