@@ -131,7 +131,7 @@ jobs:
             os: windows-11-arm
             target: aarch64-pc-windows-msvc
             cross: false
-            experimental: false
+            experimental: true
 
     name: Binaries for ${{ matrix.name }}
     needs: info
