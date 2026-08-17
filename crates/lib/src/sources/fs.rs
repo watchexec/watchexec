@@ -312,12 +312,79 @@ fn process_event(
 	let ev = Event { tags, metadata };
 
 	trace!(event = ?ev, "processed notify event into watchexec event");
-	n_events
-		.try_send(ev, Priority::Normal)
-		.map_err(|err| RuntimeError::EventChannelTrySend {
-			ctx: "fs watcher",
-			err,
-		})?;
+	match n_events.try_send(ev, Priority::Normal) {
+		Ok(()) => {}
+		Err(priority::TrySendError::Full(_)) => {
+			// The bounded event channel is at capacity. This happens under bursty
+			// filesystem activity (e.g. building a large project with high parallelism).
+			// Backpressure is not possible from the synchronous notify callback, so the
+			// event is dropped. This is documented behaviour (see Handler docs in
+			// crate::action::handler): rather than surfacing a non-fatal error to the
+			// user for every dropped event, log at debug and continue. The channel size
+			// is tunable via Config::event_channel_size.
+			debug!(
+				"fs watcher event channel is full; dropping event \
+				 (tune Config::event_channel_size if this happens often)"
+			);
+		}
+		Err(priority::TrySendError::Closed(ev)) => {
+			// The receiver has been dropped (Watchexec is shutting down). Propagate as
+			// a real error so downstream handlers can react; this is swallowed by the
+			// `n_errors.try_send(...).ok()` in the worker callback if the error channel
+			// is also closed.
+			return Err(RuntimeError::EventChannelSend {
+				ctx: "fs watcher",
+				err: priority::SendError(ev),
+			});
+		}
+	}
 
 	Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+	use super::process_event;
+	use crate::error::RuntimeError;
+	use async_priority_channel as priority;
+	use notify::EventKind;
+	use watchexec_events::Priority;
+
+	// Regression test for issue #920: when the bounded event channel is full,
+	// `process_event` used to propagate `RuntimeError::EventChannelTrySend`,
+	// surfacing "cannot send event from fs watcher: sending into a full channel"
+	// to the user as a non-fatal error for every dropped event. It should instead
+	// drop the event gracefully and return `Ok(())`.
+	#[test]
+	fn process_event_drops_when_channel_full() {
+		let (ev_s, _ev_r) = priority::bounded::<watchexec_events::Event, Priority>(1);
+		let nev = Ok(notify::Event::new(EventKind::Any));
+
+		// First event fills the channel (capacity 1).
+		assert!(process_event(nev, super::Watcher::default(), &ev_s).is_ok());
+
+		// Second event would overflow: must be dropped gracefully, not surfaced as an error.
+		let nev = Ok(notify::Event::new(EventKind::Any));
+		let res = process_event(nev, super::Watcher::default(), &ev_s);
+		assert!(
+			res.is_ok(),
+			"full channel should drop the event silently, not return a RuntimeError (got {res:?})",
+		);
+	}
+
+	// When the receiver is dropped (Watchexec is shutting down), the send fails with
+	// `Closed`; `process_event` should propagate that as `EventChannelSend`, matching
+	// the signal worker's behaviour and preserving real-error semantics.
+	#[test]
+	fn process_event_propagates_when_channel_closed() {
+		let (ev_s, ev_r) = priority::bounded::<watchexec_events::Event, Priority>(1);
+		drop(ev_r);
+
+		let nev = Ok(notify::Event::new(EventKind::Any));
+		let res = process_event(nev, super::Watcher::default(), &ev_s);
+		assert!(
+			matches!(res, Err(RuntimeError::EventChannelSend { .. })),
+			"closed channel should propagate as EventChannelSend, got {res:?}",
+		);
+	}
 }
