@@ -1,0 +1,34 @@
+[workspace]
+changelog_update = true
+dependencies_update = true
+git_release_enable = false
+git_tag_enable = true
+pr_labels = ["release"]
+pr_name = "release{% if package and version %}: {{ package }} v{{ version }}{% endif %}"
+semver_check = true
+
+[[package]]
+name = "watchexec-cli"
+changelog_update = false
+git_release_enable = true
+git_release_name = "CLI v{{ version }}"
+git_tag_name = "v{{ version }}"
+semver_check = false
+
+[[package]]
+name = "test-socketfd"
+release = false
+
+[changelog]
+header = """# Changelog
+
+## Next (YYYY-MM-DD)
+"""
+body = """
+## v{{ version }} ({{ timestamp | date(format="%Y-%m-%d") }})
+
+{% for commit in commits -%}
+- {% if commit.breaking %}**Breaking:** {% endif %}{{ commit.message }}
+{% endfor %}
+"""
+trim = true
