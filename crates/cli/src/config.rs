@@ -837,7 +837,16 @@ fn interpret_command_args(args: &Args) -> Result<Arc<Command>> {
 	let shell = if args.command.no_shell {
 		None
 	} else {
-		let shell = args.command.shell.clone().or_else(|| var("SHELL").ok());
+		// Trim the shell spec before interpreting it: surrounding whitespace isn't part of
+		// the shell program nor a shell option (a value like "sh " or " /bin/bash" used to
+		// be split into an empty program plus an option, and panic), and a value that's
+		// only whitespace is an empty shell, handled below like an empty string.
+		let shell = args
+			.command
+			.shell
+			.clone()
+			.or_else(|| var("SHELL").ok())
+			.map(|shell| shell.trim().to_owned());
 		match shell
 			.as_deref()
 			.or_else(|| {
@@ -1031,6 +1040,40 @@ fn test_parse_path_resolves_before_validating() {
 	});
 	assert_eq!(path, native);
 	assert_eq!(options, ["--norc"]);
+}
+
+/// A `--shell` (or `$SHELL`) value with surrounding whitespace used to be split into an
+/// empty shell program plus an option, which panicked in `parse_path` on a `split_last()`
+/// of an empty list. Whitespace isn't part of the shell spec: trim it first.
+#[test]
+#[cfg(test)]
+fn test_shell_spec_whitespace_is_trimmed() {
+	use clap::Parser;
+
+	for spec in ["sh ", " sh", "  sh  "] {
+		let args = Args::parse_from(["watchexec", &format!("--shell={spec}"), "echo", "hi"]);
+		let cmd = interpret_command_args(&args)
+			.unwrap_or_else(|err| panic!("--shell={spec:?} should be usable, got {err:?}"));
+		let Program::Shell { shell, .. } = &cmd.program else {
+			panic!(
+				"--shell={spec:?} should give a shelled program, got {:?}",
+				cmd.program
+			);
+		};
+		assert_eq!(shell.prog, PathBuf::from("sh"), "for --shell={spec:?}");
+		assert!(
+			shell.options.is_empty(),
+			"for --shell={spec:?}: whitespace should not become a shell option, got {:?}",
+			shell.options
+		);
+	}
+
+	// A whitespace-only shell is an empty shell, not a program named "".
+	let args = Args::parse_from(["watchexec", "--shell=  ", "echo", "hi"]);
+	assert!(
+		interpret_command_args(&args).is_err(),
+		"a whitespace-only --shell should error like an empty one"
+	);
 }
 
 #[test]
