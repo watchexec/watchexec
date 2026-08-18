@@ -100,8 +100,19 @@ pub fn preargs() -> bool {
 	log_on
 }
 
+/// The log level to use, taking into account that `--log-file` implies `-vvv` when no level was
+/// otherwise specified, as documented in the help for that option.
+const fn effective_verbosity(args: &LoggingArgs) -> u8 {
+	if args.verbose == 0 && args.log_file.is_some() {
+		3
+	} else {
+		args.verbose
+	}
+}
+
 pub async fn postargs(args: &LoggingArgs) -> Result<Option<WorkerGuard>> {
-	if args.verbose == 0 {
+	let verbose = effective_verbosity(args);
+	if verbose == 0 {
 		return Ok(None);
 	}
 
@@ -126,7 +137,7 @@ pub async fn postargs(args: &LoggingArgs) -> Result<Option<WorkerGuard>> {
 		non_blocking(stderr())
 	};
 
-	let mut builder = tracing_subscriber::fmt().with_env_filter(match args.verbose {
+	let mut builder = tracing_subscriber::fmt().with_env_filter(match verbose {
 		0 => unreachable!("checked by if earlier"),
 		1 => "warn",
 		2 => "info",
@@ -134,14 +145,14 @@ pub async fn postargs(args: &LoggingArgs) -> Result<Option<WorkerGuard>> {
 		_ => "trace",
 	});
 
-	if args.verbose > 2 {
+	if verbose > 2 {
 		use tracing_subscriber::fmt::format::FmtSpan;
 		builder = builder.with_span_events(FmtSpan::NEW | FmtSpan::CLOSE);
 	}
 
 	match if args.log_file.is_some() {
 		builder.json().with_writer(log_writer).try_init()
-	} else if args.verbose > 3 {
+	} else if verbose > 3 {
 		builder.pretty().with_writer(log_writer).try_init()
 	} else {
 		builder.with_writer(log_writer).try_init()
@@ -151,4 +162,48 @@ pub async fn postargs(args: &LoggingArgs) -> Result<Option<WorkerGuard>> {
 	}
 
 	Ok(Some(guard))
+}
+
+#[cfg(test)]
+mod tests {
+	use clap::Parser;
+
+	use super::*;
+
+	fn logging_args(extra: &[&str]) -> LoggingArgs {
+		crate::args::Args::parse_from(
+			std::iter::once("watchexec")
+				.chain(extra.iter().copied())
+				.chain(std::iter::once("true")),
+		)
+		.logging
+	}
+
+	/// '--log-file' documents: "If a log level was not already specified, this will set it to
+	/// -vvv." Without that, logging is off entirely and the log file is never created.
+	#[test]
+	fn log_file_implies_debug_level() {
+		assert_eq!(
+			effective_verbosity(&logging_args(&["--log-file", "wx.log"])),
+			3
+		);
+	}
+
+	#[test]
+	fn log_file_does_not_override_an_explicit_level() {
+		assert_eq!(
+			effective_verbosity(&logging_args(&["-v", "--log-file", "wx.log"])),
+			1
+		);
+		assert_eq!(
+			effective_verbosity(&logging_args(&["-vvvv", "--log-file", "wx.log"])),
+			4
+		);
+	}
+
+	#[test]
+	fn without_log_file_the_level_is_unchanged() {
+		assert_eq!(effective_verbosity(&logging_args(&[])), 0);
+		assert_eq!(effective_verbosity(&logging_args(&["-vv"])), 2);
+	}
 }
