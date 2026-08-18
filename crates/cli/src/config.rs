@@ -21,7 +21,7 @@ use miette::{IntoDiagnostic, Report, Result};
 use notify_rust::Notification;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use tokio::{process::Command as TokioCommand, time::sleep};
-use tracing::{debug, debug_span, error, instrument, trace, trace_span, Instrument};
+use tracing::{debug, debug_span, error, instrument, trace, trace_span, warn, Instrument};
 use watchexec::{
 	action::ActionHandler,
 	command::{Command, Program, Shell, SpawnOptions},
@@ -66,7 +66,8 @@ struct TimeoutConfig {
 
 pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 	let _span = debug_span!("args-runtime").entered();
-	let config = Config::default();
+	let mut config = Config::default();
+	config.signal_job_control = true;
 	config.on_error(|err: ErrorHook| {
 		if let RuntimeError::IoError {
 			about: "waiting on process group",
@@ -90,7 +91,6 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 
 	config.throttle(args.events.debounce.0);
 	config.keyboard_events(args.events.stdin_quit || args.events.interactive);
-
 	if let Some(interval) = args.events.poll {
 		config.file_watcher(Watcher::Poll(interval.0));
 	}
@@ -107,6 +107,11 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 
 	if args.only_emit_events {
 		config.on_action(move |mut action| {
+			#[cfg(unix)]
+			if action.signals().any(|sig| sig == Signal::TerminalSuspend) {
+				suspend_self();
+			}
+
 			// if we got a terminate or interrupt signal, quit
 			if action
 				.signals()
@@ -490,6 +495,14 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 						}
 						None => {
 							debug!(?signal, "passing signal on");
+							#[cfg(unix)]
+							if signal == Signal::TerminalSuspend {
+								job.signal(signal).await;
+								suspend_self();
+							} else {
+								job.signal(signal);
+							}
+							#[cfg(not(unix))]
 							job.signal(signal);
 						}
 					}
@@ -1334,5 +1347,15 @@ pub fn reset_screen() {
 		ClearScreen::default(),
 	] {
 		cs.clear().ok();
+	}
+}
+
+#[cfg(unix)]
+fn suspend_self() {
+	// SAFETY: raise() is async-signal-safe and SIGSTOP cannot be caught or ignored. At this point
+	// SIGTSTP has already been forwarded to the child, so stopping ourselves preserves shell job
+	// control without racing the propagation.
+	if unsafe { libc::raise(libc::SIGSTOP) } != 0 {
+		warn!(error = ?std::io::Error::last_os_error(), "failed to suspend watchexec");
 	}
 }
