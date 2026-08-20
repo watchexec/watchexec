@@ -837,10 +837,8 @@ fn interpret_command_args(args: &Args) -> Result<Arc<Command>> {
 	let shell = if args.command.no_shell {
 		None
 	} else {
-		// Trim the shell spec before interpreting it: surrounding whitespace isn't part of
-		// the shell program nor a shell option (a value like "sh " or " /bin/bash" used to
-		// be split into an empty program plus an option, and panic), and a value that's
-		// only whitespace is an empty shell, handled below like an empty string.
+		// surrounding whitespace is part of neither the shell program nor its options, and
+		// a whitespace-only value is an empty shell, handled below like an empty string
 		let shell = args
 			.command
 			.shell
@@ -1042,9 +1040,6 @@ fn test_parse_path_resolves_before_validating() {
 	assert_eq!(options, ["--norc"]);
 }
 
-/// A `--shell` (or `$SHELL`) value with surrounding whitespace used to be split into an
-/// empty shell program plus an option, which panicked in `parse_path` on a `split_last()`
-/// of an empty list. Whitespace isn't part of the shell spec: trim it first.
 #[test]
 #[cfg(test)]
 fn test_shell_spec_whitespace_is_trimmed() {
