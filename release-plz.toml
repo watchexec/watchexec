@@ -17,6 +17,7 @@ semver_check = false
 
 [[package]]
 name = "test-socketfd"
+publish = false
 release = false
 
 [changelog]
