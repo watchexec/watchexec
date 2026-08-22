@@ -59,6 +59,10 @@ libc = "0.2.74"
 version = ">= 0.59.0, < 0.62.0"
 features = ["Win32_System_Console", "Win32_Foundation"]
 
+[dev-dependencies]
+tempfile = "3.16.0"
+tokio = { version = "1.33.0", features = ["macros", "time"] }
+
 [dev-dependencies.tracing-subscriber]
 version = "0.3.6"
 features = ["env-filter"]

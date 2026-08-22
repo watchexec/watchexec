@@ -178,7 +178,12 @@ pub struct EventsArgs {
 	/// By default, and where available, Watchexec uses the operating system's native file system
 	/// watching capabilities. This option disables that and instead uses a polling mechanism, which
 	/// is less efficient but can work around issues with some file systems (like network shares) or
-	/// edge cases.
+	/// edge cases. It also forces physical ignore pruning on platforms whose native FSEvents or Kqueue
+	/// backends retain Notify-owned recursion.
+	///
+	/// Polling registers each accepted directory separately, so work scales with directory count.
+	/// Initial traversal reads one directory synchronously at a time; it yields between directories,
+	/// but one exceptionally large or slow directory can still delay startup.
 	///
 	/// Optionally takes a unit-less value in milliseconds, or a time span value such as "2s 500ms",
 	/// to use as the polling interval. If not specified, the default is 30 seconds.

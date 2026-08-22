@@ -3770,6 +3770,7 @@ dependencies = [
  "nix",
  "normalize-path",
  "notify",
+ "tempfile",
  "thiserror",
  "tokio",
  "tracing",
@@ -3848,8 +3849,10 @@ dependencies = [
 name = "watchexec-filterer-globset"
 version = "8.0.1"
 dependencies = [
+ "dunce",
  "ignore",
  "ignore-files",
+ "normalize-path",
  "tempfile",
  "tokio",
  "tracing",
@@ -3863,10 +3866,8 @@ dependencies = [
 name = "watchexec-filterer-ignore"
 version = "7.0.1"
 dependencies = [
- "dunce",
  "ignore",
  "ignore-files",
- "normalize-path",
  "project-origins",
  "tokio",
  "tracing",

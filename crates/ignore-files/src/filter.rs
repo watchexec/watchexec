@@ -33,6 +33,9 @@ impl std::fmt::Debug for Ignore {
 /// This reads and compiles ignore files, and should be used for handling ignore files. It's created
 /// with a project origin and a list of ignore files, and new ignore files can be added later
 /// (unless [`finish`](IgnoreFilter::finish()) is called).
+///
+/// Files are read only when construction or a mutation method is called. The filter does not monitor
+/// loaded files for edits or automatically discover new ignore files.
 #[derive(Clone, Debug)]
 pub struct IgnoreFilter {
 	origin: PathBuf,
@@ -44,21 +47,21 @@ impl IgnoreFilter {
 	///
 	/// Prefer [`new()`](IgnoreFilter::new()) if you have ignore files ready to use.
 	pub fn empty(origin: impl AsRef<Path>) -> Self {
-		let origin = origin.as_ref();
+		let requested_origin = origin.as_ref();
+		let origin = std::path::absolute(requested_origin)
+			.expect("failed to make empty ignore filter origin absolute");
+		let origin = simplify_path(&origin);
 
 		let mut ignores = Trie::new();
 		ignores.insert(
 			origin.display().to_string(),
 			Ignore {
 				gitignore: Gitignore::empty(),
-				builder: Some(GitignoreBuilder::new(origin)),
+				builder: Some(GitignoreBuilder::new(&origin)),
 			},
 		);
 
-		Self {
-			origin: origin.to_owned(),
-			ignores,
-		}
+		Self { origin, ignores }
 	}
 
 	/// Read ignore files from disk and load them for filtering.
@@ -336,11 +339,12 @@ impl IgnoreFilter {
 		Ok(())
 	}
 
-	/// Match a particular path against the ignore set.
-	pub fn match_path(&self, path: &Path, is_dir: bool) -> Match<&Glob> {
-		let path = simplify_path(path);
-		let path = path.as_path();
-
+	fn match_path_in_scopes(
+		&self,
+		path: &Path,
+		is_dir: bool,
+		include_parents: bool,
+	) -> Match<&Glob> {
 		let mut search_path = path;
 		loop {
 			let Some(trie_node) = self
@@ -354,7 +358,7 @@ impl IgnoreFilter {
 			// Unwrap will always succeed because every node has an entry.
 			let ignores = trie_node.value().unwrap();
 
-			let match_ = if path.strip_prefix(&self.origin).is_ok() {
+			let match_ = if include_parents && path.strip_prefix(&self.origin).is_ok() {
 				trace!(?path, ?search_path, "checking against path or parents");
 				ignores.gitignore.matched_path_or_any_parents(path, is_dir)
 			} else {
@@ -369,19 +373,80 @@ impl IgnoreFilter {
 						?search_path,
 						"no match found, searching for parent ignores"
 					);
-					// Unwrap will always succeed because every node has an entry.
-					let trie_path = Path::new(trie_node.key().unwrap());
-					if let Some(trie_parent) = trie_path.parent() {
-						trace!(?path, ?search_path, "checking parent ignore");
-						search_path = trie_parent;
-					} else {
-						trace!(?path, ?search_path, "no parent ignore found");
-						return Match::None;
-					}
 				}
-				_ => return match_,
+				Match::Ignore(glob) => {
+					if glob
+						.from()
+						.map_or(true, |from| path.strip_prefix(from).is_ok())
+					{
+						return Match::Ignore(glob);
+					}
+					trace!(?path, ?search_path, ?glob, "ignore match is outside scope");
+				}
+				Match::Whitelist(glob) => {
+					if glob
+						.from()
+						.map_or(true, |from| path.strip_prefix(from).is_ok())
+					{
+						return Match::Whitelist(glob);
+					}
+					trace!(
+						?path,
+						?search_path,
+						?glob,
+						"whitelist match is outside scope"
+					);
+				}
+			}
+
+			// Unwrap will always succeed because every node has an entry.
+			let trie_path = Path::new(trie_node.key().unwrap());
+			if let Some(trie_parent) = trie_path.parent() {
+				trace!(?path, ?search_path, "checking parent ignore");
+				search_path = trie_parent;
+			} else {
+				trace!(?path, ?search_path, "no parent ignore found");
+				return Match::None;
 			}
 		}
+	}
+
+	/// Match a particular path against the ignore set.
+	#[must_use]
+	pub fn match_path(&self, path: &Path, is_dir: bool) -> Match<&Glob> {
+		let path = simplify_path(path);
+		self.match_path_in_scopes(&path, is_dir, true)
+	}
+
+	/// Match a path using the same top-down ancestor semantics as a filesystem walk.
+	///
+	/// An ignored ancestor is returned before matches on its descendants. Therefore, a descendant
+	/// negation cannot reopen a subtree that would already have been pruned. An explicit negation on
+	/// the ancestor itself allows matching to continue below it. Paths outside the filter origin are
+	/// matched exactly so project and global patterns are not applied to unrelated filesystem
+	/// ancestors.
+	#[must_use]
+	pub fn match_path_or_ancestors(&self, path: &Path, is_dir: bool) -> Match<&Glob> {
+		let path = simplify_path(path);
+		let ancestors = path
+			.strip_prefix(&self.origin)
+			.ok()
+			.map(|_| {
+				path.ancestors()
+					.skip(1)
+					.take_while(|ancestor| ancestor.starts_with(&self.origin))
+					.collect::<Vec<_>>()
+			})
+			.unwrap_or_default();
+
+		for ancestor in ancestors.into_iter().rev() {
+			if let Match::Ignore(glob) = self.match_path_in_scopes(ancestor, true, false) {
+				trace!(?path, ?ancestor, ?glob, "ancestor is ignored");
+				return Match::Ignore(glob);
+			}
+		}
+
+		self.match_path_in_scopes(&path, is_dir, false)
 	}
 
 	/// Check a particular folder path against the ignore set.
@@ -394,19 +459,14 @@ impl IgnoreFilter {
 		let _span = trace_span!("check_dir", ?path).entered();
 
 		trace!("checking against compiled ignore files");
-		match self.match_path(path, true) {
+		match self.match_path_or_ancestors(path, true) {
 			Match::None => {
 				trace!("no match (pass)");
 				true
 			}
 			Match::Ignore(glob) => {
-				if glob.from().map_or(true, |f| path.strip_prefix(f).is_ok()) {
-					trace!(?glob, "positive match (fail)");
-					false
-				} else {
-					trace!(?glob, "positive match, but not in scope (pass)");
-					true
-				}
+				trace!(?glob, "positive match (fail)");
+				false
 			}
 			Match::Whitelist(glob) => {
 				trace!(?glob, "negative match (pass)");
@@ -450,5 +510,15 @@ mod tests {
 	async fn handle_relative_paths() {
 		let ignore = IgnoreFilter::new(".", &[]).await.unwrap();
 		assert!(ignore.origin.is_absolute());
+	}
+
+	#[test]
+	fn empty_normalises_relative_origin() {
+		let ignore = IgnoreFilter::empty("relative/../origin");
+		assert!(ignore.origin.is_absolute());
+		assert_eq!(
+			ignore.origin,
+			std::env::current_dir().unwrap().join("origin")
+		);
 	}
 }

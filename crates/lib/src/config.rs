@@ -1,8 +1,8 @@
 //! Configuration and builders for [`crate::Watchexec`].
 
-use std::{future::Future, pin::pin, sync::Arc, time::Duration};
+use std::{future::Future, time::Duration};
 
-use tokio::sync::{watch, Notify};
+use tokio::sync::watch;
 use tracing::{debug, trace};
 
 use crate::{
@@ -30,9 +30,9 @@ use crate::{
 #[derive(Clone, Debug)]
 #[non_exhaustive]
 pub struct Config {
-	/// This is set by the change methods whenever they're called, and notifies Watchexec that it
-	/// should read the configuration again.
-	pub(crate) change_signal: Arc<Notify>,
+	/// This monotonic revision is incremented by the change methods whenever they're called, and
+	/// notifies Watchexec that it should read the configuration again.
+	pub(crate) change_signal: watch::Sender<u64>,
 
 	/// The main handler to define: what to do when an action is triggered.
 	///
@@ -110,6 +110,10 @@ pub struct Config {
 	///
 	/// If this is non-empty, the filesystem event source is started and configured to provide
 	/// events for these paths. If it becomes empty, the filesystem event source is shut down.
+	///
+	/// Every configured path is retained as an exact source root even when the configured
+	/// [`Filterer::check_dir`] would reject it. Source filtering applies to descendants of recursive
+	/// roots; event filtering remains separate.
 	pub pathset: Changeable<Vec<WatchedPath>>,
 
 	/// The kind of filesystem watcher to be used.
@@ -117,11 +121,13 @@ pub struct Config {
 
 	/// Whether to follow symlinks when watching paths.
 	///
-	/// When `true` (the default), the filesystem watcher will follow symbolic links and watch the
-	/// targets. When `false`, symlinks are not followed: events for the symlink itself may still
-	/// occur, but the symlink target will not be watched.
+	/// When `true` (the default), the filesystem watcher follows symbolic links and watches their
+	/// targets. When `false`, symlinks are not followed: events for a symlink itself may still occur,
+	/// but its target is not watched through that link.
 	///
-	/// This maps directly to [`notify::Config::with_follow_symlinks`].
+	/// Watchexec enforces this while traversing backends for which it manages recursion, and also
+	/// passes the value to Notify. Native backends which retain Notify-owned recursion may have
+	/// backend-specific behaviour; see [`crate::sources::fs`].
 	pub follow_symlinks: Changeable<bool>,
 
 	/// Listen for Unix job-control signals (`SIGTSTP` and `SIGCONT`).
@@ -154,9 +160,12 @@ pub struct Config {
 	/// Default is 50ms.
 	pub throttle: Changeable<Duration>,
 
-	/// The filterer implementation to use when filtering events.
+	/// The filterer implementation used for event and source-directory filtering.
 	///
-	/// The default is a no-op, which will always pass every event.
+	/// The default is a no-op, which passes every event and directory. Replacing the filterer through
+	/// [`Config::filterer()`] reconciles directory sources on backends for which Watchexec manages
+	/// recursion. It does not discover or reread ignore files: applications must rebuild and replace
+	/// an ignore-based filterer when those files change.
 	pub filterer: ChangeableFilterer,
 
 	/// The buffer size of the channel which carries runtime errors.
@@ -175,16 +184,16 @@ pub struct Config {
 	/// This is unchangeable at runtime and must be set before Watchexec instantiation.
 	pub event_channel_size: usize,
 
-	/// Signalled by the filesystem worker after it finishes applying a pathset change
-	/// (registering/unregistering OS watches). Subscribe via [`Config::fs_ready()`] **before**
-	/// calling [`Config::pathset()`] to avoid missing the notification.
+	/// Signalled by the filesystem worker after it settles reconciliation for an observed config
+	/// revision. Subscribe via [`Config::fs_ready()`] before changing filesystem configuration to
+	/// avoid missing or misattributing the notification.
 	pub(crate) fs_ready: watch::Sender<()>,
 }
 
 impl Default for Config {
 	fn default() -> Self {
 		Self {
-			change_signal: Default::default(),
+			change_signal: watch::channel(0).0,
 			action_handler: ChangeableFn::new(ActionReturn::Sync),
 			error_handler: Default::default(),
 			pathset: Default::default(),
@@ -204,6 +213,9 @@ impl Default for Config {
 impl Config {
 	/// Signal that the configuration has changed.
 	///
+	/// This increments a monotonic revision, so a change remains observable by config workers even
+	/// if it is signalled while they are busy. Multiple changes may be coalesced into one wakeup.
+	///
 	/// This is called automatically by all other methods here, so most of the time calling this
 	/// isn't needed, but it can be useful for some advanced uses.
 	#[allow(
@@ -211,26 +223,36 @@ impl Config {
 		reason = "this return can explicitly be ignored"
 	)]
 	pub fn signal_change(&self) -> &Self {
-		self.change_signal.notify_waiters();
+		self.change_signal.send_modify(|revision| {
+			*revision = revision
+				.checked_add(1)
+				.expect("configuration revision overflow");
+		});
 		self
 	}
 
-	/// Watch the config for a change, but run once first.
+	/// Watch the config for changes, running once immediately.
 	///
-	/// This returns a Stream where the first value is available immediately, and then every
-	/// subsequent one is from a change signal for this Config.
+	/// The first call to [`ConfigWatched::next()`] returns immediately. Later calls wait until the
+	/// revision changes; changes that occur between calls remain observable, and multiple changes
+	/// before a call are coalesced.
 	#[must_use]
 	pub(crate) fn watch(&self) -> ConfigWatched {
-		ConfigWatched::new(self.change_signal.clone())
+		ConfigWatched::new(self.change_signal.subscribe())
 	}
 
 	/// Subscribe to filesystem worker readiness notifications.
 	///
-	/// Returns a [`watch::Receiver`] that is notified each time the filesystem worker finishes
-	/// applying a pathset change (i.e. OS watches are registered/unregistered). Signals readiness
-	/// even if some paths failed to register; check the error handler for failures. To avoid
-	/// missing a notification, subscribe **before** calling [`Config::pathset()`], then
-	/// `.changed().await`.
+	/// The receiver is notified after the worker settles the most recently observed configuration,
+	/// including root, filterer, watcher, and symlink-policy reconciliation and any topology work
+	/// accepted during that reconciliation. Readiness means that this work has quiesced, not that
+	/// every path succeeded: best-effort failures are reported separately through the error handler
+	/// and the notification may represent partial filesystem coverage.
+	///
+	/// Notifications carry no revision value and concurrent or rapid changes may be coalesced. To
+	/// wait for a particular change without another caller racing it, subscribe before making the
+	/// change, then call `.changed().await`.
+	#[must_use]
 	pub fn fs_ready(&self) -> watch::Receiver<()> {
 		self.fs_ready.subscribe()
 	}
@@ -276,7 +298,12 @@ impl Config {
 		self.signal_change()
 	}
 
-	/// Set the filterer implementation to use.
+	/// Set the filterer implementation used for events and source directories.
+	///
+	/// On managed recursive backends, replacing the filterer triggers source reconciliation: newly
+	/// accepted directories can be added and newly rejected descendants can be removed. Replacing an
+	/// ignore-based filterer does not itself reread or rediscover ignore files; construct the new
+	/// filterer from the desired files first.
 	pub fn filterer(&self, filterer: impl Filterer + 'static) -> &Self {
 		debug!(?filterer, "Config: filterer");
 		self.filterer.replace(filterer);
@@ -319,33 +346,78 @@ impl Config {
 #[derive(Debug)]
 pub(crate) struct ConfigWatched {
 	first_run: bool,
-	notify: Arc<Notify>,
+	revision: watch::Receiver<u64>,
 }
 
 impl ConfigWatched {
-	fn new(notify: Arc<Notify>) -> Self {
-		let notified = notify.notified();
-		pin!(notified).as_mut().enable();
-
+	const fn new(revision: watch::Receiver<u64>) -> Self {
 		Self {
 			first_run: true,
-			notify,
+			revision,
 		}
 	}
 
-	pub async fn next(&mut self) {
-		let notified = self.notify.notified();
-		let mut notified = pin!(notified);
-		notified.as_mut().enable();
-
+	pub async fn next(&mut self) -> u64 {
 		if self.first_run {
-			trace!("ConfigWatched: first run");
+			let revision = *self.revision.borrow_and_update();
+			trace!(revision, "ConfigWatched: first run");
 			self.first_run = false;
+			revision
 		} else {
-			trace!(?notified, "ConfigWatched: waiting for change");
-			// there's a bit of a gotcha where any config changes made after a Notified resolves
-			// but before a new one is issued will not be caught. not sure how to fix that yet.
-			notified.await;
+			trace!("ConfigWatched: waiting for change");
+			self.revision
+				.changed()
+				.await
+				.expect("configuration change sender dropped");
+			let revision = *self.revision.borrow_and_update();
+			trace!(revision, "ConfigWatched: changed");
+			revision
 		}
+	}
+
+	/// Whether a revision is already waiting to be observed.
+	///
+	/// Filesystem recursion uses this before every bounded state-machine step so
+	/// an obsolete reconciliation cannot advance into its destructive sweep.
+	pub fn pending(&self) -> bool {
+		self.first_run
+			|| self
+				.revision
+				.has_changed()
+				.expect("configuration change sender dropped")
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use futures::FutureExt as _;
+
+	use super::Config;
+
+	#[test]
+	fn config_watch_first_run_is_immediate() {
+		let config = Config::default();
+		let mut watched = config.watch();
+
+		assert_eq!(watched.next().now_or_never(), Some(0));
+	}
+
+	#[test]
+	fn config_watch_waits_after_first_run() {
+		let config = Config::default();
+		let mut watched = config.watch();
+
+		assert!(watched.next().now_or_never().is_some());
+		assert!(watched.next().now_or_never().is_none());
+	}
+
+	#[test]
+	fn config_watch_observes_change_between_calls() {
+		let config = Config::default();
+		let mut watched = config.watch();
+
+		assert_eq!(watched.next().now_or_never(), Some(0));
+		config.signal_change();
+		assert_eq!(watched.next().now_or_never(), Some(1));
 	}
 }

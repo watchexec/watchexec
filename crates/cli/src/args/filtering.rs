@@ -36,6 +36,10 @@ pub struct FilteringArgs {
 	///
 	/// This option can be specified multiple times to watch multiple files or directories.
 	///
+	/// Every specified path is an exact watch root. The root itself is retained even if it matches an
+	/// ignore rule, while descendants of a recursive directory still obey ignores. Filesystem events
+	/// for the exact root also bypass CLI ignore rules.
+	///
 	/// The special value '/dev/null', provided as the only path watched, will cause Watchexec to
 	/// not watch any paths. Other event sources (like signals or key events) may still be used.
 	#[arg(
@@ -51,6 +55,9 @@ pub struct FilteringArgs {
 	/// Watch a specific directory, non-recursively
 	///
 	/// Unlike '-w', folders watched with this option are not recursed into.
+	///
+	/// The exact path is retained even if it matches an ignore rule, and filesystem events for that
+	/// root bypass CLI ignore rules.
 	///
 	/// This option can be specified multiple times to watch multiple directories non-recursively.
 	#[arg(
@@ -325,6 +332,16 @@ pub struct FilteringArgs {
 	/// Provide a glob-like filter pattern, and events for files matching the pattern will be
 	/// excluded. Multiple patterns can be given by repeating the option. Events that are not from
 	/// files (e.g. signals, keyboard events) will pass through untouched.
+	///
+	/// When the actual watcher backend is Inotify, Windows ReadDirectoryChanges, or Poll, ignore
+	/// files, built-in ignores, '--ignore', and '--ignore-file' also prune matching directories from
+	/// the watched source tree. Positive filters, extension filters, filesystem event kinds, and
+	/// filter programs only filter events after they are observed; they do not prune sources.
+	///
+	/// Native FSEvents and Kqueue retain Notify's recursion, so ignores filter their events without
+	/// physically pruning ignored directories. Use '--poll' to force source pruning on those
+	/// platforms. Ignore files are discovered and read once at startup; edits and newly created ignore
+	/// files are not loaded while Watchexec is running.
 	#[arg(
 		long = "ignore",
 		short = 'i',
@@ -393,6 +410,11 @@ pub struct FilteringArgs {
 	///
 	/// This can be useful when ignored paths are reachable via symlinks, or when watching a
 	/// directory that contains symlinks pointing outside the project (e.g. Bazel output symlinks).
+	///
+	/// Watchexec enforces this across every path component for Inotify, Windows
+	/// ReadDirectoryChanges, and Poll. On those backends it also guards a missing root from its nearest
+	/// safe existing ancestor, so the root can be watched if it appears later. Other native backends
+	/// delegate symlink handling to Notify and may behave differently.
 	#[arg(
 		long = "no-follow-symlinks",
 		help_heading = OPTSET_FILTERING,

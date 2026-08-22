@@ -10,25 +10,35 @@
 #![deny(rust_2018_idioms)]
 
 use std::{
+	collections::HashSet,
 	ffi::OsString,
 	path::{Path, PathBuf},
 };
 
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use ignore_files::{Error, IgnoreFile, IgnoreFilter};
+use normalize_path::NormalizePath;
 use tracing::{debug, trace, trace_span};
 use watchexec::{error::RuntimeError, filter::Filterer};
-use watchexec_events::{Event, FileType, Priority};
+use watchexec_events::{Event, FileType, Priority, Tag};
 use watchexec_filterer_ignore::IgnoreFilterer;
 
+fn simplify_path(path: &Path) -> PathBuf {
+	dunce::simplified(path).normalize()
+}
+
 /// A simple filterer in the style of the watchexec v1.17 filter.
+///
+/// Its source-directory check uses ignore files and ignore globs only. Positive filters, extension
+/// filters, and the exact-path whitelist remain event-only so they cannot prune directories which
+/// may contain matching events.
 #[cfg_attr(feature = "full_debug", derive(Debug))]
 pub struct GlobsetFilterer {
 	#[cfg_attr(not(unix), allow(dead_code))]
 	origin: PathBuf,
 	filters: Gitignore,
 	ignores: Gitignore,
-	whitelist: Vec<PathBuf>,
+	whitelist: HashSet<PathBuf>,
 	ignore_files: IgnoreFilterer,
 	extensions: Vec<OsString>,
 }
@@ -62,6 +72,9 @@ impl GlobsetFilterer {
 	/// The extensions list is used to filter files by extension.
 	///
 	/// Non-path events are always passed.
+	///
+	/// Ignore files are read during construction and are not monitored for later edits. Build a new
+	/// filterer to load changed or newly discovered files.
 	#[allow(clippy::future_not_send)]
 	pub async fn new(
 		origin: impl AsRef<Path>,
@@ -71,9 +84,14 @@ impl GlobsetFilterer {
 		ignore_files: impl IntoIterator<Item = IgnoreFile>,
 		extensions: impl IntoIterator<Item = OsString>,
 	) -> Result<Self, Error> {
-		let origin = origin.as_ref();
-		let mut filters_builder = GitignoreBuilder::new(origin);
-		let mut ignores_builder = GitignoreBuilder::new(origin);
+		let requested_origin = origin.as_ref();
+		let origin = dunce::canonicalize(requested_origin).map_err(|err| Error::Canonicalize {
+			path: requested_origin.to_owned(),
+			err,
+		})?;
+		let origin = simplify_path(&origin);
+		let mut filters_builder = GitignoreBuilder::new(&origin);
+		let mut ignores_builder = GitignoreBuilder::new(&origin);
 
 		for (filter, in_path) in filters {
 			trace!(filter=?&filter, "add filter to globset filterer");
@@ -98,12 +116,19 @@ impl GlobsetFilterer {
 
 		let extensions: Vec<OsString> = extensions.into_iter().collect();
 
-		let mut ignore_files =
-			IgnoreFilter::new(origin, &ignore_files.into_iter().collect::<Vec<_>>()).await?;
+		let ignore_files = ignore_files.into_iter().collect::<Vec<_>>();
+		let mut ignore_files = if ignore_files.is_empty() {
+			IgnoreFilter::empty(&origin)
+		} else {
+			IgnoreFilter::new(&origin, &ignore_files).await?
+		};
 		ignore_files.finish();
 		let ignore_files = IgnoreFilterer(ignore_files);
 
-		let whitelist = whitelist.into_iter().collect::<Vec<_>>();
+		let whitelist = whitelist
+			.into_iter()
+			.map(|path| simplify_path(&path))
+			.collect::<HashSet<_>>();
 
 		debug!(
 			?origin,
@@ -116,7 +141,7 @@ impl GlobsetFilterer {
 		"globset filterer built");
 
 		Ok(Self {
-			origin: origin.into(),
+			origin,
 			filters,
 			ignores,
 			whitelist,
@@ -124,22 +149,82 @@ impl GlobsetFilterer {
 			extensions,
 		})
 	}
+
+	/// Return whether an ignore glob rejects this path or an ancestor directory.
+	///
+	/// Ancestors are checked from the top down, as they would be during a filesystem walk. Once an
+	/// ancestor is ignored, a negation matching only a descendant cannot reopen the pruned subtree.
+	/// Paths outside the project origin are matched exactly, since this filterer does not know their
+	/// traversal root and must not apply project-relative globs to arbitrary filesystem ancestors.
+	fn ignored_by_globs(&self, path: &Path, is_dir: bool) -> bool {
+		let ancestors = path
+			.strip_prefix(&self.origin)
+			.ok()
+			.map(|_| {
+				path.ancestors()
+					.skip(1)
+					.take_while(|ancestor| ancestor.starts_with(&self.origin))
+					.collect::<Vec<_>>()
+			})
+			.unwrap_or_default();
+
+		for ancestor in ancestors.into_iter().rev() {
+			if self.ignores.matched(ancestor, true).is_ignore() {
+				trace!(?path, ?ancestor, "ignored by ancestor globset ignore");
+				return true;
+			}
+		}
+
+		self.ignores.matched(path, is_dir).is_ignore()
+	}
 }
 
 impl Filterer for GlobsetFilterer {
+	/// Filter a source directory using ignore files and ignore globs.
+	///
+	/// Positive filters, extension filters, and the exact-path whitelist are event-only and do not
+	/// affect this check.
+	fn check_dir(&self, path: &Path) -> Result<bool, RuntimeError> {
+		let path = simplify_path(path);
+		let path = path.as_path();
+		let _span = trace_span!("filterer_check_dir", ?path).entered();
+
+		trace!("checking internal ignore filterer");
+		if !self.ignore_files.check_dir(path)? {
+			trace!("internal ignore filterer matched (fail)");
+			return Ok(false);
+		}
+
+		if self.ignored_by_globs(path, true) {
+			trace!("ignored by globset ignore");
+			Ok(false)
+		} else {
+			Ok(true)
+		}
+	}
+
 	/// Filter an event.
 	///
 	/// This implementation never errors.
 	fn check_event(&self, event: &Event, priority: Priority) -> Result<bool, RuntimeError> {
 		let _span = trace_span!("filterer_check").entered();
+		let mut event = Event {
+			tags: event.tags.clone(),
+			metadata: Default::default(),
+		};
+		for tag in &mut event.tags {
+			if let Tag::Path { path, .. } = tag {
+				*path = simplify_path(path);
+			}
+		}
+		let event = &event;
 
 		{
 			trace!("checking internal whitelist");
 			// Ideally check path equality backwards for better perf
 			// There could be long matching prefixes so we will exit late
-			if event
-				.paths()
-				.any(|(p, _)| self.whitelist.iter().any(|w| w == p))
+			if !self.whitelist.is_empty()
+				&& event.paths().any(|(path, _)| self.whitelist.contains(path))
 			{
 				trace!("internal whitelist filterer matched (success)");
 				return Ok(true);
@@ -167,7 +252,7 @@ impl Filterer for GlobsetFilterer {
 				let _span = trace_span!("path", ?path).entered();
 				let is_dir = file_type.map_or(false, |t| matches!(t, FileType::Dir));
 
-				if self.ignores.matched(path, is_dir).is_ignore() {
+				if self.ignored_by_globs(path, is_dir) {
 					trace!("ignored by globset ignore");
 					return false;
 				}

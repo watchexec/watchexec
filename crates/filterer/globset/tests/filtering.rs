@@ -1,6 +1,49 @@
 mod helpers;
 use helpers::globset::*;
-use std::io::Write;
+use ignore_files::IgnoreFile;
+use std::{
+	ffi::OsString,
+	io::Write,
+	path::{Path, PathBuf},
+};
+use watchexec::filter::Filterer;
+use watchexec_filterer_globset::GlobsetFilterer;
+
+fn assert_source_dir(filterer: &impl Filterer, path: &str, pass: bool) {
+	let origin = std::fs::canonicalize(".").unwrap();
+	assert_eq!(
+		filterer.check_dir(&origin.join(path)).unwrap(),
+		pass,
+		"source directory {path:?} (expected {})",
+		if pass { "pass" } else { "fail" }
+	);
+}
+
+async fn direct_filt(
+	origin: &Path,
+	ignores: &[&str],
+	whitelist: impl IntoIterator<Item = PathBuf>,
+) -> GlobsetFilterer {
+	direct_full_filt(origin, &[], ignores, whitelist).await
+}
+
+async fn direct_full_filt(
+	origin: &Path,
+	filters: &[&str],
+	ignores: &[&str],
+	whitelist: impl IntoIterator<Item = PathBuf>,
+) -> GlobsetFilterer {
+	GlobsetFilterer::new(
+		origin,
+		filters.iter().map(|filter| ((*filter).to_owned(), None)),
+		ignores.iter().map(|ignore| ((*ignore).to_owned(), None)),
+		whitelist,
+		std::iter::empty::<IgnoreFile>(),
+		std::iter::empty::<OsString>(),
+	)
+	.await
+	.unwrap()
+}
 
 #[tokio::test]
 async fn empty_filter_passes_everything() {
@@ -20,6 +63,170 @@ async fn empty_filter_passes_everything() {
 	filterer.dir_does_pass("apples/carrots/cauliflowers/oranges");
 	filterer.dir_does_pass("apples/carrots/cauliflowers/artichokes/oranges");
 	filterer.dir_does_pass("apples/oranges/bananas");
+}
+
+#[tokio::test]
+async fn source_checks_manual_ignore_boundary_parent_and_negation() {
+	let filterer = filt(&[], &["**/prunes"], &[], &[], &[]).await;
+	assert_source_dir(&filterer, "apples", true);
+	assert_source_dir(&filterer, "prunes", false);
+	assert_source_dir(&filterer, "prunes/nested", false);
+
+	let filterer = filt(&[], &["**/keep", "!**/keep"], &[], &[], &[]).await;
+	assert_source_dir(&filterer, "keep", true);
+}
+
+#[tokio::test]
+async fn source_checks_ignore_files() {
+	let mut ignore_file = tempfile::NamedTempFile::new().unwrap();
+	ignore_file.write_all(b"ignored\n").unwrap();
+	let filterer = filt(&[], &[], &[], &[], &[ignore_file.path().to_path_buf()]).await;
+
+	assert_source_dir(&filterer, "allowed", true);
+	assert_source_dir(&filterer, "ignored", false);
+	assert_source_dir(&filterer, "ignored/nested", false);
+}
+
+#[tokio::test]
+async fn source_checks_git_boundary_and_descendants() {
+	let filterer = filt(&[], &["**/.git", "**/.git/**"], &[], &[], &[]).await;
+	assert_source_dir(&filterer, ".github", true);
+	assert_source_dir(&filterer, ".git", false);
+	assert_source_dir(&filterer, ".git/objects", false);
+	assert_source_dir(&filterer, "project/.git", false);
+	assert_source_dir(&filterer, "project/.git/objects", false);
+}
+
+#[tokio::test]
+async fn source_checks_do_not_use_positive_filters_or_extensions() {
+	let filterer = filt(&["**/*.rs"], &[], &[], &["rs"], &[]).await;
+
+	filterer.dir_doesnt_pass("build");
+	assert_source_dir(&filterer, "build", true);
+	assert_source_dir(&filterer, "src", true);
+}
+
+#[tokio::test]
+async fn exact_whitelist_is_event_only_for_source_checks() {
+	let origin = std::fs::canonicalize(".").unwrap();
+	let whitelist = origin.join(".git").display().to_string();
+	let filterer = filt(&[], &["**/.git", "**/.git/**"], &[&whitelist], &[], &[]).await;
+
+	filterer.dir_does_pass(".git");
+	assert_source_dir(&filterer, ".git", false);
+}
+
+#[tokio::test]
+async fn relative_origin_stops_ancestor_matching_at_project_boundary() {
+	let sandbox = tempfile::tempdir_in(".").unwrap();
+	let project = sandbox.path().join("rust").join("project");
+	std::fs::create_dir_all(&project).unwrap();
+	let origin = std::fs::canonicalize(&project).unwrap();
+	let cwd = std::fs::canonicalize(".").unwrap();
+	let relative_origin = origin.strip_prefix(cwd).unwrap().to_owned();
+	let filterer = direct_filt(&relative_origin, &["rust"], Vec::new()).await;
+
+	assert!(filterer.check_dir(&origin.join("src")).unwrap());
+	assert!(!filterer.check_dir(&origin.join("rust")).unwrap());
+}
+
+#[tokio::test]
+async fn out_of_origin_paths_do_not_match_external_ancestors() {
+	let sandbox = tempfile::tempdir().unwrap();
+	let origin = sandbox.path().join("project");
+	let external = sandbox.path().join("rust").join("watched");
+	std::fs::create_dir_all(&origin).unwrap();
+	std::fs::create_dir_all(&external).unwrap();
+	let filterer = direct_filt(&origin, &["rust"], Vec::new()).await;
+
+	assert!(filterer.check_dir(&external.join("child")).unwrap());
+	assert!(!filterer
+		.check_dir(&origin.join("rust").join("child"))
+		.unwrap());
+}
+
+#[tokio::test]
+async fn direct_whitelist_normalises_constructor_and_event_aliases() {
+	use watchexec_events::{Event, FileType, Tag};
+
+	let origin = std::fs::canonicalize(".").unwrap();
+	let whitelisted = origin.join("first").join("..").join("watched");
+	let emitted = origin.join("second").join("..").join("watched");
+	let filterer = direct_filt(&origin, &["watched"], vec![whitelisted]).await;
+	let event = Event {
+		tags: vec![Tag::Path {
+			path: emitted.clone(),
+			file_type: Some(FileType::Dir),
+		}],
+		metadata: Default::default(),
+	};
+
+	assert!(filterer.check_event(&event, Priority::Normal).unwrap());
+	assert!(!filterer.check_dir(&emitted).unwrap());
+}
+
+#[tokio::test]
+async fn direct_positive_filter_normalises_lexical_event_alias() {
+	use watchexec_events::{Event, FileType, Tag};
+
+	let origin = dunce::canonicalize(".").unwrap();
+	let emitted = origin
+		.join("alias")
+		.join("..")
+		.join("watched")
+		.join("main.rs");
+	let filterer =
+		direct_full_filt(&origin, &["watched/main.rs"], &[], Vec::<PathBuf>::new()).await;
+	let event = Event {
+		tags: vec![Tag::Path {
+			path: emitted,
+			file_type: Some(FileType::File),
+		}],
+		metadata: Default::default(),
+	};
+
+	assert!(filterer.check_event(&event, Priority::Normal).unwrap());
+}
+
+#[cfg(windows)]
+#[tokio::test]
+async fn direct_whitelist_simplifies_verbatim_windows_path() {
+	use watchexec_events::{Event, FileType, Tag};
+
+	let origin = dunce::canonicalize(".").unwrap();
+	let emitted = origin.join("watched");
+	let verbatim = PathBuf::from(format!(r"\\?\{}", emitted.display()));
+	let filterer = direct_filt(&origin, &["watched"], vec![verbatim]).await;
+	let event = Event {
+		tags: vec![Tag::Path {
+			path: emitted,
+			file_type: Some(FileType::Dir),
+		}],
+		metadata: Default::default(),
+	};
+
+	assert!(filterer.check_event(&event, Priority::Normal).unwrap());
+}
+
+#[cfg(windows)]
+#[tokio::test]
+async fn direct_positive_filter_simplifies_verbatim_windows_path() {
+	use watchexec_events::{Event, FileType, Tag};
+
+	let origin = dunce::canonicalize(".").unwrap();
+	let emitted = origin.join("watched").join("main.rs");
+	let verbatim = PathBuf::from(format!(r"\\?\{}", emitted.display()));
+	let filterer =
+		direct_full_filt(&origin, &["watched/main.rs"], &[], Vec::<PathBuf>::new()).await;
+	let event = Event {
+		tags: vec![Tag::Path {
+			path: verbatim,
+			file_type: Some(FileType::File),
+		}],
+		metadata: Default::default(),
+	};
+
+	assert!(filterer.check_event(&event, Priority::Normal).unwrap());
 }
 
 #[tokio::test]
@@ -316,11 +523,11 @@ async fn ignore_glob_middle_double_star() {
 	filterer.file_doesnt_pass("apples/carrots/oranges");
 	filterer.file_doesnt_pass("apples/carrots/cauliflowers/oranges");
 	filterer.file_doesnt_pass("apples/carrots/cauliflowers/artichokes/oranges");
-	filterer.file_does_pass("apples/oranges/bananas");
+	filterer.file_doesnt_pass("apples/oranges/bananas");
 	filterer.dir_doesnt_pass("apples/carrots/oranges");
 	filterer.dir_doesnt_pass("apples/carrots/cauliflowers/oranges");
 	filterer.dir_doesnt_pass("apples/carrots/cauliflowers/artichokes/oranges");
-	filterer.dir_does_pass("apples/oranges/bananas");
+	filterer.dir_doesnt_pass("apples/oranges/bananas");
 }
 
 #[tokio::test]
@@ -331,11 +538,11 @@ async fn ignore_glob_double_star_trailing_slash() {
 	filterer.file_does_pass("apples/carrots/oranges");
 	filterer.file_does_pass("apples/carrots/cauliflowers/oranges");
 	filterer.file_does_pass("apples/carrots/cauliflowers/artichokes/oranges");
-	filterer.file_does_pass("apples/oranges/bananas");
+	filterer.file_doesnt_pass("apples/oranges/bananas");
 	filterer.dir_doesnt_pass("apples/carrots/oranges");
 	filterer.dir_doesnt_pass("apples/carrots/cauliflowers/oranges");
 	filterer.dir_doesnt_pass("apples/carrots/cauliflowers/artichokes/oranges");
-	filterer.dir_does_pass("apples/oranges/bananas");
+	filterer.dir_doesnt_pass("apples/oranges/bananas");
 	filterer.unk_does_pass("apples/carrots/oranges");
 	filterer.unk_does_pass("apples/carrots/cauliflowers/oranges");
 	filterer.unk_does_pass("apples/carrots/cauliflowers/artichokes/oranges");
@@ -474,10 +681,10 @@ async fn nonpath_event_passes() {
 		.unwrap());
 }
 
-// The following tests replicate the "buggy"/"confusing" watchexec v1 behaviour.
+// Folder ignore patterns reject descendant events when their source directory would be pruned.
 
 #[tokio::test]
-async fn ignore_folder_incorrectly_with_bare_match() {
+async fn ignore_folder_with_bare_match() {
 	let filterer = filt(&[], &["prunes"], &[], &[], &[]).await;
 
 	filterer.file_does_pass("apples");
@@ -499,16 +706,15 @@ async fn ignore_folder_incorrectly_with_bare_match() {
 	filterer.file_doesnt_pass("prunes");
 	filterer.dir_doesnt_pass("prunes");
 
-	// buggy behaviour (should be doesnt):
-	filterer.file_does_pass("prunes/carrots/cauliflowers/oranges");
-	filterer.file_does_pass("prunes/carrots/cauliflowers/artichokes/oranges");
-	filterer.file_does_pass("prunes/oranges/bananas");
-	filterer.dir_does_pass("prunes/carrots/cauliflowers/oranges");
-	filterer.dir_does_pass("prunes/carrots/cauliflowers/artichokes/oranges");
+	filterer.file_doesnt_pass("prunes/carrots/cauliflowers/oranges");
+	filterer.file_doesnt_pass("prunes/carrots/cauliflowers/artichokes/oranges");
+	filterer.file_doesnt_pass("prunes/oranges/bananas");
+	filterer.dir_doesnt_pass("prunes/carrots/cauliflowers/oranges");
+	filterer.dir_doesnt_pass("prunes/carrots/cauliflowers/artichokes/oranges");
 }
 
 #[tokio::test]
-async fn ignore_folder_incorrectly_with_bare_and_leading_slash() {
+async fn ignore_folder_with_bare_and_leading_slash() {
 	let filterer = filt(&[], &["/prunes"], &[], &[], &[]).await;
 
 	filterer.file_does_pass("apples");
@@ -530,16 +736,15 @@ async fn ignore_folder_incorrectly_with_bare_and_leading_slash() {
 	filterer.file_doesnt_pass("prunes");
 	filterer.dir_doesnt_pass("prunes");
 
-	// buggy behaviour (should be doesnt):
-	filterer.file_does_pass("prunes/carrots/cauliflowers/oranges");
-	filterer.file_does_pass("prunes/carrots/cauliflowers/artichokes/oranges");
-	filterer.file_does_pass("prunes/oranges/bananas");
-	filterer.dir_does_pass("prunes/carrots/cauliflowers/oranges");
-	filterer.dir_does_pass("prunes/carrots/cauliflowers/artichokes/oranges");
+	filterer.file_doesnt_pass("prunes/carrots/cauliflowers/oranges");
+	filterer.file_doesnt_pass("prunes/carrots/cauliflowers/artichokes/oranges");
+	filterer.file_doesnt_pass("prunes/oranges/bananas");
+	filterer.dir_doesnt_pass("prunes/carrots/cauliflowers/oranges");
+	filterer.dir_doesnt_pass("prunes/carrots/cauliflowers/artichokes/oranges");
 }
 
 #[tokio::test]
-async fn ignore_folder_incorrectly_with_bare_and_trailing_slash() {
+async fn ignore_folder_with_bare_and_trailing_slash() {
 	let filterer = filt(&[], &["prunes/"], &[], &[], &[]).await;
 
 	filterer.file_does_pass("apples");
@@ -560,17 +765,17 @@ async fn ignore_folder_incorrectly_with_bare_and_trailing_slash() {
 
 	filterer.dir_doesnt_pass("prunes");
 
-	// buggy behaviour (should be doesnt):
+	// The directory-only glob does not ignore a file at the boundary.
 	filterer.file_does_pass("prunes");
-	filterer.file_does_pass("prunes/carrots/cauliflowers/oranges");
-	filterer.file_does_pass("prunes/carrots/cauliflowers/artichokes/oranges");
-	filterer.file_does_pass("prunes/oranges/bananas");
-	filterer.dir_does_pass("prunes/carrots/cauliflowers/oranges");
-	filterer.dir_does_pass("prunes/carrots/cauliflowers/artichokes/oranges");
+	filterer.file_doesnt_pass("prunes/carrots/cauliflowers/oranges");
+	filterer.file_doesnt_pass("prunes/carrots/cauliflowers/artichokes/oranges");
+	filterer.file_doesnt_pass("prunes/oranges/bananas");
+	filterer.dir_doesnt_pass("prunes/carrots/cauliflowers/oranges");
+	filterer.dir_doesnt_pass("prunes/carrots/cauliflowers/artichokes/oranges");
 }
 
 #[tokio::test]
-async fn ignore_folder_incorrectly_with_only_double_double_glob() {
+async fn ignore_folder_with_only_double_double_glob() {
 	let filterer = filt(&[], &["**/prunes/**"], &[], &[], &[]).await;
 
 	filterer.file_does_pass("apples");
@@ -595,7 +800,7 @@ async fn ignore_folder_incorrectly_with_only_double_double_glob() {
 	filterer.dir_doesnt_pass("prunes/carrots/cauliflowers/oranges");
 	filterer.dir_doesnt_pass("prunes/carrots/cauliflowers/artichokes/oranges");
 
-	// buggy behaviour (should be doesnt):
+	// A trailing `/**` does not match the directory boundary, so traversal remains possible.
 	filterer.file_does_pass("prunes");
 	filterer.dir_does_pass("prunes");
 }
@@ -627,6 +832,35 @@ async fn ignore_folder_correctly_with_double_and_double_double_globs() {
 	filterer.dir_doesnt_pass("prunes");
 	filterer.dir_doesnt_pass("prunes/carrots/cauliflowers/oranges");
 	filterer.dir_doesnt_pass("prunes/carrots/cauliflowers/artichokes/oranges");
+}
+
+#[tokio::test]
+async fn descendant_negation_does_not_reopen_ignored_parent() {
+	let filterer = filt(&[], &["parent/", "!parent/child"], &[], &[], &[]).await;
+
+	filterer.dir_doesnt_pass("parent");
+	filterer.file_doesnt_pass("parent/child");
+	assert_source_dir(&filterer, "parent", false);
+	assert_source_dir(&filterer, "parent/child", false);
+}
+
+#[tokio::test]
+async fn explicitly_unignored_parent_allows_descendant_negation() {
+	let filterer = filt(
+		&[],
+		&["parent/", "!parent/", "parent/*", "!parent/child"],
+		&[],
+		&[],
+		&[],
+	)
+	.await;
+
+	filterer.dir_does_pass("parent");
+	filterer.file_does_pass("parent/child");
+	filterer.file_doesnt_pass("parent/sibling");
+	assert_source_dir(&filterer, "parent", true);
+	assert_source_dir(&filterer, "parent/child", true);
+	assert_source_dir(&filterer, "parent/sibling", false);
 }
 
 #[tokio::test]

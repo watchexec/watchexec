@@ -545,8 +545,14 @@ The signal can be specified with the \--signal option.
 By default, and where available, Watchexec uses the operating systems
 native file system watching capabilities. This option disables that and
 instead uses a polling mechanism, which is less efficient but can work
-around issues with some file systems (like network shares) or edge
-cases.
+around issues with some file systems (like network shares) or edge cases.
+It also forces physical ignore pruning on platforms whose native FSEvents
+or Kqueue backends retain Notify-owned recursion.
+
+Polling registers each accepted directory separately, so work scales with
+directory count. Initial traversal reads one directory synchronously at a
+time; it yields between directories, but one exceptionally large or slow
+directory can still delay startup.
 
 Optionally takes a unit-less value in milliseconds, or a time span value
 such as \"2s 500ms\", to use as the polling interval. If not specified,
@@ -718,6 +724,19 @@ pattern will be excluded. Multiple patterns can be given by repeating
 the option. Events that are not from files (e.g. signals, keyboard
 events) will pass through untouched.
 
+When the actual watcher backend is Inotify, Windows
+ReadDirectoryChanges, or Poll, ignore files, built-in ignores, \--ignore,
+and \--ignore-file also prune matching directories from the watched
+source tree. Positive filters, extension filters, filesystem event kinds,
+and filter programs only filter events after they are observed; they do
+not prune sources.
+
+Native FSEvents and Kqueue retain Notify's recursion, so ignores filter
+their events without physically pruning ignored directories. Use \--poll
+to force source pruning on those platforms. Ignore files are discovered
+and read once at startup; edits and newly created ignore files are not
+loaded while Watchexec is running.
+
 **\--ignore-file** *\<PATH\>*
 
 :   Files to load ignores from
@@ -857,6 +876,11 @@ paths. See the help for \--project-origin for more information.
 This option can be specified multiple times to watch multiple files or
 directories.
 
+Every specified path is an exact watch root. The root itself is retained
+even if it matches an ignore rule, while descendants of a recursive
+directory still obey ignores. Filesystem events for the exact root also
+bypass CLI ignore rules.
+
 The special value /dev/null, provided as the only path watched, will
 cause Watchexec to not watch any paths. Other event sources (like
 signals or key events) may still be used.
@@ -866,6 +890,9 @@ signals or key events) may still be used.
 :   Watch a specific directory, non-recursively
 
 Unlike -w, folders watched with this option are not recursed into.
+
+The exact path is retained even if it matches an ignore rule, and
+filesystem events for that root bypass CLI ignore rules.
 
 This option can be specified multiple times to watch multiple
 directories non-recursively.
@@ -896,6 +923,12 @@ will not be watched through the link.
 This can be useful when ignored paths are reachable via symlinks, or
 when watching a directory that contains symlinks pointing outside the
 project (e.g. Bazel output symlinks).
+
+Watchexec enforces this across every path component for Inotify, Windows
+ReadDirectoryChanges, and Poll. On those backends it also guards a
+missing root from its nearest safe existing ancestor, so the root can be
+watched if it appears later. Other native backends delegate symlink
+handling to Notify and may behave differently.
 
 # DEBUGGING
 

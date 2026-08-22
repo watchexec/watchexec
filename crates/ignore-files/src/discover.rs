@@ -13,7 +13,7 @@ use project_origins::ProjectType;
 use tokio::fs::{canonicalize, metadata, read_dir};
 use tracing::{trace, trace_span};
 
-use crate::{IgnoreFile, IgnoreFilter};
+use crate::{IgnoreFile, IgnoreFilter, VCS_DIR_NAMES};
 
 /// Arguments for finding ignored files in a given directory and subdirectories
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -503,19 +503,13 @@ impl DirTourist {
 			.await
 			.map_err(|err| Error::new(ErrorKind::Other, err))?;
 
+		let vcs_ignores: Vec<_> = VCS_DIR_NAMES
+			.iter()
+			.map(|directory| format!("/{directory}"))
+			.collect();
+		let vcs_ignores: Vec<_> = vcs_ignores.iter().map(String::as_str).collect();
 		filter
-			.add_globs(
-				&[
-					"/.git",
-					"/.hg",
-					"/.bzr",
-					"/_darcs",
-					"/.fossil-settings",
-					"/.svn",
-					"/.pijul",
-				],
-				Some(&base),
-			)
+			.add_globs(&vcs_ignores, Some(&base))
 			.map_err(|err| Error::new(ErrorKind::Other, err))?;
 
 		Ok(Self {
