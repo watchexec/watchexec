@@ -555,7 +555,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 										job.signal(if cfg!(windows) {
 											Signal::ForceStop
 										} else {
-											stop_signal.or(signal).unwrap_or(Signal::Terminate)
+											on_busy_signal(signal, stop_signal)
 										});
 									}
 									OnBusyUpdate::Restart if cfg!(windows) => {
@@ -673,6 +673,17 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 	Ok(config)
 }
 
+/// The signal to send in the `signal` mode of `--on-busy-update`.
+///
+/// `--stop-signal` documents that it's used by the `signal` mode "unless `--signal` is provided",
+/// so `--signal` wins when both are given, and `--stop-signal` is only the fallback.
+const fn on_busy_signal(signal: Option<Signal>, stop_signal: Option<Signal>) -> Signal {
+	match (signal, stop_signal) {
+		(Some(sig), _) | (None, Some(sig)) => sig,
+		(None, None) => Signal::Terminate,
+	}
+}
+
 /// `$SHELL` as set inside Git Bash / MSYS2 (and a plain `--shell=/usr/bin/bash`)
 /// is a POSIX-style path. Windows process creation doesn't understand those,
 /// so spawning would fail with "the system cannot find the path specified"
@@ -726,6 +737,42 @@ fn resolve_shell_prog_in(
 #[cfg(not(windows))]
 fn resolve_shell_prog(prog: &str) -> String {
 	prog.to_string()
+}
+
+#[cfg(test)]
+mod on_busy_signal_tests {
+	use super::on_busy_signal;
+	use watchexec_signals::Signal;
+
+	/// '--stop-signal' documents that it is used by the 'signal' mode of '--on-busy-update'
+	/// "(unless '--signal' is provided)", and '--signal' documents that the signal it names is the
+	/// one sent "when it's still running". So '--signal' has to win over '--stop-signal'.
+	#[test]
+	fn signal_wins_over_stop_signal() {
+		assert_eq!(
+			on_busy_signal(Some(Signal::User1), Some(Signal::Hangup)),
+			Signal::User1
+		);
+	}
+
+	#[test]
+	fn stop_signal_is_the_fallback() {
+		assert_eq!(
+			on_busy_signal(None, Some(Signal::Hangup)),
+			Signal::Hangup,
+			"--stop-signal alone should still be honoured"
+		);
+		assert_eq!(
+			on_busy_signal(Some(Signal::User1), None),
+			Signal::User1,
+			"--signal alone should be used"
+		);
+		assert_eq!(
+			on_busy_signal(None, None),
+			Signal::Terminate,
+			"neither given means the default"
+		);
+	}
 }
 
 #[cfg(all(test, windows))]
