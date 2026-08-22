@@ -174,12 +174,6 @@ jobs:
         run: sudo apt install -y gcc-powerpc64le-linux-gnu
         if: startsWith(matrix.target, 'powerpc64le-unknown-linux-gnu')
 
-      - name: Install cargo-deb
-        if: startsWith(matrix.name, 'linux-')
-        uses: taiki-e/install-action@v2.85.13
-        with:
-          tool: cargo-deb
-
       - name: Install cargo-generate-rpm
         if: startsWith(matrix.name, 'linux-')
         uses: taiki-e/install-action@v2.85.13
@@ -192,6 +186,10 @@ jobs:
           rustup default stable
           rustup target add ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
+
+      - name: Install cargo-deb
+        if: startsWith(matrix.name, 'linux-')
+        run: cargo install cargo-deb --version 3.7.0 --locked
 
       - name: Install cross
         if: matrix.cross
