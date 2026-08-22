@@ -1000,7 +1000,7 @@ Didnt expect this much output? Use the short -h flag to get short help.
 
 # VERSION
 
-v2.6.0
+v2.6.1
 
 # AUTHORS
 
