@@ -182,7 +182,7 @@ pub async fn from_origin(
 			)),
 			Some(Err(err)) => errors.push(Error::new(ErrorKind::Other, err)),
 			Some(Ok(config)) => {
-				let config_excludes = config.value::<GitPath<'_>>("core.excludesFile");
+				let config_excludes = config.value::<GitPath>("core.excludesFile");
 				if let Ok(excludes) = config_excludes {
 					match excludes.interpolate(InterpolateContext {
 						home_dir: env::var("HOME").ok().map(PathBuf::from).as_deref(),
@@ -194,7 +194,7 @@ pub async fn from_origin(
 								&mut errors,
 								None,
 								Some(ProjectType::Git),
-								e.into(),
+								e,
 							)
 							.await;
 						}
@@ -333,28 +333,23 @@ pub async fn from_environment(appname: Option<&str>) -> (Vec<IgnoreFile>, Vec<Er
 	let mut found_git_global = false;
 	match File::from_environment_overrides().map(|mut env| {
 		File::from_globals().map(move |glo| {
-			env.append(glo);
-			env
+			env.append(glo)?;
+			Ok::<_, gix_config::parse::span::Error>(env)
 		})
 	}) {
 		Err(err) => errors.push(Error::new(ErrorKind::Other, err)),
 		Ok(Err(err)) => errors.push(Error::new(ErrorKind::Other, err)),
-		Ok(Ok(config)) => {
-			let config_excludes = config.value::<GitPath<'_>>("core.excludesFile");
+		Ok(Ok(Err(err))) => errors.push(Error::new(ErrorKind::Other, err)),
+		Ok(Ok(Ok(config))) => {
+			let config_excludes = config.value::<GitPath>("core.excludesFile");
 			if let Ok(excludes) = config_excludes {
 				match excludes.interpolate(InterpolateContext {
 					home_dir: env::var("HOME").ok().map(PathBuf::from).as_deref(),
 					..Default::default()
 				}) {
 					Ok(e) => {
-						if discover_file(
-							&mut files,
-							&mut errors,
-							None,
-							Some(ProjectType::Git),
-							e.into(),
-						)
-						.await
+						if discover_file(&mut files, &mut errors, None, Some(ProjectType::Git), e)
+							.await
 						{
 							found_git_global = true;
 						}
