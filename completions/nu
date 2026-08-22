@@ -48,7 +48,7 @@ module completions {
     --stop-timeout: string    # Time to wait for the command to exit gracefully
     --timeout: string         # Kill the command if it runs longer than this duration
     --delay-run: string       # Sleep before running the command
-    --workdir: path           # Set the working directory
+    --workdir: directory      # Set the working directory
     --socket: string          # Provide a socket to the command
     --quote(-Q)               # Set whether or not to quote the command symbols when passing them to the shell
     --on-busy-update(-o): string@"nu-complete watchexec on_busy_update" # What to do when receiving events while the command is running
@@ -74,7 +74,7 @@ module completions {
     --exts(-e): string        # Filename extensions to filter to
     --filter(-f): string      # Filename patterns to filter to
     --filter-file: path       # Files to load filters from
-    --project-origin: path    # Set the project origin
+    --project-origin: directory # Set the project origin
     --filter-prog(-j): string # Filter programs
     --ignore(-i): string      # Filename patterns to filter out
     --ignore-file: path       # Files to load ignores from

@@ -1,6 +1,15 @@
 # Changelog
 
 ## Next (YYYY-MM-DD)
+## v5.1.0 (2026-08-22)
+
+- propagate Unix job-control signals
+- add first-class SIGSTOP etc
+- adopt release-plz
+- upgrade to nix 0.31 ([#1016](https://github.com/watchexec/watchexec/pull/1016))
+- opt some crates into 3 targets for docsrs
+
+## Next (YYYY-MM-DD)
 
 ## v5.0.1 (2026-01-20)
 

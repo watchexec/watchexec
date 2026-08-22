@@ -1,6 +1,13 @@
 # Changelog
 
 ## Next (YYYY-MM-DD)
+## v6.1.1 (2026-08-22)
+
+- adopt release-plz
+- update snapbox requirement in /crates/events
+- update changelogs
+
+## Next (YYYY-MM-DD)
 
 ## v6.1.0 (2026-02-22)
 
