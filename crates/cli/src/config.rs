@@ -11,9 +11,9 @@ use std::{
 	process::{ExitCode, Stdio},
 	sync::{
 		atomic::{AtomicBool, AtomicU8, Ordering},
-		Arc,
+		Arc, Mutex,
 	},
-	time::Duration,
+	time::{Duration, Instant},
 };
 
 use clearscreen::ClearScreen;
@@ -64,11 +64,79 @@ struct TimeoutConfig {
 	stop_timeout: Duration,
 }
 
+const RUNTIME_ERROR_SAMPLE_INTERVAL: Duration = Duration::from_secs(1);
+const RUNTIME_ERROR_SAMPLE_CAPACITY: usize = 256;
+
+struct RuntimeErrorSample {
+	last_emitted: Instant,
+	last_seen: Instant,
+}
+
+struct RuntimeErrorSampler {
+	samples: HashMap<String, RuntimeErrorSample>,
+	interval: Duration,
+	capacity: usize,
+}
+
+impl RuntimeErrorSampler {
+	fn new(interval: Duration, capacity: usize) -> Self {
+		Self {
+			samples: HashMap::new(),
+			interval,
+			capacity,
+		}
+	}
+
+	fn should_emit(&mut self, message: String, now: Instant) -> bool {
+		if self.capacity == 0 {
+			return true;
+		}
+
+		if let Some(sample) = self.samples.get_mut(&message) {
+			let should_emit = now.saturating_duration_since(sample.last_emitted) >= self.interval;
+			sample.last_seen = now;
+			if should_emit {
+				sample.last_emitted = now;
+			}
+			return should_emit;
+		}
+
+		self.samples
+			.retain(|_, sample| now.saturating_duration_since(sample.last_seen) < self.interval);
+
+		if self.samples.len() >= self.capacity {
+			// Bounded state takes priority over the sampling window, so an evicted
+			// message will be reported if it occurs again.
+			let oldest = self
+				.samples
+				.iter()
+				.min_by_key(|(_, sample)| sample.last_seen)
+				.map(|(message, _)| message.clone());
+			if let Some(oldest) = oldest {
+				self.samples.remove(&oldest);
+			}
+		}
+
+		self.samples.insert(
+			message,
+			RuntimeErrorSample {
+				last_emitted: now,
+				last_seen: now,
+			},
+		);
+		true
+	}
+}
+
 pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 	let _span = debug_span!("args-runtime").entered();
 	let mut config = Config::default();
 	config.signal_job_control = true;
-	config.on_error(|err: ErrorHook| {
+	let runtime_error_sampler = Mutex::new(RuntimeErrorSampler::new(
+		RUNTIME_ERROR_SAMPLE_INTERVAL,
+		RUNTIME_ERROR_SAMPLE_CAPACITY,
+	));
+	config.on_error(move |err: ErrorHook| {
 		if let RuntimeError::IoError {
 			about: "waiting on process group",
 			..
@@ -77,6 +145,16 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 			// "No child processes" and such
 			// these are often spurious, so condemn them to -v only
 			error!("{}", err.error);
+			return;
+		}
+
+		let should_emit = {
+			let mut sampler = runtime_error_sampler
+				.lock()
+				.unwrap_or_else(std::sync::PoisonError::into_inner);
+			sampler.should_emit(err.error.to_string(), Instant::now())
+		};
+		if !should_emit {
 			return;
 		}
 
@@ -772,6 +850,158 @@ mod on_busy_signal_tests {
 			Signal::Terminate,
 			"neither given means the default"
 		);
+	}
+}
+
+#[cfg(test)]
+mod runtime_error_sampler_tests {
+	use std::time::{Duration, Instant};
+
+	use super::RuntimeErrorSampler;
+
+	const WINDOW: Duration = Duration::from_secs(1);
+
+	fn should_emit(sampler: &mut RuntimeErrorSampler, message: &str, now: Instant) -> bool {
+		sampler.should_emit(message.to_string(), now)
+	}
+
+	#[test]
+	fn first_occurrence_emits_and_duplicate_suppresses() {
+		let now = Instant::now();
+		let mut sampler = RuntimeErrorSampler::new(WINDOW, 4);
+
+		assert!(should_emit(&mut sampler, "error", now));
+		assert!(!should_emit(
+			&mut sampler,
+			"error",
+			now + Duration::from_millis(500)
+		));
+	}
+
+	#[test]
+	fn distinct_messages_emit_independently() {
+		let now = Instant::now();
+		let mut sampler = RuntimeErrorSampler::new(WINDOW, 4);
+
+		assert!(should_emit(&mut sampler, "first", now));
+		assert!(should_emit(&mut sampler, "second", now));
+	}
+
+	#[test]
+	fn suppressed_occurrences_do_not_extend_the_window() {
+		let now = Instant::now();
+		let mut sampler = RuntimeErrorSampler::new(WINDOW, 4);
+
+		assert!(should_emit(&mut sampler, "error", now));
+		assert!(!should_emit(
+			&mut sampler,
+			"error",
+			now + Duration::from_millis(900)
+		));
+		assert!(should_emit(&mut sampler, "error", now + WINDOW));
+	}
+
+	#[test]
+	fn emission_starts_a_new_window() {
+		let now = Instant::now();
+		let mut sampler = RuntimeErrorSampler::new(WINDOW, 4);
+
+		assert!(should_emit(&mut sampler, "error", now));
+		assert!(should_emit(
+			&mut sampler,
+			"error",
+			now + Duration::from_millis(1_100)
+		));
+		assert!(!should_emit(
+			&mut sampler,
+			"error",
+			now + Duration::from_millis(1_500)
+		));
+		assert!(should_emit(
+			&mut sampler,
+			"error",
+			now + Duration::from_millis(2_100)
+		));
+	}
+
+	#[test]
+	fn new_messages_prune_stale_entries() {
+		let now = Instant::now();
+		let mut sampler = RuntimeErrorSampler::new(WINDOW, 2);
+
+		assert!(should_emit(&mut sampler, "stale", now));
+		assert!(should_emit(
+			&mut sampler,
+			"fresh",
+			now + Duration::from_millis(800)
+		));
+		assert!(should_emit(
+			&mut sampler,
+			"new",
+			now + Duration::from_millis(1_100)
+		));
+
+		assert_eq!(sampler.samples.len(), 2);
+		assert!(!sampler.samples.contains_key("stale"));
+		assert!(sampler.samples.contains_key("fresh"));
+		assert!(sampler.samples.contains_key("new"));
+	}
+
+	#[test]
+	fn capacity_evicts_the_least_recently_seen_entry() {
+		let now = Instant::now();
+		let mut sampler = RuntimeErrorSampler::new(Duration::from_secs(10), 2);
+
+		assert!(should_emit(&mut sampler, "first", now));
+		assert!(should_emit(
+			&mut sampler,
+			"second",
+			now + Duration::from_millis(100)
+		));
+		assert!(!should_emit(
+			&mut sampler,
+			"first",
+			now + Duration::from_millis(200)
+		));
+		assert!(should_emit(
+			&mut sampler,
+			"third",
+			now + Duration::from_millis(300)
+		));
+
+		assert_eq!(sampler.samples.len(), 2);
+		assert!(sampler.samples.contains_key("first"));
+		assert!(!sampler.samples.contains_key("second"));
+		assert!(sampler.samples.contains_key("third"));
+	}
+
+	#[test]
+	fn evicted_messages_fail_open() {
+		let now = Instant::now();
+		let mut sampler = RuntimeErrorSampler::new(Duration::from_secs(10), 1);
+
+		assert!(should_emit(&mut sampler, "first", now));
+		assert!(should_emit(
+			&mut sampler,
+			"second",
+			now + Duration::from_millis(100)
+		));
+		assert!(should_emit(
+			&mut sampler,
+			"first",
+			now + Duration::from_millis(200)
+		));
+		assert_eq!(sampler.samples.len(), 1);
+	}
+
+	#[test]
+	fn zero_capacity_fails_open() {
+		let now = Instant::now();
+		let mut sampler = RuntimeErrorSampler::new(WINDOW, 0);
+
+		assert!(should_emit(&mut sampler, "error", now));
+		assert!(should_emit(&mut sampler, "error", now));
+		assert!(sampler.samples.is_empty());
 	}
 }
 
