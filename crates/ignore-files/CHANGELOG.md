@@ -1,6 +1,13 @@
 # Changelog
 
 ## Next (YYYY-MM-DD)
+## v3.0.6 (2026-08-22)
+
+- adapt ignore-files to gix-config 0.59
+- update gix-config requirement in /crates/ignore-files
+- adopt release-plz
+
+## Next (YYYY-MM-DD)
 
 ## v3.0.5 (2026-01-20)
 

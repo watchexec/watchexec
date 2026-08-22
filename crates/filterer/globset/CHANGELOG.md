@@ -1,6 +1,18 @@
 # Changelog
 
 ## Next (YYYY-MM-DD)
+## v8.0.1 (2026-08-22)
+
+- adopt release-plz
+- Release
+- Release
+- Release
+- Release
+- Release
+- Release
+- Release
+
+## Next (YYYY-MM-DD)
 
 ## v8.0.0 (2025-05-15)
 

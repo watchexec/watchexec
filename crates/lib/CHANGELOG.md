@@ -1,6 +1,16 @@
 # Changelog
 
 ## Next (YYYY-MM-DD)
+## v8.3.0 (2026-08-22)
+
+- propagate Unix job-control signals
+- drop events gracefully when channel is full ([#920](https://github.com/watchexec/watchexec/pull/920)) ([#1081](https://github.com/watchexec/watchexec/pull/1081))
+- drop events gracefully when channel is full ([#920](https://github.com/watchexec/watchexec/pull/920))
+- quit on Terminate in home page example
+- upgrade to nix 0.31 ([#1016](https://github.com/watchexec/watchexec/pull/1016))
+- Release
+
+## Next (YYYY-MM-DD)
 
 ## v8.2.0 (2026-03-02)
 
