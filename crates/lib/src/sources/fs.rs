@@ -90,9 +90,16 @@ impl Watcher {
 	}
 
 	fn backend_kind(self) -> notify::WatcherKind {
+		self.backend_kind_for(<notify::RecommendedWatcher as notify::Watcher>::kind())
+	}
+
+	const fn backend_kind_for(self, recommended: notify::WatcherKind) -> notify::WatcherKind {
 		match self {
-			Self::Native => <notify::RecommendedWatcher as notify::Watcher>::kind(),
-			Self::Poll(_) => <notify::PollWatcher as notify::Watcher>::kind(),
+			Self::Native => match recommended {
+				notify::WatcherKind::Kqueue => notify::WatcherKind::PollWatcher,
+				_ => recommended,
+			},
+			Self::Poll(_) => notify::WatcherKind::PollWatcher,
 		}
 	}
 
@@ -884,9 +891,48 @@ mod tests {
 		assert!(!managed_backend(notify::WatcherKind::Fsevent));
 		assert!(!managed_backend(notify::WatcherKind::Kqueue));
 		assert!(!managed_backend(notify::WatcherKind::NullWatcher));
-		let native_kind = <notify::RecommendedWatcher as notify::Watcher>::kind();
+		let recommended = <notify::RecommendedWatcher as notify::Watcher>::kind();
+		let native_kind = Watcher::Native.backend_kind_for(recommended);
 		assert_eq!(Watcher::Native.backend_kind(), native_kind);
 		assert_eq!(Watcher::Native.managed(), managed_backend(native_kind));
+	}
+
+	#[test]
+	fn native_backend_falls_back_from_kqueue_to_poll() {
+		assert_eq!(
+			Watcher::Native.backend_kind_for(notify::WatcherKind::Kqueue),
+			notify::WatcherKind::PollWatcher
+		);
+	}
+
+	#[test]
+	fn native_backend_preserves_other_recommendations() {
+		for kind in [
+			notify::WatcherKind::Inotify,
+			notify::WatcherKind::Fsevent,
+			notify::WatcherKind::PollWatcher,
+			notify::WatcherKind::ReadDirectoryChangesWatcher,
+			notify::WatcherKind::NullWatcher,
+		] {
+			assert_eq!(Watcher::Native.backend_kind_for(kind), kind);
+		}
+	}
+
+	#[test]
+	fn explicit_poll_ignores_native_recommendation() {
+		let poll = Watcher::Poll(std::time::Duration::from_secs(1));
+		for recommended in [
+			notify::WatcherKind::Inotify,
+			notify::WatcherKind::Fsevent,
+			notify::WatcherKind::Kqueue,
+			notify::WatcherKind::ReadDirectoryChangesWatcher,
+			notify::WatcherKind::NullWatcher,
+		] {
+			assert_eq!(
+				poll.backend_kind_for(recommended),
+				notify::WatcherKind::PollWatcher
+			);
+		}
 	}
 
 	#[test]

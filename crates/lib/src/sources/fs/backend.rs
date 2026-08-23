@@ -45,14 +45,21 @@ pub(super) fn create_notify(
 	follow_symlinks: bool,
 	handler: impl notify::EventHandler,
 ) -> notify::Result<Box<dyn Backend>> {
-	use notify::Config;
+	let config = notify_config(kind, follow_symlinks);
+	if kind.backend_kind() == notify::WatcherKind::PollWatcher {
+		notify::PollWatcher::new(handler, config)
+			.map(|watcher| Box::new(watcher) as Box<dyn Backend>)
+	} else {
+		notify::RecommendedWatcher::new(handler, config)
+			.map(|watcher| Box::new(watcher) as Box<dyn Backend>)
+	}
+}
 
-	let config = Config::default().with_follow_symlinks(follow_symlinks);
+fn notify_config(kind: Watcher, follow_symlinks: bool) -> notify::Config {
+	let config = notify::Config::default().with_follow_symlinks(follow_symlinks);
 	match kind {
-		Watcher::Native => notify::RecommendedWatcher::new(handler, config)
-			.map(|watcher| Box::new(watcher) as Box<dyn Backend>),
-		Watcher::Poll(delay) => notify::PollWatcher::new(handler, config.with_poll_interval(delay))
-			.map(|watcher| Box::new(watcher) as Box<dyn Backend>),
+		Watcher::Native => config,
+		Watcher::Poll(delay) => config.with_poll_interval(delay),
 	}
 }
 
@@ -94,6 +101,29 @@ mod tests {
 	use std::io;
 
 	use super::*;
+
+	#[test]
+	fn native_poll_uses_notify_default_interval() {
+		assert_eq!(
+			notify_config(Watcher::Native, true).poll_interval(),
+			notify::Config::default().poll_interval()
+		);
+	}
+
+	#[test]
+	fn explicit_poll_uses_configured_interval() {
+		let interval = std::time::Duration::from_millis(1234);
+		assert_eq!(
+			notify_config(Watcher::Poll(interval), true).poll_interval(),
+			Some(interval)
+		);
+	}
+
+	#[test]
+	fn notify_config_preserves_symlink_policy() {
+		assert!(notify_config(Watcher::Native, true).follow_symlinks());
+		assert!(!notify_config(Watcher::Native, false).follow_symlinks());
+	}
 
 	#[test]
 	fn max_files_watch_is_always_a_resource_error() {
