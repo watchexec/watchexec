@@ -16,14 +16,15 @@ use crate::{
 };
 
 use super::{
-	backend::{classify_resource_error, Backend, DisconnectedBackend},
-	managed_backend, notify_multi_path_errors, Watcher,
+	backend::{classify_resource_error, Backend, BatchWatchResult, DisconnectedBackend},
+	notify_multi_path_errors, recursion_strategy, RecursionStrategy, Watcher,
 };
 
 /// One-path-at-a-time filesystem seam. In particular, `scan` reads only one
 /// directory; the recursor owns the breadth-first work queue.
 pub(super) trait Scanner: Send {
 	fn classify(&self, path: &Path, follow_symlinks: bool) -> io::Result<EntryKind>;
+	fn canonicalize(&self, path: &Path) -> io::Result<PathBuf>;
 	fn scan(&self, path: &Path, visit: &mut dyn FnMut(io::Result<PathBuf>)) -> io::Result<()>;
 }
 
@@ -56,6 +57,10 @@ impl Scanner for FsScanner {
 		}
 	}
 
+	fn canonicalize(&self, path: &Path) -> io::Result<PathBuf> {
+		fs::canonicalize(path)
+	}
+
 	fn scan(&self, path: &Path, visit: &mut dyn FnMut(io::Result<PathBuf>)) -> io::Result<()> {
 		for entry in fs::read_dir(path)? {
 			visit(entry.map(|entry| entry.path()));
@@ -84,6 +89,14 @@ struct PhysicalWatch {
 	logicals: HashSet<PathBuf>,
 	guards: HashSet<PathBuf>,
 	mode: RecursiveMode,
+	registered: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct CoverageWatch {
+	path: PathBuf,
+	canonical: PathBuf,
+	mode: RecursiveMode,
 }
 
 #[derive(Debug)]
@@ -101,6 +114,7 @@ struct GuardWatch {
 
 #[derive(Debug)]
 enum Work {
+	Coverage,
 	Guard(Root),
 	Root(Root),
 	Candidate {
@@ -119,6 +133,7 @@ enum Work {
 impl Work {
 	fn path(&self) -> &Path {
 		match self {
+			Self::Coverage => Path::new(""),
 			Self::Guard(root) => root.path.parent().unwrap_or(&root.path),
 			Self::Root(root) => &root.path,
 			Self::Candidate { path, .. } | Self::Scan { path, .. } | Self::Probe(path) => path,
@@ -183,6 +198,7 @@ pub(super) struct Recursor {
 	scanner: Box<dyn Scanner>,
 	kind: Watcher,
 	backend_kind: notify::WatcherKind,
+	strategy: RecursionStrategy,
 	follow_symlinks: bool,
 	cwd: PathBuf,
 	filter: Arc<dyn Filterer>,
@@ -190,6 +206,10 @@ pub(super) struct Recursor {
 	epoch: u64,
 	logical: HashMap<PathBuf, LogicalWatch>,
 	physical: HashMap<Identity, PhysicalWatch>,
+	coverage_desired: Vec<CoverageWatch>,
+	coverage_installed: Vec<CoverageWatch>,
+	coverage_pending: bool,
+	coverage_work_pending: bool,
 	replay_desired: HashMap<Identity, ReplayWatch>,
 	replay_queue: VecDeque<Identity>,
 	rebuild_exclusions: HashSet<PathBuf>,
@@ -228,6 +248,7 @@ impl Recursor {
 			scanner,
 			kind,
 			backend_kind,
+			strategy: recursion_strategy(backend_kind),
 			follow_symlinks,
 			cwd,
 			filter,
@@ -235,6 +256,16 @@ impl Recursor {
 			epoch: 0,
 			logical: HashMap::new(),
 			physical: HashMap::new(),
+			coverage_desired: Vec::new(),
+			coverage_installed: Vec::new(),
+			coverage_pending: matches!(
+				recursion_strategy(backend_kind),
+				RecursionStrategy::RecursiveRoots
+			),
+			coverage_work_pending: matches!(
+				recursion_strategy(backend_kind),
+				RecursionStrategy::RecursiveRoots
+			),
 			replay_desired: HashMap::new(),
 			replay_queue: VecDeque::new(),
 			rebuild_exclusions: HashSet::new(),
@@ -260,26 +291,26 @@ impl Recursor {
 	}
 
 	pub(super) const fn is_managed(&self) -> bool {
-		managed_backend(self.backend_kind)
+		self.strategy.owns_logical_tree()
 	}
 
 	const fn retains_directory_root_guard(&self) -> bool {
-		// ReadDirectoryChangesW reports changes beneath a watched directory, but not
-		// removal of the watched directory itself.
 		matches!(
 			self.backend_kind,
-			notify::WatcherKind::ReadDirectoryChangesWatcher
+			notify::WatcherKind::ReadDirectoryChangesWatcher | notify::WatcherKind::Fsevent
 		)
 	}
 
 	const fn retains_nondirectory_root_guard(&self) -> bool {
-		// Inotify file watches follow an inode across renames, so keep the parent
-		// watched to observe replacements installed at the configured path.
-		matches!(self.backend_kind, notify::WatcherKind::Inotify)
+		matches!(
+			self.backend_kind,
+			notify::WatcherKind::Inotify | notify::WatcherKind::Fsevent
+		)
 	}
 
 	pub(super) fn needs_retry(&self) -> bool {
-		!self.retry_roots.is_empty()
+		self.coverage_pending
+			|| !self.retry_roots.is_empty()
 			|| !self.retry_candidates.is_empty()
 			|| !self.replay_desired.is_empty()
 			|| self.resource_latched
@@ -289,11 +320,23 @@ impl Recursor {
 		event.paths.is_empty()
 			|| event.paths.iter().any(|path| {
 				let path = self.absolute(path);
-				self.roots.iter().any(|root| {
-					path == root.path
-						|| (root.recursive && path.starts_with(&root.path))
-						|| (!root.recursive && path.parent() == Some(root.path.as_path()))
-				})
+				if self.strategy != RecursionStrategy::RecursiveRoots {
+					return self.roots.iter().any(|root| {
+						path == root.path
+							|| (root.recursive && path.starts_with(&root.path))
+							|| (!root.recursive && path.parent() == Some(root.path.as_path()))
+					});
+				}
+
+				self.projected_topology_paths(&path)
+					.into_iter()
+					.any(|path| {
+						self.roots.iter().any(|root| path == root.path)
+							|| self.logical.contains_key(&path)
+							|| path
+								.parent()
+								.map_or(false, |parent| self.logical.contains_key(parent))
+					})
 			})
 	}
 
@@ -309,24 +352,43 @@ impl Recursor {
 
 	pub(super) fn reconcile(&mut self, pathset: &[WatchedPath], filter: Arc<dyn Filterer>) {
 		self.filter = filter;
-		self.roots = pathset
+		let roots: HashSet<_> = pathset
 			.iter()
 			.map(|path| Root {
 				path: self.absolute(path.path.as_ref()),
 				recursive: path.recursive,
 			})
 			.collect();
+		if self.strategy == RecursionStrategy::RecursiveRoots && roots != self.roots {
+			self.coverage_desired.clear();
+			self.coverage_pending = true;
+			self.coverage_work_pending = true;
+		}
+		self.roots = roots;
 		self.begin_epoch();
 	}
 
 	pub(super) fn rescan(&mut self) {
 		self.begin_epoch();
-		if self.is_managed() {
+		if self.strategy == RecursionStrategy::PerDirectory {
 			self.rebuild_requested = true;
 		}
 	}
 
 	pub(super) fn prepare_backend_rebuild(&mut self) {
+		if self.strategy == RecursionStrategy::RecursiveRoots {
+			self.backend = Box::new(DisconnectedBackend);
+			self.coverage_installed.clear();
+			self.coverage_pending = true;
+			self.coverage_work_pending = true;
+			self.replay_desired.clear();
+			self.replay_queue.clear();
+			self.rebuild_exclusions.clear();
+			self.resource_latched = false;
+			self.restart_epoch_work();
+			return;
+		}
+
 		// Preserve every registration which was known-good before the uncertain
 		// mutation. Replay is performed directly on the fresh backend before a
 		// scanner failure can affect that coverage.
@@ -385,6 +447,9 @@ impl Recursor {
 	}
 
 	pub(super) fn replay_count(&self) -> usize {
+		if self.strategy == RecursionStrategy::RecursiveRoots {
+			return self.coverage_desired.len().max(1);
+		}
 		self.replay_desired
 			.len()
 			.saturating_add(self.physical.len())
@@ -396,6 +461,13 @@ impl Recursor {
 	}
 
 	pub(super) fn replay_backend_snapshot(&mut self) -> StepResult {
+		if self.strategy == RecursionStrategy::RecursiveRoots {
+			self.work.retain(|work| !matches!(work, Work::Coverage));
+			let mut result = StepResult::default();
+			self.step_coverage(&mut result);
+			return result;
+		}
+
 		let mut combined = StepResult::default();
 		let budget = self.replay_queue.len();
 		for _ in 0..budget {
@@ -533,13 +605,16 @@ impl Recursor {
 
 	fn projected_topology_paths(&self, path: &Path) -> Vec<PathBuf> {
 		let mut projected = HashSet::from([path.to_owned()]);
+		if let Some(physical) = self.physical.get(&Identity::Canonical(path.to_owned())) {
+			projected.extend(physical.logicals.iter().chain(&physical.guards).cloned());
+		}
 		let Some(parent) = path.parent() else {
 			return projected.into_iter().collect();
 		};
 		let Some(name) = path.file_name() else {
 			return projected.into_iter().collect();
 		};
-		let identities: HashSet<_> = self
+		let mut identities: HashSet<_> = self
 			.logical
 			.get(parent)
 			.map(|watch| &watch.identity)
@@ -547,12 +622,9 @@ impl Recursor {
 			.chain(self.guards.get(parent).map(|watch| &watch.identity))
 			.cloned()
 			.collect();
+		identities.insert(Identity::Canonical(parent.to_owned()));
 		for identity in identities {
-			let Some(physical) = self
-				.physical
-				.get(&identity)
-				.filter(|physical| physical.watch_path == parent)
-			else {
+			let Some(physical) = self.physical.get(&identity) else {
 				continue;
 			};
 			for alias in physical.logicals.iter().chain(&physical.guards) {
@@ -694,6 +766,9 @@ impl Recursor {
 				.cmp(&right.path)
 				.then_with(|| right.recursive.cmp(&left.recursive))
 		});
+		if self.coverage_work_pending {
+			self.work.push_back(Work::Coverage);
+		}
 		if self.is_managed() {
 			let mut guarded: Vec<_> = self.root_guards.keys().cloned().collect();
 			guarded.sort_by(|left, right| left.path.cmp(&right.path));
@@ -802,6 +877,7 @@ impl Recursor {
 							logicals,
 							guards: HashSet::new(),
 							mode: replay.mode,
+							registered: true,
 						},
 					);
 					for (path, watch) in replay.logicals {
@@ -900,6 +976,7 @@ impl Recursor {
 
 	fn step_work(&mut self, work: Work, result: &mut StepResult) {
 		match work {
+			Work::Coverage => self.step_coverage(result),
 			Work::Guard(root) => self.step_guard(root, result),
 			Work::Root(root) => self.step_root(root, result),
 			Work::Candidate {
@@ -914,6 +991,323 @@ impl Recursor {
 			} => self.step_scan(root, path, transient_retries, result),
 			Work::Probe(path) => self.step_probe(path, result),
 		}
+	}
+
+	fn step_coverage(&mut self, result: &mut StepResult) {
+		if self.strategy != RecursionStrategy::RecursiveRoots
+			|| !self.coverage_pending
+			|| !self.coverage_work_pending
+		{
+			return;
+		}
+		self.coverage_work_pending = false;
+
+		if self.coverage_desired.is_empty() {
+			self.coverage_desired = self.build_coverage(result);
+		}
+		let requests: Vec<_> = self
+			.coverage_desired
+			.iter()
+			.filter(|desired| !self.skipped_additions.contains(&desired.path))
+			.filter(|desired| {
+				!self.coverage_installed.iter().any(|installed| {
+					installed.path == desired.path
+						&& installed.canonical == desired.canonical
+						&& mode_satisfies(installed.mode, desired.mode)
+				})
+			})
+			.cloned()
+			.collect();
+		if requests.is_empty() {
+			self.coverage_pending = false;
+			return;
+		}
+
+		let watches: Vec<_> = requests
+			.iter()
+			.map(|watch| (watch.path.clone(), watch.mode))
+			.collect();
+		let BatchWatchResult {
+			errors,
+			commit_error,
+		} = self.backend.watch_batch(&watches);
+		let mut failed = HashSet::new();
+		let mut refresh_desired = false;
+		for (path, error) in errors {
+			failed.insert(path.clone());
+			if path_not_found(&error) {
+				result.errors.extend(notify_multi_path_errors(
+					self.kind,
+					WatchedPath::recursive(path),
+					error,
+					false,
+				));
+				refresh_desired = true;
+				result.rebuild_backend = true;
+			} else if let Some(resource) = classify_resource_error(&error) {
+				self.resource_latched = true;
+				if !self.resource_reported {
+					self.resource_reported = true;
+					result.errors.push(RuntimeError::FsWatcher {
+						kind: self.kind,
+						err: resource.into_fs_error(error),
+					});
+				}
+			} else {
+				let failures = self.addition_failures.entry(path.clone()).or_default();
+				*failures = failures.saturating_add(1);
+				result.errors.extend(notify_multi_path_errors(
+					self.kind,
+					WatchedPath::recursive(path.clone()),
+					error,
+					false,
+				));
+				if *failures >= 2 {
+					self.skipped_additions.insert(path);
+				} else {
+					result.rebuild_backend = true;
+				}
+			}
+		}
+
+		if let Some(error) = commit_error {
+			let path = requests
+				.first()
+				.map_or_else(|| self.cwd.clone(), |watch| watch.path.clone());
+			result.errors.extend(notify_multi_path_errors(
+				self.kind,
+				WatchedPath::recursive(path),
+				error,
+				false,
+			));
+			self.coverage_desired.clear();
+			self.coverage_pending = true;
+			result.rebuild_backend = true;
+			return;
+		}
+
+		let mut installed = Vec::new();
+		for request in requests {
+			if failed.contains(&request.path) {
+				continue;
+			}
+			match self.scanner.canonicalize(&request.path) {
+				Ok(canonical) if canonical == request.canonical => {
+					self.addition_failures.remove(&request.path);
+					installed.push(request);
+				}
+				Ok(_) => {
+					result.errors.push(self.scan_error(
+						request.path,
+						io::Error::new(
+							io::ErrorKind::InvalidData,
+							"path changed while installing recursive watcher coverage",
+						),
+					));
+					refresh_desired = true;
+					result.rebuild_backend = true;
+				}
+				Err(error) => {
+					result.errors.push(self.scan_error(request.path, error));
+					refresh_desired = true;
+					result.rebuild_backend = true;
+				}
+			}
+		}
+		if refresh_desired {
+			self.coverage_desired.clear();
+			self.coverage_pending = true;
+			return;
+		}
+		self.coverage_installed.extend(installed);
+		self.coverage_pending = failed
+			.iter()
+			.any(|path| !self.skipped_additions.contains(path));
+	}
+
+	fn build_coverage(&mut self, result: &mut StepResult) -> Vec<CoverageWatch> {
+		let mut coverage = HashMap::<PathBuf, CoverageWatch>::new();
+		let mut roots: Vec<_> = self.roots.iter().cloned().collect();
+		roots.sort_by(|left, right| left.path.cmp(&right.path));
+		for root in roots {
+			let mode = if root.recursive {
+				RecursiveMode::Recursive
+			} else {
+				RecursiveMode::NonRecursive
+			};
+			match self.classify_explicit_root(&root.path) {
+				Ok(ExplicitRootState::Entry(EntryKind::Directory(canonical))) => {
+					Self::merge_coverage(
+						&mut coverage,
+						CoverageWatch {
+							path: root.path.clone(),
+							canonical,
+							mode,
+						},
+					);
+					if let Some(parent) = self.nearest_coverage_ancestor(&root.path, result) {
+						Self::merge_coverage(&mut coverage, parent);
+					}
+				}
+				Ok(ExplicitRootState::Entry(EntryKind::Other)) => {
+					let exact_coverage = match self.scanner.canonicalize(&root.path) {
+						Ok(canonical) => {
+							Self::merge_coverage(
+								&mut coverage,
+								CoverageWatch {
+									path: root.path.clone(),
+									canonical,
+									mode,
+								},
+							);
+							true
+						}
+						Err(error) => {
+							result
+								.errors
+								.push(self.scan_error(root.path.clone(), error));
+							self.retry_roots.insert(root.clone());
+							false
+						}
+					};
+					if let Some(mut parent) = self.nearest_coverage_ancestor(&root.path, result) {
+						if !exact_coverage {
+							parent.mode = RecursiveMode::Recursive;
+						}
+						Self::merge_coverage(&mut coverage, parent);
+					}
+				}
+				Ok(
+					ExplicitRootState::Entry(EntryKind::NonFollowedSymlink)
+					| ExplicitRootState::Unsafe,
+				) => {
+					if let Some(mut parent) = self.nearest_coverage_ancestor(&root.path, result) {
+						parent.mode = RecursiveMode::Recursive;
+						Self::merge_coverage(&mut coverage, parent);
+					}
+				}
+				Ok(ExplicitRootState::Missing { path, error }) => {
+					result.errors.push(self.scan_error(path, error));
+					if let Some(mut ancestor) = self.nearest_coverage_ancestor(&root.path, result) {
+						ancestor.mode = RecursiveMode::Recursive;
+						Self::merge_coverage(&mut coverage, ancestor);
+					}
+				}
+				Err((path, error)) => {
+					result.errors.push(self.scan_error(path, error));
+					self.retry_roots.insert(root.clone());
+					if let Some(mut ancestor) = self.nearest_coverage_ancestor(&root.path, result) {
+						ancestor.mode = RecursiveMode::Recursive;
+						Self::merge_coverage(&mut coverage, ancestor);
+					}
+				}
+			}
+		}
+		let mut coverage: Vec<_> = coverage.into_values().collect();
+		coverage.sort_by(|left, right| {
+			left.canonical
+				.components()
+				.count()
+				.cmp(&right.canonical.components().count())
+				.then_with(|| left.path.cmp(&right.path))
+		});
+		let mut minimized: Vec<CoverageWatch> = Vec::new();
+		for request in coverage {
+			if minimized.iter().any(|existing| {
+				existing.mode == RecursiveMode::Recursive
+					&& request.canonical.starts_with(&existing.canonical)
+			}) {
+				continue;
+			}
+			minimized.push(request);
+		}
+		minimized.sort_by(|left, right| left.path.cmp(&right.path));
+		minimized
+	}
+
+	fn merge_coverage(coverage: &mut HashMap<PathBuf, CoverageWatch>, request: CoverageWatch) {
+		coverage
+			.entry(request.path.clone())
+			.and_modify(|existing| {
+				existing.canonical.clone_from(&request.canonical);
+				if request.mode == RecursiveMode::Recursive {
+					existing.mode = RecursiveMode::Recursive;
+				}
+			})
+			.or_insert(request);
+	}
+
+	fn nearest_coverage_ancestor(
+		&self,
+		path: &Path,
+		result: &mut StepResult,
+	) -> Option<CoverageWatch> {
+		if self.follow_symlinks {
+			for ancestor in path.parent()?.ancestors() {
+				if ancestor.as_os_str().is_empty() {
+					continue;
+				}
+				match self.scanner.classify(ancestor, true) {
+					Ok(EntryKind::Directory(canonical)) => {
+						return Some(CoverageWatch {
+							path: ancestor.to_owned(),
+							canonical,
+							mode: RecursiveMode::NonRecursive,
+						});
+					}
+					Ok(EntryKind::NonFollowedSymlink | EntryKind::Other) => {}
+					Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+					Err(error) => result
+						.errors
+						.push(self.scan_error(ancestor.to_owned(), error)),
+				}
+			}
+			return None;
+		}
+
+		let mut found = None;
+		let mut prefixes: Vec<_> = path
+			.parent()?
+			.ancestors()
+			.filter(|prefix| !prefix.as_os_str().is_empty())
+			.map(Path::to_owned)
+			.collect();
+		prefixes.reverse();
+		for ancestor in prefixes {
+			match self.scanner.classify(&ancestor, false) {
+				Ok(EntryKind::Directory(canonical)) => {
+					found = Some(CoverageWatch {
+						path: ancestor,
+						canonical,
+						mode: RecursiveMode::NonRecursive,
+					});
+				}
+				Ok(EntryKind::NonFollowedSymlink | EntryKind::Other) => break,
+				Err(error) if error.kind() == io::ErrorKind::NotFound => break,
+				Err(error) => {
+					result.errors.push(self.scan_error(ancestor.clone(), error));
+					break;
+				}
+			}
+		}
+		found
+	}
+
+	fn coverage_covers_directory(&self, canonical: &Path) -> bool {
+		self.strategy != RecursionStrategy::RecursiveRoots
+			|| self.coverage_installed.iter().any(|coverage| {
+				coverage.mode == RecursiveMode::Recursive
+					&& canonical.starts_with(&coverage.canonical)
+			})
+	}
+
+	fn coverage_plan_covers_root(&self, canonical: &Path, requested: RecursiveMode) -> bool {
+		self.strategy != RecursionStrategy::RecursiveRoots
+			|| self.coverage_desired.iter().any(|coverage| {
+				(coverage.mode == RecursiveMode::Recursive
+					&& canonical.starts_with(&coverage.canonical))
+					|| (coverage.canonical == canonical && mode_satisfies(coverage.mode, requested))
+			})
 	}
 
 	fn classify_explicit_root(
@@ -1108,6 +1502,35 @@ impl Recursor {
 			}
 		}
 
+		if self.strategy == RecursionStrategy::RecursiveRoots {
+			self.physical
+				.entry(identity.clone())
+				.and_modify(|physical| {
+					physical.guards.insert(path.clone());
+				})
+				.or_insert_with(|| PhysicalWatch {
+					watch_path: path.clone(),
+					logicals: HashSet::new(),
+					guards: HashSet::from([path.clone()]),
+					mode: RecursiveMode::Recursive,
+					registered: false,
+				});
+			self.guards
+				.entry(path.clone())
+				.and_modify(|guard| {
+					guard.identity = identity.clone();
+					guard.owners.insert(root.clone());
+				})
+				.or_insert_with(|| GuardWatch {
+					identity,
+					owners: HashSet::from([root.clone()]),
+				});
+			self.root_guards.insert(root.clone(), path);
+			self.retry_roots.remove(&root);
+			self.recheck_guarded_root(root, result);
+			return;
+		}
+
 		let shared = if let Some(physical) = self.physical.get_mut(&identity) {
 			physical.guards.insert(path.clone());
 			true
@@ -1133,6 +1556,7 @@ impl Recursor {
 							logicals: HashSet::new(),
 							guards: HashSet::from([path.clone()]),
 							mode: RecursiveMode::NonRecursive,
+							registered: true,
 						},
 					);
 				}
@@ -1205,6 +1629,23 @@ impl Recursor {
 		};
 		physical.guards.remove(path);
 		let has_owners = !physical.logicals.is_empty() || !physical.guards.is_empty();
+		if !physical.registered {
+			if physical.watch_path == path {
+				if let Some(representative) = physical
+					.logicals
+					.iter()
+					.chain(&physical.guards)
+					.min()
+					.cloned()
+				{
+					physical.watch_path = representative;
+				}
+			}
+			if !has_owners {
+				self.physical.remove(identity);
+			}
+			return true;
+		}
 		if has_owners {
 			if physical.watch_path == path && !physical.logicals.contains(path) {
 				// The removed alias is the backend representative. Replay surviving
@@ -1304,11 +1745,23 @@ impl Recursor {
 				root.recursive,
 				self.retains_directory_root_guard(),
 			),
-			Ok(ExplicitRootState::Entry(EntryKind::Other)) => (
-				Identity::Lexical(root.path.clone()),
-				false,
-				self.retains_nondirectory_root_guard(),
-			),
+			Ok(ExplicitRootState::Entry(EntryKind::Other)) => {
+				let identity = if self.strategy == RecursionStrategy::RecursiveRoots {
+					match self.scanner.canonicalize(&root.path) {
+						Ok(canonical) => Identity::Canonical(canonical),
+						Err(error) => {
+							result
+								.errors
+								.push(self.scan_error(root.path.clone(), error));
+							self.retry_roots.insert(root.clone());
+							Identity::Lexical(root.path.clone())
+						}
+					}
+				} else {
+					Identity::Lexical(root.path.clone())
+				};
+				(identity, false, self.retains_nondirectory_root_guard())
+			}
 			Ok(
 				ExplicitRootState::Entry(EntryKind::NonFollowedSymlink) | ExplicitRootState::Unsafe,
 			) => {
@@ -1339,6 +1792,20 @@ impl Recursor {
 				return;
 			}
 		};
+
+		if let Identity::Canonical(canonical) = &identity {
+			let requested = if root.recursive {
+				RecursiveMode::Recursive
+			} else {
+				RecursiveMode::NonRecursive
+			};
+			if !self.coverage_plan_covers_root(canonical, requested) {
+				self.coverage_desired.clear();
+				self.coverage_pending = true;
+				result.rebuild_backend = true;
+				return;
+			}
+		}
 
 		match self.add_logical(
 			root.path.clone(),
@@ -1435,6 +1902,11 @@ impl Recursor {
 			self.queue_remove_owner_prefix(&root, &path);
 			return;
 		};
+		if !self.coverage_covers_directory(&identity) {
+			self.retry_candidates.remove(&(root.clone(), path.clone()));
+			self.queue_remove_owner_prefix(&root, &path);
+			return;
+		}
 
 		match self.candidate_allowed(&root, &path) {
 			Ok(true) => {}
@@ -1631,6 +2103,9 @@ impl Recursor {
 		mode: RecursiveMode,
 		result: &mut StepResult,
 	) -> AddResult {
+		if self.strategy == RecursionStrategy::RecursiveRoots {
+			return self.add_virtual_logical(path, identity, root);
+		}
 		if let Some(watch) = self.logical.get_mut(&path) {
 			let mode_matches = self
 				.physical
@@ -1684,6 +2159,7 @@ impl Recursor {
 						logicals: HashSet::from([path.clone()]),
 						guards: HashSet::new(),
 						mode,
+						registered: true,
 					},
 				);
 				self.logical.insert(
@@ -1733,6 +2209,57 @@ impl Recursor {
 					}
 				}
 			}
+		}
+	}
+
+	fn add_virtual_logical(&mut self, path: PathBuf, identity: Identity, root: Root) -> AddResult {
+		let mut owners = self
+			.logical
+			.remove(&path)
+			.map_or_else(HashMap::new, |watch| {
+				if watch.identity != identity {
+					self.detach_virtual_logical(&path, &watch.identity);
+				}
+				watch.owners
+			});
+		owners.insert(root, self.epoch);
+
+		self.physical
+			.entry(identity.clone())
+			.and_modify(|physical| {
+				physical.logicals.insert(path.clone());
+			})
+			.or_insert_with(|| PhysicalWatch {
+				watch_path: path.clone(),
+				logicals: HashSet::from([path.clone()]),
+				guards: HashSet::new(),
+				mode: RecursiveMode::Recursive,
+				registered: false,
+			});
+		self.logical.insert(path, LogicalWatch { identity, owners });
+		AddResult::Added
+	}
+
+	fn detach_virtual_logical(&mut self, path: &Path, identity: &Identity) {
+		let remove = if let Some(physical) = self.physical.get_mut(identity) {
+			physical.logicals.remove(path);
+			if physical.watch_path == path {
+				if let Some(representative) = physical
+					.logicals
+					.iter()
+					.chain(&physical.guards)
+					.min()
+					.cloned()
+				{
+					physical.watch_path = representative;
+				}
+			}
+			physical.logicals.is_empty() && physical.guards.is_empty()
+		} else {
+			false
+		};
+		if remove {
+			self.physical.remove(identity);
 		}
 	}
 
@@ -1945,6 +2472,10 @@ impl Recursor {
 		let Some(logical) = self.logical.remove(path) else {
 			return;
 		};
+		if self.strategy == RecursionStrategy::RecursiveRoots {
+			self.detach_virtual_logical(path, &logical.identity);
+			return;
+		}
 		let (remove_physical, removed_representative) =
 			if let Some(physical) = self.physical.get_mut(&logical.identity) {
 				physical.logicals.remove(path);
@@ -1998,7 +2529,7 @@ impl Recursor {
 mod tests {
 	use std::sync::{Arc, Mutex};
 
-	use notify::ErrorKind;
+	use notify::{ErrorKind, EventKind};
 	use watchexec_events::{Event, Priority};
 
 	use super::*;
@@ -2006,6 +2537,7 @@ mod tests {
 	#[derive(Clone, Debug, PartialEq, Eq)]
 	enum Operation {
 		Watch(PathBuf, RecursiveMode),
+		WatchBatch(Vec<(PathBuf, RecursiveMode)>),
 		Unwatch(PathBuf),
 		Classify(PathBuf),
 		Scan(PathBuf),
@@ -2018,10 +2550,31 @@ mod tests {
 		path_not_found_failures: HashMap<PathBuf, usize>,
 		generic_failures: HashMap<PathBuf, usize>,
 		generic_unwatch_failures: HashMap<PathBuf, usize>,
+		batch_commit_failures: usize,
 		watch_not_found: HashSet<PathBuf>,
 	}
 
 	struct FakeBackend(Arc<Mutex<FakeBackendState>>);
+
+	fn fake_watch(state: &mut FakeBackendState, path: &Path) -> notify::Result<()> {
+		if state.resource_failure.as_deref() == Some(path) {
+			Err(notify::Error::new(ErrorKind::MaxFilesWatch))
+		} else if let Some(remaining) = state.path_not_found_failures.get_mut(path) {
+			if *remaining > 0 {
+				*remaining -= 1;
+				return Err(notify::Error::new(ErrorKind::PathNotFound));
+			}
+			Ok(())
+		} else if let Some(remaining) = state.generic_failures.get_mut(path) {
+			if *remaining > 0 {
+				*remaining -= 1;
+				return Err(notify::Error::generic("fake watch failure"));
+			}
+			Ok(())
+		} else {
+			Ok(())
+		}
+	}
 
 	impl Backend for FakeBackend {
 		fn watch(&mut self, path: &Path, mode: RecursiveMode) -> notify::Result<()> {
@@ -2029,23 +2582,7 @@ mod tests {
 			state
 				.operations
 				.push(Operation::Watch(path.to_owned(), mode));
-			if state.resource_failure.as_deref() == Some(path) {
-				Err(notify::Error::new(ErrorKind::MaxFilesWatch))
-			} else if let Some(remaining) = state.path_not_found_failures.get_mut(path) {
-				if *remaining > 0 {
-					*remaining -= 1;
-					return Err(notify::Error::new(ErrorKind::PathNotFound));
-				}
-				Ok(())
-			} else if let Some(remaining) = state.generic_failures.get_mut(path) {
-				if *remaining > 0 {
-					*remaining -= 1;
-					return Err(notify::Error::generic("fake watch failure"));
-				}
-				Ok(())
-			} else {
-				Ok(())
-			}
+			fake_watch(&mut state, path)
 		}
 
 		fn unwatch(&mut self, path: &Path) -> notify::Result<()> {
@@ -2061,6 +2598,29 @@ mod tests {
 				Err(notify::Error::new(ErrorKind::WatchNotFound))
 			} else {
 				Ok(())
+			}
+		}
+
+		fn watch_batch(&mut self, watches: &[(PathBuf, RecursiveMode)]) -> BatchWatchResult {
+			let mut state = self.0.lock().unwrap();
+			state
+				.operations
+				.push(Operation::WatchBatch(watches.to_vec()));
+			let mut errors = Vec::new();
+			for (path, _) in watches {
+				if let Err(error) = fake_watch(&mut state, path) {
+					errors.push((path.clone(), error));
+				}
+			}
+			let commit_error = if state.batch_commit_failures > 0 {
+				state.batch_commit_failures -= 1;
+				Some(notify::Error::generic("fake batch commit failure"))
+			} else {
+				None
+			};
+			BatchWatchResult {
+				errors,
+				commit_error,
 			}
 		}
 	}
@@ -2122,6 +2682,25 @@ mod tests {
 					.get(path)
 					.cloned()
 					.map_or(EntryKind::Other, EntryKind::Directory))
+			}
+		}
+
+		fn canonicalize(&self, path: &Path) -> io::Result<PathBuf> {
+			let mut state = self.0.lock().unwrap();
+			state.operations.push(Operation::Classify(path.to_owned()));
+			if state.not_found.contains(path) {
+				Err(io::Error::new(io::ErrorKind::NotFound, "fake missing path"))
+			} else if state.classify_errors.contains(path) {
+				Err(io::Error::new(
+					io::ErrorKind::PermissionDenied,
+					"fake canonicalize failure",
+				))
+			} else {
+				Ok(state
+					.directories
+					.get(path)
+					.cloned()
+					.unwrap_or_else(|| path.to_owned()))
 			}
 		}
 
@@ -2259,6 +2838,19 @@ mod tests {
 				|operation| matches!(operation, Operation::Unwatch(watched) if watched == Path::new(path)),
 			)
 			.count()
+	}
+
+	fn watch_batches(backend: &Arc<Mutex<FakeBackendState>>) -> Vec<Vec<(PathBuf, RecursiveMode)>> {
+		backend
+			.lock()
+			.unwrap()
+			.operations
+			.iter()
+			.filter_map(|operation| match operation {
+				Operation::WatchBatch(watches) => Some(watches.clone()),
+				_ => None,
+			})
+			.collect()
 	}
 
 	#[test]
@@ -2589,7 +3181,7 @@ mod tests {
 			Box::new(FakeBackend(backend.clone())),
 			Box::new(FakeScanner(scanner.clone())),
 			Watcher::Native,
-			notify::WatcherKind::Fsevent,
+			notify::WatcherKind::Kqueue,
 			true,
 			PathBuf::from("/work"),
 			filter([]),
@@ -2621,7 +3213,7 @@ mod tests {
 			Box::new(FakeBackend(backend.clone())),
 			Box::new(FakeScanner(scanner)),
 			Watcher::Native,
-			notify::WatcherKind::Fsevent,
+			notify::WatcherKind::Kqueue,
 			true,
 			PathBuf::from("/work"),
 			filter([]),
@@ -2639,6 +3231,408 @@ mod tests {
 		assert_eq!(watched(&backend, "/root"), 2);
 		assert!(recursor.logical.contains_key(Path::new("/root")));
 		assert!(!recursor.needs_retry());
+	}
+
+	#[test]
+	fn fsevents_batches_root_coverage_before_logical_scan() {
+		let (mut recursor, backend, scanner) =
+			fixture_with_backend_kind(notify::WatcherKind::Fsevent);
+		for path in ["/root", "/root/child"] {
+			directory(&scanner, path);
+		}
+		entries(&scanner, "/root", &["/root/child"]);
+
+		recursor.reconcile(&[WatchedPath::recursive("/root")], filter([]));
+		recursor.step();
+
+		let batches = watch_batches(&backend);
+		assert_eq!(batches.len(), 1);
+		assert!(batches[0].contains(&(PathBuf::from("/root"), RecursiveMode::Recursive)));
+		assert!(batches[0].contains(&(PathBuf::from("/"), RecursiveMode::NonRecursive)));
+		assert!(!scanner
+			.lock()
+			.unwrap()
+			.operations
+			.contains(&Operation::Scan("/root".into())));
+
+		drain(&mut recursor);
+		assert!(recursor.logical.contains_key(Path::new("/root/child")));
+		let operations = &backend.lock().unwrap().operations;
+		assert!(!operations
+			.iter()
+			.any(|operation| matches!(operation, Operation::Watch(..) | Operation::Unwatch(_))));
+		assert!(recursor
+			.physical
+			.values()
+			.all(|physical| !physical.registered));
+	}
+
+	#[test]
+	fn fsevents_prunes_and_reconciles_only_the_logical_tree() {
+		let (mut recursor, backend, scanner) =
+			fixture_with_backend_kind(notify::WatcherKind::Fsevent);
+		for path in [
+			"/root",
+			"/root/accepted",
+			"/root/ignored",
+			"/root/ignored/nested",
+		] {
+			directory(&scanner, path);
+		}
+		entries(&scanner, "/root", &["/root/accepted", "/root/ignored"]);
+		entries(&scanner, "/root/ignored", &["/root/ignored/nested"]);
+
+		let roots = [WatchedPath::recursive("/root")];
+		recursor.reconcile(&roots, filter(["/root/ignored"]));
+		drain(&mut recursor);
+		assert!(recursor.logical.contains_key(Path::new("/root/accepted")));
+		assert!(!recursor.logical.contains_key(Path::new("/root/ignored")));
+		assert!(!scanner
+			.lock()
+			.unwrap()
+			.operations
+			.contains(&Operation::Scan("/root/ignored".into())));
+		assert!(!recursor.event_is_public(
+			&notify::Event::new(EventKind::Any).add_path("/root/ignored/nested/file".into())
+		));
+		assert!(recursor.event_is_public(
+			&notify::Event::new(EventKind::Any).add_path("/root/accepted/file".into())
+		));
+
+		let initial_operations = backend.lock().unwrap().operations.clone();
+		directory(&scanner, "/root/accepted/new");
+		recursor.topology_create("/root/accepted/new".into());
+		drain(&mut recursor);
+		recursor.topology_remove("/root/accepted/new".into());
+		drain(&mut recursor);
+		recursor.reconcile(&roots, filter(["/root/accepted"]));
+		drain(&mut recursor);
+		recursor.rescan();
+		drain(&mut recursor);
+
+		assert_eq!(backend.lock().unwrap().operations, initial_operations);
+		assert!(!recursor.logical.contains_key(Path::new("/root/accepted")));
+	}
+
+	#[test]
+	fn fsevents_rescan_refreshes_logical_state_without_native_churn() {
+		let (mut recursor, backend, scanner) =
+			fixture_with_backend_kind(notify::WatcherKind::Fsevent);
+		for path in ["/root", "/root/old"] {
+			directory(&scanner, path);
+		}
+		entries(&scanner, "/root", &["/root/old"]);
+		recursor.reconcile(&[WatchedPath::recursive("/root")], filter([]));
+		drain(&mut recursor);
+		assert!(recursor.logical.contains_key(Path::new("/root/old")));
+		let initial_operations = backend.lock().unwrap().operations.clone();
+
+		directory(&scanner, "/root/new");
+		entries(&scanner, "/root", &["/root/new"]);
+		recursor.rescan();
+		drain(&mut recursor);
+
+		assert!(!recursor.logical.contains_key(Path::new("/root/old")));
+		assert!(recursor.logical.contains_key(Path::new("/root/new")));
+		assert_eq!(backend.lock().unwrap().operations, initial_operations);
+	}
+
+	#[test]
+	fn fsevents_discovers_populated_tree_without_descendant_registration() {
+		let (mut recursor, backend, scanner) =
+			fixture_with_backend_kind(notify::WatcherKind::Fsevent);
+		directory(&scanner, "/root");
+		recursor.reconcile(&[WatchedPath::recursive("/root")], filter([]));
+		drain(&mut recursor);
+		let initial_operations = backend.lock().unwrap().operations.clone();
+
+		for path in ["/root/new", "/root/new/deep"] {
+			directory(&scanner, path);
+		}
+		entries(&scanner, "/root/new", &["/root/new/deep"]);
+		recursor.topology_create("/root/new".into());
+		drain(&mut recursor);
+
+		assert!(recursor.logical.contains_key(Path::new("/root/new/deep")));
+		assert_eq!(backend.lock().unwrap().operations, initial_operations);
+	}
+
+	#[test]
+	fn fsevents_does_not_claim_external_descendant_symlink_coverage() {
+		let (mut recursor, backend, scanner) =
+			fixture_with_backend_kind(notify::WatcherKind::Fsevent);
+		directory(&scanner, "/root");
+		scanner
+			.lock()
+			.unwrap()
+			.directories
+			.insert("/root/link".into(), "/external".into());
+		entries(&scanner, "/root", &["/root/link"]);
+		recursor.reconcile(&[WatchedPath::recursive("/root")], filter([]));
+		drain(&mut recursor);
+
+		assert!(!recursor.logical.contains_key(Path::new("/root/link")));
+		assert_eq!(watch_batches(&backend).len(), 1);
+		assert!(!recursor.event_is_public(
+			&notify::Event::new(EventKind::Any).add_path("/root/link/file".into())
+		));
+	}
+
+	#[test]
+	fn fsevents_explicit_nested_root_overrides_pruned_ancestor() {
+		let (mut recursor, backend, scanner) =
+			fixture_with_backend_kind(notify::WatcherKind::Fsevent);
+		for path in ["/root", "/root/ignored", "/root/ignored/child"] {
+			directory(&scanner, path);
+		}
+		entries(&scanner, "/root", &["/root/ignored"]);
+		entries(&scanner, "/root/ignored", &["/root/ignored/child"]);
+
+		recursor.reconcile(
+			&[
+				WatchedPath::recursive("/root"),
+				WatchedPath::recursive("/root/ignored"),
+			],
+			filter(["/root/ignored"]),
+		);
+		drain(&mut recursor);
+
+		assert!(recursor.logical.contains_key(Path::new("/root/ignored")));
+		assert!(recursor
+			.logical
+			.contains_key(Path::new("/root/ignored/child")));
+		let batches = watch_batches(&backend);
+		assert_eq!(batches.len(), 1);
+		assert!(!batches[0]
+			.iter()
+			.any(|(path, _)| path == Path::new("/root/ignored")));
+	}
+
+	#[test]
+	fn fsevents_missing_nonrecursive_root_has_stable_child_coverage() {
+		let (mut recursor, backend, scanner) =
+			fixture_with_backend_kind(notify::WatcherKind::Fsevent);
+		directory(&scanner, "/parent");
+		scanner
+			.lock()
+			.unwrap()
+			.not_found
+			.insert("/parent/root".into());
+		recursor.reconcile(&[WatchedPath::non_recursive("/parent/root")], filter([]));
+		drain(&mut recursor);
+		assert_eq!(
+			watch_batches(&backend),
+			vec![vec![(PathBuf::from("/parent"), RecursiveMode::Recursive)]]
+		);
+
+		{
+			let mut scanner = scanner.lock().unwrap();
+			scanner.not_found.remove(Path::new("/parent/root"));
+			scanner
+				.directories
+				.insert("/parent/root".into(), "/parent/root".into());
+		}
+		recursor.topology_create("/parent/root".into());
+		drain(&mut recursor);
+
+		assert!(recursor.logical.contains_key(Path::new("/parent/root")));
+		assert!(recursor.event_is_public(
+			&notify::Event::new(EventKind::Any).add_path("/parent/root/file".into())
+		));
+		assert_eq!(watch_batches(&backend).len(), 1);
+	}
+
+	#[test]
+	fn fsevents_file_root_can_become_a_directory_without_native_churn() {
+		let (mut recursor, backend, scanner) =
+			fixture_with_backend_kind(notify::WatcherKind::Fsevent);
+		directory(&scanner, "/root");
+		let root = PathBuf::from("/root/item");
+		recursor.reconcile(&[WatchedPath::recursive(root.clone())], filter([]));
+		drain(&mut recursor);
+
+		directory(&scanner, "/root/item");
+		directory(&scanner, "/root/item/child");
+		entries(&scanner, "/root/item", &["/root/item/child"]);
+		recursor.topology_ambiguous(root);
+		drain(&mut recursor);
+
+		assert!(recursor.logical.contains_key(Path::new("/root/item/child")));
+		assert_eq!(watch_batches(&backend).len(), 1);
+	}
+
+	#[test]
+	fn fsevents_projects_root_level_canonical_events_to_aliases() {
+		let (mut recursor, _backend, scanner) =
+			fixture_with_backend_kind(notify::WatcherKind::Fsevent);
+		scanner
+			.lock()
+			.unwrap()
+			.directories
+			.insert("/alias".into(), "/real".into());
+		recursor.reconcile(&[WatchedPath::recursive("/alias")], filter([]));
+		drain(&mut recursor);
+
+		assert!(recursor
+			.projected_topology_paths(Path::new("/real"))
+			.contains(&PathBuf::from("/alias")));
+		assert!(
+			recursor.event_is_public(&notify::Event::new(EventKind::Any).add_path("/real".into()))
+		);
+
+		scanner.lock().unwrap().not_found.insert("/alias".into());
+		recursor.topology_remove("/real".into());
+		drain(&mut recursor);
+		assert!(!recursor.logical.contains_key(Path::new("/alias")));
+	}
+
+	#[test]
+	fn fsevents_rebuilds_when_configured_root_changes_canonical_target() {
+		let (mut recursor, backend, scanner) =
+			fixture_with_backend_kind(notify::WatcherKind::Fsevent);
+		scanner
+			.lock()
+			.unwrap()
+			.directories
+			.insert("/alias".into(), "/target-a".into());
+		recursor.reconcile(&[WatchedPath::recursive("/alias")], filter([]));
+		drain(&mut recursor);
+		assert_eq!(watch_batches(&backend).len(), 1);
+
+		{
+			let mut scanner = scanner.lock().unwrap();
+			scanner
+				.directories
+				.insert("/alias".into(), "/target-b".into());
+			scanner
+				.directories
+				.insert("/alias/child".into(), "/target-b/child".into());
+			scanner
+				.entries
+				.insert("/alias".into(), vec![PathBuf::from("/alias/child")]);
+		}
+		recursor.topology_ambiguous("/alias".into());
+		run_until_rebuild(&mut recursor);
+
+		recursor.replace_backend(Box::new(FakeBackend(backend.clone())));
+		let replay = recursor.replay_backend_snapshot();
+		assert!(!replay.rebuild_backend);
+		drain(&mut recursor);
+
+		assert_eq!(watch_batches(&backend).len(), 2);
+		assert_eq!(
+			recursor
+				.logical
+				.get(Path::new("/alias"))
+				.map(|watch| &watch.identity),
+			Some(&Identity::Canonical(PathBuf::from("/target-b")))
+		);
+		assert!(recursor.logical.contains_key(Path::new("/alias/child")));
+	}
+
+	#[test]
+	fn fsevents_pending_coverage_does_not_retry_on_logical_epochs() {
+		let (mut recursor, backend, scanner) =
+			fixture_with_backend_kind(notify::WatcherKind::Fsevent);
+		directory(&scanner, "/root");
+		backend.lock().unwrap().resource_failure = Some("/root".into());
+		let roots = [WatchedPath::recursive("/root")];
+		recursor.reconcile(&roots, filter([]));
+		drain(&mut recursor);
+		assert!(recursor.needs_retry());
+		assert_eq!(watch_batches(&backend).len(), 1);
+
+		recursor.reconcile(&roots, filter(["/root/ignored"]));
+		drain(&mut recursor);
+		recursor.rescan();
+		drain(&mut recursor);
+
+		assert_eq!(watch_batches(&backend).len(), 1);
+	}
+
+	#[test]
+	fn fsevents_path_disappearance_rebuilds_before_scanning() {
+		let (mut recursor, backend, scanner) =
+			fixture_with_backend_kind(notify::WatcherKind::Fsevent);
+		for path in ["/root", "/root/child"] {
+			directory(&scanner, path);
+		}
+		entries(&scanner, "/root", &["/root/child"]);
+		backend
+			.lock()
+			.unwrap()
+			.path_not_found_failures
+			.insert("/root".into(), 1);
+		recursor.reconcile(&[WatchedPath::recursive("/root")], filter([]));
+
+		run_until_rebuild(&mut recursor);
+		assert!(!scanner
+			.lock()
+			.unwrap()
+			.operations
+			.contains(&Operation::Scan("/root".into())));
+		recursor.replace_backend(Box::new(FakeBackend(backend.clone())));
+		let replay = recursor.replay_backend_snapshot();
+		assert!(!replay.rebuild_backend);
+		drain(&mut recursor);
+
+		assert_eq!(watch_batches(&backend).len(), 2);
+		assert!(recursor.logical.contains_key(Path::new("/root/child")));
+	}
+
+	#[test]
+	fn fsevents_file_root_uses_stable_parent_coverage_across_replacement() {
+		let (mut recursor, backend, scanner) =
+			fixture_with_backend_kind(notify::WatcherKind::Fsevent);
+		directory(&scanner, "/root");
+		let file = PathBuf::from("/root/file");
+		recursor.reconcile(&[WatchedPath::recursive(file.clone())], filter([]));
+		drain(&mut recursor);
+
+		assert_eq!(
+			watch_batches(&backend),
+			vec![vec![
+				(PathBuf::from("/root"), RecursiveMode::NonRecursive),
+				(PathBuf::from("/root/file"), RecursiveMode::Recursive),
+			]]
+		);
+		for _ in 0..8 {
+			recursor.topology_remove(file.clone());
+			drain(&mut recursor);
+			assert!(recursor.logical.contains_key(&file));
+		}
+		assert_eq!(watch_batches(&backend).len(), 1);
+		assert_eq!(unwatched(&backend, "/root"), 0);
+		assert!(recursor.event_is_public(&notify::Event::new(EventKind::Any).add_path(file)));
+		assert!(!recursor
+			.event_is_public(&notify::Event::new(EventKind::Any).add_path("/root/sibling".into())));
+	}
+
+	#[test]
+	fn fsevents_rebuild_replays_only_batched_root_coverage() {
+		let (mut recursor, backend, scanner) =
+			fixture_with_backend_kind(notify::WatcherKind::Fsevent);
+		for path in ["/root", "/root/child"] {
+			directory(&scanner, path);
+		}
+		entries(&scanner, "/root", &["/root/child"]);
+		backend.lock().unwrap().batch_commit_failures = 1;
+		recursor.reconcile(&[WatchedPath::recursive("/root")], filter([]));
+
+		run_until_rebuild(&mut recursor);
+		recursor.replace_backend(Box::new(FakeBackend(backend.clone())));
+		let replay = recursor.replay_backend_snapshot();
+		assert!(!replay.rebuild_backend);
+		drain(&mut recursor);
+
+		assert_eq!(watch_batches(&backend).len(), 2);
+		assert!(recursor.logical.contains_key(Path::new("/root/child")));
+		assert!(!backend
+			.lock()
+			.unwrap()
+			.operations
+			.iter()
+			.any(|operation| matches!(operation, Operation::Watch(..) | Operation::Unwatch(_))));
 	}
 
 	#[test]
@@ -3209,7 +4203,7 @@ mod tests {
 			Box::new(FakeBackend(backend.clone())),
 			Box::new(FakeScanner(scanner)),
 			Watcher::Native,
-			notify::WatcherKind::Fsevent,
+			notify::WatcherKind::Kqueue,
 			false,
 			PathBuf::from("/work"),
 			filter([]),

@@ -22,7 +22,7 @@ mod backend;
 mod recursor;
 
 use std::{
-	collections::{HashMap, VecDeque},
+	collections::{HashMap, HashSet, VecDeque},
 	fs::metadata,
 	mem::take,
 	path::PathBuf,
@@ -106,20 +106,45 @@ impl Watcher {
 		}
 	}
 
-	/// Only actual backends with reliable independent non-recursive
-	/// registrations use Watchexec-owned recursion.
-	fn managed(self) -> bool {
-		managed_backend(self.backend_kind())
+	fn recursion_strategy(self) -> RecursionStrategy {
+		recursion_strategy(self.backend_kind())
 	}
 }
 
-const fn managed_backend(kind: notify::WatcherKind) -> bool {
-	matches!(
-		kind,
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum RecursionStrategy {
+	PerDirectory,
+	RecursiveRoots,
+	NotifyOwned,
+}
+
+impl RecursionStrategy {
+	const fn owns_logical_tree(self) -> bool {
+		matches!(self, Self::PerDirectory | Self::RecursiveRoots)
+	}
+}
+
+const fn recursion_strategy(kind: notify::WatcherKind) -> RecursionStrategy {
+	match kind {
 		notify::WatcherKind::Inotify
-			| notify::WatcherKind::ReadDirectoryChangesWatcher
-			| notify::WatcherKind::PollWatcher
-	)
+		| notify::WatcherKind::ReadDirectoryChangesWatcher
+		| notify::WatcherKind::PollWatcher => RecursionStrategy::PerDirectory,
+		notify::WatcherKind::Fsevent => RecursionStrategy::RecursiveRoots,
+		_ => RecursionStrategy::NotifyOwned,
+	}
+}
+
+const fn strategy_requires_recreation(
+	strategy: RecursionStrategy,
+	roots_changed: bool,
+	needs_retry: bool,
+) -> bool {
+	match strategy {
+		RecursionStrategy::PerDirectory => false,
+		RecursionStrategy::RecursiveRoots | RecursionStrategy::NotifyOwned => {
+			roots_changed || needs_retry
+		}
+	}
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -175,7 +200,7 @@ fn dispatch_callback_event(
 		return;
 	}
 	trace!(?event, "receiving possible event from watcher");
-	let changes = if watcher.managed() {
+	let changes = if watcher.recursion_strategy().owns_logical_tree() {
 		event.as_ref().ok().map(topology_messages)
 	} else {
 		None
@@ -227,7 +252,7 @@ fn dispatch_callback_event(
 }
 
 struct AppliedConfig {
-	pathset: Vec<WatchedPath>,
+	pathset: HashSet<WatchedPath>,
 	watcher: Watcher,
 	follow_symlinks: bool,
 	filter: Arc<dyn Filterer>,
@@ -243,11 +268,12 @@ struct WorkerState {
 	callback_fence: Arc<CallbackFence>,
 	events: priority::Sender<Event, Priority>,
 	processed_topology: u64,
+	retained_generations: HashSet<u64>,
 	pending_ready: Option<PendingReady>,
 }
 
 impl WorkerState {
-	const fn new(
+	fn new(
 		cwd: PathBuf,
 		control: mpsc::UnboundedSender<ControlMessage>,
 		ordinary: mpsc::Sender<OrdinaryMessage>,
@@ -264,33 +290,58 @@ impl WorkerState {
 			callback_fence,
 			events,
 			processed_topology: 0,
+			retained_generations: HashSet::new(),
 			pending_ready: None,
 		}
 	}
 
 	fn apply_config(&mut self, config: &Config) -> Result<(), CriticalError> {
 		let pathset = config.pathset.get();
+		let normalized_pathset: HashSet<_> = pathset
+			.iter()
+			.map(|path| WatchedPath {
+				path: if path.path.is_absolute() {
+					path.path.normalize()
+				} else {
+					self.cwd.join(&path.path).normalize()
+				},
+				recursive: path.recursive,
+			})
+			.collect();
 		let watcher = config.file_watcher.get();
+		let strategy = watcher.recursion_strategy();
 		let follow_symlinks = config.follow_symlinks.get();
 		let filter = config.filterer.snapshot();
 
 		let roots_changed = self
 			.applied
 			.as_ref()
-			.map_or(true, |applied| applied.pathset != pathset);
+			.map_or(true, |applied| applied.pathset != normalized_pathset);
 		let filter_changed = self
 			.applied
 			.as_ref()
 			.map_or(true, |applied| !Arc::ptr_eq(&applied.filter, &filter));
+		let watcher_changed = self
+			.applied
+			.as_ref()
+			.map_or(true, |applied| applied.watcher != watcher);
+		let follow_symlinks_changed = self
+			.applied
+			.as_ref()
+			.map_or(true, |applied| applied.follow_symlinks != follow_symlinks);
+		let configuration_changed =
+			roots_changed || filter_changed || watcher_changed || follow_symlinks_changed;
+		if configuration_changed {
+			self.retained_generations.clear();
+		}
 		let needs_retry = self.recursor.as_ref().map_or(false, Recursor::needs_retry);
-		let recreate = self.applied.as_ref().map_or(true, |applied| {
-			applied.watcher != watcher
-				|| applied.follow_symlinks != follow_symlinks
-				|| (!watcher.managed() && (roots_changed || needs_retry))
-		});
+		let recreate = self.applied.is_none()
+			|| watcher_changed
+			|| follow_symlinks_changed
+			|| strategy_requires_recreation(strategy, roots_changed, needs_retry);
 
 		self.applied = Some(AppliedConfig {
-			pathset: pathset.clone(),
+			pathset: normalized_pathset,
 			watcher,
 			follow_symlinks,
 			filter: filter.clone(),
@@ -309,6 +360,11 @@ impl WorkerState {
 
 		if recreate || self.recursor.is_none() {
 			debug!(kind=?watcher, follow_symlinks, "creating new watcher");
+			if !configuration_changed && self.recursor.is_some() {
+				// Recreating for a retry does not invalidate events already accepted
+				// under the unchanged configuration.
+				self.retained_generations.insert(self.generation);
+			}
 			// Release the old backend before creating the replacement, especially
 			// when watcher handles themselves are the exhausted resource.
 			self.recursor.take();
@@ -324,7 +380,7 @@ impl WorkerState {
 			);
 			recursor.reconcile(&pathset, filter);
 			self.recursor = Some(recursor);
-		} else if watcher.managed() && (roots_changed || filter_changed || needs_retry) {
+		} else if strategy.owns_logical_tree() && (roots_changed || filter_changed || needs_retry) {
 			trace!(
 				roots_changed,
 				filter_changed,
@@ -420,6 +476,9 @@ impl WorkerState {
 			if let Some(recursor) = self.recursor.as_mut() {
 				recursor.prepare_backend_rebuild();
 			}
+			// The backend incarnation changes, but events accepted before this
+			// internal repair still belong to the active configuration.
+			self.retained_generations.insert(self.generation);
 			let backend = self.create_backend(watcher, follow_symlinks)?;
 			let Some(recursor) = self.recursor.as_mut() else {
 				return Ok(());
@@ -501,8 +560,12 @@ impl WorkerState {
 		message.topology_sequence <= self.processed_topology && !self.recursor_has_work()
 	}
 
-	fn handle_ordinary(&self, message: OrdinaryMessage, errors: &mut VecDeque<RuntimeError>) {
-		if message.generation != self.generation {
+	fn handle_ordinary(&mut self, message: OrdinaryMessage, errors: &mut VecDeque<RuntimeError>) {
+		self.retained_generations
+			.retain(|generation| *generation >= message.generation);
+		if message.generation != self.generation
+			&& !self.retained_generations.contains(&message.generation)
+		{
 			trace!("ignoring event from obsolete filesystem watcher");
 			return;
 		}
@@ -857,8 +920,9 @@ fn process_event(
 #[cfg(test)]
 mod tests {
 	use super::{
-		dispatch_callback_event, managed_backend, process_event, topology_messages, worker,
-		CallbackFence, ControlMessage, OrdinaryMessage, Topology, Watcher, WorkerState,
+		dispatch_callback_event, process_event, recursion_strategy, strategy_requires_recreation,
+		topology_messages, worker, CallbackFence, ControlMessage, OrdinaryMessage,
+		RecursionStrategy, Topology, Watcher, WorkerState,
 	};
 	use crate::{
 		error::{FsWatcherError, RuntimeError},
@@ -885,19 +949,60 @@ mod tests {
 	// drop the event gracefully and return `Ok(())`.
 	#[test]
 	fn backend_strategy_matches_notify_capabilities() {
-		assert!(Watcher::Poll(std::time::Duration::from_secs(1)).managed());
-		assert!(managed_backend(notify::WatcherKind::Inotify));
-		assert!(managed_backend(
-			notify::WatcherKind::ReadDirectoryChangesWatcher
-		));
-		assert!(managed_backend(notify::WatcherKind::PollWatcher));
-		assert!(!managed_backend(notify::WatcherKind::Fsevent));
-		assert!(!managed_backend(notify::WatcherKind::Kqueue));
-		assert!(!managed_backend(notify::WatcherKind::NullWatcher));
+		assert_eq!(
+			Watcher::Poll(std::time::Duration::from_secs(1)).recursion_strategy(),
+			RecursionStrategy::PerDirectory
+		);
+		assert_eq!(
+			recursion_strategy(notify::WatcherKind::Inotify),
+			RecursionStrategy::PerDirectory
+		);
+		assert_eq!(
+			recursion_strategy(notify::WatcherKind::ReadDirectoryChangesWatcher),
+			RecursionStrategy::PerDirectory
+		);
+		assert_eq!(
+			recursion_strategy(notify::WatcherKind::PollWatcher),
+			RecursionStrategy::PerDirectory
+		);
+		assert_eq!(
+			recursion_strategy(notify::WatcherKind::Fsevent),
+			RecursionStrategy::RecursiveRoots
+		);
+		assert_eq!(
+			recursion_strategy(notify::WatcherKind::Kqueue),
+			RecursionStrategy::NotifyOwned
+		);
+		assert_eq!(
+			recursion_strategy(notify::WatcherKind::NullWatcher),
+			RecursionStrategy::NotifyOwned
+		);
 		let recommended = <notify::RecommendedWatcher as notify::Watcher>::kind();
 		let native_kind = Watcher::Native.backend_kind_for(recommended);
 		assert_eq!(Watcher::Native.backend_kind(), native_kind);
-		assert_eq!(Watcher::Native.managed(), managed_backend(native_kind));
+		assert_eq!(
+			Watcher::Native.recursion_strategy(),
+			recursion_strategy(native_kind)
+		);
+	}
+
+	#[test]
+	fn recursive_root_strategy_recreates_for_root_changes_or_retry() {
+		assert!(!strategy_requires_recreation(
+			RecursionStrategy::RecursiveRoots,
+			false,
+			false
+		));
+		assert!(strategy_requires_recreation(
+			RecursionStrategy::RecursiveRoots,
+			false,
+			true
+		));
+		assert!(strategy_requires_recreation(
+			RecursionStrategy::RecursiveRoots,
+			true,
+			false
+		));
 	}
 
 	#[test]
@@ -1181,6 +1286,35 @@ mod tests {
 			event_rx.try_recv(),
 			Err(priority::TryRecvError::Empty)
 		));
+	}
+
+	#[test]
+	fn internally_rebuilt_generation_emits_accepted_ordinary_event() {
+		let (control, _control_rx) = mpsc::unbounded_channel();
+		let (ordinary, _ordinary_rx) = mpsc::channel(4);
+		let (events, event_rx) = priority::bounded(4);
+		let mut state = WorkerState::new(
+			PathBuf::from("/work"),
+			control,
+			ordinary,
+			Arc::new(CallbackFence::default()),
+			events,
+		);
+		state.generation = 2;
+		state.retained_generations.insert(1);
+		let mut errors = VecDeque::new();
+
+		state.handle_ordinary(
+			OrdinaryMessage {
+				generation: 1,
+				topology_sequence: 1,
+				event: notify::Event::new(EventKind::Any).add_path("/retargeted".into()),
+			},
+			&mut errors,
+		);
+
+		assert!(errors.is_empty());
+		assert!(event_rx.try_recv().is_ok());
 	}
 
 	#[test]
