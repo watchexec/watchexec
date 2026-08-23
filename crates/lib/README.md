@@ -165,34 +165,6 @@ Other examples:
 - [Restart `cargo run` only when `cargo build` succeeds](./examples/restart_run_on_successful_build.rs)
 
 
-## Filesystem recursion and source filtering
-
-`Filterer::check_dir` can reject a directory before it becomes an event source. This source pruning
-is separate from `Filterer::check_event`: custom filterers accept every source directory by default,
-and accepted events are still filtered normally. Every configured watch path bypasses source
-filtering at that exact root; descendants of recursive roots obey it.
-
-Watchexec owns per-directory recursion when Notify reports Inotify, Windows
-ReadDirectoryChanges, or Poll (including a `Watcher::Native` fallback to Poll). Native FSEvents and
-Kqueue retain Notify's recursive watches in this release, so they do not physically prune ignored
-directories or use Watchexec's missing-root guards. Per-directory updates would repeatedly rebuild
-Notify's shared FSEvents stream at its since-now history boundary, while Kqueue needs internal
-per-entry recursion to observe child changes. FSEvents may observe broader streams internally even
-when callback events are limited to configured roots. Use `Watcher::Poll` when physical pruning is
-required, bearing in mind that polling work scales with the number of accepted directories.
-
-Replacing the live filterer through `Config::filterer` reconciles managed sources. It does not reread
-or rediscover ignore files; rebuild the filterer first. `Config::fs_ready` is notified once the latest
-root, filter, watcher, and symlink reconciliation settles, even when nonfatal path-local failures left
-partial coverage. Those failures reach the error hook and independent sibling paths continue; watch
-or handle exhaustion is classified and latched instead of producing a cascade of path errors.
-
-Managed recursion honours `Config::follow_symlinks` and watches a safe existing ancestor when a root
-is missing, so it can pick the root up if it appears later. Its traversal reads one directory
-synchronously per step: it yields between directories, but one exceptionally large or slow directory
-can still delay readiness.
-
-
 ## Kitchen sink
 
 Though not its primary usecase, the library exposes most of its relatively standalone components,

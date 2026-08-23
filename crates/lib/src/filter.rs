@@ -24,8 +24,7 @@ pub trait Filterer: std::fmt::Debug + Send + Sync {
 	/// Like event filtering, source-directory filtering is synchronous, should be fast, and must not
 	/// block the thread.
 	///
-	/// The default implementation accepts every directory, preserving the behaviour of custom
-	/// filterers which only implement event filtering.
+	/// The default implementation accepts every directory.
 	fn check_dir(&self, _path: &Path) -> Result<bool, RuntimeError> {
 		Ok(true)
 	}

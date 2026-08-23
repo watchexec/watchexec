@@ -39,28 +39,6 @@ Example use cases:
 
     This can be disabled with `--emit-events=none` or changed to JSON events on STDIN with `--emit-events=json-stdio`.
 
-### Ignore pruning and watcher backends
-
-When Notify selects Inotify (Linux and Android), Windows ReadDirectoryChanges, or polling,
-Watchexec uses ignore files, built-in ignores, and `--ignore` patterns while walking the watched
-tree. Ignored directories are not scanned or watched. Positive `--filter` patterns, `--exts`,
-`--fs-events`, and `--filter-prog` remain event filters and do not reduce the source tree.
-
-Every `--watch` or `--watch-non-recursive` path is kept at its exact root even if an ignore matches
-it; descendants still obey ignores. CLI events for that exact root also bypass ignore rules. Ignore
-files are discovered and read at startup, not monitored: restart Watchexec to load edits or newly
-created ignore files.
-
-Native FSEvents (macOS) and Kqueue (BSD) retain Notify's own recursion in this release, so ignored
-directories are filtered from emitted events but are not physically pruned. FSEvents may observe a
-broader OS stream internally before callback filtering, while Kqueue needs hidden per-entry
-recursion to observe child changes. `--poll` is the explicit workaround when physical pruning is
-more important than native watching.
-
-Polling registers each accepted directory separately, so its work scales with directory count.
-Initial traversal reads one directory synchronously at a time; Watchexec yields between directories,
-but one very large or slow directory can still delay startup.
-
 ## Anti-Features
 
 * Not tied to any particular language or ecosystem

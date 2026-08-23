@@ -2,10 +2,12 @@
 
 ## Next (YYYY-MM-DD)
 
-- Add `Filterer::check_dir` and Watchexec-owned, source-filtered recursion for Inotify, Windows ReadDirectoryChanges, and Poll backends. Exact configured roots bypass source filtering; their descendants do not.
+- Add `Filterer::check_dir` and Watchexec-owned, source-filtered recursion for Inotify, Windows ReadDirectoryChanges, and Poll backends.
 - Reconcile managed filesystem sources when roots, watcher selection, symlink policy, or the live filterer changes. `fs_ready` now reports settled reconciliation and may signal after partial nonfatal failures.
-- Continue independent sibling traversal after path-local scan or watch failures, report them through the runtime error hook, classify and latch watch/handle exhaustion, and guard missing roots on managed backends.
-- Keep native FSEvents and Kqueue on Notify-owned recursion for this release: per-directory updates would repeatedly rebuild FSEvents' shared stream at its since-now history boundary, while Kqueue needs internal per-entry recursion. Use Poll when physical source pruning is required.
+- Continue traversing independent sibling paths after a scan or watch failure, reporting the failure through the runtime error hook.
+- Classify and latch watch or handle exhaustion so it is reported once per reconciliation rather than once per path.
+- For managed recursion, watch the nearest safe existing ancestor of a missing root so the root can be watched when it is created.
+- We keep native FSEvents and Kqueue on Notify-owned recursion for this release: per-directory updates would repeatedly rebuild FSEvents' shared stream at its since-now history boundary, while Kqueue needs internal per-entry recursion. Use Poll when physical source pruning is required on these platforms.
 
 ## v8.3.0 (2026-08-22)
 

@@ -2,45 +2,20 @@
 //!
 //! # Recursive source filtering
 //!
-//! Watchexec owns recursive traversal when the actual Notify backend kind is Inotify, Windows
-//! `ReadDirectoryChanges`, or Poll. This includes [`Watcher::Poll`] and [`Watcher::Native`] on a
-//! platform where Notify's recommended watcher falls back to Poll. Each accepted directory is
-//! registered non-recursively, and [`Filterer::check_dir`] is consulted before a descendant
-//! directory is scanned or watched.
+//! Watchexec does its own recursive traversal, using non-recursive watches on supported backends
+//! and filtering the watch tree from the [`Filterer`] implementation.
 //!
-//! Every configured [`WatchedPath`] bypasses source filtering at its exact root. Descendants of a
-//! recursive root still obey `check_dir`. If an ignored descendant is separately configured as a
-//! root, that exact path is retained for the second root while its own descendants are checked
-//! normally. Source filtering is separate from event filtering: [`Filterer::check_event`] still
-//! decides whether observed events are delivered, and custom filterers which do not override
-//! `check_dir` accept every directory by default.
+//! Watched paths are themselves never filtered.
 //!
-//! Native `FSEvents` and Kqueue deliberately retain Notify-owned recursion in this release. Watchexec
-//! does not call `check_dir`, physically prune ignored directories, or install its managed
-//! missing-root guards for those backend kinds. Per-directory changes would repeatedly rebuild
-//! Notify's shared `FSEvents` stream at its since-now history boundary, while Kqueue needs Notify's
-//! internal per-entry recursion to observe changes below a directory. Notify's `FSEvents` callback
-//! limits delivered paths, but the underlying `FSEvents` stream may still observe a broader part of
-//! the filesystem internally. Select [`Watcher::Poll`] when physical source pruning is required on
-//! those platforms.
+//! Watch and scan failures are reported while traversal continues with independent paths,
+//! rebuilding the watcher from known registrations when a failed operation may have changed backend
+//! state.
 //!
-//! # Reconciliation and failures
-//!
-//! Changes to roots, watcher selection, symlink policy, or the live [`Config::filterer`] are
-//! reconciled on managed backends. [`Config::fs_ready`] reports when the current reconciliation has
-//! settled; it can report readiness after nonfatal path-local failures, so applications should also
-//! observe their [`ErrorHook`](crate::ErrorHook). Replacing a filterer does not automatically reread
-//! or rediscover ignore files.
-//!
-//! Managed traversal honours [`Config::follow_symlinks`] and watches a safe existing ancestor of a
-//! missing root so that the root can be picked up if it appears later. Non-resource scan and watch
-//! failures are reported as runtime errors while traversal continues with independent sibling
-//! paths. Resource exhaustion is classified as too many watches or handles, reported once for the
-//! reconciliation, and stops further additions during that pass.
-//!
-//! Polling has per-directory cost because every accepted directory is registered separately.
-//! Traversal yields between directories, but each individual directory is read synchronously; one
-//! exceptionally large or slow directory can therefore delay filesystem-worker progress.
+//! Filtered recursive traversal is not supported on FSEvents, because changing individual watches
+//! recreates Notify's shared stream from `SinceNow` and can lose intervening events, or Kqueue,
+//! because Notify recursively registers descendants even for non-recursive watches. On these
+//! backends, recursive watches traverse the entire directory tree; Watchexec delegates recursive
+//! traversal to [`notify`].
 
 mod backend;
 mod recursor;
@@ -83,9 +58,6 @@ pub use crate::WatchedPath;
 
 /// What kind of filesystem watcher to use.
 ///
-/// The actual Notify backend kind determines whether Watchexec owns recursion and applies physical
-/// source pruning. See this module's documentation for backend behaviour and costs.
-///
 /// For now only native and poll watchers are supported. In the future there may be additional
 /// watchers available on some platforms.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -94,16 +66,11 @@ pub enum Watcher {
 	/// The Notify-recommended watcher on the platform.
 	///
 	/// For platforms Notify supports, that's a [native implementation][notify::RecommendedWatcher];
-	/// for others it is polling with a default interval. Watchexec's recursion strategy follows the
-	/// actual backend kind, so a native fallback to Poll receives managed source filtering while
-	/// native `FSEvents` and Kqueue retain Notify-owned recursion.
+	/// for others it's polling with a default interval.
 	#[default]
 	Native,
 
 	/// Notify’s [poll watcher][notify::PollWatcher] with a custom interval.
-	///
-	/// Poll always uses Watchexec-owned per-directory recursion. This enables physical source pruning
-	/// on every platform, at a polling cost which scales with the number of accepted directories.
 	Poll(Duration),
 }
 

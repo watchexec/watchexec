@@ -111,9 +111,7 @@ pub struct Config {
 	/// If this is non-empty, the filesystem event source is started and configured to provide
 	/// events for these paths. If it becomes empty, the filesystem event source is shut down.
 	///
-	/// Every configured path is retained as an exact source root even when the configured
-	/// [`Filterer::check_dir`] would reject it. Source filtering applies to descendants of recursive
-	/// roots; event filtering remains separate.
+	/// Watched paths are themselves never filtered.
 	pub pathset: Changeable<Vec<WatchedPath>>,
 
 	/// The kind of filesystem watcher to be used.
@@ -124,10 +122,6 @@ pub struct Config {
 	/// When `true` (the default), the filesystem watcher follows symbolic links and watches their
 	/// targets. When `false`, symlinks are not followed: events for a symlink itself may still occur,
 	/// but its target is not watched through that link.
-	///
-	/// Watchexec enforces this while traversing backends for which it manages recursion, and also
-	/// passes the value to Notify. Native backends which retain Notify-owned recursion may have
-	/// backend-specific behaviour; see [`crate::sources::fs`].
 	pub follow_symlinks: Changeable<bool>,
 
 	/// Listen for Unix job-control signals (`SIGTSTP` and `SIGCONT`).
@@ -162,10 +156,7 @@ pub struct Config {
 
 	/// The filterer implementation used for event and source-directory filtering.
 	///
-	/// The default is a no-op, which passes every event and directory. Replacing the filterer through
-	/// [`Config::filterer()`] reconciles directory sources on backends for which Watchexec manages
-	/// recursion. It does not discover or reread ignore files: applications must rebuild and replace
-	/// an ignore-based filterer when those files change.
+	/// The default is a no-op, which passes every event and directory.
 	pub filterer: ChangeableFilterer,
 
 	/// The buffer size of the channel which carries runtime errors.
@@ -213,9 +204,6 @@ impl Default for Config {
 impl Config {
 	/// Signal that the configuration has changed.
 	///
-	/// This increments a monotonic revision, so a change remains observable by config workers even
-	/// if it is signalled while they are busy. Multiple changes may be coalesced into one wakeup.
-	///
 	/// This is called automatically by all other methods here, so most of the time calling this
 	/// isn't needed, but it can be useful for some advanced uses.
 	#[allow(
@@ -231,11 +219,10 @@ impl Config {
 		self
 	}
 
-	/// Watch the config for changes, running once immediately.
+	/// Watch the config for a change, but run once first.
 	///
-	/// The first call to [`ConfigWatched::next()`] returns immediately. Later calls wait until the
-	/// revision changes; changes that occur between calls remain observable, and multiple changes
-	/// before a call are coalesced.
+	/// This returns a Stream where the first value is available immediately, and then every
+	/// subsequent one is from a change signal for this Config.
 	#[must_use]
 	pub(crate) fn watch(&self) -> ConfigWatched {
 		ConfigWatched::new(self.change_signal.subscribe())
@@ -243,15 +230,13 @@ impl Config {
 
 	/// Subscribe to filesystem worker readiness notifications.
 	///
-	/// The receiver is notified after the worker settles the most recently observed configuration,
-	/// including root, filterer, watcher, and symlink-policy reconciliation and any topology work
-	/// accepted during that reconciliation. Readiness means that this work has quiesced, not that
-	/// every path succeeded: best-effort failures are reported separately through the error handler
-	/// and the notification may represent partial filesystem coverage.
+	/// The receiver is notified after the filesystem worker finishes applying the latest observed
+	/// configuration.
 	///
-	/// Notifications carry no revision value and concurrent or rapid changes may be coalesced. To
-	/// wait for a particular change without another caller racing it, subscribe before making the
-	/// change, then call `.changed().await`.
+	/// Path-specific failures are reported through the error handler and do not prevent readiness.
+	///
+	/// Notifications carry no configuration revision and may be coalesced. To wait for a change,
+	/// subscribe before making it, then call `.changed().await`.
 	#[must_use]
 	pub fn fs_ready(&self) -> watch::Receiver<()> {
 		self.fs_ready.subscribe()
@@ -298,12 +283,7 @@ impl Config {
 		self.signal_change()
 	}
 
-	/// Set the filterer implementation used for events and source directories.
-	///
-	/// On managed recursive backends, replacing the filterer triggers source reconciliation: newly
-	/// accepted directories can be added and newly rejected descendants can be removed. Replacing an
-	/// ignore-based filterer does not itself reread or rediscover ignore files; construct the new
-	/// filterer from the desired files first.
+	/// Set the filterer implementation to use.
 	pub fn filterer(&self, filterer: impl Filterer + 'static) -> &Self {
 		debug!(?filterer, "Config: filterer");
 		self.filterer.replace(filterer);

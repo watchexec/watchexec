@@ -29,10 +29,10 @@ mod error;
 pub use filter::*;
 mod filter;
 
-/// Directory names used for version-control metadata.
+/// Directory names treated as version-control metadata.
 ///
-/// These names are shared by ignore-file discovery and clients which provide matching default
-/// ignore rules.
+/// Used internally for ignore-file discovery. Reuse this list when ignoring VCS metadata to
+/// automatically follow additions to the crate's discovery support.
 pub const VCS_DIR_NAMES: &[&str] = &[
 	".bzr",
 	"_darcs",
