@@ -133,8 +133,9 @@ async fn relative_origin_stops_ancestor_matching_at_project_boundary() {
 #[tokio::test]
 async fn out_of_origin_paths_do_not_match_external_ancestors() {
 	let sandbox = tempfile::tempdir().unwrap();
-	let origin = sandbox.path().join("project");
-	let external = sandbox.path().join("rust").join("watched");
+	let sandbox_path = dunce::canonicalize(sandbox.path()).unwrap();
+	let origin = sandbox_path.join("project");
+	let external = sandbox_path.join("rust").join("watched");
 	std::fs::create_dir_all(&origin).unwrap();
 	std::fs::create_dir_all(&external).unwrap();
 	let filterer = direct_filt(&origin, &["rust"], Vec::new()).await;
