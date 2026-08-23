@@ -263,6 +263,15 @@ impl Recursor {
 		managed_backend(self.backend_kind)
 	}
 
+	const fn retains_directory_root_guard(&self) -> bool {
+		// ReadDirectoryChangesW reports changes beneath a watched directory, but not
+		// removal of the watched directory itself.
+		matches!(
+			self.backend_kind,
+			notify::WatcherKind::ReadDirectoryChangesWatcher
+		)
+	}
+
 	pub(super) fn needs_retry(&self) -> bool {
 		!self.retry_roots.is_empty()
 			|| !self.retry_candidates.is_empty()
@@ -981,8 +990,12 @@ impl Recursor {
 			.any(|prefix| root.path.starts_with(prefix));
 		if !tombstoned {
 			match self.classify_explicit_root(&root.path) {
-				Ok(ExplicitRootState::Entry(_)) => {
-					self.remove_root_guard(&root, result);
+				Ok(ExplicitRootState::Entry(entry)) => {
+					if !self.retains_directory_root_guard()
+						|| !matches!(entry, EntryKind::Directory(_))
+					{
+						self.remove_root_guard(&root, result);
+					}
 					self.work.push_front(Work::Root(root));
 					return;
 				}
@@ -1276,12 +1289,14 @@ impl Recursor {
 			return;
 		}
 
-		let (identity, scan) = match self.classify_explicit_root(&root.path) {
-			Ok(ExplicitRootState::Entry(EntryKind::Directory(identity))) => {
-				(Identity::Canonical(identity), root.recursive)
-			}
+		let (identity, scan, retain_guard) = match self.classify_explicit_root(&root.path) {
+			Ok(ExplicitRootState::Entry(EntryKind::Directory(identity))) => (
+				Identity::Canonical(identity),
+				root.recursive,
+				self.retains_directory_root_guard(),
+			),
 			Ok(ExplicitRootState::Entry(EntryKind::Other)) => {
-				(Identity::Lexical(root.path.clone()), false)
+				(Identity::Lexical(root.path.clone()), false, false)
 			}
 			Ok(
 				ExplicitRootState::Entry(EntryKind::NonFollowedSymlink) | ExplicitRootState::Unsafe,
@@ -1323,7 +1338,13 @@ impl Recursor {
 		) {
 			AddResult::Added => {
 				self.retry_roots.remove(&root);
-				self.remove_root_guard(&root, result);
+				if retain_guard {
+					if !self.root_guards.contains_key(&root) {
+						self.ensure_guard(root.clone(), result);
+					}
+				} else {
+					self.remove_root_guard(&root, result);
+				}
 				if scan && self.mark_seen(&root, identity) {
 					let path = root.path.clone();
 					self.work.push_back(Work::Scan {
@@ -2154,6 +2175,16 @@ mod tests {
 		Arc<Mutex<FakeBackendState>>,
 		Arc<Mutex<FakeScannerState>>,
 	) {
+		fixture_with_backend_kind(notify::WatcherKind::Inotify)
+	}
+
+	fn fixture_with_backend_kind(
+		backend_kind: notify::WatcherKind,
+	) -> (
+		Recursor,
+		Arc<Mutex<FakeBackendState>>,
+		Arc<Mutex<FakeScannerState>>,
+	) {
 		let backend = Arc::new(Mutex::new(FakeBackendState::default()));
 		let scanner = Arc::new(Mutex::new(FakeScannerState::default()));
 		directory(&scanner, "/");
@@ -2161,7 +2192,7 @@ mod tests {
 			Box::new(FakeBackend(backend.clone())),
 			Box::new(FakeScanner(scanner.clone())),
 			Watcher::Native,
-			notify::WatcherKind::Inotify,
+			backend_kind,
 			true,
 			PathBuf::from("/work"),
 			filter([]),
@@ -2771,6 +2802,39 @@ mod tests {
 		assert!(errors.is_empty());
 		assert!(!recursor.logical.contains_key(Path::new("/root/gone")));
 		assert_eq!(unwatched(&backend, "/root/gone"), 1);
+	}
+
+	#[test]
+	fn windows_directory_root_keeps_parent_guard_after_recreation() {
+		let (mut recursor, backend, scanner) =
+			fixture_with_backend_kind(notify::WatcherKind::ReadDirectoryChangesWatcher);
+		directory(&scanner, "/root");
+		recursor.reconcile(&[WatchedPath::recursive("/root")], filter([]));
+		drain(&mut recursor);
+
+		assert_eq!(watched(&backend, "/"), 1);
+		assert_eq!(watched(&backend, "/root"), 1);
+		assert_eq!(
+			recursor.root_guards.values().next(),
+			Some(&PathBuf::from("/"))
+		);
+
+		scanner.lock().unwrap().not_found.insert("/root".into());
+		recursor.topology_remove("/root".into());
+		drain(&mut recursor);
+		assert!(!recursor.logical.contains_key(Path::new("/root")));
+		assert_eq!(unwatched(&backend, "/"), 0);
+
+		scanner.lock().unwrap().not_found.remove(Path::new("/root"));
+		recursor.topology_create("/root".into());
+		drain(&mut recursor);
+		assert_eq!(watched(&backend, "/root"), 2);
+		assert!(recursor.logical.contains_key(Path::new("/root")));
+		assert_eq!(
+			recursor.root_guards.values().next(),
+			Some(&PathBuf::from("/"))
+		);
+		assert_eq!(watched(&backend, "/"), 1);
 	}
 
 	#[test]
