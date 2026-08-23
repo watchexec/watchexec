@@ -203,8 +203,8 @@ There are also separate, standalone crates used to build Watchexec which you can
 - **[ClearScreen](https://docs.rs/clearscreen)** makes clearing the terminal screen in a
   cross-platform way easy by default, and provides advanced options to fit your usecase.
 
-- **[Command Group](https://docs.rs/command-group)** augments the std and tokio `Command` with
-  support for process groups, portable between Unix and Windows.
+- **[Process Wrap](https://docs.rs/process-wrap)** augments the std and tokio `Command` with
+  support for process groups, sessions, job objects, PTYs, portable between Unix and Windows.
 
 - **[Event types](https://docs.rs/watchexec-events)** contains the event types used by Watchexec,
   including the JSON format used for passing event data to child processes.
