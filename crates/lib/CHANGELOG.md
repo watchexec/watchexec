@@ -7,7 +7,8 @@
 - Continue traversing independent sibling paths after a scan or watch failure, reporting the failure through the runtime error hook.
 - Classify and latch watch or handle exhaustion so it is reported once per reconciliation rather than once per path.
 - For managed recursion, watch the nearest safe existing ancestor of a missing root so the root can be watched when it is created.
-- We keep native FSEvents and Kqueue on Notify-owned recursion for this release: per-directory updates would repeatedly rebuild FSEvents' shared stream at its since-now history boundary, while Kqueue needs internal per-entry recursion. Use Poll when physical source pruning is required on these platforms.
+- We keep native FSEvents on Notify-owned recursion for this release: per-directory updates would repeatedly rebuild its shared stream at its since-now history boundary.
+- If Notify recommends Kqueue, Watchexec uses Poll instead because Kqueue filesystem watching is resource-intensive and its non-recursive semantics are not reliable enough.
 
 ## v8.3.0 (2026-08-22)
 

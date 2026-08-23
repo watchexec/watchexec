@@ -12,10 +12,11 @@
 //! state.
 //!
 //! Filtered recursive traversal is not supported on FSEvents, because changing individual watches
-//! recreates Notify's shared stream from `SinceNow` and can lose intervening events, or Kqueue,
-//! because Notify recursively registers descendants even for non-recursive watches. On these
-//! backends, recursive watches traverse the entire directory tree; Watchexec delegates recursive
-//! traversal to [`notify`].
+//! recreates Notify's shared stream from `SinceNow` and can lose intervening events. On this backend,
+//! recursive watches traverse the entire directory tree; Watchexec delegates recursive traversal to
+//! [`notify`].
+//!
+//! If Notify recommends Kqueue, Watchexec uses Poll instead.
 
 mod backend;
 mod recursor;
@@ -67,6 +68,8 @@ pub enum Watcher {
 	///
 	/// For platforms Notify supports, that's a [native implementation][notify::RecommendedWatcher],
 	/// for others it's polling with a default interval.
+	///
+	/// If Notify recommends Kqueue, Watchexec uses Poll instead.
 	#[default]
 	Native,
 
