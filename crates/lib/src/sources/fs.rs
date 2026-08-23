@@ -11,10 +11,8 @@
 //! rebuilding the watcher from known registrations when a failed operation may have changed backend
 //! state.
 //!
-//! Filtered recursive traversal is not supported on FSEvents, because changing individual watches
-//! recreates Notify's shared stream from `SinceNow` and can lose intervening events. On this backend,
-//! recursive watches traverse the entire directory tree; Watchexec delegates recursive traversal to
-//! [`notify`].
+//! `FSEvents` has no option to watch non-recursively, but also watches an entire tree directly, so
+//! we don't try to do source subtree filtering; filtering is covered at event-level.
 //!
 //! If Notify recommends Kqueue, Watchexec uses Poll instead.
 
