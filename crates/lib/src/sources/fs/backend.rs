@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use notify::{RecursiveMode, Watcher as _};
 
@@ -6,11 +6,29 @@ use crate::error::FsWatcherError;
 
 use super::Watcher;
 
+pub(super) struct BatchWatchResult {
+	pub(super) errors: Vec<(PathBuf, notify::Error)>,
+	pub(super) commit_error: Option<notify::Error>,
+}
+
 /// The backend seam used by the recursor. Managed recursion must only pass
-/// `NonRecursive` to this interface.
+/// `NonRecursive` to individual registrations.
 pub(super) trait Backend: Send {
 	fn watch(&mut self, path: &Path, mode: RecursiveMode) -> notify::Result<()>;
 	fn unwatch(&mut self, path: &Path) -> notify::Result<()>;
+
+	fn watch_batch(&mut self, watches: &[(PathBuf, RecursiveMode)]) -> BatchWatchResult {
+		let mut errors = Vec::new();
+		for (path, mode) in watches {
+			if let Err(error) = self.watch(path, *mode) {
+				errors.push((path.clone(), error));
+			}
+		}
+		BatchWatchResult {
+			errors,
+			commit_error: None,
+		}
+	}
 }
 
 /// Temporary backend used only while the worker synchronously recreates a
@@ -37,6 +55,21 @@ where
 
 	fn unwatch(&mut self, path: &Path) -> notify::Result<()> {
 		notify::Watcher::unwatch(self, path)
+	}
+
+	fn watch_batch(&mut self, watches: &[(PathBuf, RecursiveMode)]) -> BatchWatchResult {
+		let mut paths = notify::Watcher::paths_mut(self);
+		let mut errors = Vec::new();
+		for (path, mode) in watches {
+			if let Err(error) = paths.add(path, *mode) {
+				errors.push((path.clone(), error));
+			}
+		}
+		let commit_error = paths.commit().err();
+		BatchWatchResult {
+			errors,
+			commit_error,
+		}
 	}
 }
 
