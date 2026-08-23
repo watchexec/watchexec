@@ -160,6 +160,10 @@ impl FsHarness {
 		while self.events.try_recv().is_ok() {}
 	}
 
+	async fn drain_until_quiet(&self) {
+		while matches!(timeout(QUIET_TIMEOUT, self.events.recv()).await, Ok(Ok(_))) {}
+	}
+
 	fn task_finished(&self) -> bool {
 		self.task.as_ref().map_or(true, JoinHandle::is_finished)
 	}
@@ -308,6 +312,17 @@ fn event_is_remove(event: &Event) -> bool {
 		.any(|tag| matches!(tag, Tag::FileEventKind(EventKind::Remove(_))))
 }
 
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "windows"))]
+fn event_is_non_name_modify(event: &Event) -> bool {
+	event.tags.iter().any(|tag| {
+		matches!(
+			tag,
+			Tag::FileEventKind(EventKind::Modify(kind))
+				if !matches!(kind, notify::event::ModifyKind::Name(_))
+		)
+	})
+}
+
 fn make_tempdir(case: WatcherCase, test: &str) -> TempDir {
 	tempfile::Builder::new()
 		.prefix(&format!("watchexec-fs-{test}-{}-", case.name))
@@ -323,6 +338,21 @@ fn create_dir(path: &Path) {
 fn write_file(path: &Path, contents: &str) {
 	std::fs::write(path, contents)
 		.unwrap_or_else(|error| panic!("failed to write file {}: {error}", path.display()));
+}
+
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "windows"))]
+fn replace_file(path: &Path, replacement: &Path, contents: &str) {
+	write_file(replacement, contents);
+	#[cfg(target_os = "windows")]
+	std::fs::remove_file(path)
+		.unwrap_or_else(|error| panic!("failed to remove file {}: {error}", path.display()));
+	std::fs::rename(replacement, path).unwrap_or_else(|error| {
+		panic!(
+			"failed to replace {} with {}: {error}",
+			path.display(),
+			replacement.display()
+		)
+	});
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -560,6 +590,44 @@ async fn configured_root_is_reacquired_after_delete_and_recreate() {
 			.await;
 		harness.shutdown().await;
 	}
+}
+
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "windows"))]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn explicit_file_root_survives_repeated_replacement() {
+	let case = WatcherCase {
+		name: "native",
+		watcher: Watcher::Native,
+	};
+	let temp = make_tempdir(case, "replace-file-root");
+	let file = temp.path().join("watched.txt");
+	write_file(&file, "initial");
+	let mut harness = FsHarness::start(case, vec![WatchedPath::recursive(&file)], true, ()).await;
+	harness.drain_until_quiet().await;
+
+	for generation in 1..=2 {
+		let replacement = temp.path().join(format!("replacement-{generation}.txt"));
+		replace_file(&file, &replacement, &format!("replacement {generation}"));
+		harness
+			.wait_for_any_path(
+				std::slice::from_ref(&file),
+				&format!("observing atomic replacement {generation}"),
+			)
+			.await;
+		harness.drain_until_quiet().await;
+
+		write_file(&file, &format!("modified replacement {generation}"));
+		harness
+			.wait_for_any_path_matching(
+				std::slice::from_ref(&file),
+				event_is_non_name_modify,
+				&format!("checking replacement {generation} remains watched"),
+			)
+			.await;
+		harness.drain_until_quiet().await;
+	}
+
+	harness.shutdown().await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

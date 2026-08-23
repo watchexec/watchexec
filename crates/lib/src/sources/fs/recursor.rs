@@ -272,6 +272,12 @@ impl Recursor {
 		)
 	}
 
+	const fn retains_nondirectory_root_guard(&self) -> bool {
+		// Inotify file watches follow an inode across renames, so keep the parent
+		// watched to observe replacements installed at the configured path.
+		matches!(self.backend_kind, notify::WatcherKind::Inotify)
+	}
+
 	pub(super) fn needs_retry(&self) -> bool {
 		!self.retry_roots.is_empty()
 			|| !self.retry_candidates.is_empty()
@@ -991,9 +997,12 @@ impl Recursor {
 		if !tombstoned {
 			match self.classify_explicit_root(&root.path) {
 				Ok(ExplicitRootState::Entry(entry)) => {
-					if !self.retains_directory_root_guard()
-						|| !matches!(entry, EntryKind::Directory(_))
-					{
+					let retain_guard = match entry {
+						EntryKind::Directory(_) => self.retains_directory_root_guard(),
+						EntryKind::Other => self.retains_nondirectory_root_guard(),
+						EntryKind::NonFollowedSymlink => false,
+					};
+					if !retain_guard {
 						self.remove_root_guard(&root, result);
 					}
 					self.work.push_front(Work::Root(root));
@@ -1295,9 +1304,11 @@ impl Recursor {
 				root.recursive,
 				self.retains_directory_root_guard(),
 			),
-			Ok(ExplicitRootState::Entry(EntryKind::Other)) => {
-				(Identity::Lexical(root.path.clone()), false, false)
-			}
+			Ok(ExplicitRootState::Entry(EntryKind::Other)) => (
+				Identity::Lexical(root.path.clone()),
+				false,
+				self.retains_nondirectory_root_guard(),
+			),
 			Ok(
 				ExplicitRootState::Entry(EntryKind::NonFollowedSymlink) | ExplicitRootState::Unsafe,
 			) => {
@@ -2888,6 +2899,24 @@ mod tests {
 			Identity::Canonical("/identity/b".into())
 		);
 		assert!(recursor.root_guards.is_empty());
+	}
+
+	#[test]
+	fn from_only_atomic_file_root_exchange_reacquires_without_create() {
+		let (mut recursor, backend, _scanner) = fixture();
+		recursor.reconcile(&[WatchedPath::recursive("/file")], filter([]));
+		drain(&mut recursor);
+
+		recursor.topology_remove("/file".into());
+		drain(&mut recursor);
+
+		assert_eq!(watched(&backend, "/file"), 2);
+		assert!(recursor.logical.contains_key(Path::new("/file")));
+		assert_eq!(
+			recursor.root_guards.values().next(),
+			Some(&PathBuf::from("/"))
+		);
+		assert_eq!(watched(&backend, "/"), 1);
 	}
 
 	#[test]
