@@ -5,6 +5,10 @@
 //! ignore files, which apply to a specific folder and its subfolders. Furthermore, there may be
 //! more ignore files in _these_ subfolders, and so on. Discovering and interpreting all of these in
 //! a single context is not a simple task: this is what this crate provides.
+//!
+//! Discovery and loading are explicit snapshots. This crate does not watch ignore files for edits or
+//! automatically rediscover files created later; call the discovery/loading APIs again, or update an
+//! unfinished [`IgnoreFilter`] with its mutation methods.
 
 #![cfg_attr(not(test), warn(unused_crate_dependencies))]
 
@@ -24,6 +28,20 @@ mod error;
 #[doc(inline)]
 pub use filter::*;
 mod filter;
+
+/// Directory names treated as version-control metadata.
+///
+/// Used internally for ignore-file discovery. Reuse this list when ignoring VCS metadata to
+/// automatically follow additions to the crate's discovery support.
+pub const VCS_DIR_NAMES: &[&str] = &[
+	".bzr",
+	"_darcs",
+	".fossil-settings",
+	".git",
+	".hg",
+	".pijul",
+	".svn",
+];
 
 /// An ignore file.
 ///

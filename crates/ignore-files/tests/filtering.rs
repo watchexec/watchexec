@@ -1,6 +1,17 @@
 mod helpers;
 
+use std::path::Path;
+
 use helpers::ignore_tests::*;
+use ignore::Match;
+use ignore_files::IgnoreFilter;
+
+fn path_is_ignored(filter: &IgnoreFilter, path: &Path, is_dir: bool) -> bool {
+	matches!(
+		filter.match_path_or_ancestors(path, is_dir),
+		Match::Ignore(_)
+	)
+}
 
 #[tokio::test]
 async fn globals() {
@@ -66,4 +77,88 @@ async fn tree() {
 	filter.agnostic_fail("tree/branch/bananas/pears");
 	filter.agnostic_pass("tree/branch/inner/bananas/pears");
 	filter.agnostic_pass("tree/other/bananas/pears");
+}
+
+#[tokio::test]
+async fn nested_negation_does_not_reopen_ignored_parent() {
+	let origin = std::fs::canonicalize("tests/tree").unwrap();
+	let branch = origin.join("branch");
+	let mut filter = IgnoreFilter::new(&origin, &[]).await.unwrap();
+	filter
+		.add_globs(&["branch/parent/"], Some(&origin))
+		.unwrap();
+	filter.add_globs(&["!parent/child"], Some(&branch)).unwrap();
+
+	let parent = branch.join("parent");
+	let child = parent.join("child");
+	assert!(!filter.check_dir(&parent));
+	assert!(path_is_ignored(&filter, &child, false));
+	assert!(!filter.check_dir(&child));
+}
+
+#[tokio::test]
+async fn nested_negation_works_when_parent_is_explicitly_unignored() {
+	let origin = std::fs::canonicalize("tests/tree").unwrap();
+	let branch = origin.join("branch");
+	let mut filter = IgnoreFilter::new(&origin, &[]).await.unwrap();
+	filter
+		.add_globs(&["branch/parent/"], Some(&origin))
+		.unwrap();
+	filter
+		.add_globs(&["!parent/", "parent/*", "!parent/child"], Some(&branch))
+		.unwrap();
+
+	let parent = branch.join("parent");
+	let child = parent.join("child");
+	let sibling = parent.join("sibling");
+	assert!(filter.check_dir(&parent));
+	assert!(!path_is_ignored(&filter, &child, false));
+	assert!(filter.check_dir(&child));
+	assert!(path_is_ignored(&filter, &sibling, false));
+	assert!(!filter.check_dir(&sibling));
+}
+
+#[tokio::test]
+async fn scoped_ignores_respect_path_component_boundaries() {
+	let origin = std::fs::canonicalize("tests/tree").unwrap();
+	let scoped = origin.join("tests");
+	let mut filter = IgnoreFilter::new(&origin, &[]).await.unwrap();
+	filter
+		.add_globs(&["item", "!allowed"], Some(&origin))
+		.unwrap();
+	filter
+		.add_globs(&["!item", "allowed"], Some(&scoped))
+		.unwrap();
+
+	assert!(!path_is_ignored(&filter, &scoped.join("item"), false));
+	assert!(path_is_ignored(&filter, &scoped.join("allowed"), false));
+	assert!(path_is_ignored(
+		&filter,
+		&origin.join("tests2").join("item"),
+		false
+	));
+	assert!(!path_is_ignored(
+		&filter,
+		&origin.join("tests2").join("allowed"),
+		false
+	));
+}
+
+#[tokio::test]
+async fn out_of_origin_paths_do_not_match_external_ancestors() {
+	let origin = std::fs::canonicalize("tests/tree").unwrap();
+	let mut filter = IgnoreFilter::new(&origin, &[]).await.unwrap();
+	filter.add_globs(&["rust"], None).unwrap();
+
+	let external = origin
+		.parent()
+		.unwrap()
+		.join("rust")
+		.join("watched")
+		.join("child");
+	let internal = origin.join("rust").join("child");
+	assert!(!path_is_ignored(&filter, &external, false));
+	assert!(filter.check_dir(&external));
+	assert!(path_is_ignored(&filter, &internal, false));
+	assert!(!filter.check_dir(&internal));
 }

@@ -1,8 +1,19 @@
 use ignore_files::IgnoreFilter;
+use watchexec::filter::Filterer;
 use watchexec_filterer_ignore::IgnoreFilterer;
 
 mod helpers;
 use helpers::ignore::*;
+
+fn assert_source_dir(filterer: &IgnoreFilterer, path: &str, pass: bool) {
+	let origin = std::fs::canonicalize(".").unwrap();
+	assert_eq!(
+		filterer.check_dir(&origin.join(path)).unwrap(),
+		pass,
+		"source directory {path:?} (expected {})",
+		if pass { "pass" } else { "fail" }
+	);
+}
 
 #[tokio::test]
 async fn folders() {
@@ -247,6 +258,61 @@ async fn scopes() {
 
 	filterer.file_doesnt_pass("tests/child/child.txt");
 	filterer.file_doesnt_pass("tests/child/grandchild/grandchild.c");
+}
+
+#[tokio::test]
+async fn source_checks_boundary_parent_and_negation() {
+	let filterer = filt("", &[file("folders")]).await;
+	assert_source_dir(&filterer, "apples", true);
+	assert_source_dir(&filterer, "prunes", false);
+	assert_source_dir(&filterer, "prunes/nested", false);
+
+	let filterer = filt("", &[file("negate")]).await;
+	assert_source_dir(&filterer, "nah", false);
+	assert_source_dir(&filterer, "nah.yeah", true);
+}
+
+#[tokio::test]
+async fn source_checks_scoped_ignores_after_normalising() {
+	let filterer = filt("", &[file("scopes-sublocal").applies_in("tests")]).await;
+	assert_source_dir(&filterer, "sublocal.dir", true);
+	assert_source_dir(&filterer, "tests/sublocal.dir", false);
+	assert_source_dir(&filterer, "elsewhere/../tests/sublocal.dir", false);
+}
+
+#[tokio::test]
+async fn descendant_negation_does_not_reopen_ignored_parent() {
+	let origin = std::fs::canonicalize(".").unwrap();
+	let mut ignore_filter = IgnoreFilter::new(&origin, &[]).await.unwrap();
+	ignore_filter
+		.add_globs(&["parent/", "!parent/child"], Some(&origin))
+		.unwrap();
+	let filterer = IgnoreFilterer(ignore_filter);
+
+	filterer.dir_doesnt_pass("parent");
+	filterer.file_doesnt_pass("parent/child");
+	assert_source_dir(&filterer, "parent", false);
+	assert_source_dir(&filterer, "parent/child", false);
+}
+
+#[tokio::test]
+async fn explicitly_unignored_parent_allows_descendant_negation() {
+	let origin = std::fs::canonicalize(".").unwrap();
+	let mut ignore_filter = IgnoreFilter::new(&origin, &[]).await.unwrap();
+	ignore_filter
+		.add_globs(
+			&["parent/", "!parent/", "parent/*", "!parent/child"],
+			Some(&origin),
+		)
+		.unwrap();
+	let filterer = IgnoreFilterer(ignore_filter);
+
+	filterer.dir_does_pass("parent");
+	filterer.file_does_pass("parent/child");
+	filterer.file_doesnt_pass("parent/sibling");
+	assert_source_dir(&filterer, "parent", true);
+	assert_source_dir(&filterer, "parent/child", true);
+	assert_source_dir(&filterer, "parent/sibling", false);
 }
 
 #[tokio::test]

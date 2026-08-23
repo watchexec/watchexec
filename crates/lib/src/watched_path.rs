@@ -65,6 +65,8 @@ impl AsRef<Path> for WatchedPath {
 
 impl WatchedPath {
 	/// Create a new watched path, recursively descending into subdirectories.
+	///
+	/// Descendant directories are subject to [`Filterer::check_dir`](crate::filter::Filterer::check_dir).
 	pub fn recursive(path: impl Into<PathBuf>) -> Self {
 		Self {
 			path: path.into(),

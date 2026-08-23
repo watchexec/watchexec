@@ -4,6 +4,7 @@ use std::{
 	sync::Arc,
 };
 
+use ignore_files::VCS_DIR_NAMES;
 use miette::{IntoDiagnostic, Result};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tracing::{info, trace, trace_span};
@@ -30,6 +31,10 @@ pub struct WatchexecFilterer {
 }
 
 impl Filterer for WatchexecFilterer {
+	fn check_dir(&self, path: &Path) -> Result<bool, RuntimeError> {
+		self.inner.check_dir(path)
+	}
+
 	#[tracing::instrument(level = "trace", skip(self))]
 	fn check_event(&self, event: &Event, priority: Priority) -> Result<bool, RuntimeError> {
 		for tag in &event.tags {
@@ -92,25 +97,19 @@ impl WatchexecFilterer {
 				(String::from(".*.kate-swp"), None),
 				(String::from(".*.sw?"), None),
 				(String::from(".*.sw?x"), None),
-				(format!("**{MAIN_SEPARATOR}.bzr{MAIN_SEPARATOR}**"), None),
-				(format!("**{MAIN_SEPARATOR}_darcs{MAIN_SEPARATOR}**"), None),
-				(
-					format!("**{MAIN_SEPARATOR}.fossil-settings{MAIN_SEPARATOR}**"),
-					None,
-				),
-				(format!("**{MAIN_SEPARATOR}.git{MAIN_SEPARATOR}**"), None),
-				(format!("**{MAIN_SEPARATOR}.hg{MAIN_SEPARATOR}**"), None),
-				(format!("**{MAIN_SEPARATOR}.pijul{MAIN_SEPARATOR}**"), None),
-				(format!("**{MAIN_SEPARATOR}.svn{MAIN_SEPARATOR}**"), None),
 			]);
+			for directory in VCS_DIR_NAMES {
+				ignores.extend([
+					(format!("**{MAIN_SEPARATOR}{directory}"), None),
+					(
+						format!("**{MAIN_SEPARATOR}{directory}{MAIN_SEPARATOR}**"),
+						None,
+					),
+				]);
+			}
 		}
 
-		let whitelist = args
-			.filtering
-			.paths
-			.iter()
-			.map(std::convert::Into::into)
-			.filter(|p: &PathBuf| p.is_file());
+		let whitelist = args.filtering.paths.iter().map(std::convert::Into::into);
 
 		let mut filters = args
 			.filtering
@@ -166,8 +165,7 @@ async fn read_filter_file(path: &Path) -> Result<Vec<(String, Option<PathBuf>)>>
 	let metadata_len = file
 		.metadata()
 		.await
-		.map(|m| usize::try_from(m.len()))
-		.unwrap_or(Ok(0))
+		.map_or(Ok(0), |metadata| usize::try_from(metadata.len()))
 		.into_diagnostic()?;
 	let filter_capacity = if metadata_len == 0 {
 		0
@@ -189,4 +187,45 @@ async fn read_filter_file(path: &Path) -> Result<Vec<(String, Option<PathBuf>)>>
 	}
 
 	Ok(filters)
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use watchexec_events::FileType;
+
+	#[tokio::test]
+	async fn normalised_watch_root_whitelist_overrides_event_ignore() {
+		let origin = dunce::canonicalize(".").unwrap();
+		let emitted_root = origin.join("ignored");
+		let configured_root = origin.join("intermediate").join("..").join("ignored");
+		assert!(configured_root.is_absolute());
+		assert_ne!(configured_root, emitted_root);
+
+		let inner = GlobsetFilterer::new(
+			&origin,
+			Vec::<(String, Option<PathBuf>)>::new(),
+			vec![(String::from("**/ignored"), None)],
+			vec![configured_root],
+			Vec::<ignore_files::IgnoreFile>::new(),
+			Vec::<OsString>::new(),
+		)
+		.await
+		.unwrap();
+		let filterer = WatchexecFilterer {
+			inner,
+			fs_events: Vec::new(),
+			progs: None,
+		};
+		let event = Event {
+			tags: vec![Tag::Path {
+				path: emitted_root.clone(),
+				file_type: Some(FileType::Dir),
+			}],
+			metadata: Default::default(),
+		};
+
+		assert!(filterer.check_event(&event, Priority::Normal).unwrap());
+		assert!(!filterer.check_dir(&emitted_root).unwrap());
+	}
 }

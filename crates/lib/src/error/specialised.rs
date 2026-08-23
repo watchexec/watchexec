@@ -51,6 +51,17 @@ pub enum FsWatcherError {
 		err: notify::Error,
 	},
 
+	/// Error received while traversing a filesystem path for recursive watching.
+	#[error("while scanning {path:?}")]
+	PathScan {
+		/// The path that was being inspected or read.
+		path: PathBuf,
+
+		/// The underlying I/O error.
+		#[source]
+		err: std::io::Error,
+	},
+
 	/// Error received when removing from the pathset for the filesystem watcher fails.
 	#[error("while removing {path:?}")]
 	PathRemove {

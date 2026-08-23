@@ -73,7 +73,7 @@ complete -c watchexec -l no-default-ignore -d 'Don\'t use internal default ignor
 complete -c watchexec -l no-discover-ignore -d 'Don\'t discover ignore files at all'
 complete -c watchexec -l ignore-nothing -d 'Don\'t ignore anything at all'
 complete -c watchexec -l no-meta -d 'Don\'t emit fs events for metadata changes'
-complete -c watchexec -l no-follow-symlinks -d 'Don\'t follow symlinks when watching'
+complete -c watchexec -l no-follow-symlinks -d 'Don\'t follow directory symlinks when watching'
 complete -c watchexec -s v -l verbose -d 'Set diagnostic log level'
 complete -c watchexec -l print-events -d 'Print events that trigger actions'
 complete -c watchexec -l timings -d 'Print how long the command took to run'

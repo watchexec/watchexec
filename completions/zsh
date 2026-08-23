@@ -86,7 +86,7 @@ end\:"Notify only when the command ends"))' \
 '--no-discover-ignore[Don'\''t discover ignore files at all]' \
 '--ignore-nothing[Don'\''t ignore anything at all]' \
 '(--fs-events)--no-meta[Don'\''t emit fs events for metadata changes]' \
-'--no-follow-symlinks[Don'\''t follow symlinks when watching]' \
+'--no-follow-symlinks[Don'\''t follow directory symlinks when watching]' \
 '*-v[Set diagnostic log level]' \
 '*--verbose[Set diagnostic log level]' \
 '--print-events[Print events that trigger actions]' \
