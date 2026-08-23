@@ -67,7 +67,7 @@ Watchexec pairs well with:
   - [watchexec-signals](./crates/signals/): signal types for watchexec.
   - [watchexec-supervisor](./crates/supervisor/): process lifecycle manager (the _exec_ part of watchexec).
 - [clearscreen](https://github.com/watchexec/clearscreen): to clear the (terminal) screen on every platform.
-- [command group](https://github.com/watchexec/command-group): to run commands in process groups.
+- [process wrap](https://github.com/watchexec/process-wrap): to run commands in process groups.
 - [ignore files](./crates/ignore-files/): to find, parse, and interpret ignore files.
 - [project origins](./crates/project-origins/): to find the origin(s) directory of a project.
 - [notify](https://github.com/notify-rs/notify): to respond to file modifications (third-party).
@@ -76,7 +76,7 @@ Watchexec pairs well with:
 
 Selected downstreams of watchexec and associated crates:
 
-- [cargo watch](https://github.com/watchexec/cargo-watch): a specialised watcher for Rust/Cargo projects.
+- ~~[cargo watch](https://github.com/watchexec/cargo-watch): a specialised watcher for Rust/Cargo projects.~~
 - [cargo lambda](https://github.com/cargo-lambda/cargo-lambda): a dev tool for Rust-powered AWS Lambda functions.
 - [create-rust-app](https://create-rust-app.dev): a template for Rust+React web apps.
 - [devenv.sh](https://github.com/cachix/devenv): a developer environment with nix-based declarative configs.
