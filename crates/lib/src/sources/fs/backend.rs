@@ -45,14 +45,44 @@ pub(super) fn create_notify(
 	follow_symlinks: bool,
 	handler: impl notify::EventHandler,
 ) -> notify::Result<Box<dyn Backend>> {
-	use notify::Config;
+	create_notify_for_recommended(
+		kind,
+		<notify::RecommendedWatcher as notify::Watcher>::kind(),
+		follow_symlinks,
+		handler,
+	)
+	.map(|(backend, _)| backend)
+}
 
-	let config = Config::default().with_follow_symlinks(follow_symlinks);
+fn create_notify_for_recommended(
+	kind: Watcher,
+	recommended: notify::WatcherKind,
+	follow_symlinks: bool,
+	handler: impl notify::EventHandler,
+) -> notify::Result<(Box<dyn Backend>, notify::WatcherKind)> {
+	let config = notify_config(kind, follow_symlinks);
+	if kind.backend_kind_for(recommended) == notify::WatcherKind::PollWatcher {
+		notify::PollWatcher::new(handler, config).map(|watcher| {
+			(
+				Box::new(watcher) as Box<dyn Backend>,
+				<notify::PollWatcher as notify::Watcher>::kind(),
+			)
+		})
+	} else {
+		notify::RecommendedWatcher::new(handler, config).map(|watcher| {
+			(
+				Box::new(watcher) as Box<dyn Backend>,
+				<notify::RecommendedWatcher as notify::Watcher>::kind(),
+			)
+		})
+	}
+}
+
+fn notify_config(kind: Watcher, follow_symlinks: bool) -> notify::Config {
+	let config = notify::Config::default().with_follow_symlinks(follow_symlinks);
 	match kind {
-		Watcher::Native => notify::RecommendedWatcher::new(handler, config)
-			.map(|watcher| Box::new(watcher) as Box<dyn Backend>),
-		Watcher::Poll(delay) => notify::PollWatcher::new(handler, config.with_poll_interval(delay))
-			.map(|watcher| Box::new(watcher) as Box<dyn Backend>),
+		Watcher::Native => config,
+		Watcher::Poll(delay) => config.with_poll_interval(delay),
 	}
 }
 
@@ -94,6 +124,67 @@ mod tests {
 	use std::io;
 
 	use super::*;
+
+	fn ignore_events(_: notify::Result<notify::Event>) {}
+
+	#[test]
+	fn factory_constructs_poll_for_kqueue_recommendation() {
+		let (_, actual) = create_notify_for_recommended(
+			Watcher::Native,
+			notify::WatcherKind::Kqueue,
+			true,
+			ignore_events,
+		)
+		.unwrap();
+		assert_eq!(actual, notify::WatcherKind::PollWatcher);
+	}
+
+	#[test]
+	fn factory_constructs_selected_native_backend() {
+		let (_, actual) = create_notify_for_recommended(
+			Watcher::Native,
+			<notify::RecommendedWatcher as notify::Watcher>::kind(),
+			true,
+			ignore_events,
+		)
+		.unwrap();
+		assert_eq!(actual, Watcher::Native.backend_kind());
+	}
+
+	#[test]
+	fn factory_constructs_poll_for_explicit_poll() {
+		let (_, actual) = create_notify_for_recommended(
+			Watcher::Poll(std::time::Duration::from_millis(1234)),
+			<notify::RecommendedWatcher as notify::Watcher>::kind(),
+			true,
+			ignore_events,
+		)
+		.unwrap();
+		assert_eq!(actual, notify::WatcherKind::PollWatcher);
+	}
+
+	#[test]
+	fn native_poll_uses_notify_default_interval() {
+		assert_eq!(
+			notify_config(Watcher::Native, true).poll_interval(),
+			notify::Config::default().poll_interval()
+		);
+	}
+
+	#[test]
+	fn explicit_poll_uses_configured_interval() {
+		let interval = std::time::Duration::from_millis(1234);
+		assert_eq!(
+			notify_config(Watcher::Poll(interval), true).poll_interval(),
+			Some(interval)
+		);
+	}
+
+	#[test]
+	fn notify_config_preserves_symlink_policy() {
+		assert!(notify_config(Watcher::Native, true).follow_symlinks());
+		assert!(!notify_config(Watcher::Native, false).follow_symlinks());
+	}
 
 	#[test]
 	fn max_files_watch_is_always_a_resource_error() {
