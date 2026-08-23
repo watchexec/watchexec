@@ -65,7 +65,7 @@ pub use crate::WatchedPath;
 pub enum Watcher {
 	/// The Notify-recommended watcher on the platform.
 	///
-	/// For platforms Notify supports, that's a [native implementation][notify::RecommendedWatcher];
+	/// For platforms Notify supports, that's a [native implementation][notify::RecommendedWatcher],
 	/// for others it's polling with a default interval.
 	#[default]
 	Native,
