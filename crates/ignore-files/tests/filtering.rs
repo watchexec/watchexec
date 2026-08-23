@@ -9,7 +9,7 @@ use ignore_files::IgnoreFilter;
 fn path_is_ignored(filter: &IgnoreFilter, path: &Path, is_dir: bool) -> bool {
 	matches!(
 		filter.match_path_or_ancestors(path, is_dir),
-		Match::Ignore(glob) if glob.from().map_or(true, |from| path.starts_with(from))
+		Match::Ignore(_)
 	)
 }
 

@@ -746,11 +746,11 @@ fn assert_linux_inotify_registration(root: &Path, directory: &Path, expected: bo
 
 #[cfg(target_os = "linux")]
 const fn linux_fdinfo_device(device: u64) -> u64 {
-	// Linux fdinfo prints sb->s_dev through new_encode_dev(), while MetadataExt
-	// exposes dev_t. Decode with libc, then apply the kernel's fdinfo encoding.
+	// Linux fdinfo prints the kernel's internal dev_t layout, while MetadataExt
+	// exposes the userspace layout. Decode with libc, then rebuild the kernel value.
 	let major = libc::major(device) as u64;
 	let minor = libc::minor(device) as u64;
-	(minor & 0xff) | (major << 8) | ((minor & !0xff) << 12)
+	(major << 20) | minor
 }
 
 #[cfg(target_os = "linux")]

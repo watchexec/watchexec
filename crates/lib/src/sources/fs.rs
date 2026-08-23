@@ -959,7 +959,7 @@ mod tests {
 
 		dispatch_callback_event(
 			1,
-			Watcher::Native,
+			Watcher::Poll(std::time::Duration::from_secs(1)),
 			&control,
 			&ordinary,
 			&fence,
@@ -969,7 +969,7 @@ mod tests {
 		);
 		dispatch_callback_event(
 			1,
-			Watcher::Native,
+			Watcher::Poll(std::time::Duration::from_secs(1)),
 			&control,
 			&ordinary,
 			&fence,
