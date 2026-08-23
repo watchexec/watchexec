@@ -45,13 +45,36 @@ pub(super) fn create_notify(
 	follow_symlinks: bool,
 	handler: impl notify::EventHandler,
 ) -> notify::Result<Box<dyn Backend>> {
+	create_notify_for_recommended(
+		kind,
+		<notify::RecommendedWatcher as notify::Watcher>::kind(),
+		follow_symlinks,
+		handler,
+	)
+	.map(|(backend, _)| backend)
+}
+
+fn create_notify_for_recommended(
+	kind: Watcher,
+	recommended: notify::WatcherKind,
+	follow_symlinks: bool,
+	handler: impl notify::EventHandler,
+) -> notify::Result<(Box<dyn Backend>, notify::WatcherKind)> {
 	let config = notify_config(kind, follow_symlinks);
-	if kind.backend_kind() == notify::WatcherKind::PollWatcher {
-		notify::PollWatcher::new(handler, config)
-			.map(|watcher| Box::new(watcher) as Box<dyn Backend>)
+	if kind.backend_kind_for(recommended) == notify::WatcherKind::PollWatcher {
+		notify::PollWatcher::new(handler, config).map(|watcher| {
+			(
+				Box::new(watcher) as Box<dyn Backend>,
+				<notify::PollWatcher as notify::Watcher>::kind(),
+			)
+		})
 	} else {
-		notify::RecommendedWatcher::new(handler, config)
-			.map(|watcher| Box::new(watcher) as Box<dyn Backend>)
+		notify::RecommendedWatcher::new(handler, config).map(|watcher| {
+			(
+				Box::new(watcher) as Box<dyn Backend>,
+				<notify::RecommendedWatcher as notify::Watcher>::kind(),
+			)
+		})
 	}
 }
 
@@ -101,6 +124,44 @@ mod tests {
 	use std::io;
 
 	use super::*;
+
+	fn ignore_events(_: notify::Result<notify::Event>) {}
+
+	#[test]
+	fn factory_constructs_poll_for_kqueue_recommendation() {
+		let (_, actual) = create_notify_for_recommended(
+			Watcher::Native,
+			notify::WatcherKind::Kqueue,
+			true,
+			ignore_events,
+		)
+		.unwrap();
+		assert_eq!(actual, notify::WatcherKind::PollWatcher);
+	}
+
+	#[test]
+	fn factory_constructs_selected_native_backend() {
+		let (_, actual) = create_notify_for_recommended(
+			Watcher::Native,
+			<notify::RecommendedWatcher as notify::Watcher>::kind(),
+			true,
+			ignore_events,
+		)
+		.unwrap();
+		assert_eq!(actual, Watcher::Native.backend_kind());
+	}
+
+	#[test]
+	fn factory_constructs_poll_for_explicit_poll() {
+		let (_, actual) = create_notify_for_recommended(
+			Watcher::Poll(std::time::Duration::from_millis(1234)),
+			<notify::RecommendedWatcher as notify::Watcher>::kind(),
+			true,
+			ignore_events,
+		)
+		.unwrap();
+		assert_eq!(actual, notify::WatcherKind::PollWatcher);
+	}
 
 	#[test]
 	fn native_poll_uses_notify_default_interval() {
