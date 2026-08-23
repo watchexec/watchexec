@@ -596,8 +596,10 @@ async fn follow_symlinks_controls_watching_external_directory_targets() {
 
 	for case in managed_watcher_cases() {
 		let temp = make_tempdir(case, "symlinks");
-		let root = temp.path().join("root");
-		let target = temp.path().join("target");
+		let temp_path = std::fs::canonicalize(temp.path())
+			.unwrap_or_else(|error| panic!("failed to canonicalize temporary directory: {error}"));
+		let root = temp_path.join("root");
+		let target = temp_path.join("target");
 		let link = root.join("link");
 		create_dir(&root);
 		create_dir(&target);

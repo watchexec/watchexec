@@ -196,13 +196,9 @@ mod tests {
 
 	#[tokio::test]
 	async fn normalised_watch_root_whitelist_overrides_event_ignore() {
-		let origin = std::fs::canonicalize(".").unwrap();
+		let origin = dunce::canonicalize(".").unwrap();
 		let emitted_root = origin.join("ignored");
-		let mut configured_root = origin.as_os_str().to_os_string();
-		configured_root.push(format!(
-			"{MAIN_SEPARATOR}intermediate{MAIN_SEPARATOR}..{MAIN_SEPARATOR}ignored"
-		));
-		let configured_root = PathBuf::from(configured_root);
+		let configured_root = origin.join("intermediate").join("..").join("ignored");
 		assert!(configured_root.is_absolute());
 		assert_ne!(configured_root, emitted_root);
 
