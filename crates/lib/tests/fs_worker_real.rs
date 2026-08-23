@@ -41,9 +41,15 @@ fn managed_watcher_cases() -> Vec<WatcherCase> {
 		watcher: Watcher::Poll(POLL_INTERVAL),
 	};
 
-	// These native backends have independent non-recursive registrations and
-	// therefore use watchexec's source-filtering recursor.
-	#[cfg(any(target_os = "linux", target_os = "android", target_os = "windows"))]
+	// These native backends support Watchexec-owned source filtering. FSEvents
+	// retains broad recursive registrations and filters the accepted tree logically;
+	// the other native backends use independent non-recursive registrations.
+	#[cfg(any(
+		target_os = "linux",
+		target_os = "android",
+		target_os = "windows",
+		target_os = "macos"
+	))]
 	{
 		vec![
 			WatcherCase {
@@ -54,7 +60,12 @@ fn managed_watcher_cases() -> Vec<WatcherCase> {
 		]
 	}
 
-	#[cfg(not(any(target_os = "linux", target_os = "android", target_os = "windows")))]
+	#[cfg(not(any(
+		target_os = "linux",
+		target_os = "android",
+		target_os = "windows",
+		target_os = "macos"
+	)))]
 	{
 		vec![poll]
 	}
@@ -89,6 +100,7 @@ impl Filterer for DirFilter {
 struct FsHarness {
 	case: WatcherCase,
 	config: Arc<Config>,
+	path_aliases: Vec<(PathBuf, PathBuf)>,
 	ready: watch::Receiver<()>,
 	events: priority::Receiver<Event, Priority>,
 	errors: mpsc::Receiver<RuntimeError>,
@@ -106,6 +118,7 @@ impl FsHarness {
 		config.file_watcher(case.watcher);
 		config.follow_symlinks(follow_symlinks);
 		config.filterer(filterer);
+		let path_aliases = watch_path_aliases(&paths);
 		config.pathset(paths);
 
 		// Subscribe after configuring but before spawning: the worker has not yet
@@ -120,6 +133,7 @@ impl FsHarness {
 		let mut harness = Self {
 			case,
 			config,
+			path_aliases,
 			ready,
 			events,
 			errors,
@@ -145,6 +159,7 @@ impl FsHarness {
 	}
 
 	async fn set_paths(&mut self, paths: Vec<WatchedPath>) {
+		self.path_aliases = watch_path_aliases(&paths);
 		self.config.pathset(paths);
 		self.wait_ready("pathset replacement").await;
 		self.drain_events();
@@ -166,6 +181,19 @@ impl FsHarness {
 
 	fn task_finished(&self) -> bool {
 		self.task.as_ref().map_or(true, JoinHandle::is_finished)
+	}
+
+	fn aliases_for(&self, path: &Path) -> Vec<PathBuf> {
+		let mut aliases = vec![path.to_owned()];
+		for (configured, canonical) in &self.path_aliases {
+			if let Ok(relative) = path.strip_prefix(configured) {
+				aliases.push(canonical.join(relative));
+			}
+			if let Ok(relative) = path.strip_prefix(canonical) {
+				aliases.push(configured.join(relative));
+			}
+		}
+		aliases
 	}
 
 	fn take_available_errors(&mut self) -> Vec<String> {
@@ -204,7 +232,11 @@ impl FsHarness {
 			match timeout(deadline.saturating_duration_since(now), self.events.recv()).await {
 				Ok(Ok((event, _priority))) => {
 					let paths = event_paths(&event);
-					if matches_event(&event) && paths.iter().any(|path| expected.contains(path)) {
+					let aliases: Vec<_> = paths
+						.iter()
+						.flat_map(|path| self.aliases_for(path))
+						.collect();
+					if matches_event(&event) && aliases.iter().any(|path| expected.contains(path)) {
 						return event;
 					}
 					observed.push(format!("{event:?}"));
@@ -238,10 +270,14 @@ impl FsHarness {
 			match timeout(deadline.saturating_duration_since(now), self.events.recv()).await {
 				Ok(Ok((event, _priority))) => {
 					let paths = event_paths(&event);
+					let aliases: Vec<_> = paths
+						.iter()
+						.flat_map(|path| self.aliases_for(path))
+						.collect();
 					// A watched parent can report the forbidden directory itself even
 					// when no watch is installed inside that directory.
 					assert!(
-						!paths.iter().any(|path| {
+						!aliases.iter().any(|path| {
 							forbidden
 								.iter()
 								.any(|prefix| path != prefix && path.starts_with(prefix))
@@ -294,6 +330,19 @@ impl Drop for FsHarness {
 	}
 }
 
+fn watch_path_aliases(paths: &[WatchedPath]) -> Vec<(PathBuf, PathBuf)> {
+	paths
+		.iter()
+		.filter_map(|watched| {
+			let path = watched.as_ref();
+			std::fs::canonicalize(path)
+				.ok()
+				.filter(|canonical| canonical != path)
+				.map(|canonical| (path.to_path_buf(), canonical))
+		})
+		.collect()
+}
+
 fn event_paths(event: &Event) -> Vec<PathBuf> {
 	event.paths().map(|(path, _)| path.to_owned()).collect()
 }
@@ -312,7 +361,12 @@ fn event_is_remove(event: &Event) -> bool {
 		.any(|tag| matches!(tag, Tag::FileEventKind(EventKind::Remove(_))))
 }
 
-#[cfg(any(target_os = "linux", target_os = "android", target_os = "windows"))]
+#[cfg(any(
+	target_os = "linux",
+	target_os = "android",
+	target_os = "windows",
+	target_os = "macos"
+))]
 fn event_is_non_name_modify(event: &Event) -> bool {
 	event.tags.iter().any(|tag| {
 		matches!(
@@ -340,7 +394,12 @@ fn write_file(path: &Path, contents: &str) {
 		.unwrap_or_else(|error| panic!("failed to write file {}: {error}", path.display()));
 }
 
-#[cfg(any(target_os = "linux", target_os = "android", target_os = "windows"))]
+#[cfg(any(
+	target_os = "linux",
+	target_os = "android",
+	target_os = "windows",
+	target_os = "macos"
+))]
 fn replace_file(path: &Path, replacement: &Path, contents: &str) {
 	write_file(replacement, contents);
 	#[cfg(target_os = "windows")]
@@ -356,7 +415,7 @@ fn replace_file(path: &Path, replacement: &Path, contents: &str) {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn recursive_filter_physically_prunes_ignored_subtree() {
+async fn recursive_filter_prunes_ignored_subtree() {
 	for case in managed_watcher_cases() {
 		let temp = make_tempdir(case, "prune");
 		let root = temp.path().join("root");
@@ -385,11 +444,11 @@ async fn recursive_filter_physically_prunes_ignored_subtree() {
 
 		let ignored_file = ignored_nested.join("ignored.txt");
 		let accepted_file = accepted_nested.join("accepted.txt");
-		write_file(&ignored_file, "ignored");
 		write_file(&accepted_file, "accepted");
 		harness
 			.wait_for_any_path(&[accepted_file], "waiting for an accepted sibling change")
 			.await;
+		write_file(&ignored_file, "ignored");
 		harness
 			.assert_no_path_under(&[ignored], "checking the source-pruned subtree")
 			.await;
@@ -478,11 +537,11 @@ async fn replacing_filterer_live_prunes_and_discovers_existing_subtrees() {
 
 		let initially_ignored = newly_allowed.join("before.txt");
 		let initially_seen = initially_allowed.join("before.txt");
-		write_file(&initially_ignored, "ignored before replacement");
 		write_file(&initially_seen, "seen before replacement");
 		harness
 			.wait_for_any_path(&[initially_seen], "checking the initial filterer")
 			.await;
+		write_file(&initially_ignored, "ignored before replacement");
 		harness
 			.assert_no_path_under(
 				std::slice::from_ref(&newly_allowed),
@@ -501,11 +560,11 @@ async fn replacing_filterer_live_prunes_and_discovers_existing_subtrees() {
 
 		let newly_ignored = initially_allowed.join("after.txt");
 		let newly_seen = newly_allowed.join("after.txt");
-		write_file(&newly_ignored, "ignored after replacement");
 		write_file(&newly_seen, "seen after replacement");
 		harness
 			.wait_for_any_path(&[newly_seen], "checking the replacement filterer")
 			.await;
+		write_file(&newly_ignored, "ignored after replacement");
 		harness
 			.assert_no_path_under(&[initially_allowed], "checking the live-pruned subtree")
 			.await;
@@ -539,11 +598,11 @@ async fn removing_overlapping_parent_root_keeps_explicit_child_root_active() {
 
 		let outside_remaining_root = sibling.join("ignored.txt");
 		let inside_remaining_root = child.join("seen.txt");
-		write_file(&outside_remaining_root, "outside");
 		write_file(&inside_remaining_root, "inside");
 		harness
 			.wait_for_any_path(&[inside_remaining_root], "checking the retained child root")
 			.await;
+		write_file(&outside_remaining_root, "outside");
 		harness
 			.assert_no_path_under(&[sibling], "checking the removed parent root")
 			.await;
@@ -592,7 +651,36 @@ async fn configured_root_is_reacquired_after_delete_and_recreate() {
 	}
 }
 
-#[cfg(any(target_os = "linux", target_os = "android", target_os = "windows"))]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn initially_missing_nonrecursive_root_reports_later_children() {
+	for case in managed_watcher_cases() {
+		let temp = make_tempdir(case, "missing-nonrecursive");
+		let root = temp.path().join("missing-root");
+		let mut harness =
+			FsHarness::start(case, vec![WatchedPath::non_recursive(&root)], true, ()).await;
+
+		create_dir(&root);
+		harness
+			.wait_for_any_path(
+				std::slice::from_ref(&root),
+				"observing missing root creation",
+			)
+			.await;
+		let child = root.join("child.txt");
+		write_file(&child, "child");
+		harness
+			.wait_for_any_path(&[child], "checking the newly-created nonrecursive root")
+			.await;
+		harness.shutdown().await;
+	}
+}
+
+#[cfg(any(
+	target_os = "linux",
+	target_os = "android",
+	target_os = "windows",
+	target_os = "macos"
+))]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn explicit_file_root_survives_repeated_replacement() {
 	let case = WatcherCase {
@@ -630,6 +718,35 @@ async fn explicit_file_root_survives_repeated_replacement() {
 	harness.shutdown().await;
 }
 
+#[cfg(target_os = "macos")]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn explicit_file_root_can_be_replaced_by_a_directory() {
+	let case = WatcherCase {
+		name: "native",
+		watcher: Watcher::Native,
+	};
+	let temp = make_tempdir(case, "file-to-directory");
+	let root = temp.path().join("watched");
+	write_file(&root, "initial file");
+	let mut harness = FsHarness::start(case, vec![WatchedPath::recursive(&root)], true, ()).await;
+
+	std::fs::remove_file(&root)
+		.unwrap_or_else(|error| panic!("failed to remove file {}: {error}", root.display()));
+	create_dir(&root);
+	harness
+		.wait_for_any_path(
+			std::slice::from_ref(&root),
+			"observing file-to-directory replacement",
+		)
+		.await;
+	let child = root.join("child.txt");
+	write_file(&child, "child");
+	harness
+		.wait_for_any_path(&[child], "checking recursive replacement coverage")
+		.await;
+	harness.shutdown().await;
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn explicit_nonrecursive_root_does_not_report_grandchildren() {
 	for case in managed_watcher_cases() {
@@ -642,16 +759,13 @@ async fn explicit_nonrecursive_root_does_not_report_grandchildren() {
 
 		let grandchild = child.join("grandchild.txt");
 		let direct = root.join("direct.txt");
-		write_file(&grandchild, "must not be observed");
 		write_file(&direct, "must be observed");
 		harness
 			.wait_for_any_path(&[direct], "checking a direct child of a nonrecursive root")
 			.await;
+		write_file(&grandchild, "must not be observed");
 		harness
-			.assert_no_path_under(
-				&[grandchild],
-				"checking a grandchild of a nonrecursive root",
-			)
+			.assert_no_path_under(&[child], "checking a grandchild of a nonrecursive root")
 			.await;
 		harness.shutdown().await;
 	}
@@ -678,11 +792,11 @@ async fn follow_symlinks_controls_watching_external_directory_targets() {
 			FsHarness::start(case, vec![WatchedPath::recursive(&root)], false, ()).await;
 		let unseen_target_file = target.join("not-followed.txt");
 		let direct = root.join("direct.txt");
-		write_file(&unseen_target_file, "target change");
 		write_file(&direct, "synchronising accepted change");
 		no_follow
 			.wait_for_any_path(&[direct], "checking follow_symlinks=false")
 			.await;
+		write_file(&unseen_target_file, "target change");
 		no_follow
 			.assert_no_path_under(
 				&[target.clone(), link.clone()],
@@ -695,12 +809,94 @@ async fn follow_symlinks_controls_watching_external_directory_targets() {
 			FsHarness::start(case, vec![WatchedPath::recursive(&root)], true, ()).await;
 		let target_file = target.join("followed.txt");
 		let link_file = link.join("followed.txt");
-		write_file(&target_file, "target change");
-		follow
-			.wait_for_any_path(&[target_file, link_file], "checking follow_symlinks=true")
-			.await;
+		if cfg!(target_os = "macos") && case.watcher == Watcher::Native {
+			let direct = root.join("followed-sync.txt");
+			write_file(&direct, "synchronising accepted change");
+			follow
+				.wait_for_any_path(&[direct], "checking native macOS recursive coverage")
+				.await;
+			write_file(&target_file, "target change");
+			follow
+				.assert_no_path_under(
+					&[target.clone(), link.clone()],
+					"checking the native macOS symlink boundary",
+				)
+				.await;
+		} else {
+			write_file(&target_file, "target change");
+			follow
+				.wait_for_any_path(&[target_file, link_file], "checking follow_symlinks=true")
+				.await;
+		}
 		follow.shutdown().await;
 	}
+}
+
+#[cfg(target_os = "macos")]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn explicit_symlink_root_receives_target_events() {
+	use std::os::unix::fs::symlink;
+
+	let case = WatcherCase {
+		name: "native",
+		watcher: Watcher::Native,
+	};
+	let temp = make_tempdir(case, "explicit-symlink");
+	let temp_path = std::fs::canonicalize(temp.path())
+		.unwrap_or_else(|error| panic!("failed to canonicalize temporary directory: {error}"));
+	let initial_target = temp_path.join("initial-target");
+	let replacement_target = temp_path.join("replacement-target");
+	let link = temp_path.join("link");
+	create_dir(&initial_target);
+	create_dir(&replacement_target);
+	symlink(&initial_target, &link).unwrap_or_else(|error| {
+		panic!("failed to symlink {link:?} to {initial_target:?}: {error}")
+	});
+	let mut harness = FsHarness::start(case, vec![WatchedPath::recursive(&link)], true, ()).await;
+
+	let initial_file = initial_target.join("child.txt");
+	let link_file = link.join("child.txt");
+	write_file(&initial_file, "initial target change");
+	harness
+		.wait_for_any_path(
+			&[initial_file.clone(), link_file.clone()],
+			"checking an explicit symlink root",
+		)
+		.await;
+	harness.drain_until_quiet().await;
+
+	std::fs::remove_file(&link)
+		.unwrap_or_else(|error| panic!("failed to remove symlink {}: {error}", link.display()));
+	symlink(&replacement_target, &link).unwrap_or_else(|error| {
+		panic!("failed to retarget {link:?} to {replacement_target:?}: {error}")
+	});
+	harness
+		.wait_for_any_path_matching(
+			std::slice::from_ref(&link),
+			event_is_create,
+			"observing an explicit symlink root retarget",
+		)
+		.await;
+	harness.drain_until_quiet().await;
+
+	let replacement_file = replacement_target.join("child.txt");
+	write_file(&replacement_file, "replacement target change");
+	harness
+		.wait_for_any_path(
+			&[replacement_file, link_file],
+			"checking a retargeted explicit symlink root",
+		)
+		.await;
+	harness.drain_until_quiet().await;
+
+	write_file(&initial_file, "old target change");
+	harness
+		.assert_no_path_under(
+			std::slice::from_ref(&initial_target),
+			"checking the previous symlink target is no longer observed",
+		)
+		.await;
+	harness.shutdown().await;
 }
 
 #[cfg(unix)]
