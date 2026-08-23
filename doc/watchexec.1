@@ -583,11 +583,11 @@ For more complex uses (like watching non\-recursively), use the argfile capabili
 The special value \*(Aq\-\*(Aq will read from STDIN; this in incompatible with \*(Aq\-\-stdin\-quit\*(Aq.
 .TP
 \fB\-\-no\-follow\-symlinks\fR
-Don\*(Aqt follow symlinks when watching
+Don\*(Aqt follow directory symlinks when watching
 
-By default, Watchexec will follow symbolic links when setting up filesystem watches, which means events from the symlink target are reported using the symlink path. With this option, symlinks are not followed: the symlink itself may still produce events, but its target will not be watched through the link.
+By default, Watchexec follows directory symlinks while constructing recursive watches. With this option, their targets are not included; changes to the symlinks themselves may still produce events.
 
-This can be useful when ignored paths are reachable via symlinks, or when watching a directory that contains symlinks pointing outside the project (e.g. Bazel output symlinks).
+The native macOS watcher does not follow directory symlinks outside the watched hierarchy, even without this option.
 .SH DEBUGGING
 .TP
 \fB\-\-log\-file\fR [\fI<PATH>\fR]

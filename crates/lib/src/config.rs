@@ -117,11 +117,11 @@ pub struct Config {
 	/// The kind of filesystem watcher to be used.
 	pub file_watcher: Changeable<Watcher>,
 
-	/// Whether to follow symlinks when watching paths.
+	/// Whether to follow directory symlinks when watching paths.
 	///
-	/// When `true` (the default), the filesystem watcher follows symbolic links and watches their
-	/// targets. When `false`, symlinks are not followed: events for a symlink itself may still occur,
-	/// but its target is not watched through that link.
+	/// When enabled, directory symlink targets are included in recursive watches where supported.
+	/// Native macOS filesystem watching does not follow directory symlinks outside the watched
+	/// hierarchy.
 	pub follow_symlinks: Changeable<bool>,
 
 	/// Listen for Unix job-control signals (`SIGTSTP` and `SIGCONT`).
