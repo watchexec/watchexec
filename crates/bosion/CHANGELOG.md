@@ -7,8 +7,6 @@
 - adopt release-plz
 - use fmt::Write over push_str ([#1054](https://github.com/watchexec/watchexec/pull/1054))
 
-## Next (YYYY-MM-DD)
-
 ## v2.0.0 (2026-01-20)
 
 - Remove `GIT_COMMIT_DESCRIPTION`. In practice this had zero usage, and dropping it means we can stop depending on gix.

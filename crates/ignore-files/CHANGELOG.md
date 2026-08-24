@@ -11,8 +11,6 @@
 - update gix-config requirement in /crates/ignore-files
 - adopt release-plz
 
-## Next (YYYY-MM-DD)
-
 ## v3.0.5 (2026-01-20)
 
 - Deps: gix-config 0.50

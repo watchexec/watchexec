@@ -9,8 +9,6 @@
 - upgrade to nix 0.31 ([#1016](https://github.com/watchexec/watchexec/pull/1016))
 - opt some crates into 3 targets for docsrs
 
-## Next (YYYY-MM-DD)
-
 ## v5.0.1 (2026-01-20)
 
 ## v5.0.0 (2025-05-15)

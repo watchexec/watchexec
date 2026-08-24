@@ -65,6 +65,25 @@ jobs:
           command: release-pr
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN }}
+      - name: Normalize changelog headers
+        if: steps.release-plz.outputs.prs_created == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN }}
+          RELEASE_PR: ${{ steps.release-plz.outputs.pr }}
+        run: |
+          pr_number=$(jq -r '.number' <<< "$RELEASE_PR")
+          gh pr checkout "$pr_number"
+
+          bin/changelog-next --fix
+          bin/changelog-next --check
+
+          git add -- ':(glob)crates/**/CHANGELOG.md'
+          if ! git diff --cached --quiet; then
+            git config user.name github-actions[bot]
+            git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+            git commit -m "release: normalize changelog headers"
+            git push
+          fi
       - name: Update CLI release metadata
         if: steps.release-plz.outputs.pr != '' && contains(steps.release-plz.outputs.pr, 'watchexec-cli')
         env:

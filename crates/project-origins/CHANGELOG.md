@@ -5,8 +5,6 @@
 
 - adopt release-plz
 
-## Next (YYYY-MM-DD)
-
 ## v1.4.2 (2025-05-15)
 
 ## v1.4.1 (2025-02-09)
