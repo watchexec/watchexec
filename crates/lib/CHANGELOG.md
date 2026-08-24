@@ -1,7 +1,7 @@
 # Changelog
 
 ## Next (YYYY-MM-DD)
-
+## v8.4.0 (2026-08-24)
 - Add `Filterer::check_dir` and Watchexec-owned, source-filtered recursion for Inotify, Windows ReadDirectoryChanges, and Poll backends.
 - Reconcile managed filesystem sources when roots, watcher selection, symlink policy, or the live filterer changes. `fs_ready` now reports settled reconciliation and may signal after partial nonfatal failures.
 - Continue traversing independent sibling paths after a scan or watch failure, reporting the failure through the runtime error hook.
@@ -15,10 +15,8 @@
 
 - propagate Unix job-control signals
 - drop events gracefully when channel is full ([#920](https://github.com/watchexec/watchexec/pull/920)) ([#1081](https://github.com/watchexec/watchexec/pull/1081))
-- drop events gracefully when channel is full ([#920](https://github.com/watchexec/watchexec/pull/920))
 - quit on Terminate in home page example
 - upgrade to nix 0.31 ([#1016](https://github.com/watchexec/watchexec/pull/1016))
-- Release
 
 ## v8.2.0 (2026-03-02)
 

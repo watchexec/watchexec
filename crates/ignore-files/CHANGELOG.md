@@ -1,15 +1,13 @@
 # Changelog
 
 ## Next (YYYY-MM-DD)
-
+## v3.0.7 (2026-08-24)
 - Add `IgnoreFilter::match_path_or_ancestors` and `IgnoreFilter::check_dir` for top-down recursive source filtering. An ignored ancestor prunes its subtree; a descendant negation cannot reopen it.
 - Expose `VCS_DIR_NAMES` so ignore discovery and clients can share the same metadata-directory list.
 
 ## v3.0.6 (2026-08-22)
 
-- adapt ignore-files to gix-config 0.59
-- update gix-config requirement in /crates/ignore-files
-- adopt release-plz
+- Deps: gix-config 0.59
 
 ## v3.0.5 (2026-01-20)
 

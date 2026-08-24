@@ -1,20 +1,11 @@
 # Changelog
 
 ## Next (YYYY-MM-DD)
-
+## v8.0.2 (2026-08-24)
 - Add source-directory filtering from ignore files and ignore globs, with top-down ancestor semantics suitable for pruning recursive walks.
 - Keep positive filters, extension filters, and exact-path whitelists event-only so they do not prune possible matching descendants.
 
 ## v8.0.1 (2026-08-22)
-
-- adopt release-plz
-- Release
-- Release
-- Release
-- Release
-- Release
-- Release
-- Release
 
 ## v8.0.0 (2025-05-15)
 

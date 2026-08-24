@@ -1,10 +1,10 @@
 # Changelog
 
 ## Next (YYYY-MM-DD)
+## v2.0.2 (2026-08-24)
+
 ## v2.0.1 (2026-08-22)
 
-- bump time in /crates/bosion/examples/no-std
-- adopt release-plz
 - use fmt::Write over push_str ([#1054](https://github.com/watchexec/watchexec/pull/1054))
 
 ## v2.0.0 (2026-01-20)

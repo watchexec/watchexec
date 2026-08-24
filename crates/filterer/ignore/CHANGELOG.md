@@ -1,20 +1,10 @@
 # Changelog
 
 ## Next (YYYY-MM-DD)
-
+## v7.0.2 (2026-08-24)
 - Implement `Filterer::check_dir` with top-down ignore-file semantics for recursive source pruning.
 
 ## v7.0.1 (2026-08-22)
-
-- adopt release-plz
-- Release
-- Release
-- Release
-- Release
-- Release
-- Release
-- Release
-- Release
 
 ## v7.0.0 (2025-05-15)
 
