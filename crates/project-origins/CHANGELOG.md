@@ -1,6 +1,8 @@
 # Changelog
 
 ## Next (YYYY-MM-DD)
+## v1.4.4 (2026-08-24)
+## Next (YYYY-MM-DD)
 ## v1.4.3 (2026-08-22)
 
 - adopt release-plz

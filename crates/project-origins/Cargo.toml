@@ -1,6 +1,6 @@
 [package]
 name = "project-origins"
-version = "1.4.3"
+version = "1.4.4"
 
 authors = ["Félix Saparelli <felix@passcod.name>"]
 license = "Apache-2.0"

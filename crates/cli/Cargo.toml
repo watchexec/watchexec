@@ -1,6 +1,6 @@
 [package]
 name = "watchexec-cli"
-version = "2.6.1"
+version = "2.7.0"
 
 authors = ["Félix Saparelli <felix@passcod.name>", "Matt Green <mattgreenrocks@gmail.com>"]
 license = "Apache-2.0"
@@ -65,7 +65,7 @@ features = ["log", "env_logger"]
 optional = true
 
 [dependencies.ignore-files]
-version = "3.0.6"
+version = "3.0.7"
 path = "../ignore-files"
 
 [dependencies.miette]
@@ -77,24 +77,24 @@ version = "0.1.1"
 optional = true
 
 [dependencies.project-origins]
-version = "1.4.3"
+version = "1.4.4"
 path = "../project-origins"
 
 [dependencies.watchexec]
-version = "8.3.0"
+version = "8.4.0"
 path = "../lib"
 
 [dependencies.watchexec-events]
-version = "6.1.1"
+version = "6.1.2"
 path = "../events"
 features = ["serde"]
 
 [dependencies.watchexec-signals]
-version = "5.1.0"
+version = "5.1.1"
 path = "../signals"
 
 [dependencies.watchexec-filterer-globset]
-version = "8.0.1"
+version = "8.0.2"
 path = "../filterer/globset"
 
 [dependencies.tokio]
@@ -136,7 +136,7 @@ mimalloc = "0.1.39"
 embed-resource = "3.0.1"
 
 [build-dependencies.bosion]
-version = "2.0.1"
+version = "2.0.2"
 path = "../bosion"
 
 [dev-dependencies]
