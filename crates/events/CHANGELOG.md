@@ -7,8 +7,6 @@
 - update snapbox requirement in /crates/events
 - update changelogs
 
-## Next (YYYY-MM-DD)
-
 ## v6.1.0 (2026-02-22)
 
 - Add `Keyboard::Key` to describe arbitrary single-key keyboard events

@@ -16,8 +16,6 @@
 - Release
 - Release
 
-## Next (YYYY-MM-DD)
-
 ## v8.0.0 (2025-05-15)
 
 ## v7.0.0 (2025-02-09)

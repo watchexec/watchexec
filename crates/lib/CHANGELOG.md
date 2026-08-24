@@ -19,8 +19,6 @@
 - upgrade to nix 0.31 ([#1016](https://github.com/watchexec/watchexec/pull/1016))
 - Release
 
-## Next (YYYY-MM-DD)
-
 ## v8.2.0 (2026-03-02)
 
 - Feat: add `fs_ready` signal for watcher readiness ([#1024](https://github.com/watchexec/watchexec/pull/1024))

@@ -10,8 +10,6 @@
 - upgrade to nix 0.31 ([#1016](https://github.com/watchexec/watchexec/pull/1016))
 - opt some crates into 3 targets for docsrs
 
-## Next (YYYY-MM-DD)
-
 ## v5.2.0 (2026-03-09)
 
 - Add the ability to use `spawn_with` from process-wrap (#1013)

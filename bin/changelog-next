@@ -1,0 +1,143 @@
+#!/usr/bin/env python3
+
+import argparse
+import sys
+from pathlib import Path
+
+NEXT_HEADING = "## Next (YYYY-MM-DD)"
+OPENING = ("# Changelog", "", NEXT_HEADING)
+
+
+def line_content(line):
+    if line.endswith("\r\n"):
+        return line[:-2]
+    if line.endswith(("\r", "\n")):
+        return line[:-1]
+    return line
+
+
+def read_changelog(path):
+    try:
+        text = path.read_bytes().decode("utf-8")
+    except (OSError, UnicodeDecodeError) as error:
+        return None, f"{path}: cannot read changelog: {error}"
+
+    lines = text.splitlines(keepends=True)
+    opening = tuple(line_content(line) for line in lines[:3])
+    if opening != OPENING:
+        return None, (
+            f"{path}: expected the first three lines to be "
+            f"'# Changelog', a blank line, and '{NEXT_HEADING}'"
+        )
+
+    return lines, None
+
+
+def marker_count(lines):
+    return sum(line_content(line) == NEXT_HEADING for line in lines)
+
+
+def normalize(lines):
+    normalized = []
+    seen_marker = False
+    index = 0
+
+    while index < len(lines):
+        line = lines[index]
+        if line_content(line) != NEXT_HEADING:
+            normalized.append(line)
+            index += 1
+            continue
+
+        if not seen_marker:
+            seen_marker = True
+            normalized.append(line)
+            index += 1
+            continue
+
+        index += 1
+        if index < len(lines) and line_content(lines[index]) == "":
+            index += 1
+
+    if lines and line_content(lines[-1]) == lines[-1]:
+        while normalized and line_content(normalized[-1]) == "":
+            normalized.pop()
+        if normalized:
+            normalized[-1] = line_content(normalized[-1])
+
+    return normalized
+
+
+def find_changelogs(root):
+    return sorted((root / "crates").glob("**/CHANGELOG.md"))
+
+
+def load_changelogs(paths):
+    changelogs = []
+    errors = []
+    for path in paths:
+        lines, error = read_changelog(path)
+        if error:
+            errors.append(error)
+        else:
+            changelogs.append((path, lines))
+    return changelogs, errors
+
+
+def validate(changelogs):
+    errors = []
+    for path, lines in changelogs:
+        count = marker_count(lines)
+        if count != 1:
+            errors.append(
+                f"{path}: expected exactly one '{NEXT_HEADING}' heading, found {count}"
+            )
+    return errors
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Check or normalize Watchexec changelog Next headings."
+    )
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--check", action="store_true", help="validate without editing")
+    mode.add_argument("--fix", action="store_true", help="remove duplicate headings")
+    args = parser.parse_args()
+
+    root = Path(__file__).resolve().parent.parent
+    paths = find_changelogs(root)
+    if not paths:
+        print(f"{root}: no crate changelogs found", file=sys.stderr)
+        return 1
+
+    changelogs, errors = load_changelogs(paths)
+    if errors:
+        print(*errors, sep="\n", file=sys.stderr)
+        return 1
+
+    if args.fix:
+        for path, lines in changelogs:
+            normalized = normalize(lines)
+            if normalized != lines:
+                try:
+                    path.write_bytes("".join(normalized).encode("utf-8"))
+                except OSError as error:
+                    print(f"{path}: cannot write changelog: {error}", file=sys.stderr)
+                    return 1
+                print(f"normalized {path.relative_to(root)}")
+
+        changelogs, errors = load_changelogs(paths)
+        if errors:
+            print(*errors, sep="\n", file=sys.stderr)
+            return 1
+
+    errors = validate(changelogs)
+    if errors:
+        print(*errors, sep="\n", file=sys.stderr)
+        return 1
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

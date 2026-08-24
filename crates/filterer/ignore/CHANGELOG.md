@@ -16,8 +16,6 @@
 - Release
 - Release
 
-## Next (YYYY-MM-DD)
-
 ## v7.0.0 (2025-05-15)
 
 - Deps: remove unused dependency `watchexec-signals` ([#930](https://github.com/watchexec/watchexec/pull/930))
