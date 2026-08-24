@@ -4,12 +4,10 @@
 ## v5.3.1 (2026-08-24)
 ## v5.3.0 (2026-08-22)
 
-- remove restart test races
-- adopt release-plz
-- exec-replace safe shell commands to fix restart racing the old process
-- add "quoted" option to allow opting in to or out of quoting of command and arguments to allow Windows shells such as cmd and PowerShell to work correctly while also allowing git-bash and Nushell to work on Windows
-- upgrade to nix 0.31 ([#1016](https://github.com/watchexec/watchexec/pull/1016))
-- opt some crates into 3 targets for docsrs
+- Fix: exec-replace safe shell commands to fix restart racing the old process
+- Feat: add "quoted" option to allow opting in to or out of quoting of command and arguments to allow Windows shells such as cmd and PowerShell to work correctly while also allowing git-bash and Nushell to work on Windows
+- Deps: nix 0.31 ([#1016](https://github.com/watchexec/watchexec/pull/1016))
+- Docs: opt into 3 targets for docsrs
 
 ## v5.2.0 (2026-03-09)
 
