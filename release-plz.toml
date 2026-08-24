@@ -20,6 +20,8 @@ name = "test-socketfd"
 publish = false
 release = false
 
+# release-plz retains custom `Next` headings when generating a release, so the release
+# workflow normalizes each generated PR.
 [changelog]
 header = """# Changelog
 
