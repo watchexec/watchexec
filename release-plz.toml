@@ -20,8 +20,6 @@ name = "test-socketfd"
 publish = false
 release = false
 
-# The body only creates the version heading. The release workflow removes release-plz's
-# retained `Next` heading so its curated entries become that version's release notes.
 [changelog]
 header = """# Changelog
 
