@@ -335,12 +335,36 @@ fn watch_path_aliases(paths: &[WatchedPath]) -> Vec<(PathBuf, PathBuf)> {
 		.iter()
 		.filter_map(|watched| {
 			let path = watched.as_ref();
-			std::fs::canonicalize(path)
-				.ok()
+			path.ancestors()
+				.find_map(|ancestor| {
+					let canonical = std::fs::canonicalize(ancestor).ok()?;
+					let suffix = path.strip_prefix(ancestor).ok()?;
+					Some(canonical.join(suffix))
+				})
 				.filter(|canonical| canonical != path)
 				.map(|canonical| (path.to_path_buf(), canonical))
 		})
 		.collect()
+}
+
+#[cfg(unix)]
+#[test]
+fn watch_path_aliases_use_existing_ancestor_for_missing_path() {
+	use std::os::unix::fs::symlink;
+
+	let temp = tempfile::tempdir().expect("failed to create temporary directory");
+	let temp =
+		std::fs::canonicalize(temp.path()).expect("failed to canonicalize temporary directory");
+	let target = temp.join("target");
+	let alias = temp.join("alias");
+	create_dir(&target);
+	symlink(&target, &alias).expect("failed to create directory symlink");
+
+	let missing = alias.join("missing/child");
+	assert_eq!(
+		watch_path_aliases(&[WatchedPath::non_recursive(&missing)]),
+		vec![(missing, target.join("missing/child"))]
+	);
 }
 
 fn event_paths(event: &Event) -> Vec<PathBuf> {
