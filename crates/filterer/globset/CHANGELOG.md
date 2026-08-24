@@ -7,15 +7,6 @@
 
 ## v8.0.1 (2026-08-22)
 
-- adopt release-plz
-- Release
-- Release
-- Release
-- Release
-- Release
-- Release
-- Release
-
 ## v8.0.0 (2025-05-15)
 
 ## v7.0.0 (2025-02-09)
