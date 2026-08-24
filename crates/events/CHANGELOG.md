@@ -2,7 +2,6 @@
 
 ## Next (YYYY-MM-DD)
 ## v6.1.2 (2026-08-24)
-## Next (YYYY-MM-DD)
 ## v6.1.1 (2026-08-22)
 
 - adopt release-plz

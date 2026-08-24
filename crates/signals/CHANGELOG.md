@@ -2,7 +2,6 @@
 
 ## Next (YYYY-MM-DD)
 ## v5.1.1 (2026-08-24)
-## Next (YYYY-MM-DD)
 ## v5.1.0 (2026-08-22)
 
 - propagate Unix job-control signals

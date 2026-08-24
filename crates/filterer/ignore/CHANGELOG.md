@@ -2,8 +2,6 @@
 
 ## Next (YYYY-MM-DD)
 ## v7.0.2 (2026-08-24)
-## Next (YYYY-MM-DD)
-
 - Implement `Filterer::check_dir` with top-down ignore-file semantics for recursive source pruning.
 
 ## v7.0.1 (2026-08-22)

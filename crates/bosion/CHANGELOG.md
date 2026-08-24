@@ -2,7 +2,6 @@
 
 ## Next (YYYY-MM-DD)
 ## v2.0.2 (2026-08-24)
-## Next (YYYY-MM-DD)
 ## v2.0.1 (2026-08-22)
 
 - bump time in /crates/bosion/examples/no-std

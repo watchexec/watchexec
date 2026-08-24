@@ -2,7 +2,6 @@
 
 ## Next (YYYY-MM-DD)
 ## v5.3.1 (2026-08-24)
-## Next (YYYY-MM-DD)
 ## v5.3.0 (2026-08-22)
 
 - remove restart test races

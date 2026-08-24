@@ -2,8 +2,6 @@
 
 ## Next (YYYY-MM-DD)
 ## v8.4.0 (2026-08-24)
-## Next (YYYY-MM-DD)
-
 - Add `Filterer::check_dir` and Watchexec-owned, source-filtered recursion for Inotify, Windows ReadDirectoryChanges, and Poll backends.
 - Reconcile managed filesystem sources when roots, watcher selection, symlink policy, or the live filterer changes. `fs_ready` now reports settled reconciliation and may signal after partial nonfatal failures.
 - Continue traversing independent sibling paths after a scan or watch failure, reporting the failure through the runtime error hook.
