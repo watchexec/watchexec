@@ -22,6 +22,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changelogs:
+    name: Check changelogs
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v7
+    - name: Check Next sections
+      run: bin/changelog-next --check
+
   libs:
     strategy:
       fail-fast: false
@@ -224,6 +233,7 @@ jobs:
     name: Tests pass
     needs:
     - bosion
+    - changelogs
     - cli-e2e
     - cli-unit
     - cross-checks
