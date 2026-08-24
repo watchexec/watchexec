@@ -20,8 +20,8 @@ name = "test-socketfd"
 publish = false
 release = false
 
-# release-plz retains custom `Next` headings when generating a release, so the release
-# workflow normalizes each generated PR.
+# The body only creates the version heading. The release workflow removes release-plz's
+# retained `Next` heading so its curated entries become that version's release notes.
 [changelog]
 header = """# Changelog
 
@@ -29,9 +29,5 @@ header = """# Changelog
 """
 body = """
 ## v{{ version }} ({{ timestamp | date(format="%Y-%m-%d") }})
-
-{% for commit in commits -%}
-- {% if commit.breaking %}**Breaking:** {% endif %}{{ commit.message }}
-{% endfor %}
 """
 trim = true
