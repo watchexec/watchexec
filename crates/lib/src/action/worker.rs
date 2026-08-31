@@ -156,9 +156,9 @@ pub async fn throttle_collect(
 					trace!(?event, ?priority, "got event");
 
 					if priority == Priority::Urgent {
-						trace!("urgent event, by-passing filters");
+						trace!("urgent event, bypassing filters");
 					} else if event.is_empty() {
-						trace!("empty event, by-passing filters");
+						trace!("empty event, bypassing filters");
 					} else {
 						let filtered = config.filterer.check_event(&event, priority);
 						match filtered {
@@ -185,7 +185,7 @@ pub async fn throttle_collect(
 					set.push(event);
 
 					if priority == Priority::Urgent {
-						trace!("urgent event, by-passing throttle");
+						trace!("urgent event, bypassing throttle");
 					} else {
 						let elapsed = last.elapsed();
 						if elapsed < config.throttle.get() {

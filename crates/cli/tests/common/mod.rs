@@ -14,7 +14,7 @@ fn get_placeholder_data() -> &'static str {
 pub enum GeneratedFileNesting {
 	/// Only one level of files
 	Flat,
-	/// Random, up to a certiain maximum
+	/// Random, up to a certain maximum
 	RandomToMax(usize),
 }
 
