@@ -173,20 +173,20 @@ pub struct EventsArgs {
 	)]
 	pub postpone: bool,
 
-	/// Emit an event for every existing path when starting.
+	/// Include an event for every existing path in the first event emission.
 	///
 	/// This is useful for commands that need to process the current contents of a watched tree,
 	/// rather than only changes that happen after Watchexec starts. Initial events use the 'create'
-	/// filesystem event kind and still pass through the normal event filters.
+	/// filesystem event kind, but they do not trigger command execution by themselves and are not
+	/// passed through the normal event pipeline.
 	///
-	/// This replaces the empty event Watchexec normally starts with, and conflicts with
-	/// '--postpone', which asks for the opposite behaviour.
+	/// With '--postpone', the first real event still controls when the command runs; these events
+	/// are included only in that first emission.
 	#[arg(
 		long,
 		help_heading = OPTSET_EVENTS,
 		value_name = "EVENT",
 		display_order = 162,
-		conflicts_with = "postpone",
 	)]
 	pub initial_events: Option<InitialEvents>,
 

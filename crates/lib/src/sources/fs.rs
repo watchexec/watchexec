@@ -145,6 +145,31 @@ const fn strategy_requires_recreation(
 	}
 }
 
+/// Collect synthetic create events for the current contents of the given watch roots.
+///
+/// The events are returned to the caller and are not sent through Watchexec's action pipeline.
+/// Source-directory traversal uses the same recursor machinery as filesystem watching, including
+/// path normalisation, symlink policy, and source-directory filtering.
+pub fn collect_initial_events(
+	pathset: &[WatchedPath],
+	watcher: Watcher,
+	follow_symlinks: bool,
+	filter: Arc<dyn Filterer>,
+) -> Result<(Vec<Event>, Vec<RuntimeError>), CriticalError> {
+	let cwd = std::env::current_dir().map_err(|err| CriticalError::IoError {
+		about: "obtaining current directory for initial filesystem event collection",
+		err,
+	})?;
+
+	Ok(Recursor::collect_initial_events(
+		pathset,
+		watcher,
+		follow_symlinks,
+		cwd,
+		filter,
+	))
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum Topology {
 	Create(PathBuf),
@@ -863,6 +888,29 @@ fn process_event(
 		err: FsWatcherError::Event(err),
 	})?;
 
+	let event = event_from_notify(nev);
+
+	trace!(?event, "processed notify event into watchexec event");
+	match n_events.try_send(event, Priority::Normal) {
+		Ok(()) => {}
+		Err(priority::TrySendError::Full(_)) => {
+			debug!(
+				"fs watcher event channel is full; dropping event \
+				 (tune Config::event_channel_size if this happens often)"
+			);
+		}
+		Err(priority::TrySendError::Closed(event)) => {
+			return Err(RuntimeError::EventChannelSend {
+				ctx: "fs watcher",
+				err: priority::SendError(event),
+			});
+		}
+	}
+
+	Ok(())
+}
+
+fn event_from_notify(nev: notify::Event) -> Event {
 	let mut tags = Vec::with_capacity(4);
 	tags.push(Tag::Source(Source::Filesystem));
 	tags.push(Tag::FileEventKind(nev.kind));
@@ -890,29 +938,10 @@ fn process_event(
 		event_metadata.insert("notify-backend".to_string(), vec![src.to_string()]);
 	}
 
-	let event = Event {
+	Event {
 		tags,
 		metadata: event_metadata,
-	};
-
-	trace!(?event, "processed notify event into watchexec event");
-	match n_events.try_send(event, Priority::Normal) {
-		Ok(()) => {}
-		Err(priority::TrySendError::Full(_)) => {
-			debug!(
-				"fs watcher event channel is full; dropping event \
-				 (tune Config::event_channel_size if this happens often)"
-			);
-		}
-		Err(priority::TrySendError::Closed(event)) => {
-			return Err(RuntimeError::EventChannelSend {
-				ctx: "fs watcher",
-				err: priority::SendError(event),
-			});
-		}
 	}
-
-	Ok(())
 }
 
 #[cfg(test)]
