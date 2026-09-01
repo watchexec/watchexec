@@ -26,6 +26,7 @@ mod config;
 mod dirs;
 mod emits;
 mod filterer;
+mod initial;
 mod socket;
 mod state;
 
@@ -44,7 +45,11 @@ async fn run_watchexec(args: Args, state: state::State) -> Result<()> {
 		.set(wx.clone())
 		.expect("watchexec reference already set");
 
-	if !args.events.postpone {
+	if args.events.initial_events.is_some() {
+		for event in initial::collect(&args.filtering.paths, !args.filtering.no_follow_symlinks) {
+			wx.send_event(event, Priority::Normal).await?;
+		}
+	} else if !args.events.postpone {
 		debug!("kicking off with empty event");
 		wx.send_event(Event::default(), Priority::Urgent).await?;
 	}

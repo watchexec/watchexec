@@ -81,4 +81,10 @@ impl WatchedPath {
 			recursive: false,
 		}
 	}
+
+	/// Whether this path includes descendants in the watch.
+	#[must_use]
+	pub const fn is_recursive(&self) -> bool {
+		self.recursive
+	}
 }
