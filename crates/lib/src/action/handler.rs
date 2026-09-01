@@ -46,7 +46,7 @@ use super::QuitManner;
 ///    [`EventChannelTrySend` errors](crate::error::RuntimeError::EventChannelTrySend).
 ///
 ///    If you want to do something long-running, you should either ignore that error, and accept
-///    events may be dropped, or preferrably spawn a task to do it, and return from the action
+///    events may be dropped, or preferably spawn a task to do it, and return from the action
 ///    handler as soon as possible.
 #[derive(Debug)]
 pub struct Handler {
