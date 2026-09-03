@@ -51,6 +51,9 @@ pub struct Job {
 
 	/// Mirrors the command state: true when a child process is running.
 	pub(crate) running: Arc<AtomicBool>,
+
+	/// Selects the spawn implementation without extending the public `Control` enum.
+	pub(super) spawner: Arc<super::task::SpawnerSlot>,
 }
 
 impl Job {
@@ -360,6 +363,9 @@ impl Job {
 	/// low-level spawn step. This is useful for delegating process spawning to a privileged
 	/// helper (e.g. for Linux capability granting) while keeping the supervisor's lifecycle
 	/// management.
+	///
+	/// Setting this clears any function previously installed with
+	/// [`set_spawn_child_fn`](Self::set_spawn_child_fn).
 	pub fn set_spawn_fn(
 		&self,
 		fun: impl Fn(&mut tokio::process::Command) -> std::io::Result<tokio::process::Child>
@@ -373,6 +379,39 @@ impl Job {
 	/// Unset any spawn function, reverting to the default `CommandWrap::spawn()`.
 	pub fn unset_spawn_fn(&self) -> Ticket {
 		self.control(Control::ClearSpawnFn)
+	}
+
+	/// Set a function that replaces the normal process spawn with an arbitrary supervised child.
+	///
+	/// The function receives ownership of the prepared [`CommandWrap`] after spawn hooks have run
+	/// and returns a boxed [`ChildWrapper`](process_wrap::tokio::ChildWrapper). This supports
+	/// processes created by an external mechanism, such as a privileged launcher, which cannot
+	/// return a [`tokio::process::Child`].
+	///
+	/// Setting this clears any function previously installed with
+	/// [`set_spawn_fn`](Self::set_spawn_fn).
+	/// Since the function owns the `CommandWrap`, it is responsible for spawning it or otherwise
+	/// handling its configured process-wrap layers.
+	pub fn set_spawn_child_fn(
+		&self,
+		fun: impl Fn(CommandWrap) -> std::io::Result<Box<dyn process_wrap::tokio::ChildWrapper>>
+			+ Send
+			+ Sync
+			+ 'static,
+	) -> Ticket {
+		let spawner = Arc::clone(&self.spawner);
+		let fun = Arc::new(fun);
+		self.control(Control::SyncFunc(Box::new(move |_| {
+			spawner.set(super::task::Spawner::Child(fun));
+		})))
+	}
+
+	/// Unset any child spawn function, reverting to the default `CommandWrap::spawn()`.
+	pub fn unset_spawn_child_fn(&self) -> Ticket {
+		let spawner = Arc::clone(&self.spawner);
+		self.control(Control::SyncFunc(Box::new(move |_| {
+			spawner.set(super::task::Spawner::Default);
+		})))
 	}
 
 	/// Set the error handler.

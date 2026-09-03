@@ -3,7 +3,7 @@ use std::{
 	mem::take,
 	sync::{
 		atomic::{AtomicBool, Ordering},
-		Arc,
+		Arc, Mutex,
 	},
 	time::Instant,
 };
@@ -44,6 +44,8 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 	let done = gone.clone();
 	let running = Arc::new(AtomicBool::new(false));
 	let running_flag = running.clone();
+	let spawner = Arc::new(SpawnerSlot::default());
+	let job_spawner = Arc::clone(&spawner);
 
 	(
 		Job {
@@ -51,11 +53,11 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 			control_queue: sender,
 			gone,
 			running,
+			spawner: job_spawner,
 		},
 		tokio::spawn(async move {
 			let mut error_handler = ErrorHandler::None;
 			let mut spawn_hook = SpawnHook::None;
-			let mut spawn_fn: Option<SpawnFn> = None;
 			let mut command_state = CommandState::Pending;
 			let mut previous_run = None;
 			let mut stop_timer = None;
@@ -101,7 +103,11 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 												},
 											)
 											.await;
-										if let Err(err) = command_state.spawn(command.clone(), spawnable, spawn_fn.as_ref()) {
+										if let Err(err) = command_state.spawn(
+											command.clone(),
+											spawnable,
+											&spawner,
+										) {
 											let fut = error_handler.call(sync_io_error(err));
 											fut.await;
 											return Loop::Skip;
@@ -166,7 +172,11 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 												},
 											)
 											.await;
-										try_with_handler!(command_state.spawn(command.clone(), spawnable, spawn_fn.as_ref()));
+										try_with_handler!(command_state.spawn(
+											command.clone(),
+											spawnable,
+											&spawner,
+										));
 									}
 								}
 								Control::Stop => {
@@ -232,7 +242,11 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 												},
 											)
 											.await;
-										try_with_handler!(command_state.spawn(command.clone(), spawnable, spawn_fn.as_ref()));
+										try_with_handler!(command_state.spawn(
+											command.clone(),
+											spawnable,
+											&spawner,
+										));
 									} else {
 										trace!("child isn't running, skip");
 									}
@@ -283,7 +297,11 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 											},
 										)
 										.await;
-									try_with_handler!(command_state.spawn(command.clone(), spawnable, spawn_fn.as_ref()));
+									try_with_handler!(command_state.spawn(
+										command.clone(),
+										spawnable,
+										&spawner,
+									));
 								}
 								Control::Signal(signal) => {
 									if let CommandState::Running { child, .. } = &mut command_state {
@@ -351,11 +369,11 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 								}
 								Control::SetSpawnFn(f) => {
 									trace!("setting spawn fn");
-									spawn_fn = Some(f);
+									spawner.set(Spawner::Command(f));
 								}
 								Control::ClearSpawnFn => {
 									trace!("clearing spawn fn");
-									spawn_fn = None;
+									spawner.set(Spawner::Default);
 								}
 							}
 
@@ -463,6 +481,60 @@ pub type SpawnFn = Arc<
 		+ Sync
 		+ 'static,
 >;
+
+/// A function that replaces the normal process spawn and returns a supervised child.
+///
+/// Unlike [`SpawnFn`], this receives ownership of the prepared [`CommandWrap`] and returns an
+/// arbitrary [`ChildWrapper`](process_wrap::tokio::ChildWrapper). This supports processes created
+/// by an external mechanism, such as a privileged launcher, which cannot return a
+/// [`tokio::process::Child`].
+///
+/// Spawn hooks have already run before this function is called. The function owns the
+/// `CommandWrap`, so it is also responsible for spawning it or otherwise handling its configured
+/// process-wrap layers.
+pub type SpawnChildFn = Arc<
+	dyn Fn(CommandWrap) -> std::io::Result<Box<dyn process_wrap::tokio::ChildWrapper>>
+		+ Send
+		+ Sync
+		+ 'static,
+>;
+
+#[derive(Clone)]
+#[cfg_attr(test, allow(dead_code))]
+pub(super) enum Spawner {
+	Default,
+	Command(SpawnFn),
+	Child(SpawnChildFn),
+}
+
+pub(super) struct SpawnerSlot(Mutex<Spawner>);
+
+impl SpawnerSlot {
+	pub(super) fn get(&self) -> Spawner {
+		self.0.lock().unwrap_or_else(|err| err.into_inner()).clone()
+	}
+
+	pub(super) fn set(&self, spawner: Spawner) {
+		*self.0.lock().unwrap_or_else(|err| err.into_inner()) = spawner;
+	}
+}
+
+impl Default for SpawnerSlot {
+	fn default() -> Self {
+		Self(Mutex::new(Spawner::Default))
+	}
+}
+
+impl std::fmt::Debug for SpawnerSlot {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let name = match self.get() {
+			Spawner::Default => "default",
+			Spawner::Command(_) => "command",
+			Spawner::Child(_) => "child",
+		};
+		f.debug_tuple("SpawnerSlot").field(&name).finish()
+	}
+}
 
 sync_async_callbox!(SpawnHook, SyncSpawnHook, AsyncSpawnHook, (command: &mut CommandWrap, context: &JobTaskContext<'_>));
 

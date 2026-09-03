@@ -1,10 +1,150 @@
+#[cfg(unix)]
+use std::{
+	future::Future,
+	pin::Pin,
+	process::ExitStatus,
+	sync::atomic::{AtomicBool, AtomicUsize, Ordering},
+};
 use std::{sync::Arc, time::Duration};
 
 use watchexec_supervisor::{
 	command::{Command, Program, Shell, SpawnOptions},
-	job::start_job,
+	job::{start_job, Job},
 	Signal,
 };
+
+#[cfg(unix)]
+#[derive(Debug)]
+struct ExternalChild(tokio::process::Child);
+
+#[cfg(unix)]
+impl process_wrap::tokio::ChildWrapper for ExternalChild {
+	fn inner(&self) -> &dyn process_wrap::tokio::ChildWrapper {
+		panic!("external child has no wrapped Tokio child")
+	}
+
+	fn inner_mut(&mut self) -> &mut dyn process_wrap::tokio::ChildWrapper {
+		panic!("external child has no wrapped Tokio child")
+	}
+
+	fn into_inner(self: Box<Self>) -> Box<dyn process_wrap::tokio::ChildWrapper> {
+		panic!("external child has no wrapped Tokio child")
+	}
+
+	fn id(&self) -> Option<u32> {
+		self.0.id()
+	}
+
+	fn start_kill(&mut self) -> std::io::Result<()> {
+		self.0.start_kill()
+	}
+
+	fn try_wait(&mut self) -> std::io::Result<Option<ExitStatus>> {
+		self.0.try_wait()
+	}
+
+	fn wait(&mut self) -> Pin<Box<dyn Future<Output = std::io::Result<ExitStatus>> + Send + '_>> {
+		Box::pin(self.0.wait())
+	}
+}
+
+#[cfg(unix)]
+async fn wait_for_running(job: &Job, expected: bool) {
+	tokio::time::timeout(Duration::from_secs(1), async {
+		while job.is_running() != expected {
+			tokio::task::yield_now().await;
+		}
+	})
+	.await
+	.expect("job running state did not change in time");
+}
+
+#[tokio::test]
+#[cfg(unix)]
+async fn custom_child_spawn_preserves_job_api() -> Result<(), std::io::Error> {
+	let command = Arc::new(Command {
+		program: Program::Exec {
+			prog: "/this/command/is/not/spawned".into(),
+			args: Vec::new(),
+		},
+		options: Default::default(),
+	});
+	let (job, task) = start_job(command);
+	let calls = Arc::new(AtomicUsize::new(0));
+	let replaced_spawn_called = Arc::new(AtomicBool::new(false));
+
+	job.set_spawn_fn({
+		let replaced_spawn_called = Arc::clone(&replaced_spawn_called);
+		move |command| {
+			replaced_spawn_called.store(true, Ordering::Relaxed);
+			command.spawn()
+		}
+	})
+	.await;
+	job.set_spawn_child_fn({
+		let calls = Arc::clone(&calls);
+		move |_command| {
+			calls.fetch_add(1, Ordering::Relaxed);
+			let mut external = tokio::process::Command::new("sleep");
+			Ok(Box::new(ExternalChild(external.arg("30").spawn()?))
+				as Box<dyn process_wrap::tokio::ChildWrapper>)
+		}
+	})
+	.await;
+	job.start().await;
+
+	wait_for_running(&job, true).await;
+	assert_eq!(calls.load(Ordering::Relaxed), 1);
+	assert!(!replaced_spawn_called.load(Ordering::Relaxed));
+
+	job.restart().await;
+	wait_for_running(&job, true).await;
+	assert_eq!(calls.load(Ordering::Relaxed), 2);
+
+	job.stop().await;
+	wait_for_running(&job, false).await;
+	task.abort();
+	Ok(())
+}
+
+#[tokio::test]
+#[cfg(unix)]
+async fn existing_spawn_fn_remains_compatible() -> Result<(), std::io::Error> {
+	let command = Arc::new(Command {
+		program: Program::Exec {
+			prog: "sleep".into(),
+			args: vec!["30".into()],
+		},
+		options: Default::default(),
+	});
+	let (job, task) = start_job(command);
+	let called = Arc::new(AtomicBool::new(false));
+	let replaced_spawn_called = Arc::new(AtomicBool::new(false));
+
+	job.set_spawn_child_fn({
+		let replaced_spawn_called = Arc::clone(&replaced_spawn_called);
+		move |_command| {
+			replaced_spawn_called.store(true, Ordering::Relaxed);
+			panic!("replaced child spawn function ran")
+		}
+	})
+	.await;
+	job.set_spawn_fn({
+		let called = Arc::clone(&called);
+		move |command| {
+			called.store(true, Ordering::Relaxed);
+			command.spawn()
+		}
+	})
+	.await;
+	job.start().await;
+
+	assert!(called.load(Ordering::Relaxed));
+	assert!(!replaced_spawn_called.load(Ordering::Relaxed));
+	job.stop().await;
+	task.abort();
+	Ok(())
+}
 
 #[tokio::test]
 #[cfg(unix)]
