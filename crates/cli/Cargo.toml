@@ -1,6 +1,6 @@
 [package]
 name = "watchexec-cli"
-version = "2.7.0"
+version = "2.7.1"
 
 authors = ["Félix Saparelli <felix@passcod.name>", "Matt Green <mattgreenrocks@gmail.com>"]
 license = "Apache-2.0"
@@ -81,7 +81,7 @@ version = "1.4.4"
 path = "../project-origins"
 
 [dependencies.watchexec]
-version = "8.4.0"
+version = "8.4.1"
 path = "../lib"
 
 [dependencies.watchexec-events]
@@ -94,7 +94,7 @@ version = "5.1.1"
 path = "../signals"
 
 [dependencies.watchexec-filterer-globset]
-version = "8.0.2"
+version = "8.0.3"
 path = "../filterer/globset"
 
 [dependencies.tokio]

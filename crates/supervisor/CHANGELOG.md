@@ -1,7 +1,7 @@
 # Changelog
 
 ## Next (YYYY-MM-DD)
-
+## v5.4.0 (2026-09-03)
 - Add a child spawn function for supervising processes created by external launchers.
 
 ## v5.3.1 (2026-08-24)
