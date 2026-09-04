@@ -7,6 +7,7 @@ use std::{
 };
 
 use watchexec::Watchexec;
+use watchexec_events::Event;
 
 use miette::{IntoDiagnostic, Result};
 use tempfile::NamedTempFile;
@@ -29,6 +30,7 @@ pub async fn new(args: &Args) -> Result<State> {
 
 	Ok(Arc::new(InnerState {
 		emit_file: RotatingTempFile::default(),
+		initial_events: Mutex::new(None),
 		socket_set,
 		exit_code: Mutex::new(ExitCode::SUCCESS),
 		watchexec: OnceLock::new(),
@@ -38,11 +40,33 @@ pub async fn new(args: &Args) -> Result<State> {
 #[derive(Debug)]
 pub struct InnerState {
 	pub emit_file: RotatingTempFile,
+	initial_events: Mutex<Option<Arc<[Event]>>>,
 	pub socket_set: Option<SocketSet>,
 	pub exit_code: Mutex<ExitCode>,
 	/// Reference to the Watchexec instance, set after creation.
 	/// Used to send synthetic events (e.g., to trigger immediate quit on error).
 	pub watchexec: OnceLock<Arc<Watchexec>>,
+}
+
+impl InnerState {
+	pub fn set_initial_events(&self, events: Vec<Event>) {
+		if !events.is_empty() {
+			*self.initial_events.lock().unwrap() = Some(events.into());
+		}
+	}
+
+	pub fn events_for_emission(&self, events: Arc<[Event]>) -> Arc<[Event]> {
+		let Some(initial) = self.initial_events.lock().unwrap().take() else {
+			return events;
+		};
+
+		initial
+			.iter()
+			.chain(events.iter())
+			.cloned()
+			.collect::<Vec<_>>()
+			.into()
+	}
 }
 
 #[derive(Debug, Default)]

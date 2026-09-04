@@ -8,6 +8,7 @@ use std::{
 
 use normalize_path::NormalizePath;
 use notify::RecursiveMode;
+use watchexec_events::Event;
 
 use crate::{
 	error::{FsWatcherError, RuntimeError},
@@ -177,6 +178,31 @@ enum ExplicitRootState {
 	Unsafe,
 }
 
+#[derive(Default)]
+struct InitialEventPaths {
+	seen: HashSet<PathBuf>,
+	paths: Vec<PathBuf>,
+}
+
+struct NoopBackend;
+
+impl Backend for NoopBackend {
+	fn watch(&mut self, _path: &Path, _mode: RecursiveMode) -> notify::Result<()> {
+		Ok(())
+	}
+
+	fn unwatch(&mut self, _path: &Path) -> notify::Result<()> {
+		Ok(())
+	}
+}
+
+fn initial_event(path: PathBuf) -> Event {
+	super::event_from_notify(
+		notify::Event::new(notify::EventKind::Create(notify::event::CreateKind::Any))
+			.add_path(path),
+	)
+}
+
 const fn path_not_found(error: &notify::Error) -> bool {
 	matches!(error.kind, notify::ErrorKind::PathNotFound)
 }
@@ -231,6 +257,7 @@ pub(super) struct Recursor {
 	retry_roots: HashSet<Root>,
 	removed_prefixes: HashSet<PathBuf>,
 	refresh_tombstones: bool,
+	initial_event_paths: Option<InitialEventPaths>,
 }
 
 impl Recursor {
@@ -287,7 +314,64 @@ impl Recursor {
 			retry_roots: HashSet::new(),
 			removed_prefixes: HashSet::new(),
 			refresh_tombstones: false,
+			initial_event_paths: None,
 		}
+	}
+
+	pub(super) fn collect_initial_events(
+		pathset: &[WatchedPath],
+		watcher: Watcher,
+		follow_symlinks: bool,
+		cwd: PathBuf,
+		filter: Arc<dyn Filterer>,
+	) -> (Vec<Event>, Vec<RuntimeError>) {
+		let mut recursor = Self::new(
+			Box::new(NoopBackend),
+			Box::new(FsScanner),
+			watcher,
+			watcher.backend_kind(),
+			follow_symlinks,
+			cwd,
+			filter.clone(),
+		);
+		recursor.initial_event_paths = Some(InitialEventPaths::default());
+		recursor.reconcile(pathset, filter);
+
+		let mut errors = Vec::new();
+		while recursor.has_work() {
+			let step = recursor.step();
+			errors.extend(step.errors);
+			if step.rebuild_backend {
+				recursor.prepare_backend_rebuild();
+				recursor.install_backend(Box::new(NoopBackend));
+			}
+		}
+
+		(recursor.take_initial_events(), errors)
+	}
+
+	fn collecting_initial_events(&self) -> bool {
+		self.initial_event_paths.is_some()
+	}
+
+	fn record_initial_event(&mut self, path: &Path) {
+		if self.initial_event_paths.is_none() {
+			return;
+		}
+		let path = self.absolute(path);
+		let initial = self.initial_event_paths.as_mut().expect("checked above");
+
+		if initial.seen.insert(path.clone()) {
+			initial.paths.push(path);
+		}
+	}
+
+	fn take_initial_events(&mut self) -> Vec<Event> {
+		self.initial_event_paths
+			.take()
+			.map_or_else(Vec::new, |initial| {
+				initial.paths.into_iter().map(initial_event).collect()
+			})
 	}
 
 	pub(super) const fn is_managed(&self) -> bool {
@@ -1720,7 +1804,19 @@ impl Recursor {
 				result,
 			) {
 				AddResult::Added => {
+					self.record_initial_event(&root.path);
 					self.retry_roots.remove(&root);
+					if root.recursive
+						&& self.collecting_initial_events()
+						&& self.mark_seen(&root, Identity::Lexical(root.path.clone()))
+					{
+						let path = root.path.clone();
+						self.work.push_back(Work::Scan {
+							root,
+							path,
+							transient_retries: TRANSIENT_RETRIES,
+						});
+					}
 				}
 				AddResult::Skipped | AddResult::Invalidated | AddResult::Rebuild => {
 					self.retry_roots.insert(root);
@@ -1739,10 +1835,11 @@ impl Recursor {
 			return;
 		}
 
-		let (identity, scan, retain_guard) = match self.classify_explicit_root(&root.path) {
+		let (identity, scan, scan_initial, retain_guard) = match self.classify_explicit_root(&root.path) {
 			Ok(ExplicitRootState::Entry(EntryKind::Directory(identity))) => (
 				Identity::Canonical(identity),
 				root.recursive,
+				true,
 				self.retains_directory_root_guard(),
 			),
 			Ok(ExplicitRootState::Entry(EntryKind::Other)) => {
@@ -1760,11 +1857,16 @@ impl Recursor {
 				} else {
 					Identity::Lexical(root.path.clone())
 				};
-				(identity, false, self.retains_nondirectory_root_guard())
+				(identity, false, false, self.retains_nondirectory_root_guard())
 			}
-			Ok(
-				ExplicitRootState::Entry(EntryKind::NonFollowedSymlink) | ExplicitRootState::Unsafe,
-			) => {
+			Ok(ExplicitRootState::Entry(EntryKind::NonFollowedSymlink)) => {
+				self.record_initial_event(&root.path);
+				self.retry_roots.remove(&root);
+				self.queue_remove_prefix(&root.path);
+				self.work.push_front(Work::Guard(root));
+				return;
+			}
+			Ok(ExplicitRootState::Unsafe) => {
 				self.retry_roots.remove(&root);
 				self.queue_remove_prefix(&root.path);
 				self.work.push_front(Work::Guard(root));
@@ -1815,6 +1917,7 @@ impl Recursor {
 			result,
 		) {
 			AddResult::Added => {
+				self.record_initial_event(&root.path);
 				self.retry_roots.remove(&root);
 				if retain_guard {
 					if !self.root_guards.contains_key(&root) {
@@ -1823,7 +1926,8 @@ impl Recursor {
 				} else {
 					self.remove_root_guard(&root, result);
 				}
-				if scan && self.mark_seen(&root, identity) {
+				let should_scan = scan || (scan_initial && self.collecting_initial_events());
+				if should_scan && self.mark_seen(&root, identity) {
 					let path = root.path.clone();
 					self.work.push_back(Work::Scan {
 						root,
@@ -1864,7 +1968,12 @@ impl Recursor {
 		transient_retries: u8,
 		result: &mut StepResult,
 	) {
-		if !self.roots.contains(&root) || !root.recursive {
+		if !self.roots.contains(&root) {
+			self.retry_candidates.remove(&(root, path));
+			return;
+		}
+		let scan_descendants = root.recursive;
+		if !scan_descendants && !self.collecting_initial_events() {
 			self.retry_candidates.remove(&(root, path));
 			return;
 		}
@@ -1897,11 +2006,21 @@ impl Recursor {
 				return;
 			}
 		};
-		let EntryKind::Directory(identity) = classification else {
+		let identity = match classification {
+			EntryKind::Directory(identity) => identity,
+			EntryKind::NonFollowedSymlink | EntryKind::Other => {
+				self.record_initial_event(&path);
+				self.retry_candidates.remove(&(root.clone(), path.clone()));
+				self.queue_remove_owner_prefix(&root, &path);
+				return;
+			}
+		};
+		if !scan_descendants {
+			self.record_initial_event(&path);
 			self.retry_candidates.remove(&(root.clone(), path.clone()));
 			self.queue_remove_owner_prefix(&root, &path);
 			return;
-		};
+		}
 		if !self.coverage_covers_directory(&identity) {
 			self.retry_candidates.remove(&(root.clone(), path.clone()));
 			self.queue_remove_owner_prefix(&root, &path);
@@ -1931,6 +2050,7 @@ impl Recursor {
 			result,
 		) {
 			AddResult::Added => {
+				self.record_initial_event(&path);
 				self.retry_candidates.remove(&(root.clone(), path.clone()));
 				if self.mark_seen(&root, identity) {
 					self.work.push_back(Work::Scan {
@@ -2801,6 +2921,102 @@ mod tests {
 			errors.extend(step.errors);
 		}
 		panic!("recursor did not settle");
+	}
+
+	fn collect_initial_paths(
+		recursor: &mut Recursor,
+		roots: &[WatchedPath],
+		filterer: Arc<dyn Filterer>,
+	) -> HashSet<PathBuf> {
+		recursor.initial_event_paths = Some(InitialEventPaths::default());
+		recursor.reconcile(roots, filterer);
+		drain(recursor);
+		recursor
+			.take_initial_events()
+			.iter()
+			.flat_map(Event::paths)
+			.map(|(path, _)| path.to_owned())
+			.collect()
+	}
+
+	#[test]
+	fn initial_events_include_recursive_tree_contents() {
+		let (mut recursor, _backend, scanner) = fixture();
+		for path in ["/root", "/root/nested"] {
+			directory(&scanner, path);
+		}
+		entries(&scanner, "/root", &["/root/root.txt", "/root/nested"]);
+		entries(&scanner, "/root/nested", &["/root/nested/child.txt"]);
+
+		let paths = collect_initial_paths(
+			&mut recursor,
+			&[WatchedPath::recursive("/root")],
+			filter([]),
+		);
+
+		assert_eq!(
+			paths,
+			HashSet::from([
+				PathBuf::from("/root"),
+				PathBuf::from("/root/root.txt"),
+				PathBuf::from("/root/nested"),
+				PathBuf::from("/root/nested/child.txt"),
+			])
+		);
+	}
+
+	#[test]
+	fn initial_events_include_only_immediate_nonrecursive_contents() {
+		let (mut recursor, _backend, scanner) = fixture();
+		for path in ["/root", "/root/nested"] {
+			directory(&scanner, path);
+		}
+		entries(&scanner, "/root", &["/root/root.txt", "/root/nested"]);
+		entries(&scanner, "/root/nested", &["/root/nested/child.txt"]);
+
+		let paths = collect_initial_paths(
+			&mut recursor,
+			&[WatchedPath::non_recursive("/root")],
+			filter([]),
+		);
+
+		assert_eq!(
+			paths,
+			HashSet::from([
+				PathBuf::from("/root"),
+				PathBuf::from("/root/root.txt"),
+				PathBuf::from("/root/nested"),
+			])
+		);
+	}
+
+	#[test]
+	fn initial_events_prune_ignored_descendant_directories() {
+		let (mut recursor, _backend, scanner) = fixture();
+		for path in ["/root", "/root/accepted", "/root/ignored"] {
+			directory(&scanner, path);
+		}
+		entries(
+			&scanner,
+			"/root",
+			&["/root/accepted", "/root/ignored", "/root/root.txt"],
+		);
+		entries(&scanner, "/root/ignored", &["/root/ignored/secret.txt"]);
+
+		let paths = collect_initial_paths(
+			&mut recursor,
+			&[WatchedPath::recursive("/root")],
+			filter(["/root/ignored"]),
+		);
+
+		assert_eq!(
+			paths,
+			HashSet::from([
+				PathBuf::from("/root"),
+				PathBuf::from("/root/accepted"),
+				PathBuf::from("/root/root.txt"),
+			])
+		);
 	}
 
 	fn run_until_rebuild(recursor: &mut Recursor) -> Vec<RuntimeError> {
