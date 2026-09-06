@@ -1154,7 +1154,7 @@ fn interpret_command_args(args: &Args) -> Result<Arc<Command>> {
 			}
 
 			Some(other) => {
-				let (shell_path, shell_options) = parse_path(other);
+				let (shell_path, shell_options) = parse_path(other)?;
 
 				Some(Shell {
 					prog: shell_path.into(),
@@ -1202,14 +1202,17 @@ fn interpret_command_args(args: &Args) -> Result<Arc<Command>> {
 /// - "/bin/bash --arg1 --arg2"
 /// - "C:/Program Files/Git/usr/bin/bash.exe"
 /// - "C:/Program Files/Git/usr/bin/bash.exe --arg1 --arg2"
-fn parse_path(original_path: &str) -> (String, Vec<String>) {
+fn parse_path(original_path: &str) -> Result<(String, Vec<String>)> {
 	parse_path_with(original_path, resolve_shell_prog)
 }
 
 /// Does the actual work of [`parse_path`], with the POSIX-path resolution passed
 /// in rather than called directly, so tests can exercise the order of the two
 /// without depending on which shells happen to be installed.
-fn parse_path_with(original_path: &str, resolve: impl Fn(&str) -> String) -> (String, Vec<String>) {
+fn parse_path_with(
+	original_path: &str,
+	resolve: impl Fn(&str) -> String,
+) -> Result<(String, Vec<String>)> {
 	debug!(?original_path, "before parsing for potential shell options");
 
 	let mut shell_path = original_path.to_string();
@@ -1265,12 +1268,13 @@ fn parse_path_with(original_path: &str, resolve: impl Fn(&str) -> String) -> (St
 		is_valid = which::which(&shell_path).is_ok();
 	}
 
-	assert!(
-		is_valid,
-		"The parsed shell path \"{shell_path}\" does not exist on this system, and could not be resolved from your PATH."
-	);
+	if !is_valid {
+		return Err(miette::miette!(
+			"the parsed shell path \"{shell_path}\" does not exist on this system, and could not be resolved from your PATH"
+		));
+	}
 
-	(shell_path, shell_options)
+	Ok((shell_path, shell_options))
 }
 
 #[cfg(test)]
@@ -1280,13 +1284,15 @@ fn test_parse_path_for_shell(expected_path: &str) {
 		let expected_args = ["--arg1", "--arg2"];
 		let (mut actual_path, mut actual_args): (String, Vec<String>);
 
-		(actual_path, actual_args) = parse_path(expected_path);
+		(actual_path, actual_args) = parse_path(expected_path)
+			.unwrap_or_else(|error| panic!("failed to parse shell {expected_path:?}: {error}"));
 
 		assert_eq!(actual_path, *expected_path);
 		assert_eq!(actual_args, expected_empty_args);
 
 		(actual_path, actual_args) =
-			parse_path(&format!("{} {}", expected_path, expected_args.join(" ")));
+			parse_path(&format!("{} {}", expected_path, expected_args.join(" ")))
+				.unwrap_or_else(|error| panic!("failed to parse shell {expected_path:?}: {error}"));
 
 		assert_eq!(actual_path, *expected_path);
 		assert_eq!(actual_args, expected_args);
@@ -1305,14 +1311,16 @@ fn test_parse_path_resolves_before_validating() {
 		.to_string_lossy()
 		.into_owned();
 
-	let (path, options) = parse_path_with("/usr/bin/bash", |_| native.clone());
+	let (path, options) = parse_path_with("/usr/bin/bash", |_| native.clone())
+		.unwrap_or_else(|error| panic!("failed to parse shell: {error}"));
 	assert_eq!(path, native);
 	assert!(options.is_empty());
 
 	let (path, options) = parse_path_with("/usr/bin/bash --norc", |p| {
 		assert_eq!(p, "/usr/bin/bash");
 		native.clone()
-	});
+	})
+	.unwrap_or_else(|error| panic!("failed to parse shell: {error}"));
 	assert_eq!(path, native);
 	assert_eq!(options, ["--norc"]);
 }
@@ -1346,6 +1354,23 @@ fn test_shell_spec_whitespace_is_trimmed() {
 		interpret_command_args(&args).is_err(),
 		"a whitespace-only --shell should error like an empty one"
 	);
+}
+
+/// A shell spec that is neither an existing path nor resolvable from PATH used
+/// to assert (hard panic) in parse_path; it must instead surface as a regular
+/// configuration error, same as an empty shell.
+#[test]
+#[cfg(test)]
+fn test_shell_spec_that_cannot_resolve_is_an_error_not_a_panic() {
+	use clap::Parser;
+
+	for spec in ["notashell", "@bash", "/usr/bin/definitely-not-a-shell-xyz"] {
+		let args = Args::parse_from(["watchexec", &format!("--shell={spec}"), "echo", "hi"]);
+		assert!(
+			interpret_command_args(&args).is_err(),
+			"--shell={spec:?} should be a configuration error, not a panic"
+		);
+	}
 }
 
 #[test]
