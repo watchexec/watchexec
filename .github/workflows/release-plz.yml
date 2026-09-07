@@ -31,7 +31,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Publish crates and create tags
         id: release-plz
-        uses: release-plz/action@2eb1d8bcb770b4c48ccfaad919734b38b51958c9 # v0.5.131
+        uses: release-plz/action@b5543c19b03be9bd48852d20ca89f478b7723260 # v0.5.132
         with:
           command: release
         env:
@@ -60,7 +60,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Create or update release PR
         id: release-plz
-        uses: release-plz/action@2eb1d8bcb770b4c48ccfaad919734b38b51958c9 # v0.5.131
+        uses: release-plz/action@b5543c19b03be9bd48852d20ca89f478b7723260 # v0.5.132
         with:
           command: release-pr
         env:
