@@ -1,0 +1,54 @@
+---
+name: Bug report
+about: Something is wrong
+labels:
+  - bug
+  - need-info
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Watchexec version
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS and version (if applicable)
+    validations:
+      required: true
+  - type: textarea
+    id: issue
+    attributes:
+      label: "Problem you're having"
+      description: "Please include at least a sample command that you've run that has the issue"
+    validations:
+      required: true
+  - type: upload
+    id: log
+    attributes:
+      label: Log file
+      description: |
+        A log obtained with `watchexec [options] -vvv --log-file -- [command]`
+    validations:
+      required: false
+  - type: markdown
+    attributes:
+      value: |
+        A frequent issue is misunderstanding which part of a command is watchexec, which is your command, and what is interpreted by your shell. In bash:
+
+        ```bash
+        $ watchexec -I echo $foo -vvv --log-file
+        ```
+        
+        will run watchexec with the `-I` option, and watchexec in turn will run `echo` with three arguments: the value of `$foo` as interpreted by your shell _before watchexec runs_ (which might be nothing if the variable doesn't exist in your outer shell), `-vvv`, and `--log-file`. In other words, watchexec only sees `-I` and correctly does not emit a log file.
+        
+        You probably meant to write:
+
+        ```bash
+        $ watchexec -I -vvv --log-file -- 'echo $foo'
+        ```
+        
+        If `-vvv` does not work to obtain logs, add the `WATCHEXEC_LOG=debug` environment variable; this will ignore `--log-file`.
+    validations:
+      required: false
