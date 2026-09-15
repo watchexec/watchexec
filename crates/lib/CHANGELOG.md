@@ -1,6 +1,8 @@
 # Changelog
 
 ## Next (YYYY-MM-DD)
+## v8.4.2 (2026-09-15)
+## Next (YYYY-MM-DD)
 ## v8.4.1 (2026-09-03)
 ## v8.4.0 (2026-08-24)
 - Add `Filterer::check_dir` and Watchexec-owned, source-filtered recursion for Inotify, Windows ReadDirectoryChanges, and Poll backends.

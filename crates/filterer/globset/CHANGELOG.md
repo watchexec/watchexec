@@ -1,6 +1,8 @@
 # Changelog
 
 ## Next (YYYY-MM-DD)
+## v8.0.4 (2026-09-15)
+## Next (YYYY-MM-DD)
 ## v8.0.3 (2026-09-03)
 ## v8.0.2 (2026-08-24)
 - Add source-directory filtering from ignore files and ignore globs, with top-down ancestor semantics suitable for pruning recursive walks.
