@@ -2368,6 +2368,10 @@ impl Recursor {
 	}
 
 	fn queue_remove_owner_prefix(&mut self, root: &Root, prefix: &Path) {
+		if !self.logical.contains_key(prefix) {
+			return;
+		}
+
 		self.retry_candidates
 			.retain(|(owner, path)| owner != root || !path.starts_with(prefix));
 		self.work.retain(|work| {
@@ -2527,7 +2531,10 @@ impl Recursor {
 
 #[cfg(test)]
 mod tests {
-	use std::sync::{Arc, Mutex};
+	use std::{
+		sync::{Arc, Mutex},
+		time::{Duration, Instant},
+	};
 
 	use notify::{ErrorKind, EventKind};
 	use watchexec_events::{Event, Priority};
@@ -2814,6 +2821,38 @@ mod tests {
 			}
 		}
 		panic!("recursor did not request a rebuild");
+	}
+
+	#[test]
+	fn plain_files_are_discovered_in_linear_time() {
+		fn traverse(files: usize) -> Duration {
+			let (mut recursor, _backend, scanner) = fixture();
+			directory(&scanner, "/work/tree");
+			let names: Vec<_> = (0..files)
+				.map(|index| format!("/work/tree/f{index}"))
+				.collect();
+			entries(
+				&scanner,
+				"/work/tree",
+				&names.iter().map(String::as_str).collect::<Vec<_>>(),
+			);
+			recursor.reconcile(&[WatchedPath::recursive("/work/tree")], filter([]));
+
+			let start = Instant::now();
+			while recursor.has_work() {
+				recursor.step();
+			}
+			start.elapsed()
+		}
+
+		let small = traverse(2_000);
+		let large = traverse(8_000);
+		let allowance = 8 * small.max(Duration::from_millis(1));
+		assert!(
+			large <= allowance,
+			"traversal is superlinear in file count: {small:?} for 2000 files \
+			 but {large:?} for 8000 (allowance {allowance:?})"
+		);
 	}
 
 	fn watched(backend: &Arc<Mutex<FakeBackendState>>, path: &str) -> usize {
