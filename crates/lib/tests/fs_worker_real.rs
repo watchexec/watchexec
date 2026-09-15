@@ -925,6 +925,47 @@ async fn explicit_symlink_root_receives_target_events() {
 
 #[cfg(unix)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn dangling_symlink_is_not_reported_as_a_scan_error() {
+	use std::os::unix::fs::symlink;
+
+	// Native backends only: under the poll watcher notify is in charge
+	for case in managed_watcher_cases()
+		.into_iter()
+		.filter(|case| case.name == "native")
+	{
+		let temp = make_tempdir(case, "dangling-symlink");
+		let root = temp.path().join("root");
+		let dangling = root.join("dangling");
+		create_dir(&root);
+		symlink("missing-target", &dangling).unwrap_or_else(|error| {
+			panic!("failed to create dangling symlink {dangling:?}: {error}")
+		});
+
+		let mut harness =
+			FsHarness::start(case, vec![WatchedPath::recursive(&root)], true, ()).await;
+
+		// Traversal reaches it on every scan, so this would be an error per link per scan
+		let errors = harness.take_available_errors();
+		assert!(
+			errors.is_empty(),
+			"{} watcher reported errors for a dangling symlink: {errors:?}",
+			case.name
+		);
+
+		// The rest of the tree stays watched despite the dangling entry.
+		let sibling = root.join("sibling.txt");
+		write_file(&sibling, "contents");
+		let expected = harness.aliases_for(&sibling);
+		harness
+			.wait_for_any_path(&expected, "writing beside a dangling symlink")
+			.await;
+
+		harness.shutdown().await;
+	}
+}
+
+#[cfg(unix)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn path_local_scan_error_is_reported_without_stopping_worker() {
 	use std::os::unix::fs::symlink;
 

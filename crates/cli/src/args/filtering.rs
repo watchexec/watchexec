@@ -441,35 +441,41 @@ impl FilteringArgs {
 			crate::dirs::project_origin(&self, command).await?
 		};
 		debug!(path=?project_origin, "resolved project origin");
-		let project_origin = dunce::canonicalize(project_origin).into_diagnostic()?;
+		let project_origin = crate::dirs::canonicalize(project_origin)
+			.await
+			.into_diagnostic()?;
 		info!(path=?project_origin, "effective project origin");
 		self.project_origin = Some(project_origin.clone());
 
-		self.paths = take(&mut self.recursive_paths)
+		// Not the origin: that's discovered by walking up *from* these paths, and sits
+		// above the workdir whenever the project root does. Matches dirs::watch_candidates
+		let workdir = command
+			.workdir
+			.as_deref()
+			.expect("workdir is resolved by CommandArgs::normalise");
+		let mut paths = BTreeSet::new();
+		for (path, recursive) in take(&mut self.recursive_paths)
 			.into_iter()
-			.map(|path| {
-				{
-					if path.is_absolute() {
-						Ok(path)
-					} else {
-						dunce::canonicalize(project_origin.join(path)).into_diagnostic()
-					}
-				}
-				.map(WatchedPath::recursive)
-			})
-			.chain(take(&mut self.non_recursive_paths).into_iter().map(|path| {
-				{
-					if path.is_absolute() {
-						Ok(path)
-					} else {
-						dunce::canonicalize(project_origin.join(path)).into_diagnostic()
-					}
-				}
-				.map(WatchedPath::non_recursive)
-			}))
-			.collect::<Result<BTreeSet<_>>>()?
-			.into_iter()
-			.collect();
+			.map(|path| (path, true))
+			.chain(
+				take(&mut self.non_recursive_paths)
+					.into_iter()
+					.map(|path| (path, false)),
+			) {
+			let path = if path.is_absolute() {
+				path
+			} else {
+				crate::dirs::canonicalize(workdir.join(path))
+					.await
+					.into_diagnostic()?
+			};
+			paths.insert(if recursive {
+				WatchedPath::recursive(path)
+			} else {
+				WatchedPath::non_recursive(path)
+			});
+		}
+		self.paths = paths.into_iter().collect();
 
 		if self.paths.len() == 1
 			&& self
@@ -481,7 +487,7 @@ impl FilteringArgs {
 			self.paths = Vec::new();
 		} else if self.paths.is_empty() {
 			info!("no paths, using current directory");
-			self.paths.push(command.workdir.as_deref().unwrap().into());
+			self.paths.push(workdir.into());
 		}
 		info!(paths=?self.paths, "effective watched paths");
 
@@ -508,4 +514,40 @@ pub enum FsEvent {
 	Rename,
 	Modify,
 	Metadata,
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use crate::args::Args;
+
+	/// The origin is an ancestor of the workdir here, so the two resolutions differ.
+	#[tokio::test]
+	async fn relative_watched_paths_resolve_against_the_workdir() {
+		let tmp = tempfile::tempdir().expect("tempdir");
+		let root = tmp.path().join("project");
+		let workdir = root.join("sub");
+		let target = workdir.join("target");
+		std::fs::create_dir_all(&target).expect("create dirs");
+		std::fs::write(root.join("Cargo.toml"), "").expect("write origin marker");
+
+		let mut args = Args::parse_from(["watchexec", "-w", "./target", "true"]);
+		args.command.workdir = Some(workdir.clone());
+		args.filtering
+			.normalise(&args.command)
+			.await
+			.expect("normalise should resolve the watched path");
+
+		assert_eq!(
+			args.filtering.project_origin,
+			Some(dunce::canonicalize(&root).expect("canonicalize root")),
+			"the origin is meant to be the ancestor project, otherwise this proves nothing"
+		);
+		assert_eq!(
+			args.filtering.paths,
+			vec![WatchedPath::recursive(
+				dunce::canonicalize(&target).expect("canonicalize target")
+			)]
+		);
+	}
 }
