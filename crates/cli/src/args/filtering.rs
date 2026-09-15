@@ -441,7 +441,9 @@ impl FilteringArgs {
 			crate::dirs::project_origin(&self, command).await?
 		};
 		debug!(path=?project_origin, "resolved project origin");
-		let project_origin = dunce::canonicalize(project_origin).into_diagnostic()?;
+		let project_origin = crate::dirs::canonicalize(project_origin)
+			.await
+			.into_diagnostic()?;
 		info!(path=?project_origin, "effective project origin");
 		self.project_origin = Some(project_origin.clone());
 
@@ -451,25 +453,29 @@ impl FilteringArgs {
 			.workdir
 			.as_deref()
 			.expect("workdir is resolved by CommandArgs::normalise");
-		let resolve = |path: PathBuf| {
-			if path.is_absolute() {
-				Ok(path)
-			} else {
-				dunce::canonicalize(workdir.join(path)).into_diagnostic()
-			}
-		};
-
-		self.paths = take(&mut self.recursive_paths)
+		let mut paths = BTreeSet::new();
+		for (path, recursive) in take(&mut self.recursive_paths)
 			.into_iter()
-			.map(|path| resolve(path).map(WatchedPath::recursive))
+			.map(|path| (path, true))
 			.chain(
 				take(&mut self.non_recursive_paths)
 					.into_iter()
-					.map(|path| resolve(path).map(WatchedPath::non_recursive)),
-			)
-			.collect::<Result<BTreeSet<_>>>()?
-			.into_iter()
-			.collect();
+					.map(|path| (path, false)),
+			) {
+			let path = if path.is_absolute() {
+				path
+			} else {
+				crate::dirs::canonicalize(workdir.join(path))
+					.await
+					.into_diagnostic()?
+			};
+			paths.insert(if recursive {
+				WatchedPath::recursive(path)
+			} else {
+				WatchedPath::non_recursive(path)
+			});
+		}
+		self.paths = paths.into_iter().collect();
 
 		if self.paths.len() == 1
 			&& self

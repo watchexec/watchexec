@@ -1,12 +1,12 @@
 use std::{
 	collections::HashSet,
+	io,
 	path::{Path, PathBuf},
 };
 
 use ignore_files::{IgnoreFile, IgnoreFilesFromOriginArgs};
 use miette::{miette, IntoDiagnostic, Result};
 use project_origins::ProjectType;
-use tokio::fs::canonicalize;
 use tracing::{debug, info, warn};
 use watchexec::paths::common_prefix;
 
@@ -64,7 +64,6 @@ pub async fn project_origin(
 
 		debug!(?origins, "resolved all project origins");
 
-		// This canonicalize is probably redundant
 		canonicalize(
 			common_prefix(&origins)
 				.ok_or_else(|| miette!("no common prefix, but this should never fail"))?,
@@ -75,6 +74,33 @@ pub async fn project_origin(
 	debug!(?project_origin, "resolved common/project origin");
 
 	Ok(project_origin)
+}
+
+/// `dunce::canonicalize` only strips the `\\?\` prefix off verbatim *disk* paths, so canonicalising
+/// inside a network share yields `\\?\UNC\server\share\...`, which many programs (notably the Go
+/// toolchain) refuse as a working directory. In that case keep the uncanonicalised path, as long as
+/// it isn't verbatim itself.
+fn prefer_non_verbatim(canonical: PathBuf, original: PathBuf) -> PathBuf {
+	if is_verbatim(&canonical) && !is_verbatim(&original) {
+		original
+	} else {
+		canonical
+	}
+}
+
+fn is_verbatim(path: &Path) -> bool {
+	path.as_os_str().as_encoded_bytes().starts_with(br"\\?\")
+}
+
+/// Canonicalises without leaving a verbatim `\\?\C:\...` path behind, which is what
+/// `tokio::fs::canonicalize` returns on Windows and what the rest of the CLI avoids.
+pub(crate) async fn canonicalize(path: impl AsRef<Path>) -> io::Result<PathBuf> {
+	let path = path.as_ref();
+	let canonical = tokio::fs::canonicalize(path).await?;
+	Ok(prefer_non_verbatim(
+		dunce::simplified(&canonical).to_owned(),
+		path.to_owned(),
+	))
 }
 
 /// Resolves the paths given with `-w` / `-W` against the workdir, for use as starting points of
@@ -332,6 +358,47 @@ mod tests {
 			watched,
 			origin_in(&root, &[]).await,
 			"origin of watched {sub:?} should be the project origin"
+		);
+	}
+
+	/// Only Windows canonicalises to the verbatim form, but the handling is not platform-specific.
+	#[tokio::test]
+	async fn canonicalize_does_not_return_a_verbatim_path() {
+		let tmp = tempfile::tempdir().expect("tempdir");
+		let path = canonicalize(tmp.path()).await.expect("canonicalize");
+		assert!(
+			!path.as_os_str().as_encoded_bytes().starts_with(br"\\?\"),
+			"{path:?} is verbatim, so it cannot compare equal to a discovered origin"
+		);
+	}
+
+	#[test]
+	fn keeps_uncanonicalised_path_when_canonical_is_verbatim_unc() {
+		assert_eq!(
+			prefer_non_verbatim(
+				PathBuf::from(r"\\?\UNC\Mac\my-directory"),
+				PathBuf::from(r"Z:\my-directory"),
+			),
+			PathBuf::from(r"Z:\my-directory"),
+		);
+	}
+
+	#[test]
+	fn keeps_canonical_path_when_it_is_not_verbatim() {
+		assert_eq!(
+			prefer_non_verbatim(PathBuf::from(r"Z:\real"), PathBuf::from(r"Z:\link")),
+			PathBuf::from(r"Z:\real"),
+		);
+	}
+
+	#[test]
+	fn keeps_canonical_path_when_original_is_verbatim_too() {
+		assert_eq!(
+			prefer_non_verbatim(
+				PathBuf::from(r"\\?\UNC\Mac\my-directory"),
+				PathBuf::from(r"\\?\UNC\Mac\other"),
+			),
+			PathBuf::from(r"\\?\UNC\Mac\my-directory"),
 		);
 	}
 
