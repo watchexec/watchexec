@@ -45,7 +45,13 @@ impl Scanner for FsScanner {
 		}
 
 		let metadata = if link_metadata.file_type().is_symlink() {
-			fs::metadata(path)?
+			match fs::metadata(path) {
+				Ok(metadata) => metadata,
+				Err(error) if error.kind() == io::ErrorKind::NotFound => {
+					return Ok(EntryKind::Other)
+				}
+				Err(error) => return Err(error),
+			}
 		} else {
 			link_metadata
 		};
