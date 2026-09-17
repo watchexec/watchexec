@@ -95,6 +95,10 @@ Only run when files are created:
 
     $ watchexec --fs-events create -- s3 sync . s3://my-bucket
 
+    Send the current contents as create events to the first run, then continue watching:
+
+        $ watchexec --emit-events-to=json-stdio --initial-events=create -- convert-watch .
+
 If you come from `entr`, note that the watchexec command is run in a shell by default. You can use `-n` or `--shell=none` to not do that:
 
     $ watchexec -n -- echo ';' lorem ipsum

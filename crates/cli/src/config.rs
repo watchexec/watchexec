@@ -1,13 +1,13 @@
 use std::{
 	borrow::Cow,
 	collections::HashMap,
-	env::{var, var_os},
+	env::var,
 	ffi::OsStr,
 	fmt,
 	fs::File,
 	io::{IsTerminal, Write},
 	iter::once,
-	path::{Path, PathBuf},
+	path::Path,
 	process::{ExitCode, Stdio},
 	sync::{
 		atomic::{AtomicBool, AtomicU8, Ordering},
@@ -15,6 +15,9 @@ use std::{
 	},
 	time::{Duration, Instant},
 };
+
+#[cfg(test)]
+use std::path::PathBuf;
 
 use clearscreen::ClearScreen;
 use miette::{IntoDiagnostic, Report, Result};
@@ -212,15 +215,17 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 				}
 			}
 
+			let events = state.events_for_emission(action.events.clone());
+
 			match emit_events_to {
 				EmitEvents::Stdio => {
 					println!(
 						"{}",
-						events_to_simple_format(action.events.as_ref()).unwrap_or_default()
+						events_to_simple_format(events.as_ref()).unwrap_or_default()
 					);
 				}
 				EmitEvents::JsonStdio => {
-					for event in action.events.iter().filter(|e| !e.is_empty()) {
+					for event in events.iter().filter(|e| !e.is_empty()) {
 						println!("{}", serde_json::to_string(event).unwrap_or_default());
 					}
 				}
@@ -322,7 +327,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 					move |command, _| {
 						let add_envs = add_envs.clone();
 						let state = state.clone();
-						let events = events.clone();
+						let events = state.events_for_emission(events.clone());
 
 						if let Some(ref workdir) = workdir.as_ref() {
 							debug!(?workdir, "set command workdir");

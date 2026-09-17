@@ -9,11 +9,11 @@ use std::{
 use clap::CommandFactory;
 use clap_complete::{Generator, Shell};
 use clap_mangen::Man;
-use miette::{IntoDiagnostic, Result};
+use miette::{IntoDiagnostic, Report, Result};
 use std::sync::Arc;
 use tokio::{io::AsyncWriteExt, process::Command};
 use tracing::{debug, info};
-use watchexec::Watchexec;
+use watchexec::{sources::fs::Watcher, Watchexec};
 use watchexec_events::{Event, Priority};
 
 use crate::{
@@ -33,7 +33,24 @@ async fn run_watchexec(args: Args, state: state::State) -> Result<()> {
 	info!(version=%env!("CARGO_PKG_VERSION"), "constructing Watchexec from CLI");
 
 	let config = config::make_config(&args, &state)?;
-	config.filterer(WatchexecFilterer::new(&args).await?);
+	let filterer = WatchexecFilterer::new(&args).await?;
+	if args.events.initial_events.is_some() {
+		let watcher = args
+			.events
+			.poll
+			.map_or(Watcher::Native, |interval| Watcher::Poll(interval.0));
+		let (events, errors) = watchexec::sources::fs::collect_initial_events(
+			&args.filtering.paths,
+			watcher,
+			!args.filtering.no_follow_symlinks,
+			filterer.clone(),
+		)?;
+		for error in errors {
+			eprintln!("[[Error (not fatal)]]\n{}", Report::new(error));
+		}
+		state.set_initial_events(events);
+	}
+	config.filterer(filterer);
 
 	info!("initialising Watchexec runtime");
 	let wx = Arc::new(Watchexec::with_config(config)?);

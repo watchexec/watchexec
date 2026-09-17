@@ -173,6 +173,23 @@ pub struct EventsArgs {
 	)]
 	pub postpone: bool,
 
+	/// Include an event for every existing path in the first event emission.
+	///
+	/// This is useful for commands that need to process the current contents of a watched tree,
+	/// rather than only changes that happen after Watchexec starts. Initial events use the 'create'
+	/// filesystem event kind, but they do not trigger command execution by themselves and are not
+	/// passed through the normal event pipeline.
+	///
+	/// With '--postpone', the first real event still controls when the command runs; these events
+	/// are included only in that first emission.
+	#[arg(
+		long,
+		help_heading = OPTSET_EVENTS,
+		value_name = "EVENT",
+		display_order = 162,
+	)]
+	pub initial_events: Option<InitialEvents>,
+
 	/// Poll for filesystem changes
 	///
 	/// By default, and where available, Watchexec uses the operating system's native file system
@@ -306,6 +323,11 @@ pub struct EventsArgs {
 		display_order = 50,
 	)]
 	pub emit_events_to: EmitEvents,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
+pub enum InitialEvents {
+	Create,
 }
 
 impl EventsArgs {
