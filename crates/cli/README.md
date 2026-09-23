@@ -22,7 +22,7 @@ Example use cases:
 * Optionally restarts the command with every modification (good for servers)
 * Optionally sends a desktop notification on command start and end
 * Does not require a language runtime
-* Sets the following environment variables in the process:
+* With `--emit-events-to=environment`, sets the following environment variables in the process:
 
     `$WATCHEXEC_COMMON_PATH` is set to the longest common path of all of the below variables, and so should be prepended to each path to obtain the full/real path.
 
@@ -37,7 +37,7 @@ Example use cases:
 
     These variables may contain multiple paths: these are separated by the platform's path separator, as with the `PATH` system environment variable. On Unix that is `:`, and on Windows `;`. Within each variable, paths are deduplicated and sorted in binary order (i.e. neither Unicode nor locale aware).
 
-    This can be disabled with `--emit-events=none` or changed to JSON events on STDIN with `--emit-events=json-stdio`.
+    Event emission is disabled by default (`--emit-events-to=none`). Use `--emit-events-to=json-stdio` to send JSON events to the command's standard input instead.
 
 ## Anti-Features
 
