@@ -5,7 +5,7 @@ use std::{
 };
 
 use clap::{Parser, ValueEnum, ValueHint};
-use miette::Result;
+use miette::{IntoDiagnostic, Result, WrapErr};
 use tracing::{debug, info, warn};
 use tracing_appender::non_blocking::WorkerGuard;
 
@@ -188,11 +188,11 @@ impl<const UNITLESS_NANOS_MULTIPLIER: u64> FromStr for TimeSpan<UNITLESS_NANOS_M
 	}
 }
 
-fn expand_args_up_to_doubledash() -> Result<Vec<OsString>, std::io::Error> {
+fn expand_args_up_to_doubledash(args: impl IntoIterator<Item = OsString>) -> Result<Vec<OsString>> {
 	use argfile::Argument;
 	use std::collections::VecDeque;
 
-	let args = std::env::args_os();
+	let args = args.into_iter();
 	let mut expanded_args = Vec::with_capacity(args.size_hint().0);
 
 	let mut todo: VecDeque<_> = args.map(|a| Argument::parse(a, argfile::PREFIX)).collect();
@@ -205,7 +205,9 @@ fn expand_args_up_to_doubledash() -> Result<Vec<OsString>, std::io::Error> {
 				}
 			}
 			Argument::Path(path) => {
-				let content = std::fs::read_to_string(path)?;
+				let content = std::fs::read_to_string(&path)
+					.into_diagnostic()
+					.wrap_err_with(|| format!("while expanding @argfile {}", path.display()))?;
 				let new_args = argfile::parse_fromfile(&content, argfile::PREFIX);
 				todo.reserve(new_args.len());
 				for (i, arg) in new_args.into_iter().enumerate() {
@@ -254,7 +256,7 @@ pub async fn get_args() -> Result<(Args, Guards)> {
 	}
 
 	debug!("expanding @argfile arguments if any");
-	let args = expand_args_up_to_doubledash().expect("while expanding @argfile");
+	let args = expand_args_up_to_doubledash(std::env::args_os())?;
 
 	debug!("parsing arguments");
 	let mut args = Args::parse_from(args);
@@ -279,4 +281,59 @@ pub async fn get_args() -> Result<(Args, Guards)> {
 fn verify_cli() {
 	use clap::CommandFactory;
 	Args::command().debug_assert()
+}
+
+#[cfg(test)]
+fn argfile_arg(path: &std::path::Path) -> OsString {
+	let mut arg = OsString::from("@");
+	arg.push(path);
+	arg
+}
+
+#[test]
+fn argfile_is_expanded_up_to_doubledash() {
+	let dir = tempfile::tempdir().unwrap();
+	let argfile = dir.path().join("argfile");
+	std::fs::write(&argfile, "-1\n--postpone\n").unwrap();
+
+	let expanded = expand_args_up_to_doubledash([
+		"watchexec".into(),
+		argfile_arg(&argfile),
+		"--".into(),
+		argfile_arg(&argfile),
+	])
+	.unwrap();
+
+	assert_eq!(
+		expanded,
+		[
+			OsString::from("watchexec"),
+			"-1".into(),
+			"--postpone".into(),
+			"--".into(),
+			argfile_arg(&argfile),
+		]
+	);
+}
+
+#[test]
+fn unreadable_argfile_is_an_error() {
+	let dir = tempfile::tempdir().unwrap();
+	let missing = dir.path().join("missing");
+	let not_utf8 = dir.path().join("not-utf8");
+	std::fs::write(&not_utf8, b"\xff\xfe\n").unwrap();
+
+	for path in [missing, not_utf8] {
+		let err = expand_args_up_to_doubledash([
+			"watchexec".into(),
+			argfile_arg(&path),
+			"--".into(),
+			"echo".into(),
+		])
+		.expect_err("an unreadable argfile should be an error, not a panic");
+		assert_eq!(
+			err.to_string(),
+			format!("while expanding @argfile {}", path.display())
+		);
+	}
 }
