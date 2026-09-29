@@ -34,12 +34,12 @@ use std::{
 use async_priority_channel as priority;
 use normalize_path::NormalizePath;
 use notify::{
-	event::{ModifyKind, RenameMode},
+	event::{CreateKind, ModifyKind, RemoveKind, RenameMode},
 	EventKind,
 };
 use tokio::sync::mpsc;
 use tracing::{debug, trace};
-use watchexec_events::{Event, Priority, Source, Tag};
+use watchexec_events::{Event, FileType, Priority, Source, Tag};
 
 use crate::{
 	error::{CriticalError, FsWatcherError, RuntimeError},
@@ -853,6 +853,18 @@ fn notify_multi_path_errors(
 	errs
 }
 
+const fn file_type_from_kind(kind: EventKind) -> Option<FileType> {
+	match kind {
+		EventKind::Create(CreateKind::Folder) | EventKind::Remove(RemoveKind::Folder) => {
+			Some(FileType::Dir)
+		}
+		EventKind::Create(CreateKind::File) | EventKind::Remove(RemoveKind::File) => {
+			Some(FileType::File)
+		}
+		_ => None,
+	}
+}
+
 fn process_event(
 	nev: Result<notify::Event, notify::Error>,
 	kind: Watcher,
@@ -871,7 +883,8 @@ fn process_event(
 		tags.push(Tag::Path {
 			file_type: metadata(&path)
 				.ok()
-				.map(|metadata| metadata.file_type().into()),
+				.map(|metadata| metadata.file_type().into())
+				.or_else(|| file_type_from_kind(nev.kind)),
 			path: path.normalize(),
 		});
 	}
@@ -929,7 +942,7 @@ mod tests {
 	use async_priority_channel as priority;
 	use futures::FutureExt as _;
 	use notify::{
-		event::{Flag, ModifyKind, RenameMode},
+		event::{Flag, ModifyKind, RemoveKind, RenameMode},
 		EventKind,
 	};
 	use std::{
@@ -938,7 +951,7 @@ mod tests {
 		sync::{atomic::Ordering, Arc},
 	};
 	use tokio::sync::mpsc;
-	use watchexec_events::Priority;
+	use watchexec_events::{FileType, Priority};
 
 	// Regression test for issue #920: when the bounded event channel is full,
 	// `process_event` used to propagate `RuntimeError::EventChannelTrySend`,
@@ -1054,6 +1067,34 @@ mod tests {
 			res.is_ok(),
 			"full channel should drop the event silently, not return a RuntimeError (got {res:?})",
 		);
+	}
+
+	#[test]
+	fn process_event_infers_file_type_of_removed_path_from_kind(
+	) -> Result<(), Box<dyn std::error::Error>> {
+		let (ev_s, ev_r) = priority::bounded::<watchexec_events::Event, Priority>(2);
+		let removed = PathBuf::from("/nonexistent/watchexec-test/removed-dir");
+
+		let nev =
+			Ok(notify::Event::new(EventKind::Remove(RemoveKind::Folder)).add_path(removed.clone()));
+		process_event(nev, super::Watcher::default(), &ev_s)?;
+
+		let nev = Ok(notify::Event::new(EventKind::Remove(RemoveKind::File)).add_path(removed));
+		process_event(nev, super::Watcher::default(), &ev_s)?;
+
+		let file_type = |event: &watchexec_events::Event| {
+			event
+				.paths()
+				.next()
+				.and_then(|(_, file_type)| file_type.copied())
+		};
+		let (folder, _) = ev_r.try_recv()?;
+		let (file, _) = ev_r.try_recv()?;
+
+		assert_eq!(file_type(&folder), Some(FileType::Dir));
+		assert_eq!(file_type(&file), Some(FileType::File));
+
+		Ok(())
 	}
 
 	#[test]
