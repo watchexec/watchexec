@@ -141,8 +141,51 @@ fn pass_program_args_quoted(
 /// program it runs: sequencing (`;`, newlines), conditionals (`&&`, `||`), pipes (`|`), and
 /// backgrounding (`&`). `exec`ing into the first program of such a command would silently
 /// skip the rest of it, since control never returns to the shell.
+///
+/// The first word must also name the program to run: environment assignments (`FOO=1 cmd`),
+/// reserved words that start shell constructs (`time`, `!`, `if`, ...), builtins that have no
+/// external equivalent for `exec` to run (`exec`, `eval`), and subshells (`(cmd)`) are all
+/// excluded, since the shell would otherwise look for a program literally named after them,
+/// or fail to parse.
 fn shell_command_is_execable(command: &str) -> bool {
-	!command.contains([';', '&', '|', '\n'])
+	if command.contains([';', '&', '|', '\n']) {
+		return false;
+	}
+
+	let first_word = match command.split_whitespace().next() {
+		Some(word) => word,
+		// empty commands are left for the shell to no-op on
+		None => return false,
+	};
+
+	// `FOO=1 cmd` assigns for the command rather than naming it: `exec` would look
+	// for a program literally called "FOO=1".
+	if first_word.contains('=') {
+		return false;
+	}
+
+	// Reserved words start shell constructs, and some builtins have no external
+	// equivalent: the shell must handle them itself or the command breaks.
+	if matches!(
+		first_word,
+		"!" | "{"
+			| "[[" | "case"
+			| "coproc"
+			| "eval" | "exec"
+			| "for" | "function"
+			| "if" | "select"
+			| "time" | "until"
+			| "while"
+	) {
+		return false;
+	}
+
+	// A leading parenthesis opens a subshell, which cannot follow `exec`.
+	if first_word.starts_with('(') {
+		return false;
+	}
+
+	true
 }
 
 #[cfg(test)]
@@ -156,6 +199,26 @@ mod tests {
 		assert!(shell_command_is_execable("echo 'hello world'"));
 		assert!(shell_command_is_execable("cmd --flag=a > out.log"));
 		assert!(shell_command_is_execable("cmd $(echo sub)"));
+	}
+
+	#[test]
+	fn assignment_prefixed_commands_are_not_execable() {
+		assert!(!shell_command_is_execable("FOO=1 ./run.sh"));
+		assert!(!shell_command_is_execable("PATH=/usr/bin make"));
+	}
+
+	#[test]
+	fn shell_construct_commands_are_not_execable() {
+		assert!(!shell_command_is_execable("time make"));
+		assert!(!shell_command_is_execable("! false"));
+		assert!(!shell_command_is_execable("exec ./run.sh"));
+		assert!(!shell_command_is_execable("eval $(thing)"));
+		assert!(!shell_command_is_execable("(cd /tmp)"));
+	}
+
+	#[test]
+	fn empty_commands_are_not_execable() {
+		assert!(!shell_command_is_execable(""));
 	}
 
 	#[test]
