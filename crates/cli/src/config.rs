@@ -1681,7 +1681,6 @@ fn emit_events_to_command(
 pub fn reset_screen() {
 	for cs in [
 		ClearScreen::WindowsCooked,
-		ClearScreen::WindowsVt,
 		ClearScreen::VtLeaveAlt,
 		ClearScreen::VtWellDone,
 		ClearScreen::default(),
