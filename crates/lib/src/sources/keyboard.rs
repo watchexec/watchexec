@@ -26,31 +26,31 @@ pub async fn worker(
 	errors: mpsc::Sender<RuntimeError>,
 	events: priority::Sender<Event, Priority>,
 ) -> Result<(), CriticalError> {
-	let mut send_close = None;
+	// The close channel ends a watcher; the done channel is sent once that watcher
+	// has restored the terminal, so the next watcher starts from cooked mode.
+	let mut current: Option<(oneshot::Sender<()>, oneshot::Receiver<()>)> = None;
 	let mut config_watch = config.watch();
 	loop {
 		config_watch.next().await;
 		let want_keyboard = config.keyboard_events.get();
-		match (want_keyboard, &send_close) {
-			// if we want to watch stdin and we're not already watching it then spawn a task to watch it
-			(true, None) => {
+		if want_keyboard {
+			// if we want to watch stdin and we're not already watching it then spawn a task to
+			// watch it
+			if current.is_none() {
 				let (close_s, close_r) = oneshot::channel::<()>();
+				let (done_s, done_r) = oneshot::channel::<()>();
 
-				send_close = Some(close_s);
-				spawn(watch_stdin(errors.clone(), events.clone(), close_r));
+				spawn(watch_stdin(errors.clone(), events.clone(), close_r, done_s));
+				current = Some((close_s, done_r));
 			}
-			// if we don't want to watch stdin but we are already watching it then send a close signal to end
-			// the watching
-			(false, Some(_)) => {
-				// ignore send error as if channel is closed watch is already gone
-				send_close
-					.take()
-					.expect("unreachable due to match")
-					.send(())
-					.ok();
-			}
-			// otherwise no action is required
-			_ => {}
+		} else if let Some((close_s, done_r)) = current.take() {
+			// if we don't want to watch stdin but we are already watching it then send a close
+			// signal to end the watching, and wait for the terminal to be restored before
+			// another watcher may be spawned
+			// ignore send error as if channel is closed watch is already gone
+			close_s.send(()).ok();
+			// ignore done error (watcher panicked): the terminal state is unknown either way
+			let _ = done_r.await;
 		}
 	}
 }
@@ -127,10 +127,10 @@ mod raw_mode {
 	}
 
 	// SAFETY: the stored HANDLE is the process-wide stdin console handle, and
-	// Win32 console handles are not thread-affine, so moving the guard to
-	// another thread keeps the later GetConsoleMode/SetConsoleMode calls in
-	// Drop valid. The guard is currently created and dropped on a single
-	// thread, so this impl is precautionary.
+	// Win32 console handles are not thread-affine, so the guard moves with its
+	// future between executor threads and the GetConsoleMode/SetConsoleMode
+	// calls in Drop stay valid. The worker serialises watchers, so at most one
+	// guard exists at a time and console modes are not mutated concurrently.
 	unsafe impl Send for RawModeGuard {}
 
 	impl RawModeGuard {
@@ -210,6 +210,7 @@ async fn watch_stdin(
 	errors: mpsc::Sender<RuntimeError>,
 	events: priority::Sender<Event, Priority>,
 	close_r: oneshot::Receiver<()>,
+	done: oneshot::Sender<()>,
 ) -> Result<(), CriticalError> {
 	// Use an AtomicBool to signal the blocking reader to stop.
 	// This avoids tokio::io::stdin() which uses blocking threads that can't be
@@ -217,13 +218,20 @@ async fn watch_stdin(
 	let cancel = Arc::new(AtomicBool::new(false));
 	let cancel_clone = cancel.clone();
 
+	// Raw mode is entered and left on this side rather than inside the blocking
+	// reader, so the restore is not held up by a blocking read, and is complete
+	// before `done` is sent below.
+	#[cfg(any(unix, windows))]
+	let raw_guard = raw_mode::RawModeGuard::enter();
+	#[cfg(any(unix, windows))]
+	let is_raw = raw_guard.is_some();
+	#[cfg(not(any(unix, windows)))]
+	let is_raw = false;
+
 	let (tx, mut rx) = mpsc::channel::<Result<Vec<u8>, ()>>(16);
 
 	// Spawn a blocking task that reads stdin directly
 	tokio::task::spawn_blocking(move || {
-		#[cfg(any(unix, windows))]
-		let _raw_guard = raw_mode::RawModeGuard::enter();
-
 		let mut stdin = std::io::stdin().lock();
 		let mut buffer = [0u8; 10];
 
@@ -232,10 +240,10 @@ async fn watch_stdin(
 				Ok(0) => {
 					// EOF or VTIME timeout with no data
 					// With VMIN=0/VTIME=1, this is a timeout - just loop and check cancel
-					#[cfg(any(unix, windows))]
-					if _raw_guard.is_some() {
+					if is_raw {
 						continue;
 					}
+
 					// Real EOF in non-raw mode
 					let _ = tx.blocking_send(Ok(vec![]));
 					break;
@@ -283,6 +291,14 @@ async fn watch_stdin(
 
 	// Always signal the blocking thread to stop when we exit
 	cancel.store(true, Ordering::Relaxed);
+
+	// Restore the terminal before reporting completion: the worker waits on
+	// `done` before spawning another watcher, which must start from cooked mode.
+	#[cfg(any(unix, windows))]
+	drop(raw_guard);
+
+	// Ignore send error: if the worker is gone, nobody waits for completion.
+	done.send(()).ok();
 
 	Ok(())
 }
