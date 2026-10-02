@@ -115,12 +115,16 @@ async fn provide_sockets(
 }
 
 fn socket_to_payload(socket: &OwnedSocket, pid: u32) -> std::io::Result<Vec<u8>> {
-	// SAFETY:
-	// - we're not reading from this until it gets populated by WSADuplicateSocketW
-	// - the struct is entirely integers and arrays of integers
+	// SAFETY: mem::zeroed requires the all-zero byte-pattern to be a valid
+	// value of the target type. WSAPROTOCOL_INFOW is repr(C) with only
+	// integer-typed fields, so it is. The value is only written to by
+	// WSADuplicateSocketW below, which is checked for success first.
 	let mut proto_info: WSAPROTOCOL_INFOW = unsafe { std::mem::zeroed() };
 
-	// SAFETY: ffi
+	// SAFETY: WSADuplicateSocketW takes the raw handle of a live socket, any
+	// process id, and a valid pointer to a WSAPROTOCOL_INFOW buffer, and
+	// reports failure by return value, which is checked before the buffer is
+	// read.
 	if unsafe { WSADuplicateSocketW(socket.as_raw_socket() as SOCKET, pid, &mut proto_info) } != 0 {
 		return Err(ErrorKind::InvalidData.into());
 	}

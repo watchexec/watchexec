@@ -310,7 +310,9 @@ impl From<SerdeTag> for Tag {
 				disposition: Some(ProcessDisposition::Error),
 				code: Some(err),
 				..
-			} if err != 0 => Self::ProcessCompletion(Some(ProcessEnd::ExitError(unsafe {
+			// SAFETY: NonZeroI64::new_unchecked requires a non-zero value; the err != 0
+	// guard on this arm guarantees it.
+	} if err != 0 => Self::ProcessCompletion(Some(ProcessEnd::ExitError(unsafe {
 				NonZeroI64::new_unchecked(err)
 			}))),
 			SerdeTag {
@@ -320,7 +322,10 @@ impl From<SerdeTag> for Tag {
 				..
 			} if code != 0 && i32::try_from(code).is_ok() => {
 				Self::ProcessCompletion(Some(ProcessEnd::ExitStop(unsafe {
-					// SAFETY&UNWRAP: checked above
+					// SAFETY: NonZeroI32::new_unchecked requires a non-zero value.
+					// The code != 0 guard on this arm gives that, and the
+					// try_from guard plus the conversion below give the in-range
+					// value the unwrap returns, so it cannot panic.
 					NonZeroI32::new_unchecked(code.try_into().unwrap())
 				})))
 			}
@@ -331,7 +336,10 @@ impl From<SerdeTag> for Tag {
 				..
 			} if exc != 0 && i32::try_from(exc).is_ok() => {
 				Self::ProcessCompletion(Some(ProcessEnd::Exception(unsafe {
-					// SAFETY&UNWRAP: checked above
+					// SAFETY: NonZeroI32::new_unchecked requires a non-zero value.
+					// The exc != 0 guard on this arm gives that, and the
+					// try_from guard plus the conversion below give the in-range
+					// value the unwrap returns, so it cannot panic.
 					NonZeroI32::new_unchecked(exc.try_into().unwrap())
 				})))
 			}

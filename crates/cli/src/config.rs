@@ -1667,9 +1667,10 @@ pub fn reset_screen() {
 
 #[cfg(unix)]
 fn suspend_self() {
-	// SAFETY: raise() is async-signal-safe and SIGSTOP cannot be caught or ignored. At this point
-	// SIGTSTP has already been forwarded to the child, so stopping ourselves preserves shell job
-	// control without racing the propagation.
+	// SAFETY: raise takes a valid signal number and reports failure by return
+	// value, which is checked. SIGSTOP cannot be caught or ignored, so the
+	// process stops here and resumes on SIGCONT; no state is expected to
+	// survive across the stop.
 	if unsafe { libc::raise(libc::SIGSTOP) } != 0 {
 		warn!(error = ?std::io::Error::last_os_error(), "failed to suspend watchexec");
 	}
