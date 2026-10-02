@@ -121,7 +121,11 @@ mod raw_mode {
 		original_mode: u32,
 	}
 
-	// SAFETY: HANDLE is a process-global value (stdin) that is safe to use from any thread.
+	// SAFETY: the stored HANDLE is the process-wide stdin console handle, and
+	// Win32 console handles are not thread-affine, so moving the guard to
+	// another thread keeps the later GetConsoleMode/SetConsoleMode calls in
+	// Drop valid. The guard is currently created and dropped on a single
+	// thread, so this impl is precautionary.
 	unsafe impl Send for RawModeGuard {}
 
 	impl RawModeGuard {
