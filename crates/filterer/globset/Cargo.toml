@@ -1,6 +1,6 @@
 [package]
 name = "watchexec-filterer-globset"
-version = "8.0.4"
+version = "8.0.5"
 
 authors = ["Matt Green <mattgreenrocks@gmail.com>", "Félix Saparelli <felix@passcod.name>"]
 license = "Apache-2.0"
@@ -22,19 +22,19 @@ normalize-path = "0.2.1"
 tracing = "0.1.40"
 
 [dependencies.ignore-files]
-version = "3.0.7"
+version = "3.0.8"
 path = "../../ignore-files"
 
 [dependencies.watchexec]
-version = "8.4.2"
+version = "8.4.3"
 path = "../../lib"
 
 [dependencies.watchexec-events]
-version = "6.1.2"
+version = "6.1.3"
 path = "../../events"
 
 [dependencies.watchexec-filterer-ignore]
-version = "7.0.4"
+version = "7.0.5"
 path = "../ignore"
 
 [dev-dependencies]
