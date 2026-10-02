@@ -45,9 +45,8 @@ fn threadid() -> NonZeroU64 {
 	let mut ex = Extractor { id: 0 };
 	std::thread::current().id().hash(&mut ex);
 
-	// SAFETY: guaranteed to be > 0
-	// safeguarded by the max(1), but this is already guaranteed by the thread id being a NonZeroU64
-	// internally; as that guarantee is not stable, we do make sure, just to be on the safe side.
+	// SAFETY: NonZeroU64::new_unchecked requires a non-zero value; the max(1)
+	// guarantees it for every u64 the hasher may return, including 0.
 	unsafe { NonZeroU64::new_unchecked(ex.finish().max(1)) }
 }
 
