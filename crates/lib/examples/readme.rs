@@ -46,6 +46,13 @@ async fn main() -> Result<()> {
 			#[cfg(unix)]
 			job.set_spawn_hook(|cmd, _| {
 				use nix::sys::signal::{sigprocmask, SigSet, SigmaskHow, Signal};
+				// SAFETY: pre_exec's closure runs in the child between fork and
+				// exec, where only async-signal-safe operations are permitted.
+				// The closure only calls sigemptyset, sigaddset, and sigprocmask,
+				// all async-signal-safe, via nix wrappers that are direct libc
+				// calls with no allocation or locking; the error path converts
+				// Errno into an io::Error with from_raw_os_error, which does not
+				// allocate either.
 				unsafe {
 					cmd.command_mut().pre_exec(|| {
 						let mut newset = SigSet::empty();
