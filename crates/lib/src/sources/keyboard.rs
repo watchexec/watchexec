@@ -69,9 +69,12 @@ mod raw_mode {
 		/// Switch stdin to raw mode. Returns None if stdin is not a TTY.
 		pub fn enter() -> Option<Self> {
 			let fd = std::io::stdin().as_raw_fd();
-			// SAFETY: isatty, tcgetattr, cfmakeraw, and tcsetattr are POSIX standard
-			// functions operating on a valid fd (stdin). We check return values before
-			// proceeding. The original termios is saved and restored in Drop.
+			// SAFETY: isatty, tcgetattr, cfmakeraw, and tcsetattr take an arbitrary
+			// integer fd and a valid pointer to a termios, and report failure by
+			// return value, which is checked before proceeding. The zeroed termios
+			// is a valid value because all its fields are integer types. Every
+			// constructed guard stores the tcgetattr-written original termios,
+			// which Drop restores.
 			unsafe {
 				if libc::isatty(fd) == 0 {
 					return None;
@@ -99,7 +102,9 @@ mod raw_mode {
 
 	impl Drop for RawModeGuard {
 		fn drop(&mut self) {
-			// SAFETY: restoring the original termios saved in enter() on the same fd.
+			// SAFETY: tcsetattr takes an arbitrary integer fd and a valid pointer to
+			// a termios, and reports failure by return value. The fd and the
+			// tcgetattr-written original it restores are those stored by enter().
 			unsafe {
 				libc::tcsetattr(self.fd, libc::TCSANOW, &self.original);
 			}
@@ -121,15 +126,22 @@ mod raw_mode {
 		original_mode: u32,
 	}
 
-	// SAFETY: HANDLE is a process-global value (stdin) that is safe to use from any thread.
+	// SAFETY: the stored HANDLE is the process-wide stdin console handle, and
+	// Win32 console handles are not thread-affine, so moving the guard to
+	// another thread keeps the later GetConsoleMode/SetConsoleMode calls in
+	// Drop valid. The guard is currently created and dropped on a single
+	// thread, so this impl is precautionary.
 	unsafe impl Send for RawModeGuard {}
 
 	impl RawModeGuard {
 		/// Switch stdin to raw-like mode. Returns None if stdin is not a console.
 		pub fn enter() -> Option<Self> {
-			// SAFETY: GetStdHandle, GetConsoleMode, and SetConsoleMode are Windows Console
-			// API functions. We check return values before proceeding. The handle is valid
-			// for the lifetime of the process. The original mode is saved and restored in Drop.
+			// SAFETY: GetConsoleMode and SetConsoleMode take the process-wide
+			// console handle and a valid pointer to a u32 mode, and report failure
+			// by return value, which is checked before proceeding. GetStdHandle's
+			// result is checked for both invalid values before use. Every
+			// constructed guard stores the GetConsoleMode-written original mode,
+			// which Drop restores.
 			unsafe {
 				let handle = GetStdHandle(STD_INPUT_HANDLE);
 				if handle == INVALID_HANDLE_VALUE || handle.is_null() {
@@ -155,7 +167,9 @@ mod raw_mode {
 
 	impl Drop for RawModeGuard {
 		fn drop(&mut self) {
-			// SAFETY: restoring the original console mode saved in enter() on the same handle.
+			// SAFETY: SetConsoleMode takes the process-wide console handle and the
+			// GetConsoleMode-written original mode stored by enter(), and reports
+			// failure by return value.
 			unsafe {
 				SetConsoleMode(self.handle, self.original_mode);
 			}

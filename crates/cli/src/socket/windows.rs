@@ -115,21 +115,30 @@ async fn provide_sockets(
 }
 
 fn socket_to_payload(socket: &OwnedSocket, pid: u32) -> std::io::Result<Vec<u8>> {
-	// SAFETY:
-	// - we're not reading from this until it gets populated by WSADuplicateSocketW
-	// - the struct is entirely integers and arrays of integers
+	// SAFETY: mem::zeroed requires the all-zero byte-pattern to be a valid
+	// value of the target type. WSAPROTOCOL_INFOW is repr(C) with only
+	// integer-typed fields, so it is. The value is only written to by
+	// WSADuplicateSocketW below, which is checked for success first.
 	let mut proto_info: WSAPROTOCOL_INFOW = unsafe { std::mem::zeroed() };
 
-	// SAFETY: ffi
+	// SAFETY: WSADuplicateSocketW takes the raw handle of a live socket, any
+	// process id, and a valid pointer to a WSAPROTOCOL_INFOW buffer, and
+	// reports failure by return value, which is checked before the buffer is
+	// read.
 	if unsafe { WSADuplicateSocketW(socket.as_raw_socket() as SOCKET, pid, &mut proto_info) } != 0 {
 		return Err(ErrorKind::InvalidData.into());
 	}
 
-	// SAFETY:
-	// - non-nullability, alignment, and contiguousness are taken care of by serialising a single value
-	// - WSAPROTOCOL_INFOW is repr(C)
-	// - we don't mutate that memory (we immediately to_vec it)
-	// - we have its exact size
+	// SAFETY: slice::from_raw_parts requires a non-null, aligned pointer that is
+	// valid for reads of len * size_of::<T>() bytes within a single allocation,
+	// all of those bytes properly initialized, and no mutation while the slice
+	// lives. The pointer derives from a live local WSAPROTOCOL_INFOW, so it is
+	// non-null and within that object's single allocation, u8 needs no
+	// alignment, and the exact size of the object is passed as len. Every byte
+	// of the repr(C) layout is a field byte (integer-typed fields, no padding),
+	// and all were initialized by mem::zeroed, then only overwritten by
+	// WSADuplicateSocketW. The slice is copied with to_vec immediately and
+	// nothing else can reach the local, so it cannot be mutated meanwhile.
 	Ok(unsafe {
 		let bytes: *const u8 = &proto_info as *const WSAPROTOCOL_INFOW as *const _;
 		std::slice::from_raw_parts(bytes, std::mem::size_of::<WSAPROTOCOL_INFOW>())
