@@ -7,6 +7,7 @@ use std::{
 
 use futures::future::try_join_all;
 use gix_config::{path::interpolate::Context as InterpolateContext, File, Path as GitPath};
+use gix_error::Exn;
 use miette::{bail, Result};
 use normalize_path::NormalizePath;
 use project_origins::ProjectType;
@@ -180,7 +181,7 @@ pub async fn from_origin(
 				ErrorKind::Other,
 				"unreachable: .git/config must have a parent",
 			)),
-			Some(Err(err)) => errors.push(Error::new(ErrorKind::Other, err)),
+			Some(Err(err)) => errors.push(Error::new(ErrorKind::Other, err.into_error())),
 			Some(Ok(config)) => {
 				let config_excludes = config.value::<GitPath>("core.excludesFile");
 				if let Ok(excludes) = config_excludes {
@@ -331,16 +332,16 @@ pub async fn from_environment(appname: Option<&str>) -> (Vec<IgnoreFile>, Vec<Er
 	let mut errors = Vec::new();
 
 	let mut found_git_global = false;
-	match File::from_environment_overrides().map(|mut env| {
-		File::from_globals().map(move |glo| {
-			env.append(glo)?;
-			Ok::<_, gix_config::parse::span::Error>(env)
-		})
+	match File::from_environment_overrides().and_then(|mut env| {
+		File::from_globals()
+			.and_then(move |glo| {
+				env.append(glo)?;
+				Ok(env)
+			})
+			.map_err(Exn::erased)
 	}) {
-		Err(err) => errors.push(Error::new(ErrorKind::Other, err)),
-		Ok(Err(err)) => errors.push(Error::new(ErrorKind::Other, err)),
-		Ok(Ok(Err(err))) => errors.push(Error::new(ErrorKind::Other, err)),
-		Ok(Ok(Ok(config))) => {
+		Err(err) => errors.push(Error::new(ErrorKind::Other, err.into_error())),
+		Ok(config) => {
 			let config_excludes = config.value::<GitPath>("core.excludesFile");
 			if let Ok(excludes) = config_excludes {
 				match excludes.interpolate(InterpolateContext {

@@ -11,7 +11,7 @@ documentation = "https://docs.rs/watchexec-supervisor"
 repository = "https://github.com/watchexec/watchexec"
 readme = "README.md"
 
-rust-version = "1.64.0"
+rust-version = "1.87.0"
 edition = "2021"
 
 [package.metadata.docs.rs]
@@ -26,7 +26,7 @@ futures = "0.3.29"
 tracing = "0.1.40"
 
 [dependencies.process-wrap]
-version = "9.1.0"
+version = "9.1.1"
 features = ["reset-sigmask", "tokio1"]
 
 [dependencies.tokio]
