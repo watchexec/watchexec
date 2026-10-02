@@ -134,13 +134,13 @@ fn pass_program_args_quoted(
 	}
 }
 
-/// Whether it's safe to prefix `command` with `exec ` so the wrapping shell replaces itself
-/// with it, rather than running it as a child.
+/// Whether the wrapping shell can replace itself with `command` via an `exec ` prefix rather
+/// than running it as a child.
 ///
-/// This is unsafe for commands that rely on the shell surviving past the first program it
-/// runs: sequencing (`;`, newlines), conditionals (`&&`, `||`), pipes (`|`), and backgrounding
-/// (`&`). `exec`ing into the first program of such a command would silently skip the rest of
-/// it, since control never returns to the shell.
+/// This changes shell behaviour for commands that rely on the shell surviving past the first
+/// program it runs: sequencing (`;`, newlines), conditionals (`&&`, `||`), pipes (`|`), and
+/// backgrounding (`&`). `exec`ing into the first program of such a command would silently
+/// skip the rest of it, since control never returns to the shell.
 fn shell_command_is_execable(command: &str) -> bool {
 	!command.contains([';', '&', '|', '\n'])
 }
