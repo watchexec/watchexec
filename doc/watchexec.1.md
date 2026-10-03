@@ -205,7 +205,7 @@ environment.
 
 By default, Watchexec will run the command in a process group, so that
 signals and terminations are sent to all processes in the group.
-Sometimes thats not what you want, and you can disable the behaviour
+Sometimes that's not what you want, and you can disable the behaviour
 with this option.
 
 Deprecated, use \--wrap-process=none instead.
@@ -217,7 +217,7 @@ Deprecated, use \--wrap-process=none instead.
 
 On Windows by default this is treated as false, as CMD and PowerShell do
 not work correctly when the symbols are quoted. For git-bash and nushell
-on Windows, as well as other shells that wont work correctly without
+on Windows, as well as other shells that won't work correctly without
 quoting, opt in to quoting using this option.
 
 On Linux and MacOS this is ignored and always treated as true, because
@@ -257,7 +257,7 @@ executed directly. Note that this parsing is rudimentary, and may not
 work as expected in all cases.
 
 Using none is a little more efficient and can enable a stricter
-interpretation of the input, but it also means that you cant use shell
+interpretation of the input, but it also means that you can't use shell
 features like globbing, redirection, control flow, logic, or pipes.
 
 Examples:
@@ -288,7 +288,7 @@ Use with a unix shell and options:
 
 This is used by restart and signal modes of \--on-busy-update (unless
 \--signal is provided). The restart behaviour is to send the signal,
-wait for the command to exit, and if it hasnt exited after some time
+wait for the command to exit, and if it hasn't exited after some time
 (see \--timeout-stop), forcefully terminate it.
 
 The default on unix is \"SIGTERM\".
@@ -299,7 +299,7 @@ case-insensitive.
 
 On Windows this option is technically supported but only supports the
 \"KILL\" event, as Watchexec cannot yet deliver other events. Windows
-doesnt have signals as such; instead it has termination (here called
+doesn't have signals as such; instead it has termination (here called
 \"KILL\" or \"STOP\") and \"CTRL+C\", \"CTRL+BREAK\", and \"CTRL+CLOSE\"
 events. For portability the unix signals \"SIGKILL\", \"SIGINT\",
 \"SIGTERM\", and \"SIGHUP\" are respectively mapped to these.
@@ -310,7 +310,7 @@ events. For portability the unix signals \"SIGKILL\", \"SIGINT\",
 
 This is used by the restart mode of \--on-busy-update. After the
 graceful stop signal is sent, Watchexec will wait for the command to
-exit. If it hasnt exited after this time, it is forcefully terminated.
+exit. If it hasn't exited after this time, it is forcefully terminated.
 
 Takes a unit-less value in seconds, or a time span value such as \"5min
 20s\". Providing a unit-less value is deprecated and will warn; it will
@@ -403,11 +403,11 @@ always came before the new. However, none of this was true. Its
 impossible to reliably and portably know which changed path is the old
 or new, \"half\" renames may appear (only the original, only the new),
 \"unknown\" renames may appear (change was a rename, but whether it was
-the old or new isnt known), rename events might split across two
+the old or new isn't known), rename events might split across two
 debouncing boundaries, and so on.
 
 This option controls where that information is emitted. It defaults to
-none, which doesnt emit event information at all. The other options are
+none, which doesn't emit event information at all. The other options are
 environment (deprecated), stdio, file, json-stdio, and json-file.
 
 The stdio and file modes are text-based: stdio writes absolute paths to
@@ -532,7 +532,7 @@ running, so that changes that occur due to the command are ignored, like
 compilation outputs. You can also use queue which will run the command
 once again when the current run has finished if any events occur while
 its running, or restart, which terminates the running command and starts
-a new one. Finally, theres signal, which only sends a signal; this can
+a new one. Finally, there's signal, which only sends a signal; this can
 be useful with programs that can reload their configuration without a
 full restart.
 
@@ -950,7 +950,7 @@ from before these options are parsed.
 
 :   Clear screen before running command
 
-If this doesnt completely clear the screen, try \--clear=reset.
+If this doesn't completely clear the screen, try \--clear=reset.
 
 **\--color** *\<MODE\>* \[default: auto\]
 
@@ -993,7 +993,7 @@ Use \@argfile as first argument to load arguments from the file argfile
 (further arguments on the CLI will override or add onto those in the
 file).
 
-Didnt expect this much output? Use the short -h flag to get short help.
+Didn't expect this much output? Use the short -h flag to get short help.
 
 # VERSION
 
