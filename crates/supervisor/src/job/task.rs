@@ -238,7 +238,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 								}
 								Control::Stop => {
 									#[cfg(unix)]
-									resume_paused_command(&mut paused, &command_state);
+									resume_paused_command(&mut paused, &mut command_state);
 									#[cfg(unix)]
 									{
 										end_pause_watch(&mut pause_watch);
@@ -271,7 +271,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 								}
 								Control::GracefulStop { signal, grace } => {
 									#[cfg(unix)]
-									resume_paused_command(&mut paused, &command_state);
+									resume_paused_command(&mut paused, &mut command_state);
 									if let CommandState::Running { child, .. } = &mut command_state {
 										try_with_handler!(signal_child(signal, child).await);
 
@@ -283,7 +283,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 								}
 								Control::TryRestart => {
 									#[cfg(unix)]
-									resume_paused_command(&mut paused, &command_state);
+									resume_paused_command(&mut paused, &mut command_state);
 									#[cfg(unix)]
 									{
 										end_pause_watch(&mut pause_watch);
@@ -342,7 +342,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 								}
 								Control::TryGracefulRestart { signal, grace } => {
 									#[cfg(unix)]
-									resume_paused_command(&mut paused, &command_state);
+									resume_paused_command(&mut paused, &mut command_state);
 									if let CommandState::Running { child, .. } = &mut command_state {
 										try_with_handler!(signal_child(signal, child).await);
 
@@ -358,7 +358,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 									trace!("continuing a graceful try-restart");
 
 									#[cfg(unix)]
-									resume_paused_command(&mut paused, &command_state);
+									resume_paused_command(&mut paused, &mut command_state);
 									#[cfg(unix)]
 									{
 										end_pause_watch(&mut pause_watch);
@@ -784,7 +784,7 @@ fn try_grant_foreground(foreground_grant: &mut Option<ForegroundGrant>, pgrp: Pi
 /// restarting a paused command must continue it first for graceful termination to work at
 /// all; without this, a graceful stop of a paused command pends until the force-kill timeout.
 #[cfg(unix)]
-fn resume_paused_command(paused: &mut Option<i32>, command_state: &CommandState) {
+fn resume_paused_command(paused: &mut Option<i32>, command_state: &mut CommandState) {
 	if paused.take().is_none() {
 		return;
 	}
