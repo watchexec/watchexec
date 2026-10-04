@@ -11,7 +11,7 @@ use std::{
 #[cfg(unix)]
 use nix::sys::signal::Signal as NixSignal;
 #[cfg(unix)]
-use nix::unistd::Pid;
+use nix::unistd::{self, getpgrp, Pid};
 use process_wrap::tokio::CommandWrap;
 use tokio::{select, task::JoinHandle};
 use tracing::{debug, instrument, trace, trace_span, Instrument};
@@ -654,7 +654,7 @@ pub type AsyncErrorHandler = Arc<
 
 sync_async_callbox!(ErrorHandler, SyncErrorHandler, AsyncErrorHandler, (error: SyncIoError));
 
-/// Handle a pause notification from the terminal pause watcher.
+/// Handle a pause or continuation notification from the terminal pause watcher.
 #[cfg(unix)]
 #[instrument(level = "trace", skip_all, fields(%raw_signal))]
 async fn handle_pause_event(
@@ -664,10 +664,6 @@ async fn handle_pause_event(
 	foreground_grant: &mut Option<ForegroundGrant>,
 ) {
 	let nix_signal = NixSignal::try_from(raw_signal).ok();
-	let tty_denied = matches!(
-		nix_signal,
-		Some(NixSignal::SIGTTIN) | Some(NixSignal::SIGTTOU)
-	);
 	let wants_grant =
 		command.options.grant_foreground && command.options.grouped && !command.options.session;
 
@@ -676,21 +672,29 @@ async fn handle_pause_event(
 		_ => None,
 	};
 
+	if nix_signal == Some(NixSignal::SIGCONT) {
+		// the command was resumed by something outside our control: hand the terminal back
+		// if we can do so without taking it from whoever owns it now
+		if wants_grant && foreground_grant.is_none() {
+			if let Some(pgrp) = child_pgid {
+				try_grant_foreground(foreground_grant, pgrp);
+			}
+		}
+		return;
+	}
+
+	let tty_denied = matches!(
+		nix_signal,
+		Some(NixSignal::SIGTTIN) | Some(NixSignal::SIGTTOU)
+	);
+
 	if tty_denied {
 		// the kernel paused the command because it touched the terminal while its process
 		// group was not the terminal's foreground process group
 		if wants_grant {
 			if let Some(pgrp) = child_pgid {
 				if foreground_grant.is_none() {
-					match ForegroundGrant::acquire(pgrp) {
-						Ok(grant) => {
-							foreground_grant.replace(grant);
-							debug!(%pgrp, "granted the terminal foreground to the command");
-						}
-						Err(error) => {
-							debug!(%error, "could not grant the terminal foreground");
-						}
-					}
+					try_grant_foreground(foreground_grant, pgrp);
 				}
 
 				// continue the paused group; this also covers a re-pause while the grant is held
@@ -712,7 +716,40 @@ async fn handle_pause_event(
 		trace!("reclaiming the terminal foreground after a suspension");
 		grant.release();
 	}
-	debug!(signal = ?nix_signal, "command was suspended");
+	match nix_signal {
+		Some(NixSignal::SIGTSTP) => debug!("command was suspended from the terminal (SIGTSTP)"),
+		Some(NixSignal::SIGSTOP) => debug!("command was stopped (SIGSTOP)"),
+		other => debug!(signal = ?other, "command was paused"),
+	}
+}
+
+/// Grant the terminal foreground to `pgrp` if we may: either the supervisor's own process
+/// group currently holds the foreground (and is handing it over), or `pgrp` already holds it
+/// (re-asserting after an external transfer). Never take the terminal from a foreign group,
+/// such as the user's shell after backgrounding.
+#[cfg(unix)]
+fn try_grant_foreground(foreground_grant: &mut Option<ForegroundGrant>, pgrp: Pid) {
+	match crate::foreground::foreground_owner() {
+		Some(owner) if owner == getpgrp() || owner == pgrp => {}
+		Some(owner) => {
+			debug!(%owner, "not granting the terminal foreground: owned by another group");
+			return;
+		}
+		None => {
+			debug!("not granting the terminal foreground: no controlling terminal");
+			return;
+		}
+	}
+
+	match ForegroundGrant::acquire(pgrp) {
+		Ok(grant) => {
+			foreground_grant.replace(grant);
+			debug!(%pgrp, "granted the terminal foreground to the command");
+		}
+		Err(error) => {
+			debug!(%error, "could not grant the terminal foreground");
+		}
+	}
 }
 
 /// Start the terminal pause watcher for a freshly spawned child, replacing any existing one.
@@ -823,14 +860,16 @@ fn waitid_child(
 	waitid(Id::Pid(pid), flags)
 }
 
-/// Watch a running child for terminal pauses and send the pausing signal numbers over `tx`.
+/// Watch a running child for terminal pauses and continuations, sending the pausing signal
+/// numbers, and SIGCONT for continuations, over `tx`.
 ///
-/// The loop uses `waitid` with WSTOPPED only, consuming pause events as they come: exit events
-/// are never touched, so they remain available for tokio's reaping. It exits when the child is
-/// reaped (ECHILD), lost, or the cancel flag is raised.
+/// The loop uses `waitid` with WSTOPPED and WCONTINUED only, consuming events as they come:
+/// exit events are never touched, so they remain available for tokio's reaping. It exits when
+/// the child is reaped (ECHILD), lost, or the cancel flag is raised.
 #[cfg(unix)]
 fn pause_watch_loop(pid: i32, cancel: Flag, tx: tokio::sync::mpsc::UnboundedSender<i32>) {
 	use nix::errno::Errno;
+	use nix::sys::signal::Signal as NixSignal;
 	use nix::sys::wait::{WaitPidFlag, WaitStatus};
 
 	let pid = Pid::from_raw(pid);
@@ -841,14 +880,25 @@ fn pause_watch_loop(pid: i32, cancel: Flag, tx: tokio::sync::mpsc::UnboundedSend
 
 		match waitid_child(
 			pid,
-			WaitPidFlag::WSTOPPED | WaitPidFlag::WNOWAIT | WaitPidFlag::WNOHANG,
+			WaitPidFlag::WSTOPPED
+				| WaitPidFlag::WCONTINUED
+				| WaitPidFlag::WNOWAIT
+				| WaitPidFlag::WNOHANG,
 		) {
-			Ok(WaitStatus::Stopped(..)) => {
-				// consume the pause event so the next peek sees the next one; WSTOPPED alone
-				// never reports exit events, which remain queued for tokio's reaping
-				match waitid_child(pid, WaitPidFlag::WSTOPPED | WaitPidFlag::WNOHANG) {
+			Ok(WaitStatus::Stopped(..)) | Ok(WaitStatus::Continued(_)) => {
+				// consume the pause or continuation event so the next peek sees the next one;
+				// neither flag reports exit events, which remain queued for tokio's reaping
+				match waitid_child(
+					pid,
+					WaitPidFlag::WSTOPPED | WaitPidFlag::WCONTINUED | WaitPidFlag::WNOHANG,
+				) {
 					Ok(WaitStatus::Stopped(_, signal)) => {
 						if tx.send(signal as i32).is_err() {
+							return; // the job task is gone
+						}
+					}
+					Ok(WaitStatus::Continued(_)) => {
+						if tx.send(NixSignal::SIGCONT as i32).is_err() {
 							return; // the job task is gone
 						}
 					}

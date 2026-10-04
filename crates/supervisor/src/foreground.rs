@@ -75,6 +75,13 @@ fn open_controlling_tty() -> Result<OwnedFd, Errno> {
 		.map(OwnedFd::from)
 }
 
+/// The foreground process group of the controlling terminal, if there is one.
+#[must_use]
+pub fn foreground_owner() -> Option<Pid> {
+	let tty = open_controlling_tty().ok()?;
+	unistd::tcgetpgrp(&tty).ok()
+}
+
 /// Run `f` with SIGTTOU set to be ignored, restoring the previous handling afterwards.
 ///
 /// The kernel permits terminal state changes from a background process group when the process

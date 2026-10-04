@@ -82,6 +82,9 @@ pub struct SpawnOptions {
 	///
 	/// When enabled, when the process is paused by SIGTTIN or SIGTTOU, we give the process group
 	/// foreground control, resume the process, and take foreground back when the process ends.
+	/// If the process is deliberately suspended (SIGSTOP or SIGTSTP) while holding the
+	/// foreground, the foreground is taken back immediately, and given back when the process is
+	/// resumed (SIGCONT), provided the terminal is not owned by another process group.
 	///
 	/// This makes pagers and interactive programs work under process groups, without giving up
 	/// wrapping altogether.
