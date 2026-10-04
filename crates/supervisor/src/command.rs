@@ -78,29 +78,9 @@ pub struct SpawnOptions {
 	/// This is only supported on Unix systems.
 	pub reset_sigmask: bool,
 
-	/// Watch the process for terminal stops.
-	///
-	/// When enabled (Unix only), a watcher observes the running process and fires the job's stop
-	/// hook (see [`Job::set_stop_hook`](crate::job::Job::set_stop_hook)) when the process is
-	/// stopped by a terminal-generated signal: SIGTTIN or SIGTTOU, which the kernel delivers when
-	/// the process attempts to read from or change the terminal while its process group is not the
-	/// terminal's foreground process group, or SIGTSTP when it is suspended from the terminal.
-	///
-	/// This is a no-op when the process is not in its own process group (`grouped: false`) or in a
-	/// session (`session: true`): in both cases it shares the parent's terminal foreground, or has
-	/// no controlling terminal, and so can never be stopped this way.
+	/// TODO(docs): Unix-only terminal stop observation and reporting via the stop hook.
 	pub observe_stops: bool,
 
-	/// Grant the process the terminal foreground when it needs it.
-	///
-	/// When enabled (Unix only, implies [`observe_stops`](Self::observe_stops)), if the process is
-	/// stopped by SIGTTIN or SIGTTOU, the job gives the process group the foreground of the
-	/// controlling terminal, exactly as a job control shell does, and continues it. The foreground
-	/// is reclaimed, and the terminal state restored, when the process exits or is stopped again.
-	///
-	/// This makes programs which interact with the terminal — pagers, full-screen programs,
-	/// password prompts — work under the process group wrap, without a pty. It requires the
-	/// process group wrap (`grouped: true`, and not `session: true`): see [`observe_stops`]
-	/// (Self::observe_stops) for why. If there is no controlling terminal, this is a no-op.
+	/// TODO(docs): Unix-only terminal foreground grant; implies `observe_stops`.
 	pub grant_foreground: bool,
 }

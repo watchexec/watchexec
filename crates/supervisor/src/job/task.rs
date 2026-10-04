@@ -682,39 +682,27 @@ pub type AsyncErrorHandler = Arc<
 
 sync_async_callbox!(ErrorHandler, SyncErrorHandler, AsyncErrorHandler, (error: SyncIoError));
 
-/// A notification about the command being stopped by, or granted, the terminal.
-///
-/// Reported via the stop hook (see [`Job::set_stop_hook`](super::Job::set_stop_hook)).
+/// TODO(docs): notifications about the command being stopped by, or granted, the terminal.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StopEvent {
-	/// The command was stopped by a terminal-generated signal.
-	///
-	/// SIGTTIN or SIGTTOU mean the command attempted to read from or change the terminal while
-	/// its process group was not the terminal's foreground group: the command is left stopped.
-	/// SIGTSTP means it was suspended from the terminal. Other stops (such as SIGSTOP) are also
-	/// reported here.
+	/// TODO(docs)
 	Stopped {
-		/// The signal that stopped the command.
+		/// TODO(docs)
 		signal: Signal,
 	},
 
-	/// The command was stopped by SIGTTIN or SIGTTOU and has been granted the terminal
-	/// foreground, and continued. See [`SpawnOptions::grant_foreground`].
+	/// TODO(docs)
 	GrantedForeground {
-		/// The signal that stopped the command.
+		/// TODO(docs)
 		signal: Signal,
 	},
 
-	/// The supervisor reclaimed the terminal foreground from the command and restored the
-	/// terminal state. This happens when a granted command exits, is killed, or is stopped by
-	/// a deliberate suspension signal (in which case the command is left stopped).
+	/// TODO(docs)
 	ReclaimedForeground,
 
-	/// The terminal foreground could not be granted (no controlling terminal, or a terminal
-	/// operation failed). The command is left stopped, and granting is disabled for the rest
-	/// of the run.
+	/// TODO(docs)
 	GrantUnavailable {
-		/// The signal that stopped the command.
+		/// TODO(docs)
 		signal: Signal,
 	},
 }

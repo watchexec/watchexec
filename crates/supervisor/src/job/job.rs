@@ -381,15 +381,7 @@ impl Job {
 		self.control(Control::ClearSpawnFn)
 	}
 
-	/// Set the stop hook.
-	///
-	/// The stop hook is called when the supervised command is stopped by a terminal-generated
-	/// signal, and when the terminal foreground is granted to or reclaimed from the command.
-	/// See [`StopEvent`] for details.
-	///
-	/// Note that stop events are only observed when the command options ask for it: see
-	/// [`SpawnOptions::observe_stops`](crate::command::SpawnOptions::observe_stops) and
-	/// [`SpawnOptions::grant_foreground`](crate::command::SpawnOptions::grant_foreground).
+	/// TODO(docs): set the stop hook.
 	pub fn set_stop_hook(&self, fun: impl Fn(StopEvent) + Send + Sync + 'static) -> Ticket {
 		self.control(Control::SetSyncStopHook(Arc::new(fun)))
 	}
