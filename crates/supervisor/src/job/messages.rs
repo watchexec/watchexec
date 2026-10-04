@@ -11,8 +11,8 @@ use watchexec_signals::Signal;
 use crate::flag::Flag;
 
 use super::task::{
-	AsyncErrorHandler, AsyncFunc, AsyncSpawnHook, SyncErrorHandler, SyncFunc, SyncSpawnHook,
-	SpawnFn,
+	AsyncErrorHandler, AsyncFunc, AsyncSpawnHook, AsyncStopHook, SyncErrorHandler, SyncFunc,
+	SyncSpawnHook, SyncStopHook, SpawnFn,
 };
 
 /// The underlying control message types for [`Job`](super::Job).
@@ -72,6 +72,13 @@ pub enum Control {
 	SetSpawnFn(SpawnFn),
 	/// For [`Job::unset_spawn_fn()`](super::Job::unset_spawn_fn()).
 	ClearSpawnFn,
+
+	/// For [`Job::set_stop_hook()`](super::Job::set_stop_hook()).
+	SetSyncStopHook(SyncStopHook),
+	/// For [`Job::set_async_stop_hook()`](super::Job::set_async_stop_hook()).
+	SetAsyncStopHook(AsyncStopHook),
+	/// For [`Job::unset_stop_hook()`](super::Job::unset_stop_hook()).
+	UnsetStopHook,
 }
 
 impl std::fmt::Debug for Control {
@@ -115,6 +122,9 @@ impl std::fmt::Debug for Control {
 			Self::UnsetErrorHandler => f.debug_struct("UnsetErrorHandler").finish(),
 			Self::SetSpawnFn(_) => f.debug_struct("SetSpawnFn").finish_non_exhaustive(),
 			Self::ClearSpawnFn => f.debug_struct("ClearSpawnFn").finish(),
+			Self::SetSyncStopHook(_) => f.debug_struct("SetSyncStopHook").finish_non_exhaustive(),
+			Self::SetAsyncStopHook(_) => f.debug_struct("SetAsyncStopHook").finish_non_exhaustive(),
+			Self::UnsetStopHook => f.debug_struct("UnsetStopHook").finish(),
 		}
 	}
 }

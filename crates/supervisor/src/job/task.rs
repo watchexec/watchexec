@@ -5,9 +5,13 @@ use std::{
 		atomic::{AtomicBool, Ordering},
 		Arc, Mutex,
 	},
-	time::Instant,
+	time::{Duration, Instant},
 };
 
+#[cfg(unix)]
+use nix::sys::signal::Signal as NixSignal;
+#[cfg(unix)]
+use nix::unistd::Pid;
 use process_wrap::tokio::CommandWrap;
 use tokio::{select, task::JoinHandle};
 use tracing::{instrument, trace, trace_span, Instrument};
@@ -19,6 +23,9 @@ use crate::{
 	flag::Flag,
 	job::priority::Timer,
 };
+
+#[cfg(unix)]
+use crate::foreground::ForegroundGrant;
 
 use super::{
 	job::Job,
@@ -40,6 +47,10 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 	}
 
 	let (sender, mut receiver) = priority::new();
+	#[cfg_attr(test, allow(unused_variables))]
+	let (stop_tx, mut stop_rx) = tokio::sync::mpsc::unbounded_channel::<i32>();
+	#[cfg(not(unix))]
+	drop(stop_tx); // no terminal stop watching on this platform: close the channel
 	let gone = Flag::default();
 	let done = gone.clone();
 	let running = Arc::new(AtomicBool::new(false));
@@ -63,6 +74,12 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 			let mut stop_timer = None;
 			let mut on_end: Vec<Flag> = Vec::new();
 			let mut on_end_restart: Option<Flag> = None;
+			#[cfg(unix)]
+			let mut stop_hook = StopHook::None;
+			#[cfg(unix)]
+			let mut foreground_grant: Option<ForegroundGrant> = None;
+			#[cfg(unix)]
+			let mut stop_watch: Option<Flag> = None;
 
 			'main: loop {
 				running_flag.store(command_state.is_running(), Ordering::Relaxed);
@@ -79,6 +96,16 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 									return Loop::Skip;
 								}
 								Ok(true) => {
+									#[cfg(unix)]
+									{
+										end_stop_watch(&mut stop_watch);
+										if let Some(grant) = foreground_grant.take() {
+											trace!("reclaiming terminal foreground (command exited)");
+											grant.release();
+											stop_hook.call(StopEvent::ReclaimedForeground).await;
+										}
+									}
+
 									trace!(existing=?stop_timer, "erasing stop timer");
 									if let Some(timer) = stop_timer.take() {
 										timer.done.raise();
@@ -113,6 +140,14 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 											return Loop::Skip;
 										}
 
+										#[cfg(all(unix, not(test)))]
+										start_stop_watch_if_running(
+											&command_state,
+											&command,
+											&mut stop_watch,
+											stop_tx.clone(),
+										);
+
 										trace!("raising graceful restart's flag");
 										flag.raise();
 									}
@@ -134,6 +169,20 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 								break 'main;
 							}
 						}
+					}
+					Some(raw_signal) = stop_rx.recv(), if command_state.is_running() => {
+						#[cfg(unix)]
+						handle_stop_event(
+							raw_signal,
+							&command,
+							&mut command_state,
+							&mut stop_hook,
+							&mut foreground_grant,
+						)
+						.instrument(trace_span!("handle stop event"))
+						.await;
+						#[cfg(not(unix))]
+						drop(raw_signal);
 					}
 					Some(ControlMessage { control, done }) = receiver.recv(&mut stop_timer) => {
 						match async {
@@ -177,9 +226,26 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 											spawnable,
 											&spawner,
 										));
+										#[cfg(all(unix, not(test)))]
+										start_stop_watch_if_running(
+											&command_state,
+											&command,
+											&mut stop_watch,
+											stop_tx.clone(),
+										);
 									}
 								}
 								Control::Stop => {
+									#[cfg(unix)]
+									{
+										end_stop_watch(&mut stop_watch);
+										if let Some(grant) = foreground_grant.take() {
+											trace!("reclaiming terminal foreground (stopping command)");
+											grant.release();
+											stop_hook.call(StopEvent::ReclaimedForeground).await;
+										}
+									}
+
 									if let CommandState::Running { child, started, .. } = &mut command_state {
 										trace!("stopping child");
 										try_with_handler!(Box::into_pin(child.kill()).await);
@@ -212,6 +278,16 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 									trace!("child isn't running, skip");
 								}
 								Control::TryRestart => {
+									#[cfg(unix)]
+									{
+										end_stop_watch(&mut stop_watch);
+										if let Some(grant) = foreground_grant.take() {
+											trace!("reclaiming terminal foreground (restarting command)");
+											grant.release();
+											stop_hook.call(StopEvent::ReclaimedForeground).await;
+										}
+									}
+
 									if let CommandState::Running { child, started, .. } = &mut command_state {
 										trace!("stopping child");
 										try_with_handler!(Box::into_pin(child.kill()).await);
@@ -247,6 +323,13 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 											spawnable,
 											&spawner,
 										));
+										#[cfg(all(unix, not(test)))]
+										start_stop_watch_if_running(
+											&command_state,
+											&command,
+											&mut stop_watch,
+											stop_tx.clone(),
+										);
 									} else {
 										trace!("child isn't running, skip");
 									}
@@ -265,6 +348,16 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 								}
 								Control::ContinueTryGracefulRestart => {
 									trace!("continuing a graceful try-restart");
+
+									#[cfg(unix)]
+									{
+										end_stop_watch(&mut stop_watch);
+										if let Some(grant) = foreground_grant.take() {
+											trace!("reclaiming terminal foreground (restarting command)");
+											grant.release();
+											stop_hook.call(StopEvent::ReclaimedForeground).await;
+										}
+									}
 
 									if let CommandState::Running { child, started, .. } = &mut command_state {
 										trace!("stopping child forcefully");
@@ -302,6 +395,13 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 										spawnable,
 										&spawner,
 									));
+									#[cfg(all(unix, not(test)))]
+									start_stop_watch_if_running(
+										&command_state,
+										&command,
+										&mut stop_watch,
+										stop_tx.clone(),
+									);
 								}
 								Control::Signal(signal) => {
 									if let CommandState::Running { child, .. } = &mut command_state {
@@ -311,6 +411,14 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 									}
 								}
 								Control::Delete => {
+									#[cfg(unix)]
+									{
+										end_stop_watch(&mut stop_watch);
+										if let Some(grant) = foreground_grant.take() {
+											grant.release();
+										}
+									}
+
 									trace!("raising done flag immediately");
 									done.raise();
 									return Loop::Break;
@@ -375,6 +483,27 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 									trace!("clearing spawn fn");
 									spawner.set(Spawner::Default);
 								}
+								#[cfg(unix)]
+								Control::SetSyncStopHook(f) => {
+									trace!("setting sync stop hook");
+									stop_hook = StopHook::Sync(f);
+								}
+								#[cfg(unix)]
+								Control::SetAsyncStopHook(f) => {
+									trace!("setting async stop hook");
+									stop_hook = StopHook::Async(f);
+								}
+								#[cfg(unix)]
+								Control::UnsetStopHook => {
+									trace!("unsetting stop hook");
+									stop_hook = StopHook::None;
+								}
+								#[cfg(not(unix))]
+								Control::SetSyncStopHook(_)
+								| Control::SetAsyncStopHook(_)
+								| Control::UnsetStopHook => {
+									trace!("stop hooks are not supported on this platform");
+								}
 							}
 
 							trace!("raising control done flag");
@@ -397,6 +526,14 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 					trace!("all select branches disabled, exiting");
 					break 'main;
 				}
+				}
+			}
+
+			#[cfg(unix)]
+			{
+				end_stop_watch(&mut stop_watch);
+				if let Some(grant) = foreground_grant.take() {
+					grant.release();
 				}
 			}
 
@@ -544,6 +681,270 @@ pub type AsyncErrorHandler = Arc<
 >;
 
 sync_async_callbox!(ErrorHandler, SyncErrorHandler, AsyncErrorHandler, (error: SyncIoError));
+
+/// A notification about the command being stopped by, or granted, the terminal.
+///
+/// Reported via the stop hook (see [`Job::set_stop_hook`](super::Job::set_stop_hook)).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StopEvent {
+	/// The command was stopped by a terminal-generated signal.
+	///
+	/// SIGTTIN or SIGTTOU mean the command attempted to read from or change the terminal while
+	/// its process group was not the terminal's foreground group: the command is left stopped.
+	/// SIGTSTP means it was suspended from the terminal. Other stops (such as SIGSTOP) are also
+	/// reported here.
+	Stopped {
+		/// The signal that stopped the command.
+		signal: Signal,
+	},
+
+	/// The command was stopped by SIGTTIN or SIGTTOU and has been granted the terminal
+	/// foreground, and continued. See [`SpawnOptions::grant_foreground`].
+	GrantedForeground {
+		/// The signal that stopped the command.
+		signal: Signal,
+	},
+
+	/// The supervisor reclaimed the terminal foreground from the command and restored the
+	/// terminal state. This happens when a granted command exits, is killed, or is stopped by
+	/// a deliberate suspension signal (in which case the command is left stopped).
+	ReclaimedForeground,
+
+	/// The terminal foreground could not be granted (no controlling terminal, or a terminal
+	/// operation failed). The command is left stopped, and granting is disabled for the rest
+	/// of the run.
+	GrantUnavailable {
+		/// The signal that stopped the command.
+		signal: Signal,
+	},
+}
+
+pub type SyncStopHook = Arc<dyn Fn(StopEvent) + Send + Sync + 'static>;
+pub type AsyncStopHook = Arc<
+	dyn (Fn(StopEvent) -> Box<dyn Future<Output = ()> + Send + Sync>) + Send + Sync + 'static,
+>;
+
+sync_async_callbox!(StopHook, SyncStopHook, AsyncStopHook, (event: StopEvent));
+
+/// Handle a stop notification from the stop watcher.
+#[cfg(unix)]
+#[instrument(level = "trace", skip_all, fields(%raw_signal))]
+async fn handle_stop_event(
+	raw_signal: i32,
+	command: &Command,
+	command_state: &mut CommandState,
+	stop_hook: &mut StopHook,
+	foreground_grant: &mut Option<ForegroundGrant>,
+) {
+	let signal = Signal::from(raw_signal);
+	let nix_signal = NixSignal::try_from(raw_signal).ok();
+	let tty_denied = matches!(
+		nix_signal,
+		Some(NixSignal::SIGTTIN) | Some(NixSignal::SIGTTOU)
+	);
+	let wants_grant = command.options.grant_foreground
+		&& command.options.grouped
+		&& !command.options.session;
+
+	let child_pgid = match command_state {
+		CommandState::Running { child, .. } => child.id().map(|id| Pid::from_raw(id as i32)),
+		_ => None,
+	};
+
+	if tty_denied && wants_grant {
+		if let Some(pgrp) = child_pgid {
+			if foreground_grant.is_none() {
+				match ForegroundGrant::acquire(pgrp) {
+					Ok(grant) => {
+						foreground_grant.replace(grant);
+						stop_hook.call(StopEvent::GrantedForeground { signal }).await;
+					}
+					Err(error) => {
+						trace!(%error, "could not grant the terminal foreground");
+						stop_hook.call(StopEvent::GrantUnavailable { signal }).await;
+					}
+				}
+			}
+
+			// continue the stopped group; this also covers a re-stop while the grant is held
+			if let Err(error) = nix::sys::signal::killpg(pgrp, NixSignal::SIGCONT) {
+				trace!(%error, "could not continue the stopped command");
+			}
+		} else {
+			trace!("command was stopped by the terminal but it has already ended");
+		}
+		return;
+	}
+
+	if !tty_denied {
+		// a deliberate suspension (SIGSTOP/SIGTSTP) or other stop: give the terminal back to
+		// the supervisor and restore the terminal state, but leave the command stopped.
+		if let Some(grant) = foreground_grant.take() {
+			trace!("reclaiming terminal foreground after a suspension");
+			grant.release();
+			stop_hook.call(StopEvent::ReclaimedForeground).await;
+		}
+	}
+
+	stop_hook.call(StopEvent::Stopped { signal }).await;
+}
+
+/// Start the terminal stop watcher for a freshly spawned child, replacing any existing one.
+#[cfg(all(unix, not(test)))]
+fn start_stop_watch_if_running(
+	command_state: &CommandState,
+	command: &Command,
+	stop_watch: &mut Option<Flag>,
+	tx: tokio::sync::mpsc::UnboundedSender<i32>,
+) {
+	if !command_state.is_running() {
+		return;
+	}
+
+	if let CommandState::Running { child, .. } = command_state {
+		if let Some(pid) = child.id() {
+			end_stop_watch(stop_watch);
+			*stop_watch = start_stop_watch(pid, &command.options, tx);
+		}
+	}
+}
+
+/// Start a thread which watches a running child for terminal stops, or `None` if the command
+/// options do not ask for it or the thread could not be started.
+#[cfg(unix)]
+fn start_stop_watch(
+	pid: u32,
+	options: &crate::command::SpawnOptions,
+	tx: tokio::sync::mpsc::UnboundedSender<i32>,
+) -> Option<Flag> {
+	if !(options.observe_stops || options.grant_foreground) {
+		return None;
+	}
+
+	let cancel = Flag::default();
+	match std::thread::Builder::new()
+		.name(format!("wx-stop-watch-{pid}"))
+		.spawn({
+			let cancel = cancel.clone();
+			move || stop_watch_loop(pid as i32, cancel, tx)
+		}) {
+		Ok(_handle) => Some(cancel),
+		Err(error) => {
+			trace!(%error, "could not start the terminal stop watcher");
+			None
+		}
+	}
+}
+
+/// Raise the current stop watcher's cancel flag, if any.
+#[cfg(unix)]
+fn end_stop_watch(stop_watch: &mut Option<Flag>) {
+	if let Some(cancel) = stop_watch.take() {
+		cancel.raise();
+	}
+}
+
+/// Wait for a child status without reaping it.
+///
+/// Nix does not currently expose `waitid` on Apple targets, even though Darwin provides it.
+#[cfg(all(unix, target_vendor = "apple"))]
+fn waitid_child(
+	pid: Pid,
+	flags: nix::sys::wait::WaitPidFlag,
+) -> nix::Result<nix::sys::wait::WaitStatus> {
+	use nix::{
+		errno::Errno,
+		libc,
+		sys::{signal::Signal, wait::WaitStatus},
+	};
+
+	// SAFETY: `siginfo` is zero-initialised because waitid leaves it untouched when WNOHANG
+	// finds no matching state change. P_PID selects exactly the child represented by `pid`.
+	let siginfo = unsafe {
+		let mut siginfo: libc::siginfo_t = std::mem::zeroed();
+		Errno::result(libc::waitid(
+			libc::P_PID,
+			pid.as_raw() as libc::id_t,
+			&raw mut siginfo,
+			flags.bits(),
+		))?;
+		siginfo
+	};
+
+	// SAFETY: waitid returned a SIGCHLD siginfo value, for which si_pid and si_status are valid.
+	let status = unsafe {
+		if siginfo.si_pid() == 0 {
+			return Ok(WaitStatus::StillAlive);
+		}
+
+		match siginfo.si_code {
+			libc::CLD_STOPPED => WaitStatus::Stopped(pid, Signal::try_from(siginfo.si_status())?),
+			libc::CLD_CONTINUED => WaitStatus::Continued(pid),
+			_ => WaitStatus::StillAlive,
+		}
+	};
+
+	Ok(status)
+}
+
+#[cfg(all(unix, not(target_vendor = "apple")))]
+fn waitid_child(
+	pid: Pid,
+	flags: nix::sys::wait::WaitPidFlag,
+) -> nix::Result<nix::sys::wait::WaitStatus> {
+	use nix::sys::wait::{waitid, Id};
+
+	waitid(Id::Pid(pid), flags)
+}
+
+/// Watch a running child for terminal stops and send the stop signal numbers over `tx`.
+///
+/// The loop uses `waitid` with WSTOPPED only, consuming stop events as they come: exit events
+/// are never touched, so they remain available for tokio's reaping. It exits when the child is
+/// reaped (ECHILD), lost, or the cancel flag is raised.
+#[cfg(unix)]
+fn stop_watch_loop(pid: i32, cancel: Flag, tx: tokio::sync::mpsc::UnboundedSender<i32>) {
+	use nix::errno::Errno;
+	use nix::sys::wait::{WaitPidFlag, WaitStatus};
+
+	let pid = Pid::from_raw(pid);
+	loop {
+		if cancel.raised() {
+			return;
+		}
+
+		match waitid_child(
+			pid,
+			WaitPidFlag::WSTOPPED | WaitPidFlag::WNOWAIT | WaitPidFlag::WNOHANG,
+		) {
+			Ok(WaitStatus::Stopped(..)) => {
+				// consume the stop event so the next peek sees the next one; WSTOPPED alone
+				// never reports exit events, which remain queued for tokio's reaping
+				match waitid_child(pid, WaitPidFlag::WSTOPPED | WaitPidFlag::WNOHANG) {
+					Ok(WaitStatus::Stopped(_, signal)) => {
+						if tx.send(signal as i32).is_err() {
+							return; // the job task is gone
+						}
+					}
+					Ok(_) => {}
+					Err(Errno::ECHILD) => return,
+					Err(error) => {
+						trace!(%error, "stop watcher lost the child");
+						return;
+					}
+				}
+			}
+			Ok(_) => {}
+			Err(Errno::ECHILD) => return, // the child was reaped: the run is over
+			Err(error) => {
+				trace!(%error, "stop watcher lost the child");
+				return;
+			}
+		}
+
+		std::thread::sleep(Duration::from_millis(50));
+	}
+}
 
 #[cfg_attr(not(windows), allow(clippy::needless_pass_by_ref_mut))] // needed for start_kill()
 #[instrument(level = "trace")]

@@ -145,4 +145,7 @@ pub mod command;
 pub mod errors;
 pub mod job;
 
+#[cfg(unix)]
+mod foreground;
+
 mod flag;
