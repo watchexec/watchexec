@@ -78,6 +78,8 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 			let mut foreground_grant: Option<ForegroundGrant> = None;
 			#[cfg(unix)]
 			let mut pause_watch: Option<Flag> = None;
+			#[cfg(unix)]
+			let mut paused: Option<i32> = None;
 
 			'main: loop {
 				running_flag.store(command_state.is_running(), Ordering::Relaxed);
@@ -142,6 +144,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 											&command_state,
 											&command,
 											&mut pause_watch,
+											&mut paused,
 											pause_tx.clone(),
 										);
 
@@ -174,6 +177,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 							&command,
 							&mut command_state,
 							&mut foreground_grant,
+							&mut paused,
 						)
 						.instrument(trace_span!("handle pause event"))
 						.await;
@@ -227,11 +231,14 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 											&command_state,
 											&command,
 											&mut pause_watch,
+											&mut paused,
 											pause_tx.clone(),
 										);
 									}
 								}
 								Control::Stop => {
+									#[cfg(unix)]
+									resume_paused_command(&mut paused, &command_state);
 									#[cfg(unix)]
 									{
 										end_pause_watch(&mut pause_watch);
@@ -263,6 +270,8 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 									}
 								}
 								Control::GracefulStop { signal, grace } => {
+									#[cfg(unix)]
+									resume_paused_command(&mut paused, &command_state);
 									if let CommandState::Running { child, .. } = &mut command_state {
 										try_with_handler!(signal_child(signal, child).await);
 
@@ -273,6 +282,8 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 									trace!("child isn't running, skip");
 								}
 								Control::TryRestart => {
+									#[cfg(unix)]
+									resume_paused_command(&mut paused, &command_state);
 									#[cfg(unix)]
 									{
 										end_pause_watch(&mut pause_watch);
@@ -322,6 +333,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 											&command_state,
 											&command,
 											&mut pause_watch,
+											&mut paused,
 											pause_tx.clone(),
 										);
 									} else {
@@ -329,6 +341,8 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 									}
 								}
 								Control::TryGracefulRestart { signal, grace } => {
+									#[cfg(unix)]
+									resume_paused_command(&mut paused, &command_state);
 									if let CommandState::Running { child, .. } = &mut command_state {
 										try_with_handler!(signal_child(signal, child).await);
 
@@ -343,6 +357,8 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 								Control::ContinueTryGracefulRestart => {
 									trace!("continuing a graceful try-restart");
 
+									#[cfg(unix)]
+									resume_paused_command(&mut paused, &command_state);
 									#[cfg(unix)]
 									{
 										end_pause_watch(&mut pause_watch);
@@ -393,6 +409,7 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 										&command_state,
 										&command,
 										&mut pause_watch,
+										&mut paused,
 										pause_tx.clone(),
 									);
 								}
@@ -662,6 +679,7 @@ async fn handle_pause_event(
 	command: &Command,
 	command_state: &mut CommandState,
 	foreground_grant: &mut Option<ForegroundGrant>,
+	paused: &mut Option<i32>,
 ) {
 	let nix_signal = NixSignal::try_from(raw_signal).ok();
 	let wants_grant =
@@ -673,8 +691,10 @@ async fn handle_pause_event(
 	};
 
 	if nix_signal == Some(NixSignal::SIGCONT) {
-		// the command was resumed by something outside our control: hand the terminal back
-		// if we can do so without taking it from whoever owns it now
+		// the command was resumed by something outside our control: it is no longer paused,
+		// and we hand the terminal back if we can do so without taking it from whoever owns
+		// it now
+		*paused = None;
 		if wants_grant && foreground_grant.is_none() {
 			if let Some(pgrp) = child_pgid {
 				try_grant_foreground(foreground_grant, pgrp);
@@ -698,14 +718,19 @@ async fn handle_pause_event(
 				}
 
 				// continue the paused group; this also covers a re-pause while the grant is held
-				if let Err(error) = nix::sys::signal::killpg(pgrp, NixSignal::SIGCONT) {
-					trace!(%error, "could not continue the paused command");
+				match nix::sys::signal::killpg(pgrp, NixSignal::SIGCONT) {
+					Ok(()) => *paused = None,
+					Err(error) => {
+						trace!(%error, "could not continue the paused command");
+						*paused = Some(raw_signal);
+					}
 				}
 			} else {
 				trace!("command was paused by the terminal but it has already ended");
 			}
 		} else {
 			debug!(signal = ?nix_signal, "command was paused by the terminal");
+			*paused = Some(raw_signal);
 		}
 		return;
 	}
@@ -716,6 +741,7 @@ async fn handle_pause_event(
 		trace!("reclaiming the terminal foreground after a suspension");
 		grant.release();
 	}
+	*paused = Some(raw_signal);
 	match nix_signal {
 		Some(NixSignal::SIGTSTP) => debug!("command was suspended from the terminal (SIGTSTP)"),
 		Some(NixSignal::SIGSTOP) => debug!("command was stopped (SIGSTOP)"),
@@ -752,14 +778,40 @@ fn try_grant_foreground(foreground_grant: &mut Option<ForegroundGrant>, pgrp: Pi
 	}
 }
 
+/// Continue a paused command, if it is currently paused.
+///
+/// Signals sent to a stopped process only take effect once it continues, so stopping or
+/// restarting a paused command must continue it first for graceful termination to work at
+/// all; without this, a graceful stop of a paused command pends until the force-kill timeout.
+#[cfg(unix)]
+fn resume_paused_command(paused: &mut Option<i32>, command_state: &CommandState) {
+	if paused.take().is_none() {
+		return;
+	}
+
+	if let CommandState::Running { child, .. } = command_state {
+		if let Some(pid) = child.id() {
+			let pgrp = Pid::from_raw(pid as i32);
+			match nix::sys::signal::killpg(pgrp, NixSignal::SIGCONT) {
+				Ok(()) => debug!(%pgrp, "continued the paused command"),
+				Err(error) => trace!(%error, "could not continue the paused command"),
+			}
+		}
+	}
+}
+
 /// Start the terminal pause watcher for a freshly spawned child, replacing any existing one.
+///
+/// A fresh run is never paused.
 #[cfg(all(unix, not(test)))]
 fn start_pause_watch_if_running(
 	command_state: &CommandState,
 	command: &Command,
 	pause_watch: &mut Option<Flag>,
+	paused: &mut Option<i32>,
 	tx: tokio::sync::mpsc::UnboundedSender<i32>,
 ) {
+	*paused = None;
 	if !command_state.is_running() {
 		return;
 	}
