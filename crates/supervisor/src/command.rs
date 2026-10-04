@@ -78,29 +78,13 @@ pub struct SpawnOptions {
 	/// This is only supported on Unix systems.
 	pub reset_sigmask: bool,
 
-	/// Watch the process for terminal pauses (SIGTTIN or SIGTTOU).
-	///
-	/// When enabled, we observe the running process and fire the
-	/// [pause hook](crate::job::Job::set_pause_hook) when it's paused by the kernel using the
-	/// terminal control signals (SIGTTIN or SIGTTOU), which are delivered when a background job
-	/// attempts to read from or change the terminal (termios) while not in the foreground process
-	/// group, or the terminal suspend signal (SIGTSTP) when it is suspended from the terminal.
-	///
-	/// Does nothing when the process is `grouped: false` or `session: true`, since those signals
-	/// don't occur in those states.
-	///
-	/// This is only supported on Unix systems.
-	pub observe_stops: bool,
-
 	/// Give the process terminal foreground control when it asks.
 	///
-	/// When enabled, [when a pause is observed](Self::observe_pauses), we give the process group
+	/// When enabled, when the process is paused by SIGTTIN or SIGTTOU, we give the process group
 	/// foreground control, resume the process, and take foreground back when the process ends.
 	///
 	/// This makes pagers and interactive programs work under process groups, without giving up
 	/// wrapping altogether.
-	///
-	/// Implies `observe_stops: true`.
 	///
 	/// This is only supported on Unix systems.
 	pub grant_foreground: bool,

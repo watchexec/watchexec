@@ -22,13 +22,11 @@ use notify_rust::Notification;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use tokio::{process::Command as TokioCommand, time::sleep};
 use tracing::{debug, debug_span, error, instrument, trace, trace_span, warn, Instrument};
-#[cfg(unix)]
-use nix::sys::signal::Signal as NixSignal;
 use watchexec::{
 	action::ActionHandler,
 	command::{Command, Program, Shell, SpawnOptions},
 	error::RuntimeError,
-	job::{CommandState, Job, StopEvent},
+	job::{CommandState, Job},
 	sources::fs::Watcher,
 	Config, ErrorHook, Id,
 };
@@ -346,9 +344,6 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 						);
 					}
 				});
-
-				trace!("set stop hook for terminal notices");
-				job.set_stop_hook(move |event| print_stop_notice(event, outflags));
 
 				let show_events = {
 					let events = action.events.clone();
@@ -1204,7 +1199,6 @@ fn interpret_command_args(args: &Args) -> Result<Arc<Command>> {
 		options: SpawnOptions {
 			grouped,
 			session,
-			observe_stops: cfg!(unix) && grouped && !session,
 			grant_foreground,
 			..Default::default()
 		},
@@ -1522,53 +1516,6 @@ fn format_duration(duration: Duration) -> impl fmt::Display {
 			write!(f, "{}ms", duration.subsec_millis())
 		}
 	})
-}
-
-fn print_stop_notice(event: StopEvent, outflags: OutputFlags) {
-	if outflags.quiet {
-		return;
-	}
-
-	let mut stderr = StandardStream::stderr(outflags.colour);
-	match event {
-		StopEvent::GrantedForeground { .. } => {
-			stderr
-				.set_color(ColorSpec::new().set_fg(Some(Color::Cyan)))
-				.ok();
-			writeln!(
-				&mut stderr,
-				"[Foreground: the command took the terminal; Ctrl+C goes to it now]"
-			)
-			.ok();
-		}
-		StopEvent::Stopped { signal } => {
-			#[cfg(unix)]
-			if let Some(sig @ (NixSignal::SIGTTIN | NixSignal::SIGTTOU)) = signal.to_nix() {
-				stderr
-					.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)))
-					.ok();
-				writeln!(
-					&mut stderr,
-					"[{sig}: the command needs the terminal; the default --wrap-process=auto handles this]"
-				)
-				.ok();
-			}
-			#[cfg(not(unix))]
-			let _ = signal;
-		}
-		StopEvent::GrantUnavailable { .. } => {
-			stderr
-				.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)))
-				.ok();
-			writeln!(
-				&mut stderr,
-				"[Foreground: could not give the command the terminal (is there a controlling terminal?)]"
-			)
-			.ok();
-		}
-		StopEvent::ReclaimedForeground => {}
-	}
-	stderr.reset().ok();
 }
 
 #[instrument(level = "trace")]

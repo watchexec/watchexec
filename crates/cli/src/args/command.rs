@@ -140,7 +140,7 @@ pub struct CommandArgs {
 
 	/// Configure how the process is wrapped
 	///
-    /// By default (mode 'auto'), Watchexec will run the command in a session on Mac, in a process
+	/// By default (mode 'auto'), Watchexec will run the command in a session on Mac, in a process
 	/// group in Unix, and in a Job Object in Windows.
 	///
 	/// Some Unix programs prefer running in a session, while others do not work in a process group.

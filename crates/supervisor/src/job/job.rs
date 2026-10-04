@@ -17,7 +17,7 @@ use crate::{command::Command, errors::SyncIoError, flag::Flag};
 use super::{
 	messages::{Control, ControlMessage, Ticket},
 	priority::{Priority, PrioritySender},
-	JobTaskContext, StopEvent,
+	JobTaskContext,
 };
 
 /// A handle to a job task spawned in the supervisor.
@@ -379,28 +379,6 @@ impl Job {
 	/// Unset any spawn function, reverting to the default `CommandWrap::spawn()`.
 	pub fn unset_spawn_fn(&self) -> Ticket {
 		self.control(Control::ClearSpawnFn)
-	}
-
-	/// Set the pause hook.
-	///
-	/// The hook will be called when the supervised command is paused by a SIGTTIN, SIGTTOU, or
-	/// SIGTSTP, and when [`observe_pauses: true`](crate::command::SpawnOptions::observe_pauses) is
-	/// set.
-	pub fn set_stop_hook(&self, fun: impl Fn(StopEvent) + Send + Sync + 'static) -> Ticket {
-		self.control(Control::SetSyncStopHook(Arc::new(fun)))
-	}
-
-	/// Set the stop hook (async version).
-	pub fn set_async_stop_hook(
-		&self,
-		fun: impl (Fn(StopEvent) -> Box<dyn Future<Output = ()> + Send + Sync>) + Send + Sync + 'static,
-	) -> Ticket {
-		self.control(Control::SetAsyncStopHook(Arc::new(fun)))
-	}
-
-	/// Unset the stop hook.
-	pub fn unset_stop_hook(&self) -> Ticket {
-		self.control(Control::UnsetStopHook)
 	}
 
 	/// Set a function that replaces the normal process spawn with an arbitrary supervised child.
