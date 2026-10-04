@@ -32,15 +32,24 @@ SIGTTOU is "paused".
 - D4: Deliberate suspensions (SIGSTOP/SIGTSTP) reclaim the terminal and leave
   the command paused, as in #1138; logs distinguish SIGTSTP (terminal
   generated) from SIGSTOP and other stops.
-- D5: Non-goals for this change: propagating a child's self-suspension into
-  watchexec's own job control (a ^Z that lands on the child suspends only the
-  child; the terminal is reclaimed and watchexec keeps running), and resuming
-  a command whose pause event was consumed before watchexec itself was
-  suspended and resumed (no new event fires on watchexec's own resume). Both
-  need cross-crate plumbing — the signal source already delivers
-  `Signal::Continue` events when watchexec itself is continued, so the natural
-  extension is a supervisor `Job` method driven from the CLI's action handler
-  — or the pty work. Documented as limitations, not built here.
+- D5: Delivery is out of scope by design, not deferred: pausing the command
+  must not pause the supervisor, exactly as ^Z on a shell's foreground job
+  does not pause the shell. The supervisor's own lifecycle is already handled
+  by existing CLI behaviour: a catchable suspension of watchexec (SIGTSTP) is
+  forwarded to the command group before watchexec suspends itself
+  (`job.signal(TerminalSuspend)` then `suspend_self()`), and watchexec's own
+  continuation is passed on as SIGCONT (`Signal::Continue` events flow
+  through the signal map to `job.signal(Continue)`), which the pause watcher
+  observes to re-grant the terminal. Uncatchable suspensions (SIGSTOP to
+  watchexec) cannot be forwarded; the command keeps running while watchexec
+  is frozen.
+- D6: The supervisor records the command's pause state (the signal that
+  paused it) and manages it during normal operations: stopping or restarting
+  a paused command continues it first, because signals sent to a stopped
+  process only take effect once it continues — graceful termination of a
+  paused command would otherwise pend until the force-kill timeout. The
+  recorded state is cleared on observed continuations, on our own successful
+  continuations, and on every new run.
 
 ## Implementation (supervisor only; CLI unaffected)
 
@@ -49,8 +58,11 @@ SIGTTOU is "paused".
 2. `pause_watch_loop`: add WCONTINUED to the peek and consume `waitid` flags;
    forward `WaitStatus::Continued` as the SIGCONT signal number.
 3. `handle_pause_event`: a SIGCONT branch implementing D2; the D3 ownership
-   guard in the SIGTTIN/SIGTTOU branch; D4 log wording.
-4. `SpawnOptions::grant_foreground` doc: one factual sentence on the
+   guard in the SIGTTIN/SIGTTOU branch; D4 log wording; pause state recorded
+   and cleared per D6.
+4. `resume_paused_command()`: continue a paused command, called at the top of
+   every stop or restart control path.
+5. `SpawnOptions::grant_foreground` doc: one factual sentence on the
    suspend/reclaim and resume/re-grant behaviour.
 
 ## Verification notes
