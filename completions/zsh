@@ -19,7 +19,7 @@ _watchexec() {
 '--shell=[Use a different shell]:SHELL:_default' \
 '*-E+[Add env vars to the command]:KEY=VALUE:_default' \
 '*--env=[Add env vars to the command]:KEY=VALUE:_default' \
-'--wrap-process=[Configure how the process is wrapped]:MODE:(group session none)' \
+'--wrap-process=[Configure how the process is wrapped]:MODE:(auto group session none)' \
 '--stop-signal=[Signal to send to stop the command]:SIGNAL:_default' \
 '--stop-timeout=[Time to wait for the command to exit gracefully]:TIMEOUT:_default' \
 '--timeout=[Kill the command if it runs longer than this duration]:TIMEOUT:_default' \

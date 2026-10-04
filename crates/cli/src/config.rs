@@ -1184,8 +1184,6 @@ fn interpret_command_args(args: &Args) -> Result<Arc<Command>> {
 		}
 	};
 
-	// 'auto' resolves to the platform default wrap; the explicit modes are the pre-'auto'
-	// behaviours, exactly as they were
 	let (grouped, session) = match args.command.wrap_process {
 		WrapMode::Auto => (!cfg!(target_os = "macos"), cfg!(target_os = "macos")),
 		WrapMode::Group => (true, false),
@@ -1193,9 +1191,6 @@ fn interpret_command_args(args: &Args) -> Result<Arc<Command>> {
 		WrapMode::None => (false, false),
 	};
 
-	// Watchexec and the command cannot both read the terminal: keyboard event sources put
-	// Watchexec itself in raw mode, so the command does not get the foreground in that case.
-	// Note this only matters for the foreground *grant*: stop observation is harmless.
 	let terminal_free_for_command = !(args.events.stdin_quit || args.events.interactive);
 
 	let grant_foreground = cfg!(unix)
@@ -1529,7 +1524,6 @@ fn format_duration(duration: Duration) -> impl fmt::Display {
 	})
 }
 
-/// Print a one-line notice about a command being stopped by, or granted, the terminal.
 fn print_stop_notice(event: StopEvent, outflags: OutputFlags) {
 	if outflags.quiet {
 		return;

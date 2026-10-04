@@ -5,7 +5,7 @@ module completions {
   }
 
   def "nu-complete watchexec wrap_process" [] {
-    [ "group" "session" "none" ]
+    [ "auto" "group" "session" "none" ]
   }
 
   def "nu-complete watchexec on_busy_update" [] {

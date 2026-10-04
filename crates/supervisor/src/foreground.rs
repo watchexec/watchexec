@@ -1,24 +1,3 @@
-//! Grant and reclaim the controlling terminal's foreground process group.
-//!
-//! Programs which interact with the terminal — pagers, full-screen programs, password prompts —
-//! require their process group to be the foreground process group of the controlling terminal.
-//! The kernel stops a background process with SIGTTIN when it reads the terminal, and with
-//! SIGTTOU when it changes the terminal state (which a pager does to switch the terminal in and
-//! out of raw mode before writing anything), so such programs freeze without the foreground.
-//!
-//! This module implements a just-in-time foreground grant: when the supervisor observes that a
-//! wrapped command was stopped by SIGTTIN or SIGTTOU, it gives the command's process group the
-//! foreground of the controlling terminal, exactly as a job control shell would, and continues
-//! the stopped command. The foreground is reclaimed and the terminal state restored when the
-//! run ends.
-//!
-//! Note that `tcsetpgrp` and termios changes are themselves subject to the same foreground
-//! check (`tiocspgrp` runs `tty_check_change`), which for a backgrounded, orphaned caller
-//! surfaces as `ENOTTY`. Every terminal operation in this module therefore temporarily sets
-//! SIGTTOU to ignored, under which the kernel permits background terminal changes; the
-//! previous disposition is restored immediately after. The ignore is never active across a
-//! spawn, so commands always inherit default signal dispositions.
-
 use std::{fs::File, os::fd::OwnedFd};
 
 use nix::{
@@ -84,7 +63,6 @@ impl ForegroundGrant {
 	}
 }
 
-/// Open the controlling terminal, if there is one.
 fn open_controlling_tty() -> Result<OwnedFd, Errno> {
 	File::options()
 		.read(true)

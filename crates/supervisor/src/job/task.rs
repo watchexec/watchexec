@@ -682,7 +682,7 @@ pub type AsyncErrorHandler = Arc<
 
 sync_async_callbox!(ErrorHandler, SyncErrorHandler, AsyncErrorHandler, (error: SyncIoError));
 
-/// TODO(docs): notifications about the command being stopped by, or granted, the terminal.
+/// TODO(docs)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StopEvent {
 	/// TODO(docs)

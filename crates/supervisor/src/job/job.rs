@@ -381,7 +381,11 @@ impl Job {
 		self.control(Control::ClearSpawnFn)
 	}
 
-	/// TODO(docs): set the stop hook.
+	/// Set the pause hook.
+	///
+	/// The hook will be called when the supervised command is paused by a SIGTTIN, SIGTTOU, or
+	/// SIGTSTP, and when [`observe_pauses: true`](crate::command::SpawnOptions::observe_pauses) is
+	/// set.
 	pub fn set_stop_hook(&self, fun: impl Fn(StopEvent) + Send + Sync + 'static) -> Ticket {
 		self.control(Control::SetSyncStopHook(Arc::new(fun)))
 	}
@@ -389,10 +393,7 @@ impl Job {
 	/// Set the stop hook (async version).
 	pub fn set_async_stop_hook(
 		&self,
-		fun: impl (Fn(StopEvent) -> Box<dyn Future<Output = ()> + Send + Sync>)
-			+ Send
-			+ Sync
-			+ 'static,
+		fun: impl (Fn(StopEvent) -> Box<dyn Future<Output = ()> + Send + Sync>) + Send + Sync + 'static,
 	) -> Ticket {
 		self.control(Control::SetAsyncStopHook(Arc::new(fun)))
 	}

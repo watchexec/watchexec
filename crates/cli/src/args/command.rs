@@ -140,7 +140,21 @@ pub struct CommandArgs {
 
 	/// Configure how the process is wrapped
 	///
-	/// TODO(docs): rewrite for the 'auto' default and terminal foreground handling.
+    /// By default (mode 'auto'), Watchexec will run the command in a session on Mac, in a process
+	/// group in Unix, and in a Job Object in Windows.
+	///
+	/// Some Unix programs prefer running in a session, while others do not work in a process group.
+	/// Additionally, on Unix in 'auto' mode, Watchexec will detect when a program needs to be the
+	/// foreground process to handle terminal input, and grant that temporarily. This is the case
+	/// for many pagers and interactive programs. To opt-out, specify an explicit mode as needed.
+	///
+	/// Use 'group' to use a process group, 'session' to use a process session, and 'none' to run
+	/// the command directly. On Windows, either of 'group' or 'session' will use a Job Object.
+	///
+	/// If you find you need to specify this frequently for different kinds of programs, file an
+	/// issue at <https://github.com/watchexec/watchexec/issues>. As errors of this nature are hard to
+	/// debug and can be highly environment-dependent, reports from *multiple affected people* are
+	/// more likely to be actioned promptly. Ask your friends/colleagues!
 	#[arg(
 		long,
 		help_heading = OPTSET_COMMAND,
@@ -322,14 +336,10 @@ impl CommandArgs {
 
 #[derive(Clone, Copy, Debug, Default, ValueEnum)]
 pub enum WrapMode {
-	/// TODO(docs)
 	#[default]
 	Auto,
-	/// TODO(docs)
 	Group,
-	/// TODO(docs)
 	Session,
-	/// TODO(docs)
 	None,
 }
 
