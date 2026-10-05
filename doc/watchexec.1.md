@@ -88,7 +88,7 @@ Supported shells: bash, elvish, fish, nu, powershell, zsh.
 :   Show the manual page
 
 This shows the manual page for Watchexec, if the output is a terminal
-and the man program is available. If not, the manual page is printed to
+and the 'man' program is available. If not, the manual page is printed to
 stdout in ROFF format (suitable for writing to a watchexec.1 file).
 
 **\--only-emit-events**
@@ -105,7 +105,7 @@ the text mode by specifying \`\--emit-events-to=stdio\`.
 
 **-h**, **\--help**
 
-:   Print help (see a summary with -h)
+:   Print help (see a summary with '-h')
 
 **-V**, **\--version**
 
@@ -115,8 +115,8 @@ the text mode by specifying \`\--emit-events-to=stdio\`.
 
 :   Command (program and arguments) to run on changes
 
-Its run when events pass filters and the debounce period (and once at
-startup unless \--postpone is given). If you pass flags to the command,
+It's run when events pass filters and the debounce period (and once at
+startup unless '\--postpone' is given). If you pass flags to the command,
 you should separate it with \-- though that is not strictly required.
 
 Examples:
@@ -131,16 +131,16 @@ the results may not be what you expect. Compare:
 
 \$ watchexec echo src/\*.rs
 
-\$ watchexec echo src/\*.rs
+\$ watchexec echo 'src/\*.rs'
 
-\$ watchexec \--shell=none echo src/\*.rs
+\$ watchexec \--shell=none echo 'src/\*.rs'
 
-Behaviour depends on the value of \--shell: for all except none, every
+Behaviour depends on the value of '\--shell': for all except 'none', every
 part of the command is joined together into one string with a single
 ascii space character, and given to the shell as described in the help
-for \--shell. For none, each distinct element the command is passed as
+for '\--shell'. For 'none', each distinct element the command is passed as
 per the execvp(3) convention: first argument is the program, as a path
-or searched for in the PATH environment variable, rest are arguments.
+or searched for in the 'PATH' environment variable, rest are arguments.
 
 # COMMAND
 
@@ -197,18 +197,18 @@ environment.
 
 **-n**
 
-:   Shorthand for \--shell=none
+:   Shorthand for '\--shell=none'
 
 **\--no-process-group**
 
-:   Dont use a process group
+:   Don't use a process group
 
 By default, Watchexec will run the command in a process group, so that
 signals and terminations are sent to all processes in the group.
-Sometimes thats not what you want, and you can disable the behaviour
+Sometimes that's not what you want, and you can disable the behaviour
 with this option.
 
-Deprecated, use \--wrap-process=none instead.
+Deprecated, use '\--wrap-process=none' instead.
 
 **-Q**, **\--quote**
 
@@ -217,7 +217,7 @@ Deprecated, use \--wrap-process=none instead.
 
 On Windows by default this is treated as false, as CMD and PowerShell do
 not work correctly when the symbols are quoted. For git-bash and nushell
-on Windows, as well as other shells that wont work correctly without
+on Windows, as well as other shells that won't work correctly without
 quoting, opt in to quoting using this option.
 
 On Linux and MacOS this is ignored and always treated as true, because
@@ -236,8 +236,8 @@ possibly other newer shells.
 
 :   Use a different shell
 
-By default, Watchexec will use \$SHELL if its defined or a default of sh
-on Unix-likes, and either pwsh, powershell, or cmd (CMD.EXE) on Windows,
+By default, Watchexec will use '\$SHELL' if it's defined or a default of 'sh'
+on Unix-likes, and either 'pwsh', 'powershell', or 'cmd' (CMD.EXE) on Windows,
 depending on what Watchexec detects is the running shell.
 
 With this option, you can override that and use a different shell, for
@@ -247,17 +247,17 @@ functions.
 If the value has spaces, it is parsed as a command line, and the first
 word used as the shell program, with the rest as arguments to the shell.
 
-The command is run with the -c flag (except for cmd on Windows, where
-its /C).
+The command is run with the '-c' flag (except for 'cmd' on Windows, where
+it's '/C').
 
-The special value none can be used to disable shell use entirely. In
+The special value 'none' can be used to disable shell use entirely. In
 that case, the command provided to Watchexec will be parsed, with the
 first word being the executable and the rest being the arguments, and
 executed directly. Note that this parsing is rudimentary, and may not
 work as expected in all cases.
 
-Using none is a little more efficient and can enable a stricter
-interpretation of the input, but it also means that you cant use shell
+Using 'none' is a little more efficient and can enable a stricter
+interpretation of the input, but it also means that you can't use shell
 features like globbing, redirection, control flow, logic, or pipes.
 
 Examples:
@@ -276,20 +276,20 @@ Use with CMD.exe:
 
 Use with a different unix shell:
 
-\$ watchexec \--shell=bash \-- echo \$BASH_VERSION
+\$ watchexec \--shell=bash \-- 'echo \$BASH_VERSION'
 
 Use with a unix shell and options:
 
-\$ watchexec \--shell=zsh -x -o shwordsplit \-- scr
+\$ watchexec \--shell='zsh -x -o shwordsplit' \-- scr
 
 **\--stop-signal** *\<SIGNAL\>*
 
 :   Signal to send to stop the command
 
-This is used by restart and signal modes of \--on-busy-update (unless
-\--signal is provided). The restart behaviour is to send the signal,
-wait for the command to exit, and if it hasnt exited after some time
-(see \--timeout-stop), forcefully terminate it.
+This is used by 'restart' and 'signal' modes of '\--on-busy-update' (unless
+'\--signal' is provided). The restart behaviour is to send the signal,
+wait for the command to exit, and if it hasn't exited after some time
+(see '\--timeout-stop'), forcefully terminate it.
 
 The default on unix is \"SIGTERM\".
 
@@ -299,7 +299,7 @@ case-insensitive.
 
 On Windows this option is technically supported but only supports the
 \"KILL\" event, as Watchexec cannot yet deliver other events. Windows
-doesnt have signals as such; instead it has termination (here called
+doesn't have signals as such; instead it has termination (here called
 \"KILL\" or \"STOP\") and \"CTRL+C\", \"CTRL+BREAK\", and \"CTRL+CLOSE\"
 events. For portability the unix signals \"SIGKILL\", \"SIGINT\",
 \"SIGTERM\", and \"SIGHUP\" are respectively mapped to these.
@@ -308,9 +308,9 @@ events. For portability the unix signals \"SIGKILL\", \"SIGINT\",
 
 :   Time to wait for the command to exit gracefully
 
-This is used by the restart mode of \--on-busy-update. After the
+This is used by the 'restart' mode of '\--on-busy-update'. After the
 graceful stop signal is sent, Watchexec will wait for the command to
-exit. If it hasnt exited after this time, it is forcefully terminated.
+exit. If it hasn't exited after this time, it is forcefully terminated.
 
 Takes a unit-less value in seconds, or a time span value such as \"5min
 20s\". Providing a unit-less value is deprecated and will warn; it will
@@ -320,7 +320,7 @@ The default is 10 seconds. Set to 0 to immediately force-kill the
 command.
 
 This has no practical effect on Windows as the command is always
-forcefully terminated; see \--stop-signal for why.
+forcefully terminated; see '\--stop-signal' for why.
 
 **\--timeout** *\<TIMEOUT\>*
 
@@ -352,8 +352,8 @@ process group in Unix, and in a Job Object in Windows.
 Some Unix programs prefer running in a session, while others do not work
 in a process group.
 
-Use group to use a process group, session to use a process session, and
-none to run the command directly. On Windows, either of group or session
+Use 'group' to use a process group, 'session' to use a process session, and
+'none' to run the command directly. On Windows, either of 'group' or 'session'
 will use a Job Object.
 
 If you find you need to specify this frequently for different kinds of
@@ -373,7 +373,7 @@ When an event is received, Watchexec will wait for up to this amount of
 time before handling it (such as running the command). This is essential
 as what you might perceive as a single change may actually emit many
 events, and without this behaviour, Watchexec would run much too often.
-Additionally, its not infrequent that file writes are not atomic, and
+Additionally, it's not infrequent that file writes are not atomic, and
 each write may emit an event, so this is a good way to avoid running a
 command while a file is partially written.
 
@@ -399,25 +399,25 @@ One thing to take care with is assuming inherent behaviour where there
 is only chance. Notably, it could appear as if the \`RENAMED\` variable
 contains both the original and the new path being renamed. In previous
 versions, it would even appear on some platforms as if the original
-always came before the new. However, none of this was true. Its
+always came before the new. However, none of this was true. It's
 impossible to reliably and portably know which changed path is the old
 or new, \"half\" renames may appear (only the original, only the new),
 \"unknown\" renames may appear (change was a rename, but whether it was
-the old or new isnt known), rename events might split across two
+the old or new isn't known), rename events might split across two
 debouncing boundaries, and so on.
 
 This option controls where that information is emitted. It defaults to
-none, which doesnt emit event information at all. The other options are
-environment (deprecated), stdio, file, json-stdio, and json-file.
+'none', which doesn't emit event information at all. The other options are
+'environment' (deprecated), 'stdio', 'file', 'json-stdio', and 'json-file'.
 
-The stdio and file modes are text-based: stdio writes absolute paths to
+The 'stdio' and 'file' modes are text-based: 'stdio' writes absolute paths to
 the stdin of the command, one per line, each prefixed with \`create:\`,
 \`remove:\`, \`rename:\`, \`modify:\`, or \`other:\`, then closes the
-handle; file writes the same thing to a temporary file, and its path is
+handle; 'file' writes the same thing to a temporary file, and its path is
 given with the \$WATCHEXEC_EVENTS_FILE environment variable.
 
 There are also two JSON modes, which are based on JSON objects and can
-represent the full set of events Watchexec handles. Heres an example of
+represent the full set of events Watchexec handles. Here's an example of
 a folder being created on Linux:
 
 \`\`\`json { \"tags\": \[ { \"kind\": \"path\", \"absolute\":
@@ -429,27 +429,27 @@ a folder being created on Linux:
 The fields are as follows:
 
 \- \`tags\`, structured event data. - \`tags\[\].kind\`, which can be:
-\* path, along with: + \`absolute\`, an absolute path. + \`filetype\`, a
-file type if known (dir, file, symlink, other). \* fs: + \`simple\`, the
-\"simple\" event type (access, create, modify, remove, or other). +
+\* 'path', along with: + \`absolute\`, an absolute path. + \`filetype\`, a
+file type if known ('dir', 'file', 'symlink', 'other'). \* 'fs': + \`simple\`, the
+\"simple\" event type ('access', 'create', 'modify', 'remove', or 'other'). +
 \`full\`, the \"full\" event type, which is too complex to fully
-describe here, but looks like General(Precise(Specific)). \* source,
-along with: + \`source\`, the source of the event (filesystem, keyboard,
-mouse, os, time, internal). \* keyboard, along with: + \`keycode\`.
-Currently only the value eof is supported. \* process, for events caused
-by processes: + \`pid\`, the process ID. \* signal, for signals sent to
-Watchexec: + \`signal\`, the normalised signal name (hangup, interrupt,
-quit, terminate, user1, user2). \* completion, for when a command
-ends: + \`disposition\`, the exit disposition (success, error, signal,
-stop, exception, continued). + \`code\`, the exit, signal, stop, or
+describe here, but looks like 'General(Precise(Specific))'. \* 'source',
+along with: + \`source\`, the source of the event ('filesystem', 'keyboard',
+'mouse', 'os', 'time', 'internal'). \* 'keyboard', along with: + \`keycode\`.
+Currently only the value 'eof' is supported. \* 'process', for events caused
+by processes: + \`pid\`, the process ID. \* 'signal', for signals sent to
+Watchexec: + \`signal\`, the normalised signal name ('hangup', 'interrupt',
+'quit', 'terminate', 'user1', 'user2'). \* 'completion', for when a command
+ends: + \`disposition\`, the exit disposition ('success', 'error', 'signal',
+'stop', 'exception', 'continued'). + \`code\`, the exit, signal, stop, or
 exception code. - \`metadata\`, additional information about the event.
 
-The json-stdio mode will emit JSON events to the standard input of the
-command, one per line, then close stdin. The json-file mode will create
+The 'json-stdio' mode will emit JSON events to the standard input of the
+command, one per line, then close stdin. The 'json-file' mode will create
 a temporary file, write the events to it, and provide the path to the
 file with the \$WATCHEXEC_EVENTS_FILE environment variable.
 
-Finally, the environment mode was the default until 2.0. It sets
+Finally, the 'environment' mode was the default until 2.0. It sets
 environment variables with the paths of the affected files, for
 filesystem events:
 
@@ -461,12 +461,12 @@ full/real path. Then:
 \$WATCHEXEC_REMOVED_PATH is set when files/folders were removed -
 \$WATCHEXEC_RENAMED_PATH is set when files/folders were renamed -
 \$WATCHEXEC_WRITTEN_PATH is set when files/folders were modified -
-\$WATCHEXEC_META_CHANGED_PATH is set when files/folders metadata were
+\$WATCHEXEC_META_CHANGED_PATH is set when files/folders' metadata were
 modified - \$WATCHEXEC_OTHERWISE_CHANGED_PATH is set for every other
 kind of pathed event
 
-Multiple paths are separated by the system path separator, ; on Windows
-and : on unix. Within each variable, paths are deduplicated and sorted
+Multiple paths are separated by the system path separator, ';' on Windows
+and ':' on unix. Within each variable, paths are deduplicated and sorted
 in binary order (i.e. neither Unicode nor locale aware).
 
 This is the legacy mode, is deprecated, and will be removed in the
@@ -482,8 +482,8 @@ inbox over the years.
 :   Respond to keypresses to quit, restart, stop, or pause
 
 In interactive mode, Watchexec listens for keypresses and responds to
-them. Currently supported keys are: r to restart the command, s to stop
-the running command, p to toggle pausing the watch, and q to quit. This
+them. Currently supported keys are: 'r' to restart the command, 's' to stop
+the running command, 'p' to toggle pausing the watch, and 'q' to quit. This
 requires a terminal (TTY) and puts stdin into raw mode, so the child
 process will not receive stdin input.
 
@@ -527,22 +527,22 @@ but Watchexec cannot yet deliver other \"signals\" than a STOP.
 
 :   What to do when receiving events while the command is running
 
-Default is to do-nothing, which ignores events while the command is
+Default is to 'do-nothing', which ignores events while the command is
 running, so that changes that occur due to the command are ignored, like
-compilation outputs. You can also use queue which will run the command
+compilation outputs. You can also use 'queue' which will run the command
 once again when the current run has finished if any events occur while
-its running, or restart, which terminates the running command and starts
-a new one. Finally, theres signal, which only sends a signal; this can
+it's running, or 'restart', which terminates the running command and starts
+a new one. Finally, there's 'signal', which only sends a signal; this can
 be useful with programs that can reload their configuration without a
 full restart.
 
-The signal can be specified with the \--signal option.
+The signal can be specified with the '\--signal' option.
 
 **\--poll** \[*\<INTERVAL\>*\]
 
 :   Poll for filesystem changes
 
-By default, and where available, Watchexec uses the operating systems
+By default, and where available, Watchexec uses the operating system's
 native file system watching capabilities. This option disables that and
 instead uses a polling mechanism, which is less efficient but can work
 around issues with some file systems (like network shares) or edge
@@ -553,7 +553,7 @@ such as \"2s 500ms\", to use as the polling interval. If not specified,
 the default is 30 seconds. Providing a unit-less value is deprecated and
 will warn; it will be an error in the future.
 
-Aliased as \--force-poll.
+Aliased as '\--force-poll'.
 
 **-p**, **\--postpone**
 
@@ -565,22 +565,22 @@ the command as normal.
 
 **-r**, **\--restart**
 
-:   Restart the process if its still running
+:   Restart the process if it's still running
 
-This is a shorthand for \--on-busy-update=restart.
+This is a shorthand for '\--on-busy-update=restart'.
 
 **-s**, **\--signal** *\<SIGNAL\>*
 
-:   Send a signal to the process when its still running
+:   Send a signal to the process when it's still running
 
-Specify a signal to send to the process when its still running. This
-implies \--on-busy-update=signal; otherwise the signal used when that
-mode is restart is controlled by \--stop-signal.
+Specify a signal to send to the process when it's still running. This
+implies '\--on-busy-update=signal'; otherwise the signal used when that
+mode is 'restart' is controlled by '\--stop-signal'.
 
-See the long documentation for \--stop-signal for syntax.
+See the long documentation for '\--stop-signal' for syntax.
 
 Signals are not supported on Windows at the moment, and will always be
-overridden to kill. See \--stop-signal for more on Windows \"signals\".
+overridden to 'kill'. See '\--stop-signal' for more on Windows \"signals\".
 
 **\--stdin-quit**
 
@@ -598,7 +598,7 @@ avoid leaving zombie processes around.
 
 This is a quick filter to only emit events for files with the given
 extensions. Extensions can be given with or without the leading dot
-(e.g. js or .js). Multiple extensions can be given by repeating the
+(e.g. 'js' or '.js'). Multiple extensions can be given by repeating the
 option or by separating them with commas.
 
 **-f**, **\--filter** *\<PATTERN\>*
@@ -615,8 +615,8 @@ events) will pass through untouched.
 :   Files to load filters from
 
 Provide a path to a file containing filters, one per line. Empty lines
-and lines starting with \# are ignored. Uses the same pattern format as
-the \--filter option.
+and lines starting with '#' are ignored. Uses the same pattern format as
+the '\--filter' option.
 
 This can also be used via the \$WATCHEXEC_FILTER_FILES environment
 variable.
@@ -627,48 +627,48 @@ variable.
 
 Provide your own custom filter programs in jaq (similar to jq) syntax.
 Programs are given an event in the same format as described in
-\--emit-events-to and must return a boolean. Invalid programs will make
-watchexec fail to start; use -v to see program runtime errors.
+'\--emit-events-to' and must return a boolean. Invalid programs will make
+watchexec fail to start; use '-v' to see program runtime errors.
 
 In addition to the jaq stdlib, watchexec adds some custom filter
 definitions:
 
-\- path \| file_meta returns file metadata or null if the file does not
+\- 'path \| file_meta' returns file metadata or null if the file does not
 exist.
 
-\- path \| file_size returns the size of the file at path, or null if it
+\- 'path \| file_size' returns the size of the file at path, or null if it
 does not exist.
 
-\- path \| file_read(bytes) returns a string with the first n bytes of
+\- 'path \| file_read(bytes)' returns a string with the first n bytes of
 the file at path. If the file is smaller than n bytes, the whole file is
 returned. There is no filter to read the whole file at once to encourage
 limiting the amount of data read and processed.
 
-\- string \| hash, and path \| file_hash return the hash of the string
+\- 'string \| hash', and 'path \| file_hash' return the hash of the string
 or file at path. No guarantee is made about the algorithm used: treat it
 as an opaque value.
 
-\- any \| kv_store(key), kv_fetch(key), and kv_clear provide a simple
+\- 'any \| kv_store(key)', 'kv_fetch(key)', and 'kv_clear' provide a simple
 key-value store. Data is kept in memory only, there is no persistence.
 Consistency is not guaranteed.
 
-\- any \| printout, any \| printerr, and any \| log(level) will print or
+\- 'any \| printout', 'any \| printerr', and 'any \| log(level)' will print or
 log any given value to stdout, stderr, or the log (levels = error, warn,
-info, debug, trace), and pass the value through (so \[1\] \|
-log(\"debug\") \| .\[\] will produce a 1 and log \[1\]).
+info, debug, trace), and pass the value through (so '\[1\] \|
+log(\"debug\") \| .\[\]' will produce a '1' and log '\[1\]').
 
 All filtering done with such programs, and especially those using kv or
 filesystem access, is much slower than the other filtering methods. If
 filtering is too slow, events will back up and stall watchexec. Take
 care when designing your filters.
 
-If the argument to this option starts with an @, the rest of the
+If the argument to this option starts with an '@', the rest of the
 argument is taken to be the path to a file containing a jaq program.
 
 Jaq programs are run in order, after all other filters, and
 short-circuit: if a filter (jaq or not) rejects an event, execution
 stops there, and no other filters are run. Additionally, they stop after
-outputting the first value, so youll want to use any or all when
+outputting the first value, so you'll want to use 'any' or 'all' when
 iterating, otherwise only the first item will be processed, which can be
 quite confusing!
 
@@ -679,32 +679,32 @@ Find user-contributed programs or submit your own useful ones at
 
 Regexp ignore filter on paths:
 
-all(.tags\[\] \| select(.kind == \"path\"); .absolute \|
-test(\"\[.\]test\[.\]js\$\")) \| not
+'all(.tags\[\] \| select(.kind == \"path\"); .absolute \|
+test(\"\[.\]test\[.\]js\$\")) \| not'
 
 Pass any event that creates a file:
 
-any(.tags\[\] \| select(.kind == \"fs\"); .simple == \"create\")
+'any(.tags\[\] \| select(.kind == \"fs\"); .simple == \"create\")'
 
 Pass events that touch executable files:
 
-any(.tags\[\] \| select(.kind == \"path\" && .filetype == \"file\");
-.absolute \| metadata \| .executable)
+'any(.tags\[\] \| select(.kind == \"path\" && .filetype == \"file\");
+.absolute \| metadata \| .executable)'
 
 Ignore files that start with shebangs:
 
-any(.tags\[\] \| select(.kind == \"path\" && .filetype == \"file\");
-.absolute \| read(2) == \"#!\") \| not
+'any(.tags\[\] \| select(.kind == \"path\" && .filetype == \"file\");
+.absolute \| read(2) == \"#!\") \| not'
 
 **\--fs-events** *\<EVENTS\>*
 
 :   Filesystem events to filter to
 
 This is a quick filter to only emit events for the given types of
-filesystem changes. Choose from access, create, remove, rename, modify,
-metadata. Multiple types can be given by repeating the option or by
+filesystem changes. Choose from 'access', 'create', 'remove', 'rename', 'modify',
+'metadata'. Multiple types can be given by repeating the option or by
 separating them with commas. By default, this is all types except for
-access.
+'access'.
 
 This may apply filtering at the kernel level when possible, which can be
 more efficient, but may be more confusing when reading the logs.
@@ -723,24 +723,24 @@ events) will pass through untouched.
 :   Files to load ignores from
 
 Provide a path to a file containing ignores, one per line. Empty lines
-and lines starting with \# are ignored. Uses the same pattern format as
-the \--ignore option.
+and lines starting with '#' are ignored. Uses the same pattern format as
+the '\--ignore' option.
 
 This can also be used via the \$WATCHEXEC_IGNORE_FILES environment
 variable.
 
 **\--ignore-nothing**
 
-:   Dont ignore anything at all
+:   Don't ignore anything at all
 
-This is a shorthand for \--no-discover-ignore, \--no-default-ignore.
+This is a shorthand for '\--no-discover-ignore', '\--no-default-ignore'.
 
 Note that ignores explicitly loaded via other command line options, such
-as \--ignore or \--ignore-file, will still be used.
+as '\--ignore' or '\--ignore-file', will still be used.
 
 **\--no-default-ignore**
 
-:   Dont use internal default ignores
+:   Don't use internal default ignores
 
 Watchexec has a set of default ignore patterns, such as editor swap
 files, \`\*.pyc\`, \`\*.pyo\`, \`.DS_Store\`, \`.bzr\`, \`\_darcs\`,
@@ -749,22 +749,22 @@ Watchexec log files.
 
 **\--no-discover-ignore**
 
-:   Dont discover ignore files at all
+:   Don't discover ignore files at all
 
-This is a shorthand for \--no-global-ignore, \--no-vcs-ignore,
-\--no-project-ignore, but even more efficient as it will skip all the
+This is a shorthand for '\--no-global-ignore', '\--no-vcs-ignore',
+'\--no-project-ignore', but even more efficient as it will skip all the
 ignore discovery mechanisms from the get go.
 
-Note that default ignores are still loaded, see \--no-default-ignore.
+Note that default ignores are still loaded, see '\--no-default-ignore'.
 
 **\--no-global-ignore**
 
-:   Dont load global ignores
+:   Don't load global ignores
 
 This disables loading of global or user ignore files, like
-\~/.gitignore, \~/.config/watchexec/ignore, or
-%APPDATA%\\Bazzar\\2.0\\ignore. Contrast with \--no-vcs-ignore and
-\--no-project-ignore.
+'\~/.gitignore', '\~/.config/watchexec/ignore', or
+'%APPDATA%\\Bazzar\\2.0\\ignore'. Contrast with '\--no-vcs-ignore' and
+'\--no-project-ignore'.
 
 Supported global ignore files
 
@@ -782,20 +782,20 @@ for the corresponding VCS as used in the project.
 
 **\--no-meta**
 
-:   Dont emit fs events for metadata changes
+:   Don't emit fs events for metadata changes
 
-This is a shorthand for \--fs-events create,remove,rename,modify. Using
-it alongside the \--fs-events option is non-sensical and not allowed.
+This is a shorthand for '\--fs-events create,remove,rename,modify'. Using
+it alongside the '\--fs-events' option is non-sensical and not allowed.
 
 **\--no-project-ignore**
 
-:   Dont load project-local ignores
+:   Don't load project-local ignores
 
-This disables loading of project-local ignore files, like .gitignore or
-.ignore in the watched project. This is contrasted with
-\--no-vcs-ignore, which disables loading of Git and other VCS ignore
-files, and with \--no-global-ignore, which disables loading of global or
-user ignore files, like \~/.gitignore or \~/.config/watchexec/ignore.
+This disables loading of project-local ignore files, like '.gitignore' or
+'.ignore' in the watched project. This is contrasted with
+'\--no-vcs-ignore', which disables loading of Git and other VCS ignore
+files, and with '\--no-global-ignore', which disables loading of global or
+user ignore files, like '\~/.gitignore' or '\~/.config/watchexec/ignore'.
 
 Supported project ignore files:
 
@@ -814,12 +814,12 @@ discarded.
 
 **\--no-vcs-ignore**
 
-:   Dont load gitignores
+:   Don't load gitignores
 
 Among other VCS exclude files, like for Mercurial, Subversion, Bazaar,
 DARCS, Fossil. Note that Watchexec will detect which of these is in use,
 if any, and only load the relevant files. Both global (like
-\~/.gitignore) and local (like .gitignore) files are considered.
+'\~/.gitignore') and local (like '.gitignore') files are considered.
 
 This option is useful if you want to watch files that are ignored by
 Git.
@@ -828,13 +828,13 @@ Git.
 
 :   Set the project origin
 
-Watchexec will attempt to discover the projects \"origin\" (or \"root\")
+Watchexec will attempt to discover the project's \"origin\" (or \"root\")
 by searching for a variety of markers, like files or directory patterns.
 It does its best but sometimes gets it it wrong, and you can override
 that with this option.
 
 The project origin is used to determine the path of certain ignore
-files, which VCS is being used, the meaning of a leading / in filtering
+files, which VCS is being used, the meaning of a leading '/' in filtering
 patterns, and maybe more in the future.
 
 When set, Watchexec will also not bother searching, which can be
@@ -846,18 +846,18 @@ significantly faster.
 
 By default, Watchexec watches the current directory.
 
-When watching a single file, its often better to watch the containing
+When watching a single file, it's often better to watch the containing
 directory instead, and filter on the filename. Some editors may replace
 the file with a new one when saving, and some platforms may not detect
 that or further changes.
 
 Upon starting, Watchexec resolves a \"project origin\" from the watched
-paths. See the help for \--project-origin for more information.
+paths. See the help for '\--project-origin' for more information.
 
 This option can be specified multiple times to watch multiple files or
 directories.
 
-The special value /dev/null, provided as the only path watched, will
+The special value '/dev/null', provided as the only path watched, will
 cause Watchexec to not watch any paths. Other event sources (like
 signals or key events) may still be used.
 
@@ -865,7 +865,7 @@ signals or key events) may still be used.
 
 :   Watch a specific directory, non-recursively
 
-Unlike -w, folders watched with this option are not recursed into.
+Unlike '-w', folders watched with this option are not recursed into.
 
 This option can be specified multiple times to watch multiple
 directories non-recursively.
@@ -874,18 +874,18 @@ directories non-recursively.
 
 :   Watch files and directories from a file
 
-Each line in the file will be interpreted as if given to -w.
+Each line in the file will be interpreted as if given to '-w'.
 
 For more complex uses (like watching non-recursively), use the argfile
 capability: build a file containing command-line options and pass it to
 watchexec with \`@path/to/argfile\`.
 
-The special value - will read from STDIN; this in incompatible with
-\--stdin-quit.
+The special value '-' will read from STDIN; this in incompatible with
+'\--stdin-quit'.
 
 **\--no-follow-symlinks**
 
-:   Dont follow directory symlinks when watching
+:   Don't follow directory symlinks when watching
 
 By default, Watchexec follows directory symlinks while constructing
 recursive watches. With this option, their targets are not included;
@@ -902,16 +902,16 @@ watched hierarchy, even without this option.
 
 This writes diagnostic logs to a file, instead of the terminal, in JSON
 format. If a log level was not already specified, this will set it to
--vvv.
+'-vvv'.
 
 If a path is not provided, the default is the working directory. Note
-that with \--ignore-nothing, the write events to the log will likely get
+that with '\--ignore-nothing', the write events to the log will likely get
 picked up by Watchexec, causing a loop; prefer setting a path outside of
 the watched directory.
 
 If the path provided is a directory, a file will be created in that
 directory. The file name will be the current date and time, in the
-format watchexec.YYYY-MM-DDTHH-MM-SSZ.log.
+format 'watchexec.YYYY-MM-DDTHH-MM-SSZ.log'.
 
 **\--print-events**
 
@@ -921,7 +921,7 @@ This prints the events that triggered the action when handling it (after
 debouncing), in a human readable form. This is useful for debugging
 filters.
 
-Use -vvv instead when you need more diagnostic information.
+Use '-vvv' instead when you need more diagnostic information.
 
 **-v**, **\--verbose**
 
@@ -931,10 +931,10 @@ This enables diagnostic logging, which is useful for investigating bugs
 or gaining more insight into faulty filters or \"missing\" events. Use
 multiple times to increase verbosity.
 
-Goes up to -vvvv. When submitting bug reports, default to a -vvv log
+Goes up to '-vvvv'. When submitting bug reports, default to a '-vvv' log
 level.
 
-You may want to use with \--log-file to avoid polluting your terminal.
+You may want to use with '\--log-file' to avoid polluting your terminal.
 
 Setting \$WATCHEXEC_LOG also works, and takes precedence, but is not
 recommended. However, using \$WATCHEXEC_LOG is the only way to get logs
@@ -950,7 +950,7 @@ from before these options are parsed.
 
 :   Clear screen before running command
 
-If this doesnt completely clear the screen, try \--clear=reset.
+If this doesn't completely clear the screen, try '\--clear=reset'.
 
 **\--color** *\<MODE\>* \[default: auto\]
 
@@ -972,10 +972,10 @@ The mode can be specified to only notify when the command \`start\`s,
 
 **-q**, **\--quiet**
 
-:   Dont print starting and stopping messages
+:   Don't print starting and stopping messages
 
 By default Watchexec will print a message when the command starts and
-stops. This option disables this behaviour, so only the commands output,
+stops. This option disables this behaviour, so only the command's output,
 warnings, and errors will be printed.
 
 **\--timings**
@@ -988,12 +988,12 @@ benchmarking tools for more accurate results.
 
 # EXTRA
 
-Use \@argfile as first argument to load arguments from the file argfile
+Use \@argfile as first argument to load arguments from the file 'argfile'
 (one argument per line) which will be inserted in place of the \@argfile
 (further arguments on the CLI will override or add onto those in the
 file).
 
-Didnt expect this much output? Use the short -h flag to get short help.
+Didn't expect this much output? Use the short '-h' flag to get short help.
 
 # VERSION
 

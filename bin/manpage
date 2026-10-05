@@ -1,3 +1,7 @@
 #!/bin/sh
 cargo run -p watchexec-cli -- --manual > doc/watchexec.1
-pandoc doc/watchexec.1 -t markdown > doc/watchexec.1.md
+# clap-mangen escapes apostrophes as \*(Aq (a groff string defined in the
+# page header). pandoc's man reader doesn't resolve that string, so the
+# apostrophes silently vanish from the markdown (see #1137). Expand it to
+# the plain \(aq escape first, which pandoc renders correctly.
+sed 's/\\\*(Aq/\\(aq/g' doc/watchexec.1 | pandoc -f man -t markdown > doc/watchexec.1.md
