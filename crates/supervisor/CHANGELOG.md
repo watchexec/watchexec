@@ -2,7 +2,6 @@
 
 ## Next (YYYY-MM-DD)
 ## v6.0.0 (2026-10-05)
-## Next (YYYY-MM-DD)
 ## v5.4.1 (2026-10-02)
 ## v5.4.0 (2026-09-03)
 - Add a child spawn function for supervising processes created by external launchers.
