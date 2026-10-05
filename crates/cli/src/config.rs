@@ -1179,11 +1179,27 @@ fn interpret_command_args(args: &Args) -> Result<Arc<Command>> {
 		}
 	};
 
+	let (grouped, session) = match args.command.wrap_process {
+		WrapMode::Auto => (!cfg!(target_os = "macos"), cfg!(target_os = "macos")),
+		WrapMode::Group => (true, false),
+		WrapMode::Session => (false, true),
+		WrapMode::None => (false, false),
+	};
+
+	let terminal_free_for_command = !(args.events.stdin_quit || args.events.interactive);
+
+	let grant_foreground = cfg!(unix)
+		&& matches!(args.command.wrap_process, WrapMode::Auto)
+		&& grouped
+		&& !session
+		&& terminal_free_for_command;
+
 	Ok(Arc::new(Command {
 		program,
 		options: SpawnOptions {
-			grouped: matches!(args.command.wrap_process, WrapMode::Group),
-			session: matches!(args.command.wrap_process, WrapMode::Session),
+			grouped,
+			session,
+			grant_foreground,
 			..Default::default()
 		},
 	}))

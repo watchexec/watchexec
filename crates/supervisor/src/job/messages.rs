@@ -11,8 +11,8 @@ use watchexec_signals::Signal;
 use crate::flag::Flag;
 
 use super::task::{
-	AsyncErrorHandler, AsyncFunc, AsyncSpawnHook, SyncErrorHandler, SyncFunc, SyncSpawnHook,
-	SpawnFn,
+	AsyncErrorHandler, AsyncFunc, AsyncSpawnHook, SpawnFn, SyncErrorHandler, SyncFunc,
+	SyncSpawnHook,
 };
 
 /// The underlying control message types for [`Job`](super::Job).

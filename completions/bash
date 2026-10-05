@@ -46,7 +46,7 @@ _watchexec() {
                     return 0
                     ;;
                 --wrap-process)
-                    COMPREPLY=($(compgen -W "group session none" -- "${cur}"))
+                    COMPREPLY=($(compgen -W "auto group session none" -- "${cur}"))
                     return 0
                     ;;
                 --stop-signal)

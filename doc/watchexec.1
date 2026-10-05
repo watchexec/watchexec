@@ -205,12 +205,12 @@ Set the working directory
 
 By default, the working directory of the command is the working directory of Watchexec. You can change that with this option. Note that paths may be less intuitive to use with this.
 .TP
-\fB\-\-wrap\-process\fR \fI<MODE>\fR [default: group]
+\fB\-\-wrap\-process\fR \fI<MODE>\fR [default: auto]
 Configure how the process is wrapped
 
-By default, Watchexec will run the command in a session on Mac, in a process group in Unix, and in a Job Object in Windows.
+By default (mode \*(Aqauto\*(Aq), Watchexec will run the command in a session on Mac, in a process group in Unix, and in a Job Object in Windows.
 
-Some Unix programs prefer running in a session, while others do not work in a process group.
+Some Unix programs prefer running in a session, while others do not work in a process group. Additionally, on Unix in \*(Aqauto\*(Aq mode, Watchexec will detect when a program needs to be the foreground process to handle terminal input, and grant that temporarily. This is the case for many pagers and interactive programs. To opt\-out, specify an explicit mode as needed.
 
 Use \*(Aqgroup\*(Aq to use a process group, \*(Aqsession\*(Aq to use a process session, and \*(Aqnone\*(Aq to run the command directly. On Windows, either of \*(Aqgroup\*(Aq or \*(Aqsession\*(Aq will use a Job Object.
 
