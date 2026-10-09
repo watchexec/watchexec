@@ -1,13 +1,13 @@
 use std::{
 	borrow::Cow,
 	collections::HashMap,
-	env::{var, var_os},
+	env::var,
 	ffi::OsStr,
 	fmt,
 	fs::File,
 	io::{IsTerminal, Write},
 	iter::once,
-	path::{Path, PathBuf},
+	path::Path,
 	process::{ExitCode, Stdio},
 	sync::{
 		atomic::{AtomicBool, AtomicU8, Ordering},
@@ -32,6 +32,9 @@ use watchexec::{
 };
 use watchexec_events::{Event, KeyCode, Keyboard, Priority, ProcessEnd, Tag};
 use watchexec_signals::Signal;
+
+#[cfg(windows)]
+use std::{env::var_os, path::PathBuf};
 
 use crate::{
 	args::{
