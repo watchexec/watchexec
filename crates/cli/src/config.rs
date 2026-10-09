@@ -1348,6 +1348,7 @@ fn test_parse_path_resolves_before_validating() {
 #[cfg(test)]
 fn test_shell_spec_whitespace_is_trimmed() {
 	use clap::Parser;
+	use std::path::PathBuf;
 
 	for spec in ["sh ", " sh", "  sh  "] {
 		let args = Args::parse_from(["watchexec", &format!("--shell={spec}"), "echo", "hi"]);
