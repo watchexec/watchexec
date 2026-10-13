@@ -268,6 +268,7 @@ struct WorkerState {
 	processed_topology: u64,
 	retained_generations: HashSet<u64>,
 	pending_ready: Option<PendingReady>,
+	initial_paths: Option<std::collections::BTreeSet<PathBuf>>,
 }
 
 impl WorkerState {
@@ -290,6 +291,7 @@ impl WorkerState {
 			processed_topology: 0,
 			retained_generations: HashSet::new(),
 			pending_ready: None,
+			initial_paths: None,
 		}
 	}
 
@@ -376,6 +378,7 @@ impl WorkerState {
 				self.cwd.clone(),
 				filter.clone(),
 			);
+			recursor.set_collect_initial_paths(self.initial_paths.is_some());
 			recursor.reconcile(&pathset, filter);
 			self.recursor = Some(recursor);
 		} else if strategy.owns_logical_tree() && (roots_changed || filter_changed || needs_retry) {
@@ -397,6 +400,17 @@ impl WorkerState {
 			self.pending_ready = Some(PendingReady {
 				topology_fence: None,
 			});
+		}
+	}
+
+	fn finish_initial_paths(&mut self, config: &Config) {
+		if let Some(paths) = self.initial_paths.take() {
+			if let Some(recursor) = self.recursor.as_mut() {
+				recursor.set_collect_initial_paths(false);
+			}
+			if let Some(handler) = &config.initial_paths_handler {
+				handler.call(paths.into_iter().collect());
+			}
 		}
 	}
 
@@ -651,10 +665,24 @@ pub async fn worker(
 		about: "obtaining current directory for filesystem watching",
 		err,
 	})?;
-	let (control_tx, mut control_rx) = mpsc::unbounded_channel();
-	let (ordinary_tx, mut ordinary_rx) = mpsc::channel(config.event_channel_size.max(1));
+	let (control_tx, control_rx) = mpsc::unbounded_channel();
+	let (ordinary_tx, ordinary_rx) = mpsc::channel(config.event_channel_size.max(1));
 	let callback_fence = Arc::new(CallbackFence::default());
-	let mut state = WorkerState::new(cwd, control_tx, ordinary_tx, callback_fence, events);
+	let state = WorkerState::new(cwd, control_tx, ordinary_tx, callback_fence, events);
+	run_worker(config, errors, state, control_rx, ordinary_rx).await
+}
+
+async fn run_worker(
+	config: Arc<Config>,
+	errors: mpsc::Sender<RuntimeError>,
+	mut state: WorkerState,
+	mut control_rx: mpsc::UnboundedReceiver<ControlMessage>,
+	mut ordinary_rx: mpsc::Receiver<OrdinaryMessage>,
+) -> Result<(), CriticalError> {
+	state.initial_paths = config
+		.initial_paths_handler
+		.as_ref()
+		.map(|_| Default::default());
 	let mut config_watch = config.watch();
 	let mut runtime_errors = VecDeque::new();
 	let mut pending_ordinary = None;
@@ -700,6 +728,9 @@ pub async fn worker(
 				.expect("recursor disappeared")
 				.step();
 			progressed = true;
+			if let Some(paths) = state.initial_paths.as_mut() {
+				paths.extend(step.initial_paths);
+			}
 			runtime_errors.extend(step.errors);
 			if step.rebuild_backend {
 				// Backend state and finite known-good replay must advance even while
@@ -722,6 +753,7 @@ pub async fn worker(
 				&& !state.recursor_has_work()
 			{
 				state.pending_ready = None;
+				state.finish_initial_paths(&config);
 				let _ = config.fs_ready.send(());
 				progressed = true;
 			}
@@ -931,9 +963,9 @@ fn process_event(
 #[cfg(test)]
 mod tests {
 	use super::{
-		dispatch_callback_event, process_event, recursion_strategy, strategy_requires_recreation,
-		topology_messages, worker, CallbackFence, ControlMessage, OrdinaryMessage,
-		RecursionStrategy, Topology, Watcher, WorkerState,
+		dispatch_callback_event, process_event, recursion_strategy, run_worker,
+		strategy_requires_recreation, topology_messages, worker, CallbackFence, ControlMessage,
+		OrdinaryMessage, RecursionStrategy, Topology, Watcher, WorkerState,
 	};
 	use crate::{
 		error::{FsWatcherError, RuntimeError},
@@ -1392,6 +1424,133 @@ mod tests {
 			errors.pop_front(),
 			Some(RuntimeError::EventChannelSend { .. })
 		));
+	}
+
+	#[test]
+	fn initial_snapshot_precedes_prequeued_ordinary_delivery() {
+		tokio::runtime::Builder::new_current_thread()
+			.enable_all()
+			.build()
+			.unwrap()
+			.block_on(async {
+				let directory = tempfile::tempdir().unwrap();
+				let existing = directory.path().join("existing");
+				std::fs::write(&existing, "existing").unwrap();
+				let (events, event_rx) = priority::bounded(16);
+				let event_rx = Arc::new(event_rx);
+				let snapshot_called = Arc::new(std::sync::atomic::AtomicBool::new(false));
+				let mut config = Config::default();
+				config.on_initial_paths({
+					let event_rx = event_rx.clone();
+					let snapshot_called = snapshot_called.clone();
+					move |_| {
+						assert!(matches!(
+							event_rx.try_recv(),
+							Err(priority::TryRecvError::Empty)
+						));
+						snapshot_called.store(true, Ordering::SeqCst);
+					}
+				});
+				config.pathset([directory.path()]);
+				let config = Arc::new(config);
+				let (control, control_rx) = mpsc::unbounded_channel();
+				let (ordinary, ordinary_rx) = mpsc::channel(16);
+				ordinary
+					.send(OrdinaryMessage {
+						generation: 1,
+						topology_sequence: 0,
+						event: notify::Event::new(EventKind::Any).add_path(existing.clone()),
+					})
+					.await
+					.unwrap();
+				let state = WorkerState::new(
+					std::env::current_dir().unwrap(),
+					control,
+					ordinary,
+					Arc::new(CallbackFence::default()),
+					events,
+				);
+				let (errors, _error_rx) = mpsc::channel(16);
+				let task = tokio::spawn(run_worker(config, errors, state, control_rx, ordinary_rx));
+				let (delivered, _) =
+					tokio::time::timeout(std::time::Duration::from_secs(5), event_rx.recv())
+						.await
+						.expect("ordinary delivery should follow initial reconciliation")
+						.unwrap();
+				assert!(snapshot_called.load(Ordering::SeqCst));
+				assert_eq!(
+					delivered.paths().map(|(path, _)| path).collect::<Vec<_>>(),
+					vec![existing.as_path()]
+				);
+				assert_eq!(
+					delivered.tags.iter().find_map(|tag| match tag {
+						watchexec_events::Tag::FileEventKind(kind) => Some(*kind),
+						_ => None,
+					}),
+					Some(EventKind::Any)
+				);
+				task.abort();
+				let _ = task.await;
+			});
+	}
+
+	#[test]
+	fn initial_paths_are_reported_once_before_readiness() {
+		tokio::runtime::Builder::new_current_thread()
+			.enable_all()
+			.build()
+			.unwrap()
+			.block_on(async {
+				for empty in [false, true] {
+					let directory = tempfile::tempdir().unwrap();
+					let existing = directory.path().join("existing");
+					std::fs::write(&existing, "existing").unwrap();
+					let calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+					let snapshot = Arc::new(std::sync::Mutex::new(Vec::<PathBuf>::new()));
+					let mut config = Config::default();
+					config.on_initial_paths({
+						let calls = calls.clone();
+						let snapshot = snapshot.clone();
+						move |paths| {
+							*snapshot.lock().unwrap() = paths;
+							calls.fetch_add(1, Ordering::SeqCst);
+						}
+					});
+					if !empty {
+						config.pathset([directory.path()]);
+					}
+					let config = Arc::new(config);
+					let mut ready = config.fs_ready();
+					let (events, _event_rx) = priority::bounded(16);
+					let (errors, _error_rx) = mpsc::channel(16);
+					let task = tokio::spawn(worker(config.clone(), errors, events));
+					tokio::time::timeout(std::time::Duration::from_secs(5), ready.changed())
+						.await
+						.expect("first reconciliation should finish")
+						.unwrap();
+					assert_eq!(calls.load(Ordering::SeqCst), 1);
+					let initial_paths = snapshot.lock().unwrap().clone();
+
+					config.file_watcher(Watcher::Poll(std::time::Duration::from_millis(100)));
+					config.pathset([directory.path(), directory.path()]);
+					tokio::time::timeout(std::time::Duration::from_secs(5), ready.changed())
+						.await
+						.expect("reconfiguration should finish")
+						.unwrap();
+					assert_eq!(calls.load(Ordering::SeqCst), 1);
+					task.abort();
+					let _ = task.await;
+
+					if empty {
+						assert!(initial_paths.is_empty());
+					} else {
+						assert!(
+							initial_paths.contains(&existing),
+							"missing existing file: {initial_paths:?}"
+						);
+					}
+				}
+			});
 	}
 
 	#[test]
