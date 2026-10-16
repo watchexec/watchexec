@@ -573,6 +573,50 @@ async fn graceful_restart() {
 	task.abort();
 }
 
+/// A graceful stop for the running command, sent while a restart waits out its grace period,
+/// must reach the command being restarted and leave the restart to finish, rather than queue
+/// behind the restart and stop the command it starts next. `--timeout` relies on this.
+#[cfg(unix)]
+#[tokio::test]
+async fn stop_running_during_restart_spares_the_next_command() {
+	use nix::sys::signal::Signal;
+
+	let (job, task) = start_job(ungraceful_command());
+	job.start().await;
+
+	let restart = job.restart_with_signal(
+		watchexec_signals::Signal::User1,
+		Duration::from_millis(GRACE),
+	);
+	sleep(Duration::from_millis(GRACE / 2)).await;
+	job.stop_running_with_signal(
+		watchexec_signals::Signal::User2,
+		Duration::from_millis(GRACE),
+	)
+	.await;
+	tokio::time::timeout(Duration::from_millis(GRACE * 10), restart)
+		.await
+		.expect("the restart should still finish");
+
+	expect_state!(
+		job,
+		CommandState::Running { .. },
+		"the restart started the next command"
+	);
+	let second = get_child(&job).await;
+	let got_user2 = |child: &super::TestChild| {
+		child.calls.iter().any(
+			|(_, call)| matches!(call, TestChildCall::Signal(sig) if *sig == Signal::SIGUSR2 as i32),
+		)
+	};
+	assert!(
+		!got_user2(&second),
+		"the stop meant for the restarted command reached the next one"
+	);
+
+	task.abort();
+}
+
 #[tokio::test]
 async fn graceful_stop_beyond_grace() {
 	let (job, task) = start_job(ungraceful_command());

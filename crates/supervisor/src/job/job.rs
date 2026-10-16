@@ -148,6 +148,21 @@ impl Job {
 		}
 	}
 
+	/// Gracefully stop the command that is running now.
+	///
+	/// Like [`stop_with_signal()`](Job::stop_with_signal), but the control message is sent with
+	/// higher priority than normal, like [`to_wait()`](Job::to_wait)'s, so it targets the actively
+	/// running command, not the one that will be running after the rest of the queued controls get
+	/// done. If that command is already being stopped gracefully, as by a restart, this leaves the
+	/// stop under way as it is.
+	pub fn stop_running_with_signal(&self, signal: Signal, grace: Duration) -> Ticket {
+		if cfg!(unix) {
+			self.send_controls([Control::GracefulStop { signal, grace }], Priority::High)
+		} else {
+			self.send_controls([Control::Stop], Priority::High)
+		}
+	}
+
 	/// Restart the command if it's running, or start it if it's not.
 	pub fn restart(&self) -> Ticket {
 		self.send_controls([Control::Stop, Control::Start], Priority::Normal)

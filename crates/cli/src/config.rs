@@ -1457,13 +1457,12 @@ fn setup_process(
 		async move {
 			let timed_out = if let Some(timeout) = timeout_config.timeout {
 				tokio::select! {
+					// A run that has ended has not timed out, even if its timer is also due.
+					biased;
 					_ = job.to_wait() => false,
 					_ = tokio::time::sleep(timeout) => {
-						if cfg!(windows) {
-							job.stop().await;
-						} else {
-							job.stop_with_signal(timeout_config.stop_signal, timeout_config.stop_timeout).await;
-						}
+						// Stop this run, not the one a restart queued behind it.
+						job.stop_running_with_signal(timeout_config.stop_signal, timeout_config.stop_timeout).await;
 						true
 					}
 				}
