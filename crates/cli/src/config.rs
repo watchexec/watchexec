@@ -567,9 +567,10 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 				// pass all other signals on
 				for signal in signals {
 					match signal_map.get(&signal) {
+						// To the command running now, not one a restart has queued.
 						Some(Some(mapped)) => {
 							debug!(?signal, ?mapped, "passing mapped signal");
-							job.signal(*mapped);
+							job.signal_running(*mapped);
 						}
 						Some(None) => {
 							debug!(?signal, "discarding signal");
@@ -578,13 +579,13 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 							debug!(?signal, "passing signal on");
 							#[cfg(unix)]
 							if signal == Signal::TerminalSuspend {
-								job.signal(signal).await;
+								job.signal_running(signal).await;
 								suspend_self();
 							} else {
-								job.signal(signal);
+								job.signal_running(signal);
 							}
 							#[cfg(not(unix))]
-							job.signal(signal);
+							job.signal_running(signal);
 						}
 					}
 				}

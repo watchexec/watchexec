@@ -617,6 +617,43 @@ async fn stop_running_during_restart_spares_the_next_command() {
 	task.abort();
 }
 
+/// A signal for the running command, sent while a restart waits out its grace period, must reach
+/// the command being restarted rather than queue behind the restart and reach the next one as it
+/// spawns, before it can handle the signal. Forwarded signals rely on this.
+#[cfg(unix)]
+#[tokio::test]
+async fn signal_running_during_restart_reaches_the_restarted_command() {
+	use nix::sys::signal::Signal;
+
+	let (job, task) = start_job(ungraceful_command());
+	job.start().await;
+	let first = get_child(&job).await;
+
+	let restart = job.restart_with_signal(
+		watchexec_signals::Signal::User1,
+		Duration::from_millis(GRACE),
+	);
+	sleep(Duration::from_millis(GRACE / 2)).await;
+	job.signal_running(watchexec_signals::Signal::User2).await;
+	tokio::time::timeout(Duration::from_millis(GRACE * 10), restart)
+		.await
+		.expect("the restart should still finish");
+
+	let second = get_child(&job).await;
+	let got_user2 = |child: &super::TestChild| {
+		child.calls.iter().any(
+			|(_, call)| matches!(call, TestChildCall::Signal(sig) if *sig == Signal::SIGUSR2 as i32),
+		)
+	};
+	assert!(
+		got_user2(&first),
+		"the restarted command did not get the signal"
+	);
+	assert!(!got_user2(&second), "the signal reached the next command");
+
+	task.abort();
+}
+
 #[tokio::test]
 async fn graceful_stop_beyond_grace() {
 	let (job, task) = start_job(ungraceful_command());

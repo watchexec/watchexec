@@ -219,6 +219,15 @@ impl Job {
 		self.control(Control::Signal(sig))
 	}
 
+	/// Send a signal to the command that is running now.
+	///
+	/// Like [`signal()`](Job::signal), but the control message is sent with higher priority than
+	/// normal, like [`to_wait()`](Job::to_wait)'s, so it targets the actively running command, not
+	/// the one that will be running after the rest of the queued controls get done.
+	pub fn signal_running(&self, sig: Signal) -> Ticket {
+		self.send_controls([Control::Signal(sig)], Priority::High)
+	}
+
 	/// Stop the command, then mark it for garbage collection.
 	///
 	/// The underlying control messages are sent like normal, so they wait for all pending controls
