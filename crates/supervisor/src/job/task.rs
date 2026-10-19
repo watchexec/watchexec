@@ -270,16 +270,22 @@ pub fn start_job(command: Arc<Command>) -> (Job, JoinHandle<()>) {
 									}
 								}
 								Control::GracefulStop { signal, grace } => {
-									#[cfg(unix)]
-									resume_paused_command(&mut paused, &mut command_state);
-									if let CommandState::Running { child, .. } = &mut command_state {
-										try_with_handler!(signal_child(signal, child).await);
+									// Only a high priority stop gets here while a graceful stop is
+									// under way: the command is already being stopped.
+									if stop_timer.is_some() {
+										trace!("graceful stop already under way, skip");
+									} else {
+										#[cfg(unix)]
+										resume_paused_command(&mut paused, &mut command_state);
+										if let CommandState::Running { child, .. } = &mut command_state {
+											try_with_handler!(signal_child(signal, child).await);
 
-										trace!(?grace, "setting up graceful stop timer");
-										stop_timer.replace(Timer::stop(grace, done));
-										return Loop::Skip;
+											trace!(?grace, "setting up graceful stop timer");
+											stop_timer.replace(Timer::stop(grace, done));
+											return Loop::Skip;
+										}
+										trace!("child isn't running, skip");
 									}
-									trace!("child isn't running, skip");
 								}
 								Control::TryRestart => {
 									#[cfg(unix)]
