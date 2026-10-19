@@ -39,6 +39,8 @@ Example use cases:
 
     Event emission is disabled by default (`--emit-events-to=none`). Use `--emit-events-to=json-stdio` to send JSON events to the command's standard input instead.
 
+* With `--initial-events=create`, includes existing paths as create events in the first event output. This uses the watch setup traversal, including direct children of non-recursive watches. It is a best-effort startup snapshot, rather than an atomic filesystem snapshot. Directory pruning and symlink following use the usual watch rules. Initial events do not trigger commands or pass through event filters. With `--postpone`, they accompany the first normal command run.
+
 ## Anti-Features
 
 * Not tied to any particular language or ecosystem
@@ -103,7 +105,11 @@ On Windows, you may prefer to use Powershell:
 
     $ watchexec --shell=pwsh -- Test-Connection example.com
 
-You can eschew running commands entirely and get a stream of events to process on your own:
+Include existing paths in the first output to a command:
+
+    $ watchexec --emit-events-to=json-stdio --initial-events=create -- cat
+
+Or get a stream of events without running a command:
 
 ```console
 $ watchexec --emit-events-to=json-stdio --only-emit-events

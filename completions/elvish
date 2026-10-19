@@ -36,6 +36,7 @@ set edit:completion:arg-completer[watchexec] = {|@words|
             cand --map-signal 'Translate signals from the OS to signals to send to the command'
             cand -d 'Time to wait for new events before taking action'
             cand --debounce 'Time to wait for new events before taking action'
+            cand --initial-events 'Include existing paths in the first event emission'
             cand --poll 'Poll for filesystem changes'
             cand --emit-events-to 'Configure event emission'
             cand -w 'Watch a specific file or directory'
