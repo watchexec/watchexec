@@ -1,6 +1,6 @@
 [package]
 name = "watchexec-filterer-ignore"
-version = "7.0.6"
+version = "7.0.7"
 
 authors = ["Félix Saparelli <felix@passcod.name>"]
 license = "Apache-2.0"
@@ -24,7 +24,7 @@ version = "3.0.8"
 path = "../../ignore-files"
 
 [dependencies.watchexec]
-version = "8.4.4"
+version = "8.4.5"
 path = "../../lib"
 
 [dependencies.watchexec-events]
