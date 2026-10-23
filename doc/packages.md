@@ -11,7 +11,7 @@ relevant packager.
 | Platform | Distributor | Package name | Status | Install command |
 |:-|:-|:-:|:-:|-:|
 | Linux | _n/a_ (deb) | [`watchexec-{version}-{platform}.deb`](https://github.com/watchexec/watchexec/releases) | first-party | `dpkg -i watchexec-*.deb` |
-| Linux | _n/a_ (rpm) | [`watchexec-{version}-{platform}.rpm`](https://github.com/watchexec/watchexec/releases) | first-party | `dnf install watchexec-*.deb` |
+| Linux | _n/a_ (rpm) | [`watchexec-{version}-{platform}.rpm`](https://github.com/watchexec/watchexec/releases) | first-party | `dnf install watchexec-*.rpm` |
 | Linux | _n/a_ (tarball) | [`watchexec-{version}-{platform}.tar.xz`](https://github.com/watchexec/watchexec/releases) | first-party | `tar xf watchexec-*.tar.xz` |
 | Linux | Alpine | [`watchexec`](https://pkgs.alpinelinux.org/packages?name=watchexec) | official | `apk add watchexec` |
 | Linux | ALT Sisyphus | [`watchexec`](https://packages.altlinux.org/en/sisyphus/srpms/watchexec/) | official | `apt-get install watchexec` |
