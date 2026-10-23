@@ -1,6 +1,6 @@
 [package]
 name = "watchexec"
-version = "8.4.4"
+version = "8.4.5"
 
 authors = ["Félix Saparelli <felix@passcod.name>", "Matt Green <mattgreenrocks@gmail.com>"]
 license = "Apache-2.0"
@@ -33,7 +33,7 @@ version = "5.1.1"
 path = "../signals"
 
 [dependencies.watchexec-supervisor]
-version = "6.0.0"
+version = "6.0.1"
 path = "../supervisor"
 
 [dependencies.tokio]
