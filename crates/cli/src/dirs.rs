@@ -12,6 +12,19 @@ use watchexec::paths::common_prefix;
 
 use crate::args::{command::CommandArgs, filtering::FilteringArgs, Args};
 
+/// The home directory, canonicalised. One that cannot be resolved, as when HOME names a
+/// directory that does not exist, is treated as no home directory.
+async fn canonical_home(home: Option<PathBuf>) -> Option<PathBuf> {
+	let home = home?;
+	match canonicalize(&home).await {
+		Ok(dir) => Some(dir),
+		Err(err) => {
+			debug!(?home, %err, "home directory cannot be resolved, ignoring it");
+			None
+		}
+	}
+}
+
 pub async fn project_origin(
 	FilteringArgs {
 		project_origin,
@@ -25,10 +38,7 @@ pub async fn project_origin(
 		debug!(?origin, "project origin override");
 		canonicalize(origin).await.into_diagnostic()?
 	} else {
-		let homedir = match dirs::home_dir() {
-			None => None,
-			Some(dir) => Some(canonicalize(dir).await.into_diagnostic()?),
-		};
+		let homedir = canonical_home(dirs::home_dir()).await;
 		debug!(?homedir, "home directory");
 
 		// The watched paths aren't resolved yet at this point (that needs the origin), so do it
@@ -358,6 +368,19 @@ mod tests {
 			watched,
 			origin_in(&root, &[]).await,
 			"origin of watched {sub:?} should be the project origin"
+		);
+	}
+
+	/// A home directory that does not exist, as HOME is in a Nix build or for a service with no
+	/// home, is no home directory: it must not stop watchexec from starting.
+	#[tokio::test]
+	async fn a_missing_home_directory_is_none() {
+		let tmp = tempfile::tempdir().expect("tempdir");
+		let missing = tmp.path().join("homeless-shelter");
+		assert_eq!(canonical_home(Some(missing)).await, None);
+		assert_eq!(
+			canonical_home(Some(tmp.path().to_owned())).await,
+			Some(canonicalize(tmp.path()).await.expect("canonicalize"))
 		);
 	}
 

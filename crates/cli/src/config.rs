@@ -607,9 +607,10 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 				// pass all other signals on
 				for signal in signals {
 					match signal_map.get(&signal) {
+						// To the command running now, not one a restart has queued.
 						Some(Some(mapped)) => {
 							debug!(?signal, ?mapped, "passing mapped signal");
-							job.signal(*mapped);
+							job.signal_running(*mapped);
 						}
 						Some(None) => {
 							debug!(?signal, "discarding signal");
@@ -618,13 +619,13 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 							debug!(?signal, "passing signal on");
 							#[cfg(unix)]
 							if signal == Signal::TerminalSuspend {
-								job.signal(signal).await;
+								job.signal_running(signal).await;
 								suspend_self();
 							} else {
-								job.signal(signal);
+								job.signal_running(signal);
 							}
 							#[cfg(not(unix))]
-							job.signal(signal);
+							job.signal_running(signal);
 						}
 					}
 				}
@@ -1694,13 +1695,12 @@ fn setup_process(
 		async move {
 			let timed_out = if let Some(timeout) = timeout_config.timeout {
 				tokio::select! {
+					// A run that has ended has not timed out, even if its timer is also due.
+					biased;
 					_ = job.to_wait() => false,
 					_ = tokio::time::sleep(timeout) => {
-						if cfg!(windows) {
-							job.stop().await;
-						} else {
-							job.stop_with_signal(timeout_config.stop_signal, timeout_config.stop_timeout).await;
-						}
+						// Stop this run, not the one a restart queued behind it.
+						job.stop_running_with_signal(timeout_config.stop_signal, timeout_config.stop_timeout).await;
 						true
 					}
 				}
