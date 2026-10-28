@@ -90,7 +90,8 @@ async fn source_checks_ignore_files() {
 #[tokio::test]
 async fn source_checks_allowlist_gitignore() {
 	let project = tempfile::tempdir().unwrap();
-	let origin = project.path();
+	let canonical_origin = dunce::canonicalize(project.path()).unwrap();
+	let origin = canonical_origin.as_path();
 	std::fs::create_dir(origin.join("src")).unwrap();
 	let ignore_path = origin.join(".gitignore");
 	std::fs::write(&ignore_path, "*\n!src/\n!src/*.rs\n").unwrap();
