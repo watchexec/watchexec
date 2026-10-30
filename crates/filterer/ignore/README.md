@@ -1,7 +1,7 @@
 [![Crates.io page](https://badgen.net/crates/v/watchexec-filterer-ignore)](https://crates.io/crates/watchexec-filterer-ignore)
 [![API Docs](https://docs.rs/watchexec-filterer-ignore/badge.svg)][docs]
 [![Crate license: Apache 2.0](https://badgen.net/badge/license/Apache%202.0)][license]
-[![CI status](https://github.com/watchexec/watchexec/actions/workflows/check.yml/badge.svg)](https://github.com/watchexec/watchexec/actions/workflows/check.yml)
+[![CI status](https://github.com/watchexec/watchexec/actions/workflows/tests.yml/badge.svg)](https://github.com/watchexec/watchexec/actions/workflows/tests.yml)
 
 # Watchexec filterer: ignore
 
