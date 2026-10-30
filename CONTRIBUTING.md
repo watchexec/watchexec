@@ -80,7 +80,7 @@ These are generic guides for implementing specific bits of functionality.
 ### Adding an event source
 
 - add a worker for "sourcing" events. Looking at the [signal source
-  worker](https://github.com/watchexec/watchexec/blob/main/crates/lib/src/signal/source.rs) is
+  worker](https://github.com/watchexec/watchexec/blob/main/crates/lib/src/sources/signal.rs) is
   probably easiest to get started here.
 
 - because we may not always want to enable this event source, and just to be flexible, add [runtime
@@ -91,15 +91,15 @@ These are generic guides for implementing specific bits of functionality.
   configures the most common usecase.
 
 - because watchexec is reconfigurable, in the worker you'll need to react to config changes. Look at
-  how the [fs worker does it](https://github.com/watchexec/watchexec/blob/main/crates/lib/src/fs.rs)
-  for reference.
+  how the [fs worker does
+  it](https://github.com/watchexec/watchexec/blob/main/crates/lib/src/sources/fs.rs) for reference.
 
 - you may need to [add to the event tag
-  enum](https://github.com/watchexec/watchexec/blob/main/crates/lib/src/event.rs).
+  enum](https://github.com/watchexec/watchexec/blob/main/crates/events/src/event.rs).
 
-- if you do, you should [add support to the "tagged
-  filterer"](https://github.com/watchexec/watchexec/blob/main/crates/filterer/tagged/src/parse.rs),
-  but this can be done in follow-up work.
+- if you do, you should [add support to the CLI's
+  filterer](https://github.com/watchexec/watchexec/blob/main/crates/cli/src/filterer.rs), but this
+  can be done in follow-up work.
 
 ### Process a new event in the CLI
 
@@ -107,11 +107,11 @@ These are generic guides for implementing specific bits of functionality.
   [args](https://github.com/watchexec/watchexec/blob/main/crates/cli/src/args.rs) if necessary
 
 - add to the [runtime
-  config](https://github.com/watchexec/watchexec/blob/main/crates/cli/src/config/runtime.rs) when
+  config](https://github.com/watchexec/watchexec/blob/main/crates/cli/src/config.rs) when
   the option is present
 
 - process relevant events [in the action
-  handler](https://github.com/watchexec/watchexec/blob/main/crates/cli/src/config/runtime.rs)
+  handler](https://github.com/watchexec/watchexec/blob/main/crates/cli/src/config.rs)
 
 ---
 vim: tw=100
