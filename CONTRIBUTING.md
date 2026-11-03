@@ -97,10 +97,6 @@ These are generic guides for implementing specific bits of functionality.
 - you may need to [add to the event tag
   enum](https://github.com/watchexec/watchexec/blob/main/crates/events/src/event.rs).
 
-- if you do, you should [add support to the CLI's
-  filterer](https://github.com/watchexec/watchexec/blob/main/crates/cli/src/filterer.rs), but this
-  can be done in follow-up work.
-
 ### Process a new event in the CLI
 
 - add an option to the
