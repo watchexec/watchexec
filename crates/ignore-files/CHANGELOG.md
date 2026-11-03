@@ -1,6 +1,7 @@
 # Changelog
 
 ## Next (YYYY-MM-DD)
+## v3.0.9 (2026-11-03)
 ## v3.0.8 (2026-10-02)
 ## v3.0.7 (2026-08-24)
 - Add `IgnoreFilter::match_path_or_ancestors` and `IgnoreFilter::check_dir` for top-down recursive source filtering. An ignored ancestor prunes its subtree; a descendant negation cannot reopen it.
