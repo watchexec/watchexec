@@ -9,42 +9,6 @@ updates:
     schedule:
       interval: "weekly"
   - package-ecosystem: "cargo"
-    directory: "/crates/cli"
-    schedule:
-      interval: "weekly"
-  - package-ecosystem: "cargo"
-    directory: "/crates/lib"
-    schedule:
-      interval: "weekly"
-  - package-ecosystem: "cargo"
-    directory: "/crates/events"
-    schedule:
-      interval: "weekly"
-  - package-ecosystem: "cargo"
-    directory: "/crates/signals"
-    schedule:
-      interval: "weekly"
-  - package-ecosystem: "cargo"
-    directory: "/crates/supervisor"
-    schedule:
-      interval: "weekly"
-  - package-ecosystem: "cargo"
-    directory: "/crates/filterer/ignore"
-    schedule:
-      interval: "weekly"
-  - package-ecosystem: "cargo"
-    directory: "/crates/filterer/globset"
-    schedule:
-      interval: "weekly"
-  - package-ecosystem: "cargo"
-    directory: "/crates/bosion"
-    schedule:
-      interval: "weekly"
-  - package-ecosystem: "cargo"
-    directory: "/crates/ignore-files"
-    schedule:
-      interval: "weekly"
-  - package-ecosystem: "cargo"
-    directory: "/crates/project-origins"
+    directory: "/"
     schedule:
       interval: "weekly"
