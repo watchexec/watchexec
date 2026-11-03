@@ -88,6 +88,46 @@ async fn source_checks_ignore_files() {
 }
 
 #[tokio::test]
+async fn source_checks_allowlist_gitignore() {
+	let project = tempfile::tempdir().unwrap();
+	let canonical_origin = dunce::canonicalize(project.path()).unwrap();
+	let origin = canonical_origin.as_path();
+	std::fs::create_dir(origin.join("src")).unwrap();
+	let ignore_path = origin.join(".gitignore");
+	std::fs::write(&ignore_path, "*\n!src/\n!src/*.rs\n").unwrap();
+	let filterer = GlobsetFilterer::new(
+		origin,
+		std::iter::empty::<(String, Option<PathBuf>)>(),
+		std::iter::empty::<(String, Option<PathBuf>)>(),
+		std::iter::empty::<PathBuf>(),
+		[IgnoreFile {
+			path: ignore_path,
+			applies_in: Some(origin.to_owned()),
+			applies_to: None,
+		}],
+		std::iter::empty::<OsString>(),
+	)
+	.await
+	.unwrap();
+
+	assert!(filterer.check_dir(origin).unwrap());
+	assert!(filterer.check_dir(&origin.join("src")).unwrap());
+	assert!(!filterer.check_dir(&origin.join("other")).unwrap());
+	assert!(filterer
+		.check_path(
+			origin.join("src/main.rs"),
+			Some(watchexec_events::FileType::File)
+		)
+		.unwrap());
+	assert!(!filterer
+		.check_path(
+			origin.join("src/main.txt"),
+			Some(watchexec_events::FileType::File)
+		)
+		.unwrap());
+}
+
+#[tokio::test]
 async fn source_checks_git_boundary_and_descendants() {
 	let filterer = filt(&[], &["**/.git", "**/.git/**"], &[], &[], &[]).await;
 	assert_source_dir(&filterer, ".github", true);
