@@ -1,6 +1,8 @@
 # Changelog
 
 ## Next (YYYY-MM-DD)
+- Add `Config::on_initial_paths` to collect existing paths once, before the first filesystem readiness notification, using the watcher setup traversal.
+
 ## v8.4.4 (2026-10-05)
 ## v8.4.3 (2026-10-02)
 ## v8.4.2 (2026-09-15)

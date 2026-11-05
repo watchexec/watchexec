@@ -165,6 +165,7 @@ enum Phase {
 pub(super) struct StepResult {
 	pub(super) errors: Vec<RuntimeError>,
 	pub(super) rebuild_backend: bool,
+	pub(super) initial_paths: Vec<PathBuf>,
 }
 
 const TRANSIENT_RETRIES: u8 = 1;
@@ -179,6 +180,7 @@ enum AddResult {
 
 enum ExplicitRootState {
 	Entry(EntryKind),
+	NonFollowedSymlink,
 	Missing { path: PathBuf, error: io::Error },
 	Unsafe,
 }
@@ -206,6 +208,7 @@ pub(super) struct Recursor {
 	backend_kind: notify::WatcherKind,
 	strategy: RecursionStrategy,
 	follow_symlinks: bool,
+	collect_initial_paths: bool,
 	cwd: PathBuf,
 	filter: Arc<dyn Filterer>,
 	roots: HashSet<Root>,
@@ -256,6 +259,7 @@ impl Recursor {
 			backend_kind,
 			strategy: recursion_strategy(backend_kind),
 			follow_symlinks,
+			collect_initial_paths: false,
 			cwd,
 			filter,
 			roots: HashSet::new(),
@@ -298,6 +302,16 @@ impl Recursor {
 
 	pub(super) const fn is_managed(&self) -> bool {
 		self.strategy.owns_logical_tree()
+	}
+
+	pub(super) fn set_collect_initial_paths(&mut self, enabled: bool) {
+		self.collect_initial_paths = enabled;
+	}
+
+	fn record_initial_path(&self, path: &Path, result: &mut StepResult) {
+		if self.collect_initial_paths {
+			result.initial_paths.push(path.to_owned());
+		}
 	}
 
 	const fn retains_directory_root_guard(&self) -> bool {
@@ -1185,6 +1199,7 @@ impl Recursor {
 				}
 				Ok(
 					ExplicitRootState::Entry(EntryKind::NonFollowedSymlink)
+					| ExplicitRootState::NonFollowedSymlink
 					| ExplicitRootState::Unsafe,
 				) => {
 					if let Some(mut parent) = self.nearest_coverage_ancestor(&root.path, result) {
@@ -1349,6 +1364,9 @@ impl Recursor {
 				Ok(EntryKind::Other) if is_root => {
 					return Ok(ExplicitRootState::Entry(EntryKind::Other));
 				}
+				Ok(EntryKind::NonFollowedSymlink) if is_root => {
+					return Ok(ExplicitRootState::NonFollowedSymlink);
+				}
 				Ok(EntryKind::Other | EntryKind::NonFollowedSymlink) => {
 					return Ok(ExplicitRootState::Unsafe);
 				}
@@ -1373,7 +1391,11 @@ impl Recursor {
 				self.addition_failures.remove(&root.path);
 				self.work.push_front(Work::Root(root));
 			}
-			Ok(ExplicitRootState::Missing { .. } | ExplicitRootState::Unsafe) => {}
+			Ok(
+				ExplicitRootState::Missing { .. }
+				| ExplicitRootState::Unsafe
+				| ExplicitRootState::NonFollowedSymlink,
+			) => {}
 			Err((path, error)) => {
 				result.errors.push(self.scan_error(path, error));
 				self.retry_roots.insert(root);
@@ -1408,7 +1430,11 @@ impl Recursor {
 					self.work.push_front(Work::Root(root));
 					return;
 				}
-				Ok(ExplicitRootState::Missing { .. } | ExplicitRootState::Unsafe) => {}
+				Ok(
+					ExplicitRootState::Missing { .. }
+					| ExplicitRootState::Unsafe
+					| ExplicitRootState::NonFollowedSymlink,
+				) => {}
 				Err((path, error)) => {
 					result.errors.push(self.scan_error(path, error));
 					self.retry_roots.insert(root);
@@ -1701,7 +1727,7 @@ impl Recursor {
 			if !self.follow_symlinks {
 				match self.classify_explicit_root(&root.path) {
 					Ok(ExplicitRootState::Entry(_) | ExplicitRootState::Missing { .. }) => {}
-					Ok(ExplicitRootState::Unsafe) => {
+					Ok(ExplicitRootState::Unsafe | ExplicitRootState::NonFollowedSymlink) => {
 						self.retry_roots.remove(&root);
 						self.queue_remove_prefix(&root.path);
 						return;
@@ -1748,7 +1774,7 @@ impl Recursor {
 		let (identity, scan, retain_guard) = match self.classify_explicit_root(&root.path) {
 			Ok(ExplicitRootState::Entry(EntryKind::Directory(identity))) => (
 				Identity::Canonical(identity),
-				root.recursive,
+				root.recursive || self.collect_initial_paths,
 				self.retains_directory_root_guard(),
 			),
 			Ok(ExplicitRootState::Entry(EntryKind::Other)) => {
@@ -1769,8 +1795,16 @@ impl Recursor {
 				(identity, false, self.retains_nondirectory_root_guard())
 			}
 			Ok(
-				ExplicitRootState::Entry(EntryKind::NonFollowedSymlink) | ExplicitRootState::Unsafe,
+				ExplicitRootState::Entry(EntryKind::NonFollowedSymlink)
+				| ExplicitRootState::NonFollowedSymlink,
 			) => {
+				self.record_initial_path(&root.path, result);
+				self.retry_roots.remove(&root);
+				self.queue_remove_prefix(&root.path);
+				self.work.push_front(Work::Guard(root));
+				return;
+			}
+			Ok(ExplicitRootState::Unsafe) => {
 				self.retry_roots.remove(&root);
 				self.queue_remove_prefix(&root.path);
 				self.work.push_front(Work::Guard(root));
@@ -1798,6 +1832,7 @@ impl Recursor {
 				return;
 			}
 		};
+		self.record_initial_path(&root.path, result);
 
 		if let Identity::Canonical(canonical) = &identity {
 			let requested = if root.recursive {
@@ -1870,7 +1905,10 @@ impl Recursor {
 		transient_retries: u8,
 		result: &mut StepResult,
 	) {
-		if !self.roots.contains(&root) || !root.recursive {
+		if !self.roots.contains(&root)
+			|| (!root.recursive
+				&& (!self.collect_initial_paths || path.parent() != Some(root.path.as_path())))
+		{
 			self.retry_candidates.remove(&(root, path));
 			return;
 		}
@@ -1904,11 +1942,12 @@ impl Recursor {
 			}
 		};
 		let EntryKind::Directory(identity) = classification else {
+			self.record_initial_path(&path, result);
 			self.retry_candidates.remove(&(root.clone(), path.clone()));
 			self.queue_remove_owner_prefix(&root, &path);
 			return;
 		};
-		if !self.coverage_covers_directory(&identity) {
+		if root.recursive && !self.coverage_covers_directory(&identity) {
 			self.retry_candidates.remove(&(root.clone(), path.clone()));
 			self.queue_remove_owner_prefix(&root, &path);
 			return;
@@ -1926,6 +1965,12 @@ impl Recursor {
 				self.retry_transient_candidate(&root, &path, transient_retries);
 				return;
 			}
+		}
+
+		self.record_initial_path(&path, result);
+		if !root.recursive {
+			self.retry_candidates.remove(&(root, path));
+			return;
 		}
 
 		let identity = Identity::Canonical(identity);
@@ -2827,6 +2872,224 @@ mod tests {
 			}
 		}
 		panic!("recursor did not request a rebuild");
+	}
+
+	fn drain_initial_paths(recursor: &mut Recursor) -> (HashSet<PathBuf>, Vec<RuntimeError>) {
+		let mut paths = HashSet::new();
+		let mut errors = Vec::new();
+		for _ in 0..256 {
+			if !recursor.has_work() {
+				return (paths, errors);
+			}
+			let step = recursor.step();
+			assert!(!step.rebuild_backend, "unexpected backend rebuild");
+			paths.extend(step.initial_paths);
+			errors.extend(step.errors);
+		}
+		panic!("recursor did not settle");
+	}
+
+	#[test]
+	fn initial_paths_include_files_and_respect_directory_pruning() {
+		for kind in [
+			notify::WatcherKind::Inotify,
+			notify::WatcherKind::ReadDirectoryChangesWatcher,
+			notify::WatcherKind::PollWatcher,
+			notify::WatcherKind::Fsevent,
+		] {
+			let (mut recursor, _backend, scanner) = fixture_with_backend_kind(kind);
+			for path in ["/root", "/root/kept", "/root/ignored"] {
+				directory(&scanner, path);
+			}
+			entries(
+				&scanner,
+				"/root",
+				&["/root/file", "/root/kept", "/root/ignored"],
+			);
+			entries(&scanner, "/root/kept", &["/root/kept/file"]);
+			entries(&scanner, "/root/ignored", &["/root/ignored/file"]);
+			recursor.set_collect_initial_paths(true);
+			recursor.reconcile(
+				&[
+					WatchedPath::recursive("/root"),
+					WatchedPath::recursive("/explicit-file"),
+				],
+				filter(["/root/ignored"]),
+			);
+			let (paths, errors) = drain_initial_paths(&mut recursor);
+			assert!(errors.is_empty());
+			assert_eq!(
+				paths,
+				[
+					"/root",
+					"/root/file",
+					"/root/kept",
+					"/root/kept/file",
+					"/explicit-file"
+				]
+				.into_iter()
+				.map(PathBuf::from)
+				.collect()
+			);
+			assert!(!scanner
+				.lock()
+				.unwrap()
+				.operations
+				.contains(&Operation::Scan("/root/ignored".into())));
+		}
+	}
+
+	#[test]
+	fn initial_nonrecursive_paths_scan_only_direct_children() {
+		for kind in [notify::WatcherKind::Inotify, notify::WatcherKind::Fsevent] {
+			let (mut recursor, backend, scanner) = fixture_with_backend_kind(kind);
+			for path in ["/root", "/root/child"] {
+				directory(&scanner, path);
+			}
+			entries(&scanner, "/root", &["/root/file", "/root/child"]);
+			entries(&scanner, "/root/child", &["/root/child/deeper"]);
+			recursor.set_collect_initial_paths(true);
+			recursor.reconcile(&[WatchedPath::non_recursive("/root")], filter([]));
+			let (paths, errors) = drain_initial_paths(&mut recursor);
+			assert!(errors.is_empty());
+			assert_eq!(
+				paths,
+				["/root", "/root/file", "/root/child"]
+					.into_iter()
+					.map(PathBuf::from)
+					.collect()
+			);
+			let scans: Vec<_> = scanner
+				.lock()
+				.unwrap()
+				.operations
+				.iter()
+				.filter_map(|op| match op {
+					Operation::Scan(path) => Some(path.clone()),
+					_ => None,
+				})
+				.collect();
+			assert_eq!(scans, [PathBuf::from("/root")]);
+			assert_eq!(watched(&backend, "/root/child"), 0);
+			assert!(!recursor.logical.contains_key(Path::new("/root/child")));
+		}
+	}
+
+	#[test]
+	fn initial_paths_preserve_aliases_and_bound_symlink_cycles() {
+		let (mut recursor, _backend, scanner) = fixture();
+		for path in ["/root", "/alias", "/root/loop", "/alias/loop"] {
+			scanner
+				.lock()
+				.unwrap()
+				.directories
+				.insert(path.into(), "/root".into());
+		}
+		entries(&scanner, "/root", &["/root/file", "/root/loop"]);
+		entries(&scanner, "/alias", &["/alias/file", "/alias/loop"]);
+		recursor.set_collect_initial_paths(true);
+		recursor.reconcile(
+			&[
+				WatchedPath::recursive("/root"),
+				WatchedPath::recursive("/alias"),
+				WatchedPath::recursive("/root/file"),
+			],
+			filter([]),
+		);
+		let (paths, errors) = drain_initial_paths(&mut recursor);
+		assert!(errors.is_empty());
+		assert_eq!(
+			paths,
+			[
+				"/root",
+				"/alias",
+				"/root/file",
+				"/alias/file",
+				"/root/loop",
+				"/alias/loop"
+			]
+			.into_iter()
+			.map(PathBuf::from)
+			.collect()
+		);
+		assert_eq!(
+			scanner
+				.lock()
+				.unwrap()
+				.operations
+				.iter()
+				.filter(|op| matches!(op, Operation::Scan(_)))
+				.count(),
+			2
+		);
+	}
+
+	#[test]
+	fn initial_no_follow_includes_links_without_traversing_them() {
+		let (mut recursor, _backend, scanner) = fixture();
+		recursor.follow_symlinks = false;
+		directory(&scanner, "/root");
+		scanner
+			.lock()
+			.unwrap()
+			.non_followed_symlinks
+			.extend([PathBuf::from("/root/link"), PathBuf::from("/link")]);
+		entries(&scanner, "/root", &["/root/link", "/root/file"]);
+		entries(&scanner, "/root/link", &["/root/link/target"]);
+		recursor.set_collect_initial_paths(true);
+		recursor.reconcile(
+			&[
+				WatchedPath::recursive("/root"),
+				WatchedPath::recursive("/link"),
+				WatchedPath::recursive("/link/unsafe"),
+			],
+			filter([]),
+		);
+		let (paths, errors) = drain_initial_paths(&mut recursor);
+		assert!(errors.is_empty());
+		assert_eq!(
+			paths,
+			["/root", "/root/link", "/root/file", "/link"]
+				.into_iter()
+				.map(PathBuf::from)
+				.collect()
+		);
+		assert!(!scanner
+			.lock()
+			.unwrap()
+			.operations
+			.contains(&Operation::Scan("/root/link".into())));
+	}
+
+	#[test]
+	fn initial_collection_survives_recovery_and_fsevents_rebuild() {
+		let (mut recursor, backend, scanner) =
+			fixture_with_backend_kind(notify::WatcherKind::Fsevent);
+		for path in ["/root", "/root/child"] {
+			directory(&scanner, path);
+		}
+		entries(&scanner, "/root", &["/root/child"]);
+		entries(&scanner, "/root/child", &["/root/child/file"]);
+		scanner
+			.lock()
+			.unwrap()
+			.scan_errors
+			.insert("/root/child".into());
+		recursor.set_collect_initial_paths(true);
+		recursor.reconcile(&[WatchedPath::recursive("/root")], filter([]));
+		let (mut paths, errors) = drain_initial_paths(&mut recursor);
+		assert!(!errors.is_empty());
+		assert!(!paths.contains(Path::new("/root/child/file")));
+		scanner.lock().unwrap().scan_errors.clear();
+		recursor.prepare_backend_rebuild();
+		recursor.install_backend(Box::new(FakeBackend(backend)));
+		let (recovered, errors) = drain_initial_paths(&mut recursor);
+		assert!(errors.is_empty());
+		paths.extend(recovered);
+		assert!(paths.contains(Path::new("/root/child/file")));
+		recursor.set_collect_initial_paths(false);
+		recursor.reconcile(&[WatchedPath::recursive("/root")], filter([]));
+		assert!(drain_initial_paths(&mut recursor).0.is_empty());
 	}
 
 	#[test]

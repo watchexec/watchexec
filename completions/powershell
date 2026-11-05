@@ -39,6 +39,7 @@ Register-ArgumentCompleter -Native -CommandName 'watchexec' -ScriptBlock {
             [CompletionResult]::new('--map-signal', '--map-signal', [CompletionResultType]::ParameterName, 'Translate signals from the OS to signals to send to the command')
             [CompletionResult]::new('-d', '-d', [CompletionResultType]::ParameterName, 'Time to wait for new events before taking action')
             [CompletionResult]::new('--debounce', '--debounce', [CompletionResultType]::ParameterName, 'Time to wait for new events before taking action')
+            [CompletionResult]::new('--initial-events', '--initial-events', [CompletionResultType]::ParameterName, 'Include existing paths in the first event emission')
             [CompletionResult]::new('--poll', '--poll', [CompletionResultType]::ParameterName, 'Poll for filesystem changes')
             [CompletionResult]::new('--emit-events-to', '--emit-events-to', [CompletionResultType]::ParameterName, 'Configure event emission')
             [CompletionResult]::new('-w', '-w', [CompletionResultType]::ParameterName, 'Watch a specific file or directory')

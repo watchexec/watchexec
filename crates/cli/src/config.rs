@@ -135,6 +135,13 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 	let _span = debug_span!("args-runtime").entered();
 	let mut config = Config::default();
 	config.signal_job_control = true;
+	let initial_events_requested = args.events.initial_events.is_some();
+	if initial_events_requested {
+		let state = state.clone();
+		config.on_initial_paths(move |paths| {
+			*state.initial_paths.lock().unwrap() = Some(paths);
+		});
+	}
 	let runtime_error_sampler = Mutex::new(RuntimeErrorSampler::new(
 		RUNTIME_ERROR_SAMPLE_INTERVAL,
 		RUNTIME_ERROR_SAMPLE_CAPACITY,
@@ -215,15 +222,17 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 				}
 			}
 
+			let events = if initial_events_requested {
+				state.events_for_emit(action.events.clone()).0
+			} else {
+				action.events.clone()
+			};
 			match emit_events_to {
 				EmitEvents::Stdio => {
-					println!(
-						"{}",
-						events_to_simple_format(action.events.as_ref()).unwrap_or_default()
-					);
+					println!("{}", events_to_simple_format(&events).unwrap_or_default());
 				}
 				EmitEvents::JsonStdio => {
-					for event in action.events.iter().filter(|e| !e.is_empty()) {
+					for event in events.iter().filter(|e| !e.is_empty()) {
 						println!("{}", serde_json::to_string(event).unwrap_or_default());
 					}
 				}
@@ -293,6 +302,8 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 	let quit_again = Arc::new(AtomicU8::new(0));
 	let paused = Arc::new(AtomicBool::new(false));
 	let should_quit = Arc::new(AtomicBool::new(false));
+	let initial_display = (initial_events_requested && print_events && clear.is_some())
+		.then(|| Arc::new(Mutex::new(None)));
 
 	config.on_action_async(move |mut action| {
 		let add_envs = add_envs.clone();
@@ -304,6 +315,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 		let should_quit = should_quit.clone();
 		let signal_map = signal_map.clone();
 		let workdir = workdir.clone();
+		let initial_display = initial_display.clone();
 		Box::new(
 			async move {
 				trace!(events=?action.events, "handling action");
@@ -322,6 +334,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 				let events = action.events.clone();
 				job.set_spawn_hook({
 					let state = state.clone();
+					let initial_display = initial_display.clone();
 					move |command, _| {
 						let add_envs = add_envs.clone();
 						let state = state.clone();
@@ -335,6 +348,25 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 						if let Some(ref socket_set) = state.socket_set {
 							for env in socket_set.envs() {
 								command.command_mut().env(env.key, env.value);
+							}
+						}
+
+						let (events, initial_count) = if initial_events_requested
+							&& (print_events || !matches!(emit_events_to, EmitEvents::None))
+						{
+							state.events_for_emit(events)
+						} else {
+							(events, 0)
+						};
+						if let Some(initial_display) = &initial_display {
+							// Keep only this emission's initial batch for a queued clear.
+							// An interactive start may leave the previous batch unconsumed.
+							*initial_display.lock().unwrap() =
+								(initial_count > 0).then(|| events.clone());
+						}
+						if print_events {
+							for (n, event) in events[..initial_count].iter().enumerate() {
+								eprintln!("[EVENT {n}] {event}");
 							}
 						}
 
@@ -362,7 +394,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 
 				let clear_screen = {
 					let events = action.events.clone();
-					move || {
+					move |after_spawn: bool| {
 						if let Some(mode) = clear {
 							match mode {
 								ClearMode::Clear => {
@@ -378,6 +410,14 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 
 						// re-show events after clearing
 						if print_events {
+							let initial_events = if after_spawn {
+								initial_display
+									.as_ref()
+									.and_then(|batch| batch.lock().unwrap().take())
+							} else {
+								None
+							};
+							let events = initial_events.as_ref().unwrap_or(&events);
 							trace!("print events to stderr");
 							for (n, event) in events.iter().enumerate() {
 								eprintln!("[EVENT {n}] {event}");
@@ -515,7 +555,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 									}
 									KeyCode::Char('r') => {
 										debug!("interactive: restart");
-										clear_screen();
+										clear_screen(false);
 										if cfg!(windows) {
 											job.restart();
 										} else {
@@ -646,7 +686,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 											let should_quit = should_quit.clone();
 											let state = state.clone();
 											move |context| {
-												clear_screen();
+												clear_screen(true);
 												setup_process(
 													innerjob.clone(),
 													context.command.clone(),
@@ -668,7 +708,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 											let should_quit = should_quit.clone();
 											let state = state.clone();
 											move |context| {
-												clear_screen();
+												clear_screen(true);
 												setup_process(
 													innerjob.clone(),
 													context.command.clone(),
@@ -702,7 +742,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 														let should_quit = should_quit.clone();
 														let state = state.clone();
 														move |context| {
-															clear_screen();
+															clear_screen(true);
 															setup_process(
 																innerjob.clone(),
 																context.command.clone(),
@@ -729,7 +769,7 @@ pub fn make_config(args: &Args, state: &State) -> Result<Config> {
 									let should_quit = should_quit.clone();
 									let state = state.clone();
 									move |context| {
-										clear_screen();
+										clear_screen(true);
 										setup_process(
 											innerjob.clone(),
 											context.command.clone(),
@@ -763,6 +803,203 @@ const fn on_busy_signal(signal: Option<Signal>, stop_signal: Option<Signal>) -> 
 	match (signal, stop_signal) {
 		(Some(sig), _) | (None, Some(sig)) => sig,
 		(None, None) => Signal::Terminate,
+	}
+}
+
+#[cfg(all(test, unix))]
+mod initial_emission_tests {
+	use std::{ffi::OsString, path::Path, sync::Arc, time::Duration};
+
+	use clap::Parser;
+	use tokio::time::{sleep, timeout};
+	use watchexec::{action::ActionReturn, Watchexec};
+	use watchexec_events::{
+		filekind::{DataChange, FileEventKind, ModifyKind},
+		Event, Priority, Source, Tag,
+	};
+	use watchexec_signals::Signal;
+
+	use crate::{args::Args, filterer::WatchexecFilterer, state};
+
+	async fn wait_until(stage: &str, mut condition: impl FnMut() -> bool) {
+		timeout(Duration::from_secs(5), async {
+			while !condition() {
+				sleep(Duration::from_millis(5)).await;
+			}
+		})
+		.await
+		.unwrap_or_else(|_| panic!("expected runtime progress: {stage}"));
+	}
+
+	fn modified(path: &Path) -> Event {
+		Event {
+			tags: vec![
+				Tag::Source(Source::Filesystem),
+				Tag::FileEventKind(FileEventKind::Modify(ModifyKind::Data(DataChange::Content))),
+				Tag::Path {
+					path: path.to_owned(),
+					file_type: None,
+				},
+			],
+			metadata: Default::default(),
+		}
+	}
+
+	#[test]
+	fn initial_emission_waits_for_a_run_and_survives_busy_skip() {
+		tokio::runtime::Builder::new_current_thread()
+			.enable_all()
+			.build()
+			.unwrap()
+			.block_on(async {
+				let fixture = tempfile::tempdir().unwrap();
+				let watched = fixture.path().join("watched");
+				std::fs::create_dir(&watched).unwrap();
+				let existing = watched.join("existing");
+				let changed = watched.join("changed");
+				std::fs::write(&existing, "existing").unwrap();
+				std::fs::write(&changed, "changed").unwrap();
+				let output = fixture.path().join("output");
+				let count = fixture.path().join("count");
+				let mut args = Args::parse_from([
+					OsString::from("watchexec"),
+					"--initial-events=create".into(),
+					"--postpone".into(),
+					"-n".into(),
+					"--emit-events-to=stdio".into(),
+					"--fs-events=modify".into(),
+					"--ignore-nothing".into(),
+					"--watch".into(),
+					watched.into_os_string(),
+					"--".into(),
+					"sh".into(),
+					"-c".into(),
+					"printf 'run\\n' >> \"$2\"; cat > \"$1\"; sleep 1".into(),
+					"probe".into(),
+					output.as_os_str().to_owned(),
+					count.as_os_str().to_owned(),
+				]);
+				args.command.normalise().await.unwrap();
+				args.filtering.normalise(&args.command).await.unwrap();
+				args.events
+					.normalise(&args.command, &args.filtering, false)
+					.unwrap();
+				let state = state::new(&args).await.unwrap();
+				let mut config = super::make_config(&args, &state).unwrap();
+				config.filterer(WatchexecFilterer::new(&args).await.unwrap());
+				let actions = Arc::new(std::sync::Mutex::new(Vec::new()));
+				let job = Arc::new(std::sync::Mutex::new(None));
+				let handler = std::mem::replace(
+					&mut config.action_handler,
+					watchexec::Config::default().action_handler,
+				);
+				config.on_action_async({
+					let actions = actions.clone();
+					let job = job.clone();
+					move |action| {
+						let result = handler.call(action);
+						let actions = actions.clone();
+						let job = job.clone();
+						Box::new(async move {
+							let action = match result {
+								ActionReturn::Sync(action) => action,
+								ActionReturn::Async(future) => Box::into_pin(future).await,
+							};
+							if action.paths().next().is_some() {
+								actions.lock().unwrap().push(action.events.clone());
+							}
+							if let Some((_, running)) = action.list_jobs().next() {
+								*job.lock().unwrap() = Some(running);
+							}
+							action
+						})
+					}
+				});
+				let mut ready = config.fs_ready();
+				let wx = Arc::new(Watchexec::with_config(config).unwrap());
+				state.watchexec.set(wx.clone()).unwrap();
+				let main = wx.main();
+				timeout(Duration::from_secs(5), ready.changed())
+					.await
+					.unwrap()
+					.unwrap();
+				assert!(!count.exists(), "postponed startup must not run a command");
+				assert!(state
+					.initial_paths
+					.lock()
+					.unwrap()
+					.as_ref()
+					.unwrap()
+					.contains(&existing));
+
+				wx.send_event(modified(&changed), Priority::Normal)
+					.await
+					.unwrap();
+				wait_until("first command starts", || count.exists()).await;
+				// A handler's job list excludes jobs created during that action. Observe the
+				// registered job with an empty action while the first command is running.
+				wx.send_event(Event::default(), Priority::Urgent)
+					.await
+					.unwrap();
+				wait_until("registered job is visible", || {
+					job.lock().unwrap().is_some()
+				})
+				.await;
+				let job = job.lock().unwrap().clone().unwrap();
+				wait_until("first emission reaches stdin", || {
+					job.is_running()
+						&& std::fs::read_to_string(&output).is_ok_and(|value| {
+							value.contains(&format!("modify:{}", changed.display()))
+						})
+				})
+				.await;
+				let first = std::fs::read_to_string(&output).unwrap();
+				assert!(first.contains(&format!("create:{}", existing.display())));
+				assert!(first.contains(&format!("modify:{}", changed.display())));
+				assert!(state.initial_paths.lock().unwrap().is_none());
+
+				let deferred = fixture.path().join("deferred");
+				*state.initial_paths.lock().unwrap() = Some(vec![deferred.clone()]);
+				wx.send_event(modified(&changed), Priority::Normal)
+					.await
+					.unwrap();
+				wait_until("busy action returns", || actions.lock().unwrap().len() >= 2).await;
+				job.run(|_| {}).await;
+				assert!(state.initial_paths.lock().unwrap().is_some());
+				assert_eq!(std::fs::read_to_string(&count).unwrap().lines().count(), 1);
+				job.to_wait().await;
+
+				wx.send_event(modified(&changed), Priority::Normal)
+					.await
+					.unwrap();
+				wait_until("second command starts", || {
+					std::fs::read_to_string(&count).is_ok_and(|value| value.lines().count() == 2)
+				})
+				.await;
+				job.to_wait().await;
+				let second = std::fs::read_to_string(&output).unwrap();
+				assert!(second.contains(&format!("create:{}", deferred.display())));
+				assert!(!second.contains(&format!("create:{}", existing.display())));
+				assert!(state.initial_paths.lock().unwrap().is_none());
+				for events in actions.lock().unwrap().iter() {
+					assert_eq!(events.as_ref(), &[modified(&changed)]);
+				}
+
+				wx.send_event(
+					Event {
+						tags: vec![Tag::Signal(Signal::Terminate)],
+						metadata: Default::default(),
+					},
+					Priority::Urgent,
+				)
+				.await
+				.unwrap();
+				timeout(Duration::from_secs(5), main)
+					.await
+					.unwrap()
+					.unwrap()
+					.unwrap();
+			});
 	}
 }
 

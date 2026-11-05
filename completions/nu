@@ -12,6 +12,10 @@ module completions {
     [ "queue" "do-nothing" "restart" "signal" ]
   }
 
+  def "nu-complete watchexec initial_events" [] {
+    [ "create" ]
+  }
+
   def "nu-complete watchexec emit_events_to" [] {
     [ "environment" "stdio" "file" "json-stdio" "json-file" "none" ]
   }
@@ -60,6 +64,7 @@ module completions {
     --interactive(-I)         # Respond to keypresses to quit, restart, stop, or pause
     --exit-on-error           # Exit when the command has an error
     --postpone(-p)            # Wait until first change before running command
+    --initial-events: string@"nu-complete watchexec initial_events" # Include existing paths in the first event emission
     --poll: string            # Poll for filesystem changes
     --emit-events-to: string@"nu-complete watchexec emit_events_to" # Configure event emission
     --watch(-w): path         # Watch a specific file or directory

@@ -1,6 +1,6 @@
 //! Configuration and builders for [`crate::Watchexec`].
 
-use std::{future::Future, time::Duration};
+use std::{future::Future, path::PathBuf, time::Duration};
 
 use tokio::sync::watch;
 use tracing::{debug, trace};
@@ -179,6 +179,8 @@ pub struct Config {
 	/// revision. Subscribe via [`Config::fs_ready()`] before changing filesystem configuration to
 	/// avoid missing or misattributing the notification.
 	pub(crate) fs_ready: watch::Sender<()>,
+
+	pub(crate) initial_paths_handler: Option<ChangeableFn<Vec<PathBuf>, ()>>,
 }
 
 impl Default for Config {
@@ -197,6 +199,7 @@ impl Default for Config {
 			error_channel_size: 64,
 			event_channel_size: 4096,
 			fs_ready: watch::channel(()).0,
+			initial_paths_handler: None,
 		}
 	}
 }
@@ -240,6 +243,26 @@ impl Config {
 	#[must_use]
 	pub fn fs_ready(&self) -> watch::Receiver<()> {
 		self.fs_ready.subscribe()
+	}
+
+	/// Collect existing paths during the first filesystem reconciliation.
+	///
+	/// The handler is called once, immediately before the first filesystem readiness notification,
+	/// including when the pathset is empty. Later configuration changes do not call it again.
+	/// Paths are absolute, sorted, and deduplicated by their visible path rather than their targets.
+	/// This is a best-effort collection of paths visited during startup, not an atomic snapshot.
+	/// Directory filtering and symlink following use the filesystem source's usual traversal rules.
+	/// Path-specific failures are reported through the error handler.
+	///
+	/// This must be configured before Watchexec instantiation and cannot be changed at runtime.
+	/// The handler runs synchronously in the filesystem worker and should return quickly.
+	pub fn on_initial_paths(
+		&mut self,
+		handler: impl Fn(Vec<PathBuf>) + Send + Sync + 'static,
+	) -> &Self {
+		debug!("Config: initial paths handler");
+		self.initial_paths_handler = Some(ChangeableFn::new(handler));
+		self.signal_change()
 	}
 
 	/// Set the pathset to be watched.
