@@ -129,11 +129,7 @@ impl WatchexecFilterer {
 				.map(|f| (f.to_owned(), Some(workdir.clone()))),
 		);
 
-		let exts = args
-			.filtering
-			.filter_extensions
-			.iter()
-			.map(|e| OsString::from(e.strip_prefix('.').unwrap_or(e)));
+		let exts = extensions_to_filter(&args.filtering.filter_extensions);
 
 		info!("initialising Globset filterer");
 		Ok(Arc::new(Self {
@@ -155,6 +151,19 @@ impl WatchexecFilterer {
 			},
 		}))
 	}
+}
+
+/// The extensions given to `--exts`, without their leading dot. The option is split on commas
+/// only, so `-e "rs, txt"` gives " txt": trim it, and drop the empty entries that a trailing comma
+/// leaves, as no file has an empty extension.
+fn extensions_to_filter(extensions: &[String]) -> Vec<OsString> {
+	extensions
+		.iter()
+		.map(|e| e.trim())
+		.map(|e| e.strip_prefix('.').unwrap_or(e))
+		.filter(|e| !e.is_empty())
+		.map(OsString::from)
+		.collect()
 }
 
 async fn read_filter_file(path: &Path) -> Result<Vec<(String, Option<PathBuf>)>> {
@@ -193,6 +202,51 @@ async fn read_filter_file(path: &Path) -> Result<Vec<(String, Option<PathBuf>)>>
 mod tests {
 	use super::*;
 	use watchexec_events::FileType;
+
+	#[test]
+	fn extensions_are_trimmed_and_empty_ones_dropped() {
+		let extensions = ["rs", " txt", ".md ", "", " ", "tar.gz"]
+			.map(String::from)
+			.to_vec();
+		assert_eq!(
+			extensions_to_filter(&extensions),
+			["rs", "txt", "md", "tar.gz"].map(OsString::from)
+		);
+	}
+
+	#[tokio::test]
+	async fn an_extension_after_a_comma_and_a_space_still_matches() {
+		let origin = dunce::canonicalize(".").unwrap();
+		// `-e "rs, txt"` is split on the comma only
+		let extensions = ["rs", " txt"].map(String::from).to_vec();
+		let filterer = GlobsetFilterer::new(
+			&origin,
+			Vec::<(String, Option<PathBuf>)>::new(),
+			Vec::<(String, Option<PathBuf>)>::new(),
+			Vec::<PathBuf>::new(),
+			Vec::<ignore_files::IgnoreFile>::new(),
+			extensions_to_filter(&extensions),
+		)
+		.await
+		.unwrap();
+		let event = |name: &str| Event {
+			tags: vec![Tag::Path {
+				path: origin.join(name),
+				file_type: Some(FileType::File),
+			}],
+			metadata: Default::default(),
+		};
+
+		assert!(filterer
+			.check_event(&event("notes.txt"), Priority::Normal)
+			.unwrap());
+		assert!(filterer
+			.check_event(&event("main.rs"), Priority::Normal)
+			.unwrap());
+		assert!(!filterer
+			.check_event(&event("image.png"), Priority::Normal)
+			.unwrap());
+	}
 
 	#[tokio::test]
 	async fn normalised_watch_root_whitelist_overrides_event_ignore() {
