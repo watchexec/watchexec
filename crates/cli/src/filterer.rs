@@ -154,8 +154,8 @@ impl WatchexecFilterer {
 }
 
 /// The extensions given to `--exts`, without their leading dot. The option is split on commas
-/// only, so `-e "rs, txt"` gives " txt": trim it, and drop the empty entries that a trailing comma
-/// leaves, as no file has an empty extension.
+/// only, so `-e "rs, txt"` gives " txt": trim it. Empty entries, such as the one a trailing comma
+/// leaves, are dropped: matching files whose name ends with a dot (`file.`) is not supported.
 fn extensions_to_filter(extensions: &[String]) -> Vec<OsString> {
 	extensions
 		.iter()
