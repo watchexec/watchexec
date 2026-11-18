@@ -923,6 +923,48 @@ async fn whitelist_overrides_ignore() {
 }
 
 #[tokio::test]
+async fn whitelisted_dir_still_obeys_filters() {
+	let origin = std::fs::canonicalize(".").unwrap();
+	let root = origin.join("crates").display().to_string();
+	let filterer = filt(&["crates/**"], &[], &[&root], &[], &[]).await;
+
+	// Events on the watched root itself, e.g. an FSEvents rescan or an mtime change, don't
+	// match `crates/**`.
+	filterer.dir_doesnt_pass("crates");
+	filterer.file_does_pass("crates/a/lib.rs");
+}
+
+#[tokio::test]
+async fn whitelisted_dir_still_obeys_extensions() {
+	let origin = std::fs::canonicalize(".").unwrap();
+	let root = origin.join("crates").display().to_string();
+	let filterer = filt(&[], &[], &[&root], &["rs"], &[]).await;
+
+	filterer.dir_doesnt_pass("crates");
+	filterer.file_does_pass("crates/a/lib.rs");
+}
+
+#[tokio::test]
+async fn whitelisted_dir_matching_filters_overrides_ignore() {
+	let origin = std::fs::canonicalize(".").unwrap();
+	let root = origin.join("prunes").display().to_string();
+	let filterer = filt(&["prunes"], &["**/prunes"], &[&root], &[], &[]).await;
+
+	filterer.dir_does_pass("prunes");
+	filterer.dir_doesnt_pass("apples/prunes");
+}
+
+#[tokio::test]
+async fn whitelisted_file_bypasses_filters() {
+	let origin = std::fs::canonicalize(".").unwrap();
+	let file = origin.join("Cargo.toml").display().to_string();
+	let filterer = filt(&["crates/**"], &[], &[&file], &["rs"], &[]).await;
+
+	filterer.file_does_pass("Cargo.toml");
+	filterer.file_doesnt_pass("Cargo.lock");
+}
+
+#[tokio::test]
 async fn whitelist_overrides_ignore_files() {
 	let mut ignore_file = tempfile::NamedTempFile::new().unwrap();
 	let _ = ignore_file.write(b"prunes");
