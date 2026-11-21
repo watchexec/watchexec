@@ -222,6 +222,139 @@ async fn allowlist() {
 }
 
 #[tokio::test]
+async fn allowlist_minimal() {
+	let origin = std::fs::canonicalize(".").unwrap();
+	let mut ignore_filter = IgnoreFilter::new(&origin, &[]).await.unwrap();
+	ignore_filter
+		.add_globs(&["*", "!src/", "!src/*.rs"], Some(&origin))
+		.unwrap();
+	let filterer = IgnoreFilterer(ignore_filter);
+
+	assert_source_dir(&filterer, "", true);
+	assert_source_dir(&filterer, "src", true);
+	assert_source_dir(&filterer, "foo", false);
+
+	filterer.dir_does_pass("");
+	filterer.dir_does_pass("src");
+	filterer.file_does_pass("src/main.rs");
+	filterer.file_does_pass("src/lib.rs");
+	filterer.file_does_pass("src/foo.rs");
+
+	filterer.dir_doesnt_pass("foo");
+	filterer.file_doesnt_pass(".gitignore");
+	filterer.file_doesnt_pass("evil.toml");
+	filterer.file_doesnt_pass("foo/bar.rs");
+	filterer.file_doesnt_pass("src/foo.go");
+	filterer.file_doesnt_pass("src/foo.rss");
+	filterer.file_doesnt_pass("src/.gitignore");
+}
+
+#[tokio::test]
+async fn allowlist_nested() {
+	let origin = std::fs::canonicalize(".").unwrap();
+	let mut ignore_filter = IgnoreFilter::new(&origin, &[]).await.unwrap();
+	ignore_filter
+		.add_globs(
+			&["*", "!src/", "!src/*.rs"],
+			Some(&origin.join("rust-project")),
+		)
+		.unwrap();
+	let filterer = IgnoreFilterer(ignore_filter);
+
+	assert_source_dir(&filterer, "rust-project", true);
+	assert_source_dir(&filterer, "rust-project/src", true);
+	assert_source_dir(&filterer, "rust-project/foo", false);
+
+	filterer.dir_does_pass("rust-project/src");
+	filterer.file_does_pass("rust-project/src/main.rs");
+	filterer.file_does_pass("rust-project/src/lib.rs");
+	filterer.file_does_pass("rust-project/src/foo.rs");
+
+	filterer.dir_doesnt_pass("rust-project/foo");
+	filterer.file_doesnt_pass("rust-project/.gitignore");
+	filterer.file_doesnt_pass("rust-project/evil.toml");
+	filterer.file_doesnt_pass("rust-project/foo/bar.rs");
+	filterer.file_doesnt_pass("rust-project/src/foo.go");
+	filterer.file_doesnt_pass("rust-project/src/foo.rss");
+	filterer.file_doesnt_pass("rust-project/src/.gitignore");
+	filterer.file_doesnt_pass("rust-project/src/sub/foo.rs");
+}
+
+#[tokio::test]
+async fn allowlist_root_and_nested() {
+	let origin = std::fs::canonicalize(".").unwrap();
+	let mut ignore_filter = IgnoreFilter::new(&origin, &[]).await.unwrap();
+	ignore_filter
+		.add_globs(&["*", "!rust-project/"], Some(&origin))
+		.unwrap();
+	ignore_filter
+		.add_globs(
+			&["*", "!src/", "!src/*.rs"],
+			Some(&origin.join("rust-project")),
+		)
+		.unwrap();
+	ignore_filter
+		.add_globs(
+			&["*", "!src/", "!src/*.rs"],
+			Some(&origin.join("rust-project-ignored")),
+		)
+		.unwrap();
+	let filterer = IgnoreFilterer(ignore_filter);
+
+	assert_source_dir(&filterer, "rust-project", true);
+	assert_source_dir(&filterer, "rust-project-ignored", false);
+	assert_source_dir(&filterer, "rust-project/src", true);
+	assert_source_dir(&filterer, "rust-project/foo", false);
+
+	filterer.dir_does_pass("rust-project/src");
+	filterer.file_does_pass("rust-project/src/main.rs");
+	filterer.file_does_pass("rust-project/src/lib.rs");
+	filterer.file_does_pass("rust-project/src/foo.rs");
+
+	filterer.dir_doesnt_pass("rust-project/foo");
+	filterer.file_doesnt_pass("rust-project/.gitignore");
+	filterer.file_doesnt_pass("rust-project/evil.toml");
+	filterer.file_doesnt_pass("rust-project/foo/bar.rs");
+	filterer.file_doesnt_pass("rust-project/src/foo.go");
+	filterer.file_doesnt_pass("rust-project/src/foo.rss");
+	filterer.file_doesnt_pass("rust-project/src/.gitignore");
+
+	filterer.dir_doesnt_pass("rust-project-ignored/src");
+	filterer.file_doesnt_pass("rust-project-ignored/src/main.rs");
+	filterer.file_doesnt_pass("rust-project-ignored/src/lib.rs");
+	filterer.file_doesnt_pass("rust-project-ignored/src/foo.rs");
+}
+
+#[tokio::test]
+async fn allowlist_global() {
+	let origin = std::fs::canonicalize(".").unwrap();
+	let mut ignore_filter = IgnoreFilter::new(&origin, &[]).await.unwrap();
+	ignore_filter.add_globs(&["*"], None).unwrap();
+	ignore_filter
+		.add_globs(&["!src/", "!src/*.rs"], Some(&origin))
+		.unwrap();
+	let filterer = IgnoreFilterer(ignore_filter);
+
+	assert_source_dir(&filterer, "", true);
+	assert_source_dir(&filterer, "src", true);
+	assert_source_dir(&filterer, "foo", false);
+
+	filterer.dir_does_pass("");
+	filterer.dir_does_pass("src");
+	filterer.file_does_pass("src/main.rs");
+	filterer.file_does_pass("src/lib.rs");
+	filterer.file_does_pass("src/foo.rs");
+
+	filterer.dir_doesnt_pass("foo");
+	filterer.file_doesnt_pass(".gitignore");
+	filterer.file_doesnt_pass("evil.toml");
+	filterer.file_doesnt_pass("foo/bar.rs");
+	filterer.file_doesnt_pass("src/foo.go");
+	filterer.file_doesnt_pass("src/foo.rss");
+	filterer.file_doesnt_pass("src/.gitignore");
+}
+
+#[tokio::test]
 async fn scopes() {
 	let filterer = filt(
 		"",

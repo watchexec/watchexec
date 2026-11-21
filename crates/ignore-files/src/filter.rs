@@ -358,7 +358,10 @@ impl IgnoreFilter {
 			// Unwrap will always succeed because every node has an entry.
 			let ignores = trie_node.value().unwrap();
 
-			let match_ = if include_parents && path.strip_prefix(&self.origin).is_ok() {
+			let match_ = if path == ignores.gitignore.path() {
+				trace!(?path, ?search_path, "ignores don't apply to their own root");
+				Match::None
+			} else if include_parents && path.strip_prefix(&self.origin).is_ok() {
 				trace!(?path, ?search_path, "checking against path or parents");
 				ignores.gitignore.matched_path_or_any_parents(path, is_dir)
 			} else {
@@ -434,9 +437,7 @@ impl IgnoreFilter {
 			.map(|_| {
 				path.ancestors()
 					.skip(1)
-					.take_while(|ancestor| {
-						*ancestor != self.origin && ancestor.starts_with(&self.origin)
-					})
+					.take_while(|ancestor| ancestor.starts_with(&self.origin))
 					.collect::<Vec<_>>()
 			})
 			.unwrap_or_default();
@@ -459,10 +460,6 @@ impl IgnoreFilter {
 	/// the latter handles events with multiple associated paths.
 	pub fn check_dir(&self, path: &Path) -> bool {
 		let _span = trace_span!("check_dir", ?path).entered();
-		// Ignore patterns in the project root apply to its contents, not the root itself.
-		if simplify_path(path) == self.origin {
-			return true;
-		}
 
 		trace!("checking against compiled ignore files");
 		match self.match_path_or_ancestors(path, true) {

@@ -162,3 +162,54 @@ async fn out_of_origin_paths_do_not_match_external_ancestors() {
 	assert!(path_is_ignored(&filter, &internal, false));
 	assert!(!filter.check_dir(&internal));
 }
+
+#[tokio::test]
+async fn allowlist_globs() {
+	let origin = std::fs::canonicalize("tests/tree").unwrap();
+	let scoped = origin.join("scoped");
+	let nested = scoped.join("nested");
+	let mut filter = IgnoreFilter::new(&origin, &[]).await.unwrap();
+	filter
+		.add_globs(&["*", "!scoped/", "!scoped/*"], Some(&origin))
+		.unwrap();
+	filter
+		.add_globs(&["*", "!nested/", "!nested/*"], Some(&scoped))
+		.unwrap();
+
+	assert!(filter.check_dir(&origin));
+	assert!(path_is_ignored(&filter, &scoped, false));
+	assert!(filter.check_dir(&scoped));
+
+	assert!(path_is_ignored(&filter, &origin.join("not-allowed"), false));
+	assert!(!filter.check_dir(&origin.join("not-allowed")));
+	assert!(path_is_ignored(&filter, &scoped.join("not-allowed"), false));
+	assert!(!filter.check_dir(&scoped.join("not-allowed")));
+
+	assert!(!path_is_ignored(&filter, &nested.join("allowed"), false));
+	assert!(filter.check_dir(&nested.join("allowed")));
+}
+
+#[tokio::test]
+async fn allowlist_with_global_glob() {
+	let origin = std::fs::canonicalize("tests/tree").unwrap();
+	let scoped = origin.join("scoped");
+	let mut filter = IgnoreFilter::new(&origin, &[]).await.unwrap();
+	filter.add_globs(&["*"], None).unwrap();
+	filter
+		.add_globs(&["!scoped/", "!scoped/*"], Some(&origin))
+		.unwrap();
+
+	assert!(filter.check_dir(&origin));
+	assert!(path_is_ignored(&filter, &scoped, false));
+	assert!(filter.check_dir(&scoped));
+
+	assert!(path_is_ignored(&filter, &origin.join("not-allowed"), false));
+	assert!(!filter.check_dir(&origin.join("not-allowed")));
+
+	assert!(!path_is_ignored(
+		&filter,
+		&scoped.join("not-allowed"),
+		false
+	));
+	assert!(filter.check_dir(&scoped.join("not-allowed")));
+}
