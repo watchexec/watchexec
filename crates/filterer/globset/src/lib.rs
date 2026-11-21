@@ -64,6 +64,8 @@ impl GlobsetFilterer {
 	/// empty, only the ignore list will be used. If both lists are empty, the filter always passes.
 	/// Whitelist is used to automatically accept files even if they would be filtered out
 	/// otherwise. It is passed as an absolute path to the file that should not be filtered.
+	/// Events for a whitelisted directory bypass ignores, but must still match the filters and
+	/// extensions.
 	///
 	/// Ignores and filters are passed as a tuple of the glob pattern as a string and an optional
 	/// path of the folder the pattern should apply in (e.g. the folder a gitignore file is in).
@@ -177,6 +179,66 @@ impl GlobsetFilterer {
 
 		self.ignores.matched(path, is_dir).is_ignore()
 	}
+
+	/// Return whether a path matches the positive filters and extensions.
+	///
+	/// Passes when neither are configured.
+	fn matches_filters(&self, path: &Path, is_dir: bool) -> bool {
+		let mut filtered = false;
+		if self.filters.num_ignores() > 0 {
+			trace!("running through glob filters");
+			filtered = true;
+
+			if self.filters.matched(path, is_dir).is_ignore() {
+				trace!("allowed by globset filters");
+				return true;
+			}
+
+			// Watchexec 1.x bug, TODO remove at 2.0
+			#[cfg(unix)]
+			if let Ok(based) = path.strip_prefix(&self.origin) {
+				let rebased = {
+					use std::path::MAIN_SEPARATOR;
+					let mut b = self.origin.clone().into_os_string();
+					b.push(PathBuf::from(String::from(MAIN_SEPARATOR)));
+					b.push(PathBuf::from(String::from(MAIN_SEPARATOR)));
+					b.push(based.as_os_str());
+					b
+				};
+
+				trace!(?rebased, "testing on rebased path, 1.x bug compat (#258)");
+				if self.filters.matched(rebased, is_dir).is_ignore() {
+					trace!("allowed by globset filters, 1.x bug compat (#258)");
+					return true;
+				}
+			}
+		}
+
+		if !self.extensions.is_empty() {
+			trace!("running through extension filters");
+			filtered = true;
+
+			if is_dir {
+				trace!("failed on extension check due to being a dir");
+				return false;
+			}
+
+			if let Some(ext) = path.extension() {
+				if self.extensions.iter().any(|e| e == ext) {
+					trace!("allowed by extension filter");
+					return true;
+				}
+			} else {
+				trace!(
+					?path,
+					"failed on extension check due to having no extension"
+				);
+				return false;
+			}
+		}
+
+		!filtered
+	}
 }
 
 impl Filterer for GlobsetFilterer {
@@ -221,13 +283,22 @@ impl Filterer for GlobsetFilterer {
 
 		{
 			trace!("checking internal whitelist");
-			// Ideally check path equality backwards for better perf
-			// There could be long matching prefixes so we will exit late
-			if !self.whitelist.is_empty()
-				&& event.paths().any(|(path, _)| self.whitelist.contains(path))
+			for (path, file_type) in event
+				.paths()
+				.filter(|(path, _)| self.whitelist.contains(*path))
 			{
-				trace!("internal whitelist filterer matched (success)");
-				return Ok(true);
+				if !matches!(file_type, Some(FileType::Dir)) {
+					trace!("internal whitelist filterer matched (success)");
+					return Ok(true);
+				}
+
+				// A whitelisted directory (an exact watch root) bypasses ignores only. It must
+				// still match the positive filters and extensions, or every event reported on
+				// the root itself (such as an FSEvents rescan) would pass a filter like `dir/**`.
+				if self.matches_filters(path, true) {
+					trace!("internal whitelist matched directory allowed by filters (success)");
+					return Ok(true);
+				}
 			}
 		}
 
@@ -257,60 +328,7 @@ impl Filterer for GlobsetFilterer {
 					return false;
 				}
 
-				let mut filtered = false;
-				if self.filters.num_ignores() > 0 {
-					trace!("running through glob filters");
-					filtered = true;
-
-					if self.filters.matched(path, is_dir).is_ignore() {
-						trace!("allowed by globset filters");
-						return true;
-					}
-
-					// Watchexec 1.x bug, TODO remove at 2.0
-					#[cfg(unix)]
-					if let Ok(based) = path.strip_prefix(&self.origin) {
-						let rebased = {
-							use std::path::MAIN_SEPARATOR;
-							let mut b = self.origin.clone().into_os_string();
-							b.push(PathBuf::from(String::from(MAIN_SEPARATOR)));
-							b.push(PathBuf::from(String::from(MAIN_SEPARATOR)));
-							b.push(based.as_os_str());
-							b
-						};
-
-						trace!(?rebased, "testing on rebased path, 1.x bug compat (#258)");
-						if self.filters.matched(rebased, is_dir).is_ignore() {
-							trace!("allowed by globset filters, 1.x bug compat (#258)");
-							return true;
-						}
-					}
-				}
-
-				if !self.extensions.is_empty() {
-					trace!("running through extension filters");
-					filtered = true;
-
-					if is_dir {
-						trace!("failed on extension check due to being a dir");
-						return false;
-					}
-
-					if let Some(ext) = path.extension() {
-						if self.extensions.iter().any(|e| e == ext) {
-							trace!("allowed by extension filter");
-							return true;
-						}
-					} else {
-						trace!(
-							?path,
-							"failed on extension check due to having no extension"
-						);
-						return false;
-					}
-				}
-
-				!filtered
+				self.matches_filters(path, is_dir)
 			}))
 		}
 	}
