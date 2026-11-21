@@ -192,6 +192,7 @@ pub struct EventsArgs {
 		num_args = 0..=1,
 		default_missing_value = "30s",
 		value_name = "INTERVAL",
+		value_parser = parse_poll_interval,
 		display_order = 160,
 	)]
 	pub poll: Option<TimeSpan<1_000_000>>,
@@ -306,6 +307,19 @@ pub struct EventsArgs {
 		display_order = 50,
 	)]
 	pub emit_events_to: EmitEvents,
+}
+
+/// A zero interval would make the poll watcher rescan in a busy loop.
+fn parse_poll_interval(value: &str) -> Result<TimeSpan<1_000_000>, String> {
+	let interval = value
+		.parse::<TimeSpan<1_000_000>>()
+		.map_err(|err| err.to_string())?;
+	if interval.0.is_zero() {
+		return Err(String::from(
+			"the polling interval must be greater than zero",
+		));
+	}
+	Ok(interval)
 }
 
 impl EventsArgs {
@@ -447,7 +461,43 @@ fn invalid_signal_mapping(
 
 #[cfg(test)]
 mod tests {
+	use std::time::Duration;
+
 	use super::*;
+
+	fn parse_poll(args: &[&str]) -> Result<Option<Duration>, String> {
+		let mut argv = vec!["watchexec"];
+		argv.extend_from_slice(args);
+		argv.extend(["--", "true"]);
+		super::super::Args::command()
+			.try_get_matches_from(argv)
+			.map(|matches| {
+				matches
+					.get_one::<TimeSpan<1_000_000>>("poll")
+					.map(|interval| interval.0)
+			})
+			.map_err(|err| err.render().to_string())
+	}
+
+	#[test]
+	fn a_zero_poll_interval_is_rejected() {
+		// A zero interval makes the poll watcher rescan in a busy loop.
+		for value in ["0", "0s", "0ms"] {
+			let err = parse_poll(&["--poll", value]).expect_err("should not parse");
+			assert!(err.contains("--poll"), "{value:?}: {err:?}");
+			assert!(err.contains("greater than zero"), "{value:?}: {err:?}");
+		}
+
+		assert_eq!(
+			parse_poll(&["--poll", "500ms"]).unwrap(),
+			Some(Duration::from_millis(500))
+		);
+		assert_eq!(
+			parse_poll(&["--poll"]).unwrap(),
+			Some(Duration::from_secs(30))
+		);
+		assert_eq!(parse_poll(&[]).unwrap(), None);
+	}
 
 	fn parse_map_signal(value: &str) -> Result<Vec<SignalMapping>, String> {
 		super::super::Args::command()
