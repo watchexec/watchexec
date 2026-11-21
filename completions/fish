@@ -23,6 +23,7 @@ signal\t''"
 complete -c watchexec -s s -l signal -d 'Send a signal to the process when it\'s still running' -r
 complete -c watchexec -l map-signal -d 'Translate signals from the OS to signals to send to the command' -r
 complete -c watchexec -s d -l debounce -d 'Time to wait for new events before taking action' -r
+complete -c watchexec -l initial-events -d 'Include existing paths in the first event emission' -r -f -a "create\t''"
 complete -c watchexec -l poll -d 'Poll for filesystem changes' -r
 complete -c watchexec -l emit-events-to -d 'Configure event emission' -r -f -a "environment\t''
 stdio\t''

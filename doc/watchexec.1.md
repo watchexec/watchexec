@@ -19,7 +19,8 @@ watchexec - Execute commands when watched files change
 \[**\--no-project-ignore**\] \[**\--no-vcs-ignore**\]
 \[**-o**\|**\--on-busy-update**\] \[**\--only-emit-events**\]
 \[**\--poll**\] \[**\--print-events**\] \[**\--project-origin**\]
-\[**-p**\|**\--postpone**\] \[**-q**\|**\--quiet**\]
+\[**-p**\|**\--postpone**\] \[**\--initial-events**\]
+\[**-q**\|**\--quiet**\]
 \[**-Q**\|**\--quote**\] \[**-r**\|**\--restart**\]
 \[**-s**\|**\--signal**\] \[**\--shell**\] \[**\--stdin-quit**\]
 \[**\--stop-signal**\] \[**\--stop-timeout**\] \[**\--timeout**\]
@@ -575,6 +576,21 @@ Aliased as \'\--force-poll\'.
 By default, Watchexec will run the command once immediately. With this
 option, it will instead wait until an event is detected before running
 the command as normal.
+
+**\--initial-events** *\<KIND\>*
+
+:   Include existing paths in the first event emission
+
+With \'create\', paths found while setting up the watches are emitted as
+create events. This is a best-effort startup snapshot, not an atomic view
+of the filesystem. Non-recursive watches include their direct children.
+Directory pruning and symlink following use the same rules as watching.
+
+Initial events only affect event output: they do not trigger commands or
+pass through event filters, debouncing, or throttling. With
+\'\--postpone\', they accompany the first normal emission instead of
+running the command at startup. Choose an output with \'\--emit-events-to\'
+or \'\--print-events\'.
 
 **-r**, **\--restart**
 

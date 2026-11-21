@@ -173,6 +173,25 @@ pub struct EventsArgs {
 	)]
 	pub postpone: bool,
 
+	/// Include existing paths in the first event emission
+	///
+	/// With 'create', paths found while setting up the watches are emitted as create events. This
+	/// is a best-effort startup snapshot, not an atomic view of the filesystem. Non-recursive
+	/// watches include their direct children. Directory pruning and symlink following use the
+	/// same rules as watching.
+	///
+	/// Initial events only affect event output: they do not trigger commands or pass through event
+	/// filters, debouncing, or throttling. With '--postpone', they accompany the first normal
+	/// emission instead of running the command at startup. Choose an output with '--emit-events-to'
+	/// or '--print-events'.
+	#[arg(
+		long,
+		help_heading = OPTSET_EVENTS,
+		value_name = "KIND",
+		display_order = 162,
+	)]
+	pub initial_events: Option<InitialEvents>,
+
 	/// Poll for filesystem changes
 	///
 	/// By default, and where available, Watchexec uses the operating system's native file system
@@ -365,6 +384,11 @@ pub enum EmitEvents {
 	JsonStdio,
 	JsonFile,
 	None,
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+pub enum InitialEvents {
+	Create,
 }
 
 #[derive(Clone, Copy, Debug, Default, ValueEnum)]
