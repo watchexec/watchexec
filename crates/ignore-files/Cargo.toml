@@ -24,7 +24,7 @@ thiserror = "2.0.11"
 tracing = "0.1.40"
 radix_trie = "0.3.0"
 dunce = "1.0.4"
-gix-error = "0.4.0"
+gix-error = "0.5.2"
 
 [dependencies.tokio]
 version = "1.33.0"
